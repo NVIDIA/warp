@@ -928,11 +928,19 @@ def test_svd_2D(test, device, dtype, register_kernels=False):
                 np.zeros((2, 2)),
                 np.eye(2),
                 5.0 * np.eye(2),
+                np.array([[0.0, -1.0], [1.0, 0.0]]),
+                np.array([[0.0, -2.0], [2.0, 0.0]]),
+                -np.eye(2),
+                np.array([[1.0, 0.0], [0.0, -1.0]]),
+                2.0 * np.array([[np.cos(0.5), -np.sin(0.5)], [np.sin(0.5), np.cos(0.5)]]),
                 np.array([[1.0, 0.0], [0.0, 0.0]]),
                 np.array([[0.0, 0.0], [0.0, 2.0]]),
                 np.array([[1.0, 1.0], [-1.0, -1.0]]),
                 np.array([[3.0, 0.0], [4.0, 5.0]]),
                 np.eye(2) + tol * np.array([[1.0, 1.0], [-1.0, -1.0]]),
+                # small enough for the discriminant to underflow in float16
+                np.array([[0.005, 0.002], [0.0, 0.0]]),
+                np.array([[1.0e-5, 0.0], [0.0, 5.0e-6]]),
             ],
         ),
         axis=0,
@@ -1007,6 +1015,399 @@ def test_svd_2D(test, device, dtype, register_kernels=False):
                 minusval = out.numpy()[0]
 
                 assert_np_equal((plusval - minusval) / (2 * dx), m2grads[ii, jj], tol=fdtol)
+
+
+def test_svd_2D_sigma_sum_grad(test, device, dtype, register_kernels=False):
+    tol = {
+        np.float16: 1.0e-4,
+        np.float32: 1.0e-6,
+        np.float64: 1.0e-12,
+    }.get(dtype, 0)
+
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
+    vec2 = wp.types.vector(length=2, dtype=wptype)
+    mat22 = wp.types.matrix(shape=(2, 2), dtype=wptype)
+
+    def check_mat_svd2_sigma_sum(
+        m2: wp.array[mat22],
+        out: wp.array[wptype],
+    ):
+        tid = wp.tid()
+
+        U = mat22()
+        sigma = vec2()
+        V = mat22()
+
+        wp.svd2(m2[tid], U, sigma, V)
+
+        out[tid] = sigma[0] + sigma[1]
+
+    kernel = getkernel(kernel_cache, check_mat_svd2_sigma_sum, suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+
+    # The sum of the singular values stays differentiable for full-rank matrices, including those with repeated
+    # singular values, and its gradient is the orthogonal polar factor of the input.
+    mats = np.array(
+        [
+            [[1.0, 2.0], [3.0, 4.0]],
+            [[4.0, 1.0], [2.0, 3.0]],
+            2.0 * np.eye(2),
+            -np.eye(2),
+            [[1.0, 0.0], [0.0, -1.0]],
+            [[0.0, 1.0], [1.0, 0.0]],
+            [[0.0, -1.0], [1.0, 0.0]],
+            [[0.0, -2.0], [2.0, 0.0]],
+            [[3.0, -4.0], [4.0, 3.0]],
+        ]
+    ).astype(dtype)
+    M = len(mats)
+    m2 = wp.array(mats, dtype=mat22, requires_grad=True, device=device)
+    out = wp.zeros(M, dtype=wptype, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(kernel, dim=M, inputs=[m2], outputs=[out], device=device)
+    tape.backward(grads={out: wp.ones(M, dtype=wptype, device=device)})
+
+    U_np, _, Vt_np = np.linalg.svd(mats.astype(np.float64))
+    assert_np_equal(m2.grad.numpy().astype(np.float64), U_np @ Vt_np, tol=30 * tol)
+
+
+def test_svd_2D_polar_grad(test, device, dtype, register_kernels=False):
+    tol = {
+        np.float32: 1.0e-6,
+        np.float64: 1.0e-12,
+    }.get(dtype, 0)
+
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
+    vec2 = wp.types.vector(length=2, dtype=wptype)
+    mat22 = wp.types.matrix(shape=(2, 2), dtype=wptype)
+
+    def check_mat_svd2_polar(
+        m2: wp.array[mat22],
+        out: wp.array[wptype],
+    ):
+        tid = wp.tid()
+
+        U = mat22()
+        sigma = vec2()
+        V = mat22()
+
+        wp.svd2(m2[tid], U, sigma, V)
+
+        W = U * wp.transpose(V)
+        for i in range(2):
+            for j in range(2):
+                out[tid * 4 + i * 2 + j] = W[i, j]
+
+    kernel = getkernel(kernel_cache, check_mat_svd2_polar, suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+
+    # The polar factor U V^T stays differentiable for full-rank matrices, including those with repeated singular
+    # values, where U and V individually are not.
+    rot = 2.0 * np.array([[np.cos(0.5), -np.sin(0.5)], [np.sin(0.5), np.cos(0.5)]])
+    mats = np.array(
+        [
+            np.eye(2),
+            2.0 * np.eye(2),
+            -np.eye(2),
+            [[1.0, 0.0], [0.0, -1.0]],
+            [[0.0, -1.0], [1.0, 0.0]],
+            [[0.0, -2.0], [2.0, 0.0]],
+            rot,
+            [[1.0, 2.0], [3.0, 4.0]],
+            [[3.0, 0.0], [4.0, 5.0]],
+            np.eye(2) + 1.0e-3 * np.array([[1.0, 1.0], [-1.0, -1.0]]),
+        ]
+    ).astype(dtype)
+    M = len(mats)
+    m2 = wp.array(mats, dtype=mat22, requires_grad=True, device=device)
+    out = wp.zeros(4 * M, dtype=wptype, requires_grad=True, device=device)
+
+    def polar(A):
+        U_np, _, Vt_np = np.linalg.svd(A)
+        return U_np @ Vt_np
+
+    def central_difference(A, dA):
+        return (polar(A + dA) - polar(A - dA)) / 2.0
+
+    # Richardson-extrapolated central differences of NumPy's float64 polar factor, evaluated at the inputs rounded to
+    # dtype, are accurate to about 1e-12.
+    mats64 = mats.astype(np.float64)
+    h = 1.0e-3
+    expected = np.zeros((4, M, 2, 2))
+    for k in range(M):
+        for ii in range(2):
+            for jj in range(2):
+                dA = np.zeros((2, 2))
+                dA[ii, jj] = h
+                coarse = central_difference(mats64[k], dA) / h
+                fine = central_difference(mats64[k], 0.5 * dA) / (0.5 * h)
+                expected[:, k, ii, jj] = ((4.0 * fine - coarse) / 3.0).reshape(4)
+
+    for component in range(4):
+        seed = np.zeros(4 * M, dtype=dtype)
+        seed[component::4] = 1.0
+
+        tape = wp.Tape()
+        with tape:
+            wp.launch(kernel, dim=M, inputs=[m2], outputs=[out], device=device)
+        tape.backward(grads={out: wp.array(seed, dtype=wptype, device=device)})
+
+        assert_np_equal(m2.grad.numpy().astype(np.float64), expected[component], tol=30 * tol)
+        tape.zero()
+
+
+def test_svd_2D_scale(test, device, dtype, register_kernels=False):
+    tol = {
+        np.float16: 3.0e-3,
+        np.float32: 2.0e-6,
+        np.float64: 1.0e-14,
+    }.get(dtype, 0)
+
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
+    vec2 = wp.types.vector(length=2, dtype=wptype)
+    mat22 = wp.types.matrix(shape=(2, 2), dtype=wptype)
+
+    def check_mat_svd2_factors(
+        m2: wp.array[mat22],
+        Uout: wp.array[mat22],
+        sigmaout: wp.array[vec2],
+        Vout: wp.array[mat22],
+    ):
+        tid = wp.tid()
+
+        U = mat22()
+        sigma = vec2()
+        V = mat22()
+
+        wp.svd2(m2[tid], U, sigma, V)
+
+        Uout[tid] = U
+        sigmaout[tid] = sigma
+        Vout[tid] = V
+
+    kernel = getkernel(kernel_cache, check_mat_svd2_factors, suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+
+    def check(A):
+        A = np.array(A, dtype=dtype)
+        m2 = wp.array([A], dtype=mat22, device=device)
+        Uout = wp.zeros(1, dtype=mat22, device=device)
+        sigmaout = wp.zeros(1, dtype=vec2, device=device)
+        Vout = wp.zeros(1, dtype=mat22, device=device)
+        wp.launch(kernel, dim=1, inputs=[m2], outputs=[Uout, sigmaout, Vout], device=device)
+
+        A = A.astype(np.float64)
+        U = Uout.numpy()[0].astype(np.float64)
+        sigma = sigmaout.numpy()[0].astype(np.float64)
+        V = Vout.numpy()[0].astype(np.float64)
+
+        # Compare relative to the input's scale, which tolerances in absolute terms would hide.
+        amax = np.abs(A).max()
+        assert_np_equal(U.T @ U, np.eye(2), tol=tol)
+        assert_np_equal(V.T @ V, np.eye(2), tol=tol)
+        assert_np_equal(sigma / amax, np.linalg.svd(A, compute_uv=False) / amax, tol=tol)
+        assert_np_equal(U @ np.diag(sigma) @ V.T / amax, A / amax, tol=tol)
+
+    # Inputs whose squares underflow or overflow.
+    if dtype == np.float16:
+        check([[0.005, 0.002], [0.0, 0.0]])
+        check([[0.012, 0.0], [0.0, 0.006]])
+        check([[1.0e-5, 0.0], [0.0, 5.0e-6]])
+        check([[300.0, 100.0], [-200.0, 400.0]])
+        check([[0.0, -300.0], [300.0, 0.0]])
+    elif dtype == np.float32:
+        check([[1.0e-12, 2.0e-13], [0.0, 0.0]])
+        check([[3.0e-30, 1.0e-30], [-2.0e-30, 4.0e-30]])
+        check([[0.0, -1.0e-30], [1.0e-30, 0.0]])
+        check([[3.0e20, 1.0e20], [-2.0e20, 4.0e20]])
+        check([[0.0, -1.0e30], [1.0e30, 0.0]])
+    elif dtype == np.float64:
+        check([[3.0e-200, 1.0e-200], [-2.0e-200, 4.0e-200]])
+        check([[0.0, -1.0e-200], [1.0e-200, 0.0]])
+        check([[3.0e200, 1.0e200], [-2.0e200, 4.0e200]])
+        check([[0.0, -1.0e200], [1.0e200, 0.0]])
+
+
+def test_svd_2D_grad_scale(test, device, dtype, register_kernels=False):
+    tol = {
+        np.float32: 1.0e-5,
+        np.float64: 1.0e-12,
+    }.get(dtype, 0)
+
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
+    vec2 = wp.types.vector(length=2, dtype=wptype)
+    mat22 = wp.types.matrix(shape=(2, 2), dtype=wptype)
+
+    def check_mat_svd2_grad_scale(
+        m2: wp.array[mat22],
+        out: wp.array[wptype],
+    ):
+        tid = wp.tid()
+
+        U = mat22()
+        sigma = vec2()
+        V = mat22()
+
+        wp.svd2(m2[tid], U, sigma, V)
+
+        W = U * wp.transpose(V)
+        out[0] = W[0, 1]
+        out[1] = U[0, 1]
+
+    kernel = getkernel(kernel_cache, check_mat_svd2_grad_scale, suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+
+    def grad(A, component, seed):
+        m2 = wp.array([np.array(A, dtype=dtype)], dtype=mat22, requires_grad=True, device=device)
+        out = wp.zeros(2, dtype=wptype, requires_grad=True, device=device)
+        tape = wp.Tape()
+        with tape:
+            wp.launch(kernel, dim=1, inputs=[m2], outputs=[out], device=device)
+        seeds = np.zeros(2, dtype=dtype)
+        seeds[component] = seed
+        tape.backward(grads={out: wp.array(seeds, dtype=wptype, device=device)})
+        return m2.grad.numpy()[0].astype(np.float64)
+
+    # U and V don't change when A is scaled by s, so the gradient at s * B with an upstream gradient of s equals the
+    # gradient at B with an upstream gradient of 1. Scales near the largest finite value check that the adjoint's
+    # intermediate sums don't overflow.
+    def check(B, scale, component):
+        expected = grad(B, component, 1.0)
+        test.assertGreater(np.abs(expected).max(), 0.1)
+        assert_np_equal(grad(scale * np.array(B), component, scale), expected, tol=tol)
+
+    scale = {np.float32: 1.0e38, np.float64: 5.0e307}[dtype]
+    check(np.eye(2), scale, 0)
+    check([[3.0, 0.0], [0.0, 1.0]], scale, 0)
+    check([[3.0, 0.0], [0.0, 1.0]], scale, 1)
+
+    # With an upstream gradient of 1, the gradient at s * B is the gradient at B divided by s. Subnormal scales check
+    # that the adjoint's intermediate quotients don't overflow when the gradient itself is still finite.
+    def check_tiny(B, scale, component):
+        expected = grad(B, component, 1.0)
+        test.assertGreater(np.abs(expected).max(), 0.1)
+        assert_np_equal(grad(scale * np.array(B), component, 1.0) * scale, expected, tol=tol)
+
+    tiny = {np.float32: 2.0e-39, np.float64: 4.0e-309}[dtype]
+    check_tiny(np.eye(2), tiny, 0)
+
+
+mat22bf = wp.types.matrix(shape=(2, 2), dtype=wp.bfloat16)
+vec2bf = wp.types.vector(length=2, dtype=wp.bfloat16)
+
+
+@wp.kernel
+def svd2_bfloat16(
+    m2: wp.array[mat22bf],
+    Uout: wp.array[mat22bf],
+    sigmaout: wp.array[vec2bf],
+    Vout: wp.array[mat22bf],
+    sigma_sum: wp.array[wp.bfloat16],
+):
+    tid = wp.tid()
+
+    U = mat22bf()
+    sigma = vec2bf()
+    V = mat22bf()
+
+    wp.svd2(m2[tid], U, sigma, V)
+
+    Uout[tid] = U
+    sigmaout[tid] = sigma
+    Vout[tid] = V
+    sigma_sum[tid] = sigma[0] + sigma[1]
+
+
+# Conversions stay out of the differentiated kernel: the adjoint of a bfloat16 matrix cast doesn't compile.
+@wp.kernel(enable_backward=False)
+def mat22_to_bfloat16(src: wp.array[wp.mat22f], dst: wp.array[mat22bf]):
+    tid = wp.tid()
+    dst[tid] = mat22bf(src[tid])
+
+
+@wp.kernel(enable_backward=False)
+def mat22_from_bfloat16(src: wp.array[mat22bf], dst: wp.array[wp.mat22f]):
+    tid = wp.tid()
+    dst[tid] = wp.mat22f(src[tid])
+
+
+@wp.kernel(enable_backward=False)
+def vec2_from_bfloat16(src: wp.array[vec2bf], dst: wp.array[wp.vec2f]):
+    tid = wp.tid()
+    dst[tid] = wp.vec2f(src[tid])
+
+
+def test_svd_2D_bfloat16(test, device):
+    tol = 2.0e-2
+
+    def to_float(arr, dtype, kernel):
+        out = wp.zeros(1, dtype=dtype, device=device)
+        wp.launch(kernel, dim=1, inputs=[arr], outputs=[out], device=device)
+        return out.numpy()[0].astype(np.float64)
+
+    def launch(A):
+        m2 = wp.zeros(1, dtype=mat22bf, requires_grad=True, device=device)
+        wp.launch(
+            mat22_to_bfloat16,
+            dim=1,
+            inputs=[wp.array([A], dtype=wp.mat22f, device=device)],
+            outputs=[m2],
+            device=device,
+        )
+        Uout = wp.zeros(1, dtype=mat22bf, device=device)
+        sigmaout = wp.zeros(1, dtype=vec2bf, device=device)
+        Vout = wp.zeros(1, dtype=mat22bf, device=device)
+        sigma_sum = wp.zeros(1, dtype=wp.bfloat16, requires_grad=True, device=device)
+        tape = wp.Tape()
+        with tape:
+            wp.launch(svd2_bfloat16, dim=1, inputs=[m2], outputs=[Uout, sigmaout, Vout, sigma_sum], device=device)
+        tape.backward(grads={sigma_sum: wp.ones(1, dtype=wp.bfloat16, device=device)})
+        return (
+            to_float(m2, wp.mat22f, mat22_from_bfloat16),
+            to_float(Uout, wp.mat22f, mat22_from_bfloat16),
+            to_float(sigmaout, wp.vec2f, vec2_from_bfloat16),
+            to_float(Vout, wp.mat22f, mat22_from_bfloat16),
+            to_float(m2.grad, wp.mat22f, mat22_from_bfloat16),
+        )
+
+    def check(A):
+        A, U, sigma, V, _ = launch(A)
+
+        # Compare relative to the input's scale, which tolerances in absolute terms would hide.
+        amax = np.abs(A).max()
+        assert_np_equal(U.T @ U, np.eye(2), tol=tol)
+        assert_np_equal(V.T @ V, np.eye(2), tol=tol)
+        assert_np_equal(sigma / amax, np.linalg.svd(A, compute_uv=False) / amax, tol=tol)
+        assert_np_equal(U @ np.diag(sigma) @ V.T / amax, A / amax, tol=tol)
+
+    def check_sigma_sum_grad(A):
+        A, _, _, _, grad = launch(A)
+
+        # The gradient of the sum of the singular values is the orthogonal polar factor of the input.
+        U_np, _, Vt_np = np.linalg.svd(A)
+        assert_np_equal(grad, U_np @ Vt_np, tol=tol)
+
+    check([[3.0, 1.0], [-2.0, 4.0]])
+    check([[0.0, -1.0], [1.0, 0.0]])
+    check([[1.0, 0.0], [0.0, -1.0]])
+    check([[0.005, 0.002], [0.0, 0.0]])
+    check([[3.0e-30, 1.0e-30], [-2.0e-30, 4.0e-30]])
+    check([[3.0e20, 1.0e20], [-2.0e20, 4.0e20]])
+    check([[0.0, -1.0e30], [1.0e30, 0.0]])
+
+    check_sigma_sum_grad([[3.0, 1.0], [-2.0, 4.0]])
+    check_sigma_sum_grad([[0.0, -2.0], [2.0, 0.0]])
+    check_sigma_sum_grad([[1.0, 0.0], [0.0, -1.0]])
 
 
 def test_qr(test, device, dtype, register_kernels=False):
@@ -3616,6 +4017,39 @@ for dtype in np_float_types:
     )
     add_function_test_register_kernel(TestMat, f"test_skew_{dtype.__name__}", test_skew, devices=devices, dtype=dtype)
 
+for dtype in np_float_types:
+    add_function_test_register_kernel(
+        TestMat,
+        f"test_svd_2D_sigma_sum_grad_{dtype.__name__}",
+        test_svd_2D_sigma_sum_grad,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestMat,
+        f"test_svd_2D_scale_{dtype.__name__}",
+        test_svd_2D_scale,
+        devices=devices,
+        dtype=dtype,
+    )
+
+for dtype in (np.float32, np.float64):
+    add_function_test_register_kernel(
+        TestMat,
+        f"test_svd_2D_polar_grad_{dtype.__name__}",
+        test_svd_2D_polar_grad,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestMat,
+        f"test_svd_2D_grad_scale_{dtype.__name__}",
+        test_svd_2D_grad_scale,
+        devices=devices,
+        dtype=dtype,
+    )
+
+add_function_test(TestMat, "test_svd_2D_bfloat16", test_svd_2D_bfloat16, devices=devices)
 add_function_test(TestMat, "test_matrix_len", test_matrix_len, devices=devices)
 add_function_test(TestMat, "test_mat_extract", test_mat_extract, devices=devices)
 add_function_test(TestMat, "test_mat_assign", test_mat_assign, devices=devices)
