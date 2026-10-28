@@ -92,26 +92,26 @@ struct RebuildKeyScratch {
     uint32_t* counts = nullptr;
 };
 
-void rebuild_free_key_scratch(RebuildKeyScratch& scratch)
+void rebuild_free_key_scratch(RebuildKeyScratch& scratch, cudaStream_t stream)
 {
     if (scratch.keys_a)
-        wp_free_device(WP_CURRENT_CONTEXT, scratch.keys_a);
+        free_device_on_stream(WP_CURRENT_CONTEXT, scratch.keys_a, stream);
     if (scratch.keys_b)
-        wp_free_device(WP_CURRENT_CONTEXT, scratch.keys_b);
+        free_device_on_stream(WP_CURRENT_CONTEXT, scratch.keys_b, stream);
     if (scratch.leaf_keys)
-        wp_free_device(WP_CURRENT_CONTEXT, scratch.leaf_keys);
+        free_device_on_stream(WP_CURRENT_CONTEXT, scratch.leaf_keys, stream);
     if (scratch.lower_keys)
-        wp_free_device(WP_CURRENT_CONTEXT, scratch.lower_keys);
+        free_device_on_stream(WP_CURRENT_CONTEXT, scratch.lower_keys, stream);
     if (scratch.upper_keys)
-        wp_free_device(WP_CURRENT_CONTEXT, scratch.upper_keys);
+        free_device_on_stream(WP_CURRENT_CONTEXT, scratch.upper_keys, stream);
     if (scratch.voxel_keys)
-        wp_free_device(WP_CURRENT_CONTEXT, scratch.voxel_keys);
+        free_device_on_stream(WP_CURRENT_CONTEXT, scratch.voxel_keys, stream);
     if (scratch.parent_keys)
-        wp_free_device(WP_CURRENT_CONTEXT, scratch.parent_keys);
+        free_device_on_stream(WP_CURRENT_CONTEXT, scratch.parent_keys, stream);
     if (scratch.run_counts)
-        wp_free_device(WP_CURRENT_CONTEXT, scratch.run_counts);
+        free_device_on_stream(WP_CURRENT_CONTEXT, scratch.run_counts, stream);
     if (scratch.counts)
-        wp_free_device(WP_CURRENT_CONTEXT, scratch.counts);
+        free_device_on_stream(WP_CURRENT_CONTEXT, scratch.counts, stream);
 
     scratch = {};
 }
@@ -999,9 +999,9 @@ void rebuild_populate_grid_from_scratch(
     check_cuda(cudaGetLastError());
 
     if (leaf_active_counts)
-        wp_free_device(WP_CURRENT_CONTEXT, leaf_active_counts);
+        free_device_on_stream(WP_CURRENT_CONTEXT, leaf_active_counts, stream);
     if (leaf_active_prefix)
-        wp_free_device(WP_CURRENT_CONTEXT, leaf_active_prefix);
+        free_device_on_stream(WP_CURRENT_CONTEXT, leaf_active_prefix, stream);
 }
 
 template <typename BuildT, typename PtrT>
@@ -1035,7 +1035,7 @@ void rebuild_grid_from_points_impl(
     }
 
     rebuild_populate_grid_from_scratch(grid, grid_size, scratch, capacities, params, status, stream);
-    rebuild_free_key_scratch(scratch);
+    rebuild_free_key_scratch(scratch, stream);
 }
 
 template <typename BuildT, typename PtrT>
@@ -1068,7 +1068,7 @@ void allocate_exact_grid_from_points_impl(
         wp_alloc_device(WP_CURRENT_CONTEXT, out_grid_size, "(native:volume_builder)")
     );
     rebuild_populate_grid_from_scratch(out_grid, out_grid_size, scratch, capacities, params, nullptr, stream);
-    rebuild_free_key_scratch(scratch);
+    rebuild_free_key_scratch(scratch, stream);
 }
 
 }  // namespace

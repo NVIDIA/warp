@@ -538,7 +538,8 @@ static bool release_now(ReleaseKind kind, uint64_t handle)
     case ReleaseKind::DeviceFree:
         return check_cuda(cudaFree((void*)handle));
     case ReleaseKind::DeviceFreeAsync:
-        // postponed until a synchronization point, so preceding work on the pointer completes
+        // Consumer streams are unknown. Callers must provide dependencies for non-blocking
+        // uses; single-stream scratch should use free_device_on_stream().
         return check_cuda(cudaFreeAsync((void*)handle, NULL));
     case ReleaseKind::DeviceFreeAsyncUnmapped: {
         cudaError_t res = cudaFreeAsync((void*)handle, NULL);
@@ -774,6 +775,36 @@ void wp_free_device(void* context, void* ptr)
         wp_free_device_async(context, ptr);
     else
         wp_free_device_default(context, ptr);
+}
+
+void free_device_on_stream(void* context, void* ptr, void* stream)
+{
+    if (!ptr)
+        return;
+
+    int ordinal = wp_cuda_context_get_device_ordinal(context);
+    if (!wp_cuda_device_is_mempool_supported(ordinal)) {
+        wp_free_device_default(context, ptr);
+        return;
+    }
+
+    ContextGuard guard(context);
+
+    CUstream cuda_stream = static_cast<CUstream>(stream);
+    bool is_legacy_stream = cuda_stream == NULL || cuda_stream == CU_STREAM_LEGACY;
+
+    // Preserve graph-aware cleanup. Check the legacy stream first: querying its capture
+    // status during a blocking-stream capture is invalid.
+    if ((is_legacy_stream && !g_captures.empty()) || g_graph_allocs.find(ptr) != g_graph_allocs.end()
+        || wp_cuda_stream_is_capturing(stream)) {
+        wp_free_device_async(context, ptr);
+        return;
+    }
+
+    if (g_alloc_tracker.enabled)
+        g_alloc_tracker.record_free(ptr);
+
+    check_cuda(cudaFreeAsync(ptr, cuda_stream));
 }
 
 void* wp_alloc_device_default(void* context, size_t s, const char* tag)
@@ -1414,7 +1445,7 @@ void wp_memtile_device(void* context, void* dst, const void* src, size_t srcsize
         wp_launch_device(WP_CURRENT_CONTEXT, memtile_kernel, n, (dst, value_devptr, srcsize, n));
 
         if (free_devptr) {
-            wp_free_device(WP_CURRENT_CONTEXT, value_devptr);
+            free_device_on_stream(WP_CURRENT_CONTEXT, value_devptr, get_current_stream());
         }
     }
 }
@@ -2349,7 +2380,7 @@ WP_API void wp_array_fill_device(void* context, void* arr_ptr, int arr_type, con
     }
 
     if (free_devptr) {
-        wp_free_device(WP_CURRENT_CONTEXT, value_devptr);
+        free_device_on_stream(WP_CURRENT_CONTEXT, value_devptr, get_current_stream());
     }
 }
 

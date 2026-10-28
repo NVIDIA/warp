@@ -830,6 +830,11 @@ This blocks the host thread until all the stream operations have finished. To av
 
 The ``keepalive_stream`` can be any blocking stream on the appropriate device. The ``wait_stream()`` call uses fast device-side synchronization without triggering a host sync, so it should have negligible impact on performance. Note that the wait should happen before any Warp resources used on the non-blocking stream are garbage-collected. This ensures that Warp resource deallocation waits for the ``keepalive_stream``, which in turn waits for the operations on non-blocking streams to complete.
 
+Temporary memory that Warp allocates and releases within a single operation, such as the scratch space used by
+:func:`wp.utils.array_scan() <warp.utils.array_scan>`, :func:`wp.utils.radix_sort_pairs() <warp.utils.radix_sort_pairs>`,
+or BVH and mesh construction, is released on the stream that the operation runs on. It does not need this treatment.
+The guidance above applies to arrays and other Warp resources that outlive the operations that use them.
+
 A similar strategy can be used with any external non-blocking stream that uses Warp resources, not just PyTorch streams. This includes streams created from native handles using ``wp.Stream(..., cuda_stream=handle)``. Here is another example of using a non-blocking stream with explicit ``del`` statements to trigger garbage collection. Note the correct and incorrect ordering of operations.
 
 .. code:: python

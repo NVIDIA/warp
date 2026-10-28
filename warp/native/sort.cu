@@ -181,7 +181,7 @@ static bool acquire_temp_buffer(size_t size, TempBuffer& temp_ret)
         TempBuffer& temp = g_temp_cache[get_stream_id(stream)];
         if (size > temp.size) {
             if (temp.mem) {
-                wp_free_device(WP_CURRENT_CONTEXT, temp.mem);
+                free_device_on_stream(WP_CURRENT_CONTEXT, temp.mem, stream);
             }
             temp.mem = wp_alloc_device(WP_CURRENT_CONTEXT, size, "(native:sort)");
             temp.size = temp.mem ? size : 0;
@@ -232,14 +232,19 @@ void radix_sort_stream_release(void* context, void* stream)
     // stored stream handle rather than the stream id, since the id cannot be
     // queried while the stream is capturing. As a bonus, this also reclaims
     // entries leaked by externally destroyed streams once their handle is reused.
+    // The stream can be released while another stream on this thread is capturing,
+    // so relax the capture mode to allow freeing on this non-capturing stream.
+    cudaStreamCaptureMode mode = cudaStreamCaptureModeRelaxed;
+    check_cuda(cudaThreadExchangeStreamCaptureMode(&mode));
     for (auto it = g_temp_cache.begin(); it != g_temp_cache.end();) {
         if (it->second.stream == static_cast<CUstream>(stream)) {
-            wp_free_device(context, it->second.mem);
+            free_device_on_stream(context, it->second.mem, stream);
             it = g_temp_cache.erase(it);
         } else {
             ++it;
         }
     }
+    check_cuda(cudaThreadExchangeStreamCaptureMode(&mode));
 
     // release capture-specific info for the given stream
     for (auto& kv : g_temp_cache_per_capture) {
