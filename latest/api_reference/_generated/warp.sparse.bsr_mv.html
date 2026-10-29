@@ -522,7 +522,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">tile_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L5051-L5172"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_mv" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L5068-L5195"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_mv" title="Link to this definition">#</a></dt>
 <dd><p>Perform the sparse matrix-vector product <code class="docutils literal notranslate"><span class="pre">y</span> <span class="pre">:=</span> <span class="pre">alpha</span> <span class="pre">*</span> <span class="pre">A</span> <span class="pre">*</span> <span class="pre">x</span> <span class="pre">+</span> <span class="pre">beta</span> <span class="pre">*</span> <span class="pre">y</span></code> and return <code class="docutils literal notranslate"><span class="pre">y</span></code>.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">y</span></code> vectors are allowed to alias.</p>
 <dl class="field-list simple">
@@ -537,9 +537,11 @@
 <li><p><strong>work_buffer</strong> (<em>Array</em><em>[</em><em>Vector</em><em>[</em><a class="reference internal" href="warp.Scalar.html#warp.Scalar" title="warp.Scalar"><em>Scalar</em></a><em>, </em><em>Rows</em><em>] </em><em>| </em><a class="reference internal" href="warp.Scalar.html#warp.Scalar" title="warp.Scalar"><em>Scalar</em></a><em>] </em><em>| </em><em>None</em>) – Temporary storage is required if and only if <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">y</span></code> are the same vector.
 If provided, the <code class="docutils literal notranslate"><span class="pre">work_buffer</span></code> array will be used for this purpose,
 otherwise a temporary allocation will be performed.</p></li>
-<li><p><strong>tile_size</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a>) – If a positive integer, use tiles of this size to compute the matrix-matrix product.
-If negative, disable tile-based computation. Defaults to <code class="docutils literal notranslate"><span class="pre">0</span></code>, which determines whether to
-use tiles using using an heuristic based on the matrix shape and number of non-zeros..</p></li>
+<li><p><strong>tile_size</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a>) – If a positive integer, use tiles of this size to compute the matrix-vector product.
+On CPU, values greater than <code class="docutils literal notranslate"><span class="pre">1</span></code> require <a class="reference internal" href="warp.config.enable_cpu_blocks.html#warp.config.enable_cpu_blocks" title="warp.config.enable_cpu_blocks"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.enable_cpu_blocks</span></code></a> and otherwise
+raise a <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ValueError</span></code></a>. Ignored when <code class="docutils literal notranslate"><span class="pre">transpose</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code>. If negative, disable
+tile-based computation. Defaults to <code class="docutils literal notranslate"><span class="pre">0</span></code>, which determines whether to use tiles using a heuristic
+based on the matrix shape and number of non-zeros.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
