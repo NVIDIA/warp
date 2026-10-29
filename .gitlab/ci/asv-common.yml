@@ -280,15 +280,20 @@
         # The job fails either way: a regression that goes away on rerun
         # points at a noisy benchmark, which needs fixing too. Rows marked
         # `+` are regressions; the last column is the benchmark name, with
-        # parameters in the form `--bench` matches.
+        # parameters in the form `--bench` matches. The rerun saves its
+        # results to asv/results-rerun so the main run's samples stay in
+        # asv/results. asv has no option for the results directory and
+        # resolves config paths relative to the config file, so the rerun
+        # uses a copy of asv.conf.json next to the original.
         regressed="$(uvx asv compare --only-changed -f "$ASV_FACTOR" --machine "$ASV_MACHINE_NAME" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>/dev/null |
           awk -F'|' '$2 ~ /^ *\+ *$/ { name = $6; gsub(/^ +| +$/, "", name); print name }')" || true
         if [ -n "$regressed" ]; then
           rerun_filter="^($(printf '%s\n' "$regressed" | sed 's/[][\.*^$()+?{}|]/\\&/g' | paste -sd '|'))\$"
           printf 'Rerunning regressed benchmarks:\n%s\n\n' "$regressed"
+          uv run --no-project python -c 'import json; conf = json.load(open("asv.conf.json")); conf["results_dir"] = "asv/results-rerun"; json.dump(conf, open("asv-rerun.conf.json", "w"), indent=2)'
           {
             rerun_rc=0
-            uvx asv continuous -e --interleave-rounds -f "$ASV_FACTOR" --bench "$rerun_filter" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || rerun_rc=$?
+            uvx asv continuous --config asv-rerun.conf.json -e --interleave-rounds -f "$ASV_FACTOR" --bench "$rerun_filter" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || rerun_rc=$?
             echo "$rerun_rc" > asv-rerun.rc
           } | tee -a asv-continuous.log | LC_ALL=C grep --line-buffered -E "$asv_progress|^\|" || true
           rerun_rc="$(cat asv-rerun.rc)"
@@ -334,6 +339,7 @@
   artifacts:
     paths:
       - asv/results/
+      - asv/results-rerun/
       - asv-continuous.log
     expire_in: 1 week
     when: always
