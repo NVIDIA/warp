@@ -1,12 +1,13 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""Test that a kernel that fails to build fails its module, and says why."""
+"""Test that a kernel that fails to build fails its module, says why, and can be fixed."""
 
 import os
 import tempfile
 import unittest
 import uuid
+import weakref
 from importlib import util
 
 import warp as wp
@@ -33,6 +34,37 @@ def _import_module(code: str):
         os.remove(file_path)
 
     return module
+
+
+def _redefine(module, code: str):
+    """Run more source in an imported module's namespace, as running a notebook cell again does.
+
+    Warp reads a kernel's source from its file when the kernel is defined, so the
+    code has to come from a real file, which can be removed afterwards.
+    """
+    file, file_path = tempfile.mkstemp(suffix=".py")
+    try:
+        with os.fdopen(file, "w") as f:
+            f.write(code)
+
+        exec(compile(code, file_path, "exec"), module.__dict__)
+    finally:
+        os.remove(file_path)
+
+
+def _copy_frame_locals(error: Exception) -> list[dict]:
+    """Copy the local variables of every frame in an error's traceback.
+
+    IPython keeps the last exception for ``%debug``, and showing its traceback
+    keeps a dictionary of each frame's local variables as well.
+    """
+    frame_locals = []
+    tb = error.__traceback__
+    while tb is not None:
+        frame_locals.append(dict(tb.tb_frame.f_locals))
+        tb = tb.tb_next
+
+    return frame_locals
 
 
 _VALIDATION_FAILURE_SOURCE = """\
@@ -138,19 +170,169 @@ def test_native_failure_fails_the_module(test, device):
         wp.launch(module.sibling_kernel, dim=4, inputs=[a], device=device)
 
 
+_REDEFINITION_SOURCE = """\
+import warp as wp
+
+@wp.kernel
+def exercise_kernel(a: wp.array[float]):
+    i = wp.tid()
+    a[i] = None  # unfinished, fails codegen
+
+@wp.kernel
+def sibling_kernel(a: wp.array[float]):
+    i = wp.tid()
+    a[i] = 7.0
+"""
+
+_STILL_FAILING_EXERCISE_SOURCE = """\
+@wp.kernel
+def exercise_kernel(a: wp.array[float]):
+    i = wp.tid()
+    a[i] = undefined_name
+"""
+
+_FIXED_EXERCISE_SOURCE = """\
+@wp.kernel
+def exercise_kernel(a: wp.array[float]):
+    i = wp.tid()
+    a[i] = 2.0 * float(i)
+"""
+
+_EXERCISE_ERROR = r'Error while parsing function "exercise_kernel"'
+
+
+def test_redefinition_recovers_failed_module(test, device):
+    """Verify redefining a kernel that failed to build lets its module build again.
+
+    This is the notebook workflow: a cell's kernel fails to build, and running
+    the cell again with each edit replaces it. IPython keeps each error and the
+    local variables of its frames, which must not keep a replaced definition in
+    the module. Otherwise the module keeps reporting the first error.
+    """
+    module = _import_module(_REDEFINITION_SOURCE)
+    a = wp.zeros(4, dtype=float, device=device)
+    kept = []
+
+    try:
+        wp.launch(module.exercise_kernel, dim=4, inputs=[a], device=device)
+    except wp.WarpCodegenTypeError as error:
+        kept.append((error, _copy_frame_locals(error)))
+
+    test.assertEqual(len(kept), 1)
+
+    _redefine(module, _STILL_FAILING_EXERCISE_SOURCE)
+
+    try:
+        wp.launch(module.exercise_kernel, dim=4, inputs=[a], device=device)
+    except wp.WarpCodegenKeyError as error:
+        test.assertRegex(str(error), "undefined_name")
+        kept.append((error, _copy_frame_locals(error)))
+
+    test.assertEqual(len(kept), 2)
+
+    _redefine(module, _FIXED_EXERCISE_SOURCE)
+
+    wp.launch(module.exercise_kernel, dim=4, inputs=[a], device=device)
+    assert_np_equal(a.numpy(), np.array([0.0, 2.0, 4.0, 6.0]))
+
+    wp.launch(module.sibling_kernel, dim=4, inputs=[a], device=device)
+    assert_np_equal(a.numpy(), np.full(4, 7.0))
+
+
+def _check_release(test, module, call):
+    """Check that a kept error from a failed build does not keep the failed kernel alive.
+
+    ``call`` builds ``module``, whose ``exercise_kernel`` fails to build. The
+    error and its frames' locals are kept, as IPython keeps them, and then the
+    kernel is redefined. The failed definition must be gone, so the next build
+    leaves it out.
+    """
+    failed_definition = weakref.ref(module.exercise_kernel)
+    kept = []
+
+    try:
+        call()
+    except Exception as error:
+        # get_cuda_kernel_properties raises its own error from the build error
+        test.assertIsInstance(error.__cause__ or error, wp.WarpCodegenTypeError)
+        kept.append((error, _copy_frame_locals(error)))
+    else:
+        test.fail("expected the build to fail")
+
+    _redefine(module, _FIXED_EXERCISE_SOURCE)
+    test.assertIsNone(failed_definition())
+
+
+def test_launch_releases_failed_kernel(test, device):
+    """Verify a kept error from wp.launch() releases the kernel that failed to build."""
+    module = _import_module(_REDEFINITION_SOURCE)
+    a = wp.zeros(1, dtype=float, device=device)
+    _check_release(test, module, lambda: wp.launch(module.exercise_kernel, dim=1, inputs=[a], device=device))
+
+
+def test_launch_tiled_releases_failed_kernel(test, device):
+    """Verify a kept error from wp.launch_tiled() releases the kernel that failed to build."""
+    module = _import_module(_REDEFINITION_SOURCE)
+    a = wp.zeros(1, dtype=float, device=device)
+    _check_release(
+        test, module, lambda: wp.launch_tiled(module.exercise_kernel, dim=1, inputs=[a], block_dim=1, device=device)
+    )
+
+
+def test_load_module_releases_failed_kernel(test, device):
+    """Verify a kept error from wp.load_module() releases the kernel that failed to build."""
+    module = _import_module(_REDEFINITION_SOURCE)
+    _check_release(test, module, lambda: wp.load_module(module, device=device))
+
+
+def test_get_cuda_kernel_properties_releases_failed_kernel(test, device):
+    """Verify a kept error from wp.get_cuda_kernel_properties() releases the kernel that failed to build."""
+    module = _import_module(_REDEFINITION_SOURCE)
+    _check_release(test, module, lambda: wp.get_cuda_kernel_properties(module.exercise_kernel, device))
+
+
+def test_get_suggested_block_size_releases_failed_kernel(test, device):
+    """Verify a kept error from wp.get_suggested_block_size() releases the kernel that failed to build."""
+    module = _import_module(_REDEFINITION_SOURCE)
+    _check_release(test, module, lambda: wp.get_suggested_block_size(module.exercise_kernel, device))
+
+
+def test_get_cuda_max_cluster_dim_releases_failed_kernel(test, device):
+    """Verify a kept error from wp.get_cuda_max_cluster_dim() releases the kernel that failed to build."""
+    if device.arch < 90:
+        # the query returns 1 without building the module
+        test.skipTest("Device arch < 90")
+
+    module = _import_module(_REDEFINITION_SOURCE)
+    _check_release(test, module, lambda: wp.get_cuda_max_cluster_dim(module.exercise_kernel, device))
+
+
 class TestModuleContamination(unittest.TestCase):
     pass
 
 
 devices = get_test_devices()
+cuda_devices = get_cuda_test_devices()
 
 for _func in (
     test_validation_failure_names_the_annotation,
     test_validation_failure_fails_the_module,
     test_validation_failure_repeats_on_relaunch,
     test_native_failure_fails_the_module,
+    test_redefinition_recovers_failed_module,
+    test_launch_releases_failed_kernel,
+    test_launch_tiled_releases_failed_kernel,
+    test_load_module_releases_failed_kernel,
 ):
     add_function_test(TestModuleContamination, func=_func, name=_func.__name__, devices=devices)
+
+# the kernel queries only build the module on CUDA devices
+for _func in (
+    test_get_cuda_kernel_properties_releases_failed_kernel,
+    test_get_suggested_block_size_releases_failed_kernel,
+    test_get_cuda_max_cluster_dim_releases_failed_kernel,
+):
+    add_function_test(TestModuleContamination, func=_func, name=_func.__name__, devices=cuda_devices)
 
 
 if __name__ == "__main__":

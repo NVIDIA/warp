@@ -25,6 +25,7 @@ import sys
 import tempfile
 import textwrap
 import threading
+import traceback
 import types
 import weakref
 from collections.abc import Callable, Iterable, Mapping, Sequence
@@ -4172,6 +4173,24 @@ def _raise_recorded_build_error(build_error: Exception) -> NoReturn:
         raise build_error from None
 
     raise replay from None
+
+
+def _clear_error_frames(error: BaseException) -> None:
+    """Clear the local variables of the finished frames in an error's traceback.
+
+    IPython keeps the last exception for ``%debug``, and so does the interactive
+    interpreter. The frames of a failed module build reference the module's
+    kernels, and a kernel that is still referenced stays in its module. Without
+    clearing them, a notebook cell that fixes the kernel that failed would leave
+    the failed definition in the module, failing every later build until the
+    notebook restarts. The traceback itself, and the frames still running, are
+    kept.
+    """
+    seen = set()
+    while error is not None and id(error) not in seen:
+        seen.add(id(error))
+        traceback.clear_frames(error.__traceback__)
+        error = error.__cause__ or error.__context__
 
 
 # -----------------------------------------------------
@@ -9518,22 +9537,28 @@ def get_cuda_max_cluster_dim(
     # observable effect on subsequent launches that don't pass ``block_dim``.
     prior_block_dim = kernel.module.options["block_dim"]
     try:
-        module_exec = kernel.module.load(device, block_dim)
-        if module_exec is None:
-            return 1
+        try:
+            module_exec = kernel.module.load(device, block_dim)
+            if module_exec is None:
+                return 1
 
-        hooks = module_exec.get_kernel_hooks(kernel)
-        forward_handle = hooks.forward
-        if not forward_handle:
-            return 1
+            hooks = module_exec.get_kernel_hooks(kernel)
+            forward_handle = hooks.forward
+            if not forward_handle:
+                return 1
 
-        return int(
-            runtime.core.wp_cuda_get_max_cluster_dim(
-                device.context, forward_handle, int(block_dim), int(dynamic_smem_bytes)
+            return int(
+                runtime.core.wp_cuda_get_max_cluster_dim(
+                    device.context, forward_handle, int(block_dim), int(dynamic_smem_bytes)
+                )
             )
-        )
-    finally:
-        kernel.module.options["block_dim"] = prior_block_dim
+        finally:
+            kernel.module.options["block_dim"] = prior_block_dim
+    except Exception as error:
+        _clear_error_frames(error)
+        # this frame is still running, so drop its own reference
+        del kernel
+        raise
 
 
 def set_mempool_enabled(device: DeviceLike, enable: bool) -> None:
@@ -11997,7 +12022,13 @@ def launch(
             kernel = kernel._add_normalized_overload(fwd_types)
 
         # delay load modules, including new overload if needed
-        module_exec = kernel.module.load(device, block_dim)
+        try:
+            module_exec = kernel.module.load(device, block_dim)
+        except Exception as error:
+            _clear_error_frames(error)
+            # this frame is still running, so drop its own reference
+            del kernel
+            raise
 
         if not module_exec:
             return
@@ -12370,7 +12401,13 @@ def launch_tiled(*args, **kwargs):
     kwargs["dim"] = [*dim, kwargs["block_dim"]]
 
     # forward to original launch method
-    return launch(*args, **kwargs)
+    try:
+        return launch(*args, **kwargs)
+    except Exception as error:
+        _clear_error_frames(error)
+        # this frame is still running, so drop its own references
+        del args, kwargs
+        raise
 
 
 def _resolve_cuda_kernel_forward_entry_point(kernel, device, block_dim, api_name):
@@ -12465,9 +12502,16 @@ def get_cuda_kernel_properties(
         RuntimeError: If ``kernel`` is generic, ``device`` is not a CUDA
             device, or loading or the native query fails.
     """
-    device, _module_exec, forward_handle, resolved_block_dim = _resolve_cuda_kernel_forward_entry_point(
-        kernel, device, block_dim, "get_cuda_kernel_properties"
-    )
+    try:
+        device, _module_exec, forward_handle, resolved_block_dim = _resolve_cuda_kernel_forward_entry_point(
+            kernel, device, block_dim, "get_cuda_kernel_properties"
+        )
+    except Exception as error:
+        _clear_error_frames(error)
+        # this frame is still running, so drop its own reference
+        del kernel
+        raise
+
     property_count = len(_CUDA_KERNEL_PROPERTY_KEYS)
     property_values = (ctypes.c_int * property_count)()
 
@@ -12552,27 +12596,33 @@ def get_suggested_block_size(kernel, device: DeviceLike = None) -> tuple[int, in
         )
 
     options = kernel.module.options | kernel.options
-    if options.get("entry_point_abi", "warp") == "external_constant_params":
-        # External constant-params kernels reject shared-memory tiles during
-        # code generation, so occupancy only needs the raw entry point.
-        device, _module_exec, forward, _resolved_block_dim = _resolve_cuda_kernel_forward_entry_point(
-            kernel, device, None, "get_suggested_block_size"
-        )
-        forward_smem_bytes = 0
-        forward_smem_shortfall = None
-    else:
-        module_exec = kernel.module.load(device)
+    try:
+        if options.get("entry_point_abi", "warp") == "external_constant_params":
+            # External constant-params kernels reject shared-memory tiles during
+            # code generation, so occupancy only needs the raw entry point.
+            device, _module_exec, forward, _resolved_block_dim = _resolve_cuda_kernel_forward_entry_point(
+                kernel, device, None, "get_suggested_block_size"
+            )
+            forward_smem_bytes = 0
+            forward_smem_shortfall = None
+        else:
+            module_exec = kernel.module.load(device)
 
-        if module_exec is None:
-            raise RuntimeError(f"Failed to load module for kernel '{kernel.key}' on device '{device}'")
+            if module_exec is None:
+                raise RuntimeError(f"Failed to load module for kernel '{kernel.key}' on device '{device}'")
 
-        hooks = module_exec.get_kernel_hooks(kernel)
-        if hooks is None or hooks.forward is None:
-            raise RuntimeError(f"Failed to load kernel '{kernel.key}' on device '{device}'")
+            hooks = module_exec.get_kernel_hooks(kernel)
+            if hooks is None or hooks.forward is None:
+                raise RuntimeError(f"Failed to load kernel '{kernel.key}' on device '{device}'")
 
-        forward = hooks.forward
-        forward_smem_bytes = hooks.forward_smem_bytes
-        forward_smem_shortfall = hooks.forward_smem_shortfall
+            forward = hooks.forward
+            forward_smem_bytes = hooks.forward_smem_bytes
+            forward_smem_shortfall = hooks.forward_smem_shortfall
+    except Exception as error:
+        _clear_error_frames(error)
+        # this frame is still running, so drop its own reference
+        del kernel
+        raise
 
     block_size = ctypes.c_int(0)
     min_grid_size = ctypes.c_int(0)
@@ -12849,6 +12899,9 @@ def force_load(
 
                 for future in futures:
                     future.result()
+    except Exception as error:
+        _clear_error_frames(error)
+        raise
     finally:
         if context_saved:
             # restore original context to avoid side effects
