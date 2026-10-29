@@ -1696,7 +1696,7 @@ Building with MathDx
 Most tile operations described in `Linear Algebra`_ use the MathDx library when Warp is built with it.
 Without MathDx, they use Warp's built-in implementations, which can be slower and, for FFTs, support fewer sizes.
 Since Warp 1.5.0, the PyPI wheels for Linux and Windows x86-64 include MathDx.
-The Windows on Arm wheel currently does not; see :ref:`windows-on-arm`.
+The Windows on Arm wheel includes MathDx starting with Warp 1.20.0.
 
 When building Warp locally using ``build_lib.py``, the script will attempt to automatically download ``libmathdx``
 from the `cuBLASDx Downloads Page <https://developer.nvidia.com/cublasdx-downloads>`__.

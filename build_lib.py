@@ -161,7 +161,10 @@ def validate_libmathdx_path(libmathdx_path: str) -> bool:
         return False
 
     # Check for required subdirectories
-    libmathdx_lib_subdir = "lib/x64" if platform.system() == "Windows" else "lib"
+    if platform.system() == "Windows":
+        libmathdx_lib_subdir = "lib/arm64" if machine_architecture() == "aarch64" else "lib/x64"
+    else:
+        libmathdx_lib_subdir = "lib"
     required_dirs = {
         "include": os.path.join(libmathdx_path, "include"),
         libmathdx_lib_subdir: os.path.join(libmathdx_path, libmathdx_lib_subdir),

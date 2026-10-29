@@ -114,7 +114,7 @@ jobs:
             python_request: cpython-3.12-windows-aarch64-none
             cuda-version: "13.4.2"
             cuda-platform: windows-arm64
-            build-args: --no-use-libmathdx
+            build-args: ""
             artifact-name: build-artifact-windows-aarch64-cuda13
           - os: ubuntu-24.04
             platform: ubuntu-x86_64
@@ -455,7 +455,7 @@ jobs:
             cuda-version: "13.4.2"
             cuda-platform: windows-arm64
             warp-enable-cuda: "ON"
-            warp-use-libmathdx: "OFF"
+            warp-use-libmathdx: "ON"
             msvc-component: Microsoft.VisualStudio.Component.VC.Tools.ARM64
             msvc-host-arch: arm64
             msvc-target-arch: arm64

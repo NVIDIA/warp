@@ -107,11 +107,6 @@ as the other default wheels. Install it with ``pip install warp-lang`` from an A
 an x86-64 Python running under emulation installs the Windows x86-64 wheel instead.
 Nightly builds do not include a Windows on Arm wheel, and there is no ``+cu12`` variant.
 
-The Windows on Arm wheel is currently built without MathDx. Tile matrix multiplication, Cholesky, and triangular-solve
-operations use Warp's built-in implementations instead, which can be slower.
-Without MathDx, :func:`wp.tile_fft() <warp._src.lang.tile_fft>` and
-:func:`wp.tile_ifft() <warp._src.lang.tile_ifft>` on CUDA devices support only power-of-two sizes.
-
 .. _cuda-requirements:
 
 CUDA Requirements
@@ -265,10 +260,6 @@ Windows on Arm builds
 
 Building on Windows on Arm requires an Arm64 Python environment and Visual Studio's ARM64 C++ build tools.
 CUDA-enabled builds require CUDA Toolkit 13.4 or newer; with the CMake build, they also require CMake 4.4 or newer.
-
-libmathdx builds for Windows on Arm are not currently available. To build without it, pass
-``--no-use-libmathdx`` to ``build_lib.py`` or ``-DWARP_USE_LIBMATHDX=OFF`` to CMake.
-See :ref:`windows-on-arm` for the limitations of builds without MathDx.
 
 CMake build
 ~~~~~~~~~~~
