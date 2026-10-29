@@ -125,9 +125,9 @@ def resolve_libmathdx_path(libmathdx_path: str) -> str:
     """Return the directory that holds libmathdx's ``include`` and ``lib`` subdirectories.
 
     libmathdx 0.4.0 and newer ship archives that wrap the payload in a single top-level
-    directory (e.g. ``libmathdx-linux-x86_64``), one level above the layout Warp compiles
-    and links against. Descend into that wrapper when the given path does not already
-    hold the expected layout.
+    directory (``libmathdx-<platform>`` through 0.4.1, ``libmathdx`` since 0.4.2), one level
+    above the layout Warp compiles and links against. Descend into that wrapper when the
+    given path does not already hold the expected layout.
 
     Args:
         libmathdx_path: Path to a libmathdx installation.
@@ -139,7 +139,7 @@ def resolve_libmathdx_path(libmathdx_path: str) -> str:
     if os.path.isdir(os.path.join(libmathdx_path, "include")):
         return libmathdx_path
 
-    for nested in sorted(glob.glob(os.path.join(libmathdx_path, "libmathdx-*"))):
+    for nested in sorted(glob.glob(os.path.join(libmathdx_path, "libmathdx*"))):
         if os.path.isdir(os.path.join(nested, "include")):
             print(f"Using nested libmathdx directory '{nested}'")
             return nested
