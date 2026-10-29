@@ -529,6 +529,101 @@ def test_tile_mesh_query_aabb_large(test, device):
         )
 
 
+@wp.kernel
+def tile_mesh_query_aabb_batch_kernel(
+    mesh_id: wp.uint64,
+    lowers: wp.array[wp.vec3],
+    uppers: wp.array[wp.vec3],
+    counts: wp.array[int],
+    checksums: wp.array[wp.int64],
+):
+    q = wp.tid()
+    query = wp.tile_mesh_query_aabb(mesh_id, lowers[q], uppers[q])
+
+    while wp.tile_query_valid(query):
+        result_idx = wp.untile(wp.tile_mesh_query_aabb_next(query))
+        if result_idx >= 0:
+            wp.atomic_add(counts, q, 1)
+            wp.atomic_add(checksums, q, wp.int64(result_idx))
+
+
+@wp.kernel
+def mesh_query_aabb_batch_kernel(
+    mesh_id: wp.uint64,
+    lowers: wp.array[wp.vec3],
+    uppers: wp.array[wp.vec3],
+    counts: wp.array[int],
+    checksums: wp.array[wp.int64],
+):
+    q = wp.tid()
+    query = wp.mesh_query_aabb(mesh_id, lowers[q], uppers[q])
+
+    index = int(0)
+    while wp.mesh_query_aabb_next(query, index):
+        counts[q] += 1
+        checksums[q] += wp.int64(index)
+
+
+def test_tile_mesh_query_aabb_dense(test, device):
+    """Query boxes covering large parts of a dense mesh must not overflow the tile traversal stack."""
+    # UV sphere with 59,168 triangles. With a 256-thread block, boxes overlapping a large part
+    # of it used to push more nodes than the shared traversal stack holds (cuBQL trees in
+    # particular), which read garbage node indices.
+    rings = 172
+    theta = np.linspace(0.0, np.pi, rings + 1)
+    phi = np.linspace(0.0, 2.0 * np.pi, rings, endpoint=False)
+    t, p = np.meshgrid(theta, phi, indexing="ij")
+    points = np.stack((np.sin(t) * np.cos(p), np.sin(t) * np.sin(p), np.cos(t)), axis=-1).reshape(-1, 3)
+    i, j = np.meshgrid(np.arange(rings), np.arange(rings), indexing="ij")
+    a = i * rings + j
+    b = i * rings + (j + 1) % rings
+    indices = np.concatenate(
+        (np.stack((a, a + rings, b), axis=-1), np.stack((b, a + rings, b + rings), axis=-1))
+    ).reshape(-1)
+
+    rng = np.random.default_rng(42)
+    num_queries = 4096
+    centers = rng.uniform(-2.5, 2.5, size=(num_queries, 3))
+    half_extents = rng.uniform(0.4, 2.5, size=(num_queries, 3))
+    lowers = wp.array(centers - half_extents, dtype=wp.vec3, device=device)
+    uppers = wp.array(centers + half_extents, dtype=wp.vec3, device=device)
+
+    constructors = ["sah", "median", "lbvh"]
+    if wp.is_cubql_available():
+        constructors.append("cubql")
+
+    for constructor in constructors:
+        mesh = wp.Mesh(
+            points=wp.array(points, dtype=wp.vec3, device=device),
+            indices=wp.array(indices, dtype=int, device=device),
+            bvh_constructor=constructor,
+        )
+
+        expected_counts = wp.zeros(num_queries, dtype=int, device=device)
+        expected_checksums = wp.zeros(num_queries, dtype=wp.int64, device=device)
+        wp.launch(
+            mesh_query_aabb_batch_kernel,
+            dim=num_queries,
+            inputs=[mesh.id, lowers, uppers, expected_counts, expected_checksums],
+            device=device,
+        )
+
+        # Also cover a block size that is not a power of two
+        for block_dim in (256, 96):
+            counts = wp.zeros(num_queries, dtype=int, device=device)
+            checksums = wp.zeros(num_queries, dtype=wp.int64, device=device)
+            wp.launch_tiled(
+                tile_mesh_query_aabb_batch_kernel,
+                dim=num_queries,
+                inputs=[mesh.id, lowers, uppers, counts, checksums],
+                device=device,
+                block_dim=block_dim,
+            )
+            msg = f"constructor={constructor}, block_dim={block_dim}"
+            np.testing.assert_array_equal(counts.numpy(), expected_counts.numpy(), err_msg=msg)
+            np.testing.assert_array_equal(checksums.numpy(), expected_checksums.numpy(), err_msg=msg)
+
+
 # Compatibility tests for the deprecated mesh_query_aabb_tiled() aliases.
 @wp.kernel
 def mesh_query_aabb_tiled_kernel(
@@ -984,6 +1079,12 @@ add_function_test(
     "test_tile_mesh_query_aabb_large",
     test_tile_mesh_query_aabb_large,
     devices=devices,
+)
+add_function_test(
+    TestMeshQueryAABBMethods,
+    "test_tile_mesh_query_aabb_dense",
+    test_tile_mesh_query_aabb_dense,
+    devices=get_cuda_test_devices(),
 )
 add_function_test(
     TestMeshQueryAABBMethods,

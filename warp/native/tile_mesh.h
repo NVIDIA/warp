@@ -45,6 +45,9 @@ struct mesh_query_aabb_thread_block_t {
     int* last_valid_shared_mem;  // [1]
     static const int result_buffer_capacity = WP_TILE_BLOCK_DIM * 5;
     static const int stack_capacity = 64 * BVH_QUERY_STACK_SIZE;
+    // Headroom kept free when the traversal falls back to one node per step, which grows
+    // the stack by at most the tree depth (bounded by BVH_QUERY_STACK_SIZE).
+    static const int stack_reserve = 2 * BVH_QUERY_STACK_SIZE;
 
     // inputs
     wp::vec3 input_lower;
@@ -162,7 +165,7 @@ CUDA_CALLABLE inline int mesh_get_node_index_at_depth(
     return node_index;
 }
 
-// block_size should be a power of 2. 2^num_expansion_steps should be less than or equal to block_size.
+// Each step processes at most block_size nodes, fewer when the shared traversal stack is close to full.
 CUDA_CALLABLE inline bool mesh_query_aabb_next_thread_block_impl(mesh_query_aabb_thread_block_t& query, int& index)
 {
     int block_size = blockDim.x;
@@ -182,18 +185,12 @@ CUDA_CALLABLE inline bool mesh_query_aabb_next_thread_block_impl(mesh_query_aabb
         return true;
     }
 
-    int num_expansion_steps = 0;
-    int pow_2 = 1;
-    while (pow_2 < block_size) {
-        pow_2 *= 2;
-        num_expansion_steps += 1;
-    }
-
     Mesh mesh = query.mesh;
     BVH bvh = mesh.bvh;
     int* stack = query.stack_shared_mem;
     int* count = query.count_shared_mem;
     __shared__ bool direct_mode_shared[1];
+    __shared__ int budget_shared[1];
 
     index = -1;
 
@@ -201,25 +198,40 @@ CUDA_CALLABLE inline bool mesh_query_aabb_next_thread_block_impl(mesh_query_aabb
     while (count[0] > 0 && query.result_counter_shared_mem[0] < block_size) {
         __syncthreads();
         if (lane_id == 0) {
+            // Every processed internal node pushes two children. Limit the number of nodes
+            // processed in this step so that the pushes cannot run past the stack capacity:
+            // popping `budget` nodes grows the stack by at most `budget`, expanding the top
+            // node into at most `budget` descendants grows it by at most `2 * budget`.
+            const int stack_room = mesh_query_aabb_thread_block_t::stack_capacity
+                - mesh_query_aabb_thread_block_t::stack_reserve - count[0];
+            const int budget = max(1, min(block_size, stack_room / 2));
             if (count[0] < block_size) {
                 count[0] -= 1;
                 direct_mode_shared[0] = false;
             } else {
-                count[0] -= block_size;
+                count[0] -= budget;
                 direct_mode_shared[0] = true;
             }
+            budget_shared[0] = budget;
         }
 
         __syncthreads();
         int stack_count = count[0];
+        int budget = budget_shared[0];
 
-        int node_index;
-        if (direct_mode_shared[0])
-            node_index = stack[stack_count + lane_id];
-        else {
+        int node_index = -1;
+        if (direct_mode_shared[0]) {
+            if (lane_id < budget)
+                node_index = stack[stack_count + lane_id];
+        } else {
+            // Expand into the largest power of two of descendants that fits in the budget
+            int num_expansion_steps = 0;
+            while ((2 << num_expansion_steps) <= budget)
+                num_expansion_steps += 1;
+
             __syncthreads();
             node_index = mesh_get_node_index_at_depth(query, stack[stack_count], lane_id, num_expansion_steps);
-            if (node_index < 0) {
+            if (node_index < 0 && lane_id < budget) {
                 // Check if there is something on the stack that could be taken instead
                 int id = atomicAdd(&count[0], -1) - 1;
                 if (id >= 0) {
