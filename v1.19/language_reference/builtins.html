@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Built-Ins &#8212; Warp 1.19.0rc1</title>
+    <title>Built-Ins &#8212; Warp 1.19.0rc2</title>
   
   
   
@@ -71,7 +71,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.19.0rc1" />
+  <meta name="docsearch:version" content="1.19.0rc2" />
   
     
     <script src="../_static/searchtools.js"></script>
@@ -148,11 +148,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0rc1 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0rc1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0rc2 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0rc2 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.19.0rc1</p>
+    <p class="title logo__title">Warp 1.19.0rc2</p>
   
 </a></div>
     
@@ -292,11 +292,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0rc1 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0rc1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0rc2 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0rc2 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.19.0rc1</p>
+    <p class="title logo__title">Warp 1.19.0rc2</p>
   
 </a>
 
@@ -809,55 +809,55 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.quat_from_axis_angle.html#warp._src.lang.quat_from_axis_angle" title="warp._src.lang.quat_from_axis_angle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_from_axis_angle</span></code></a></p></td>
-<td><p>Construct a quaternion representing a rotation of angle radians around the given axis.</p></td>
+<td><p>Return the quaternion for a rotation of <code class="docutils literal notranslate"><span class="pre">angle</span></code> radians about <code class="docutils literal notranslate"><span class="pre">axis</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.quat_from_euler.html#warp._src.lang.quat_from_euler" title="warp._src.lang.quat_from_euler"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_from_euler</span></code></a></p></td>
-<td><p>Construct a quaternion from Euler angles and an axis sequence.</p></td>
+<td><p>Return the rotation quaternion for Euler angles in radians and an axis sequence.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.quat_from_matrix.html#warp._src.lang.quat_from_matrix" title="warp._src.lang.quat_from_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_from_matrix</span></code></a></p></td>
-<td><p>Construct a quaternion from a matrix.</p></td>
+<td><p>Return the rotation quaternion of the rotation matrix <code class="docutils literal notranslate"><span class="pre">mat</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.quat_identity.html#warp._src.lang.quat_identity" title="warp._src.lang.quat_identity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_identity</span></code></a></p></td>
-<td><p>Construct an identity quaternion with zero imaginary part and real part of 1.0.</p></td>
+<td><p>Construct the identity quaternion.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.quat_inverse.html#warp._src.lang.quat_inverse" title="warp._src.lang.quat_inverse"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_inverse</span></code></a></p></td>
-<td><p>Compute quaternion conjugate.</p></td>
+<td><p>Return the conjugate of <code class="docutils literal notranslate"><span class="pre">quat</span></code>, which is its inverse when <code class="docutils literal notranslate"><span class="pre">quat</span></code> has unit length.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.quat_rotate.html#warp._src.lang.quat_rotate" title="warp._src.lang.quat_rotate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_rotate</span></code></a></p></td>
-<td><p>Rotate a vector by a quaternion.</p></td>
+<td><p>Return <code class="docutils literal notranslate"><span class="pre">vec</span></code> rotated by the rotation that <code class="docutils literal notranslate"><span class="pre">quat</span></code> represents.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.quat_rotate_inv.html#warp._src.lang.quat_rotate_inv" title="warp._src.lang.quat_rotate_inv"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_rotate_inv</span></code></a></p></td>
-<td><p>Rotate a vector by the inverse of a quaternion.</p></td>
+<td><p>Return <code class="docutils literal notranslate"><span class="pre">vec</span></code> rotated by the inverse of the rotation that <code class="docutils literal notranslate"><span class="pre">quat</span></code> represents.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.quat_rpy.html#warp._src.lang.quat_rpy" title="warp._src.lang.quat_rpy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_rpy</span></code></a></p></td>
-<td><p>Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians.</p></td>
+<td><p>Return the rotation quaternion for the given roll, pitch, and yaw angles in radians.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.quat_slerp.html#warp._src.lang.quat_slerp" title="warp._src.lang.quat_slerp"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_slerp</span></code></a></p></td>
-<td><p>Linearly interpolate between two quaternions.</p></td>
+<td><p>Return the spherical linear interpolation (slerp) between the rotations <code class="docutils literal notranslate"><span class="pre">a</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.quat_to_axis_angle.html#warp._src.lang.quat_to_axis_angle" title="warp._src.lang.quat_to_axis_angle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_to_axis_angle</span></code></a></p></td>
-<td><p>Extract the rotation axis and angle radians a quaternion represents.</p></td>
+<td><p>Return the rotation axis and angle in radians represented by <code class="docutils literal notranslate"><span class="pre">quat</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.quat_to_euler.html#warp._src.lang.quat_to_euler" title="warp._src.lang.quat_to_euler"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_to_euler</span></code></a></p></td>
-<td><p>Convert a quaternion into Euler angles for an axis sequence.</p></td>
+<td><p>Return the Euler angles in radians of the rotation <code class="docutils literal notranslate"><span class="pre">q</span></code> for an axis sequence.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.quat_to_matrix.html#warp._src.lang.quat_to_matrix" title="warp._src.lang.quat_to_matrix"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_to_matrix</span></code></a></p></td>
-<td><p>Convert a quaternion to a 3x3 rotation matrix.</p></td>
+<td><p>Return the 3x3 rotation matrix of the rotation that <code class="docutils literal notranslate"><span class="pre">quat</span></code> represents.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.quat_to_rpy.html#warp._src.lang.quat_to_rpy" title="warp._src.lang.quat_to_rpy"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_to_rpy</span></code></a></p></td>
-<td><p>Convert a quaternion to roll-pitch-yaw angles (ZYX convention).</p></td>
+<td><p>Return the roll, pitch, and yaw angles in radians of the rotation <code class="docutils literal notranslate"><span class="pre">q</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.quat_twist.html#warp._src.lang.quat_twist" title="warp._src.lang.quat_twist"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_twist</span></code></a></p></td>
-<td><p>Extract the twist quaternion of <code class="docutils literal notranslate"><span class="pre">q</span></code> around <code class="docutils literal notranslate"><span class="pre">axis</span></code>.</p></td>
+<td><p>Return the twist component of <code class="docutils literal notranslate"><span class="pre">q</span></code> about <code class="docutils literal notranslate"><span class="pre">axis</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.quat_twist_angle.html#warp._src.lang.quat_twist_angle" title="warp._src.lang.quat_twist_angle"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_twist_angle</span></code></a></p></td>
-<td><p>Return the unsigned twist magnitude of <code class="docutils literal notranslate"><span class="pre">q</span></code> around <code class="docutils literal notranslate"><span class="pre">axis</span></code>.</p></td>
+<td><p>Return the unsigned twist magnitude in radians of <code class="docutils literal notranslate"><span class="pre">q</span></code> around <code class="docutils literal notranslate"><span class="pre">axis</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.quat_twist_angle_signed.html#warp._src.lang.quat_twist_angle_signed" title="warp._src.lang.quat_twist_angle_signed"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quat_twist_angle_signed</span></code></a></p></td>
-<td><p>Return the signed twist angle of <code class="docutils literal notranslate"><span class="pre">q</span></code> around <code class="docutils literal notranslate"><span class="pre">axis</span></code>.</p></td>
+<td><p>Return the signed twist angle in radians of <code class="docutils literal notranslate"><span class="pre">q</span></code> around <code class="docutils literal notranslate"><span class="pre">axis</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.quaternion.html#warp._src.lang.quaternion" title="warp._src.lang.quaternion"><code class="xref py py-obj docutils literal notranslate"><span class="pre">quaternion</span></code></a></p></td>
-<td><p>Construct a quaternion.</p></td>
+<td><p>Construct a zero-initialized quaternion.</p></td>
 </tr>
 </tbody>
 </table>
@@ -995,19 +995,19 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Construct a ray query against a <a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Bvh</span></code></a> for thread-block parallel traversal.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_cholesky.html#warp._src.lang.tile_cholesky" title="warp._src.lang.tile_cholesky"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_cholesky</span></code></a></p></td>
-<td><p>Compute the Cholesky factorization of a symmetric positive-definite matrix <code class="docutils literal notranslate"><span class="pre">A</span></code>.</p></td>
+<td><p>Compute the Cholesky factor of a symmetric positive-definite matrix <code class="docutils literal notranslate"><span class="pre">A</span></code> and return it in a new tile.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_cholesky_inplace.html#warp._src.lang.tile_cholesky_inplace" title="warp._src.lang.tile_cholesky_inplace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_cholesky_inplace</span></code></a></p></td>
-<td><p>Compute the Cholesky factorization of a symmetric positive-definite matrix <code class="docutils literal notranslate"><span class="pre">A</span></code> inplace.</p></td>
+<td><p>Compute the Cholesky factorization of a symmetric positive-definite matrix <code class="docutils literal notranslate"><span class="pre">A</span></code> in place.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_cholesky_solve.html#warp._src.lang.tile_cholesky_solve" title="warp._src.lang.tile_cholesky_solve"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_cholesky_solve</span></code></a></p></td>
-<td><p>Solve for <code class="docutils literal notranslate"><span class="pre">x</span></code> in <code class="docutils literal notranslate"><span class="pre">Ax</span> <span class="pre">=</span> <span class="pre">y</span></code> given the Cholesky factor of <code class="docutils literal notranslate"><span class="pre">A</span></code>.</p></td>
+<td><p>Solve <code class="docutils literal notranslate"><span class="pre">A</span> <span class="pre">x</span> <span class="pre">=</span> <span class="pre">y</span></code> given the Cholesky factor of <code class="docutils literal notranslate"><span class="pre">A</span></code> and return <code class="docutils literal notranslate"><span class="pre">x</span></code> in a new tile.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_cholesky_solve_inplace.html#warp._src.lang.tile_cholesky_solve_inplace" title="warp._src.lang.tile_cholesky_solve_inplace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_cholesky_solve_inplace</span></code></a></p></td>
-<td><p>Solve for <code class="docutils literal notranslate"><span class="pre">x</span></code> in <code class="docutils literal notranslate"><span class="pre">Ax</span> <span class="pre">=</span> <span class="pre">y</span></code> by overwriting <code class="docutils literal notranslate"><span class="pre">y</span></code> with <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></td>
+<td><p>Solve <code class="docutils literal notranslate"><span class="pre">A</span> <span class="pre">x</span> <span class="pre">=</span> <span class="pre">y</span></code> in place, overwriting <code class="docutils literal notranslate"><span class="pre">y</span></code> with <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_diag_add.html#warp._src.lang.tile_diag_add" title="warp._src.lang.tile_diag_add"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_diag_add</span></code></a></p></td>
-<td><p>Add a square matrix and a diagonal matrix <code class="docutils literal notranslate"><span class="pre">d</span></code> represented as a 1D tile.</p></td>
+<td><p>Return a square tile with the entries of a 1D tile added to its diagonal.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_dot.html#warp._src.lang.tile_dot" title="warp._src.lang.tile_dot"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_dot</span></code></a></p></td>
 <td><p>Compute the dot product of two tiles.</p></td>
@@ -1019,7 +1019,7 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Extract a single element from a tile.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_fft.html#warp._src.lang.tile_fft" title="warp._src.lang.tile_fft"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_fft</span></code></a></p></td>
-<td><p>Compute the forward FFT along the last dimension of an N-D tile of data.</p></td>
+<td><p>Compute the forward FFT along the last dimension of an N-D tile, in place.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_from_thread.html#warp._src.lang.tile_from_thread" title="warp._src.lang.tile_from_thread"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_from_thread</span></code></a></p></td>
 <td><p>Allocate a tile filled with a value from a specific thread.</p></td>
@@ -1028,7 +1028,7 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Allocate a tile filled with the specified value.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_ifft.html#warp._src.lang.tile_ifft" title="warp._src.lang.tile_ifft"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_ifft</span></code></a></p></td>
-<td><p>Compute the inverse FFT along the last dimension of an N-D tile of data.</p></td>
+<td><p>Compute the inverse FFT along the last dimension of an N-D tile, in place.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_load.html#warp._src.lang.tile_load" title="warp._src.lang.tile_load"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_load</span></code></a></p></td>
 <td><p>Load a tile from a global memory array.</p></td>
@@ -1037,16 +1037,16 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Load a tile from a global memory array, gathering along one axis through a 1D tile of indices.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_lower_solve.html#warp._src.lang.tile_lower_solve" title="warp._src.lang.tile_lower_solve"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_lower_solve</span></code></a></p></td>
-<td><p>Solve for <code class="docutils literal notranslate"><span class="pre">z</span></code> in <code class="docutils literal notranslate"><span class="pre">Lz</span> <span class="pre">=</span> <span class="pre">y</span></code>, where <code class="docutils literal notranslate"><span class="pre">L</span></code> is a lower triangular matrix.</p></td>
+<td><p>Solve <code class="docutils literal notranslate"><span class="pre">L</span> <span class="pre">z</span> <span class="pre">=</span> <span class="pre">y</span></code> for a lower-triangular <code class="docutils literal notranslate"><span class="pre">L</span></code> and return <code class="docutils literal notranslate"><span class="pre">z</span></code> in a new tile.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_lower_solve_inplace.html#warp._src.lang.tile_lower_solve_inplace" title="warp._src.lang.tile_lower_solve_inplace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_lower_solve_inplace</span></code></a></p></td>
-<td><p>Solve for <code class="docutils literal notranslate"><span class="pre">z</span></code> in <code class="docutils literal notranslate"><span class="pre">Lz</span> <span class="pre">=</span> <span class="pre">y</span></code>, where <code class="docutils literal notranslate"><span class="pre">L</span></code> is a lower triangular matrix by overwriting <code class="docutils literal notranslate"><span class="pre">y</span></code> with <code class="docutils literal notranslate"><span class="pre">z</span></code>.</p></td>
+<td><p>Solve <code class="docutils literal notranslate"><span class="pre">L</span> <span class="pre">z</span> <span class="pre">=</span> <span class="pre">y</span></code> in place for a lower-triangular <code class="docutils literal notranslate"><span class="pre">L</span></code>, overwriting <code class="docutils literal notranslate"><span class="pre">y</span></code> with <code class="docutils literal notranslate"><span class="pre">z</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_map.html#warp._src.lang.tile_map" title="warp._src.lang.tile_map"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_map</span></code></a></p></td>
 <td><p>Return a new tile by applying a function to each element of a tile.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_matmul.html#warp._src.lang.tile_matmul" title="warp._src.lang.tile_matmul"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_matmul</span></code></a></p></td>
-<td><p>Compute the matrix product <code class="docutils literal notranslate"><span class="pre">a*b</span></code>.</p></td>
+<td><p>Accumulate the matrix product <code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">&#64;</span> <span class="pre">b</span></code> into an existing tile.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_max.html#warp._src.lang.tile_max" title="warp._src.lang.tile_max"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_max</span></code></a></p></td>
 <td><p>Compute the maximum of all elements of a tile.</p></td>
@@ -1133,10 +1133,10 @@ and run inside the CPython interpreter, see <a class="reference internal" href="
 <td><p>Transpose a 2D tile.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_upper_solve.html#warp._src.lang.tile_upper_solve" title="warp._src.lang.tile_upper_solve"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_upper_solve</span></code></a></p></td>
-<td><p>Solve for <code class="docutils literal notranslate"><span class="pre">x</span></code> in <code class="docutils literal notranslate"><span class="pre">Ux</span> <span class="pre">=</span> <span class="pre">z</span></code>, where <code class="docutils literal notranslate"><span class="pre">U</span></code> is an upper triangular matrix.</p></td>
+<td><p>Solve <code class="docutils literal notranslate"><span class="pre">U</span> <span class="pre">x</span> <span class="pre">=</span> <span class="pre">z</span></code> for an upper-triangular <code class="docutils literal notranslate"><span class="pre">U</span></code> and return <code class="docutils literal notranslate"><span class="pre">x</span></code> in a new tile.</p></td>
 </tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.tile_upper_solve_inplace.html#warp._src.lang.tile_upper_solve_inplace" title="warp._src.lang.tile_upper_solve_inplace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_upper_solve_inplace</span></code></a></p></td>
-<td><p>Solve for <code class="docutils literal notranslate"><span class="pre">x</span></code> in <code class="docutils literal notranslate"><span class="pre">Ux</span> <span class="pre">=</span> <span class="pre">z</span></code>, where <code class="docutils literal notranslate"><span class="pre">U</span></code> is an upper triangular matrix by overwriting <code class="docutils literal notranslate"><span class="pre">z</span></code> with <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></td>
+<td><p>Solve <code class="docutils literal notranslate"><span class="pre">U</span> <span class="pre">x</span> <span class="pre">=</span> <span class="pre">z</span></code> in place for an upper-triangular <code class="docutils literal notranslate"><span class="pre">U</span></code>, overwriting <code class="docutils literal notranslate"><span class="pre">z</span></code> with <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.tile_view.html#warp._src.lang.tile_view" title="warp._src.lang.tile_view"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tile_view</span></code></a></p></td>
 <td><p>Return a view of a tile.</p></td>

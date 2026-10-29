@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Tiles &#8212; Warp 1.19.0rc1</title>
+    <title>Tiles &#8212; Warp 1.19.0rc2</title>
   
   
   
@@ -70,7 +70,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.19.0rc1" />
+  <meta name="docsearch:version" content="1.19.0rc2" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -147,11 +147,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0rc1 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0rc1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0rc2 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0rc2 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.19.0rc1</p>
+    <p class="title logo__title">Warp 1.19.0rc2</p>
   
 </a></div>
     
@@ -291,11 +291,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0rc1 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0rc1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0rc2 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0rc2 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.19.0rc1</p>
+    <p class="title logo__title">Warp 1.19.0rc2</p>
   
 </a>
 
@@ -2103,9 +2103,10 @@ In the case of FFT operations, using more threads per block may help (see the
 </section>
 <section id="building-with-mathdx">
 <h2>Building with MathDx<a class="headerlink" href="#building-with-mathdx" title="Link to this heading">#</a></h2>
-<p>Most tile operations described in <a class="reference internal" href="#linear-algebra">Linear Algebra</a> require Warp to be built with the MathDx library.
-Starting with Warp 1.5.0, PyPI distributions will come with out-of-the-box support for tile operations
-leveraging MathDx APIs.</p>
+<p>Most tile operations described in <a class="reference internal" href="#linear-algebra">Linear Algebra</a> use the MathDx library when Warp is built with it.
+Without MathDx, they use Warp’s built-in implementations, which can be slower and, for FFTs, support fewer sizes.
+Since Warp 1.5.0, the PyPI wheels for Linux and Windows x86-64 include MathDx.
+The Windows on Arm wheel currently does not; see <a class="reference internal" href="../installation.html#windows-on-arm"><span class="std std-ref">Windows on Arm</span></a>.</p>
 <p>When building Warp locally using <code class="docutils literal notranslate"><span class="pre">build_lib.py</span></code>, the script will attempt to automatically download <code class="docutils literal notranslate"><span class="pre">libmathdx</span></code>
 from the <a class="reference external" href="https://developer.nvidia.com/cublasdx-downloads">cuBLASDx Downloads Page</a>.
 A path to an existing <code class="docutils literal notranslate"><span class="pre">libmathdx</span></code> installation can also be specified using the <code class="docutils literal notranslate"><span class="pre">--libmathdx-path</span></code> option

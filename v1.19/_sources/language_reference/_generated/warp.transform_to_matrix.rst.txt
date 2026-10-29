@@ -9,7 +9,7 @@
       :kernel: true
       :python: true
       :differentiable: true
-      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L562-L594
+      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L575-L607
 
    Convert a transformation to a 4x4 matrix.
    
@@ -40,7 +40,7 @@
       :kernel: true
       :python: true
       :differentiable: true
-      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L562-L594
+      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L575-L607
 
    Convert a transformation to a 4x4 matrix.
    
@@ -71,7 +71,7 @@
       :kernel: true
       :python: true
       :differentiable: true
-      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L562-L594
+      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L575-L607
 
    Convert a transformation to a 4x4 matrix.
    

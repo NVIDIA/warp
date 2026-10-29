@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.quat_twist &#8212; Warp 1.19.0rc1</title>
+    <title>warp.quat_twist &#8212; Warp 1.19.0rc2</title>
   
   
   
@@ -70,7 +70,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.19.0rc1" />
+  <meta name="docsearch:version" content="1.19.0rc2" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -147,11 +147,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0rc1 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0rc1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0rc2 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0rc2 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.19.0rc1</p>
+    <p class="title logo__title">Warp 1.19.0rc2</p>
   
 </a></div>
     
@@ -291,11 +291,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0rc1 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0rc1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0rc2 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0rc2 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.19.0rc1</p>
+    <p class="title logo__title">Warp 1.19.0rc2</p>
   
 </a>
 
@@ -555,19 +555,20 @@
 <h1>warp.quat_twist<a class="headerlink" href="#warp-quat-twist" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp._src.lang.quat_twist">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">quat_twist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">axis</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.vec3f.html#warp.vec3f" title="warp.vec3f"><span class="pre">vec3f</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">q</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.quatf.html#warp.quatf" title="warp.quatf"><span class="pre">quatf</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../api_reference/_generated/warp.quatf.html#warp.quatf" title="warp.quatf"><span class="pre">quatf</span></a></span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L151-L168"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp._src.lang.quat_twist" title="Link to this definition">#</a></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="python" data-wp-value="true"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Extract the twist quaternion of <code class="docutils literal notranslate"><span class="pre">q</span></code> around <code class="docutils literal notranslate"><span class="pre">axis</span></code>.</p>
-<p>This performs a swing-twist decomposition and returns the component of
-rotation in <code class="docutils literal notranslate"><span class="pre">q</span></code> whose rotation axis is parallel to <code class="docutils literal notranslate"><span class="pre">axis</span></code>.</p>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">quat_twist</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">axis</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.vec3f.html#warp.vec3f" title="warp.vec3f"><span class="pre">vec3f</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">q</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.quatf.html#warp.quatf" title="warp.quatf"><span class="pre">quatf</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../api_reference/_generated/warp.quatf.html#warp.quatf" title="warp.quatf"><span class="pre">quatf</span></a></span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L151-L169"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp._src.lang.quat_twist" title="Link to this definition">#</a></dt>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="python" data-wp-value="true"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Return the twist component of <code class="docutils literal notranslate"><span class="pre">q</span></code> about <code class="docutils literal notranslate"><span class="pre">axis</span></code>.</p>
+<p>A swing-twist decomposition splits a rotation into a twist about <code class="docutils literal notranslate"><span class="pre">axis</span></code> and a swing about an
+axis perpendicular to <code class="docutils literal notranslate"><span class="pre">axis</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>axis</strong> – Twist axis (expected to be normalized).</p></li>
-<li><p><strong>q</strong> – Input quaternion in <code class="docutils literal notranslate"><span class="pre">(x,</span> <span class="pre">y,</span> <span class="pre">z,</span> <span class="pre">w)</span></code> layout.</p></li>
+<li><p><strong>axis</strong> – Twist axis, with unit length.</p></li>
+<li><p><strong>q</strong> – Rotation quaternion.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Unit twist quaternion.</p>
+<dd class="field-even"><p>Unit twist quaternion. It is unspecified when <code class="docutils literal notranslate"><span class="pre">q</span></code> is a rotation of 180 degrees
+about an axis perpendicular to <code class="docutils literal notranslate"><span class="pre">axis</span></code>.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference internal" href="../../api_reference/_generated/warp.quat.html#warp.quat" title="warp.quat">warp.quat</a></p>

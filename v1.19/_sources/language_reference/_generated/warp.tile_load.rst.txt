@@ -75,5 +75,5 @@
    Load a 1D tile from a 1D global memory array.
    
    Overload for a scalar ``shape`` and ``offset``, equivalent to passing one-element
-   tuples. For the full contract and a usage example, see the overload that takes
-   tuple-valued ``shape`` and ``offset`` arguments.
+   tuples. For usage details and an example, see the overload that takes tuple-valued
+   ``shape`` and ``offset`` arguments.

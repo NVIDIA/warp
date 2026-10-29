@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.quat_to_rpy &#8212; Warp 1.19.0rc1</title>
+    <title>warp.quat_to_rpy &#8212; Warp 1.19.0rc2</title>
   
   
   
@@ -70,7 +70,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.19.0rc1" />
+  <meta name="docsearch:version" content="1.19.0rc2" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -147,11 +147,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0rc1 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0rc1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0rc2 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0rc2 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.19.0rc1</p>
+    <p class="title logo__title">Warp 1.19.0rc2</p>
   
 </a></div>
     
@@ -291,11 +291,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0rc1 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0rc1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0rc2 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0rc2 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.19.0rc1</p>
+    <p class="title logo__title">Warp 1.19.0rc2</p>
   
 </a>
 
@@ -555,16 +555,20 @@
 <h1>warp.quat_to_rpy<a class="headerlink" href="#warp-quat-to-rpy" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp._src.lang.quat_to_rpy">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">quat_to_rpy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.quatf.html#warp.quatf" title="warp.quatf"><span class="pre">quatf</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../api_reference/_generated/warp.vec3f.html#warp.vec3f" title="warp.vec3f"><span class="pre">vec3f</span></a></span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L220-L250"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp._src.lang.quat_to_rpy" title="Link to this definition">#</a></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="python" data-wp-value="true"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Convert a quaternion to roll-pitch-yaw angles (ZYX convention).</p>
-<p>The output is <code class="docutils literal notranslate"><span class="pre">(roll,</span> <span class="pre">pitch,</span> <span class="pre">yaw)</span></code> in radians using extrinsic rotations
-about X, Y, and Z respectively.</p>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">quat_to_rpy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">q</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.quatf.html#warp.quatf" title="warp.quatf"><span class="pre">quatf</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../api_reference/_generated/warp.vec3f.html#warp.vec3f" title="warp.vec3f"><span class="pre">vec3f</span></a></span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L221-L256"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp._src.lang.quat_to_rpy" title="Link to this definition">#</a></dt>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="python" data-wp-value="true"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Return the roll, pitch, and yaw angles in radians of the rotation <code class="docutils literal notranslate"><span class="pre">q</span></code>.</p>
+<p>This is the inverse of <a class="reference internal" href="warp.quat_rpy.html#warp._src.lang.quat_rpy" title="warp._src.lang.quat_rpy"><code class="xref py py-func docutils literal notranslate"><span class="pre">quat_rpy()</span></code></a>, which applies roll, pitch, and yaw in that order
+about the fixed <code class="docutils literal notranslate"><span class="pre">x</span></code>, <code class="docutils literal notranslate"><span class="pre">y</span></code>, and <code class="docutils literal notranslate"><span class="pre">z</span></code> axes (extrinsic x-y-z).</p>
+<p>Near gimbal lock, where pitch approaches <code class="docutils literal notranslate"><span class="pre">pi/2</span></code> or <code class="docutils literal notranslate"><span class="pre">-pi/2</span></code>, the returned roll and yaw are
+inaccurate and might not reproduce <code class="docutils literal notranslate"><span class="pre">q</span></code>. <code class="docutils literal notranslate"><span class="pre">quat_to_euler(q,</span> <span class="pre">0,</span> <span class="pre">1,</span> <span class="pre">2)</span></code> uses the same
+convention and handles gimbal lock.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>q</strong> – Input quaternion in <code class="docutils literal notranslate"><span class="pre">(x,</span> <span class="pre">y,</span> <span class="pre">z,</span> <span class="pre">w)</span></code> order.</p>
+<dd class="field-odd"><p><strong>q</strong> – Rotation quaternion, with unit length.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">(roll,</span> <span class="pre">pitch,</span> <span class="pre">yaw)</span></code> in radians.</p>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">(roll,</span> <span class="pre">pitch,</span> <span class="pre">yaw)</span></code> in radians, with roll and yaw in <code class="docutils literal notranslate"><span class="pre">[-pi,</span> <span class="pre">pi]</span></code> and pitch in
+<code class="docutils literal notranslate"><span class="pre">[-pi/2,</span> <span class="pre">pi/2]</span></code>.</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference internal" href="../../api_reference/_generated/warp.vec3.html#warp.vec3" title="warp.vec3">warp.vec3</a></p>

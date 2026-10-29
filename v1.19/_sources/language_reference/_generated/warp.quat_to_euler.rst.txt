@@ -9,33 +9,34 @@
       :kernel: true
       :python: true
       :differentiable: true
-      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L253-L386
+      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L259-L393
 
-   Convert a quaternion into Euler angles for an axis sequence.
+   Return the Euler angles in radians of the rotation ``q`` for an axis sequence.
    
-   The integers ``i``, ``j``, and ``k`` are axis indices in ``{0, 1, 2}``
-   with ``i != j`` and ``j != k``. Axis-indexed output (suitable for
-   :func:`quat_from_euler`) is supported for Tait-Bryan sequences
-   (``i != k``).
+   The result uses the same conventions as :func:`quat_from_euler`:
+   rotations about the fixed axes ``i``, ``j``, and ``k``, in that order. For
+   Tait-Bryan sequences (``i != k``),
+   ``quat_from_euler(quat_to_euler(q, i, j, k), i, j, k)`` represents the same
+   rotation as ``q``, including at gimbal lock, where the angles about ``i``
+   and ``k`` are not unique.
    
    .. caution::
    
-       This function returns an axis-indexed vector where ``e[0]`` is the
-       angle about X, ``e[1]`` about Y, and ``e[2]`` about Z.
+       For proper Euler sequences (``i == k``), :func:`quat_from_euler` cannot
+       invert the result: it reads both the first and the third angle from
+       ``e[i]``, but this function stores the third angle in another slot.
    
-       That layout is only unambiguous for Tait-Bryan sequences
-       (``i != k``), where all three rotations use distinct axis slots.
+   :param q: Rotation quaternion.
+   :param i: Index of the first axis, in ``{0, 1, 2}``.
+   :param j: Index of the second axis, in ``{0, 1, 2}`` and different from ``i``.
+   :param k: Index of the third axis, in ``{0, 1, 2}`` and different from ``j``.
    
-       For proper Euler sequences (``i == k``), the first and third
-       rotations are both about the same axis. In that case, two different
-       sequence positions must share one output slot, so the mapping loses
-       information and cannot be a clean inverse of :func:`quat_from_euler`.
-   
-   :param q: Input quaternion.
-   :param i: Index of the first axis.
-   :param j: Index of the second axis.
-   :param k: Index of the third axis.
-   
-   :returns: Euler angles in radians.
+   :returns: Euler angles ``e`` in radians. For Tait-Bryan sequences, ``e``
+             is indexed by axis: ``e[0]`` is the angle about X, ``e[1]`` about Y, and
+             ``e[2]`` about Z. For proper Euler sequences, ``e[i]`` holds the first
+             angle, ``e[j]`` the second, and ``e[3 - i - j]`` the third, which is
+             also about axis ``i``. The second angle is in ``[-pi/2, pi/2]`` for
+             Tait-Bryan sequences and in ``[0, pi]`` for proper Euler sequences. The
+             first and third angles are in ``[-2*pi, 2*pi]``.
    :rtype: warp.vec3
    

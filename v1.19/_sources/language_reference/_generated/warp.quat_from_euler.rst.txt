@@ -9,21 +9,26 @@
       :kernel: true
       :python: true
       :differentiable: true
-      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L389-L449
+      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L396-L462
 
-   Construct a quaternion from Euler angles and an axis sequence.
+   Return the rotation quaternion for Euler angles in radians and an axis sequence.
    
-   :param e: Euler angles in radians.
-   :param i: Index of the first axis in ``{0, 1, 2}``.
-   :param j: Index of the second axis in ``{0, 1, 2}``.
-   :param k: Index of the third axis in ``{0, 1, 2}``.
+   The rotations about axes ``i``, ``j``, and ``k`` are applied in that order
+   about the fixed axes (extrinsic), which is equivalent to applying them in
+   the order ``k``, ``j``, ``i`` about the rotating axes (intrinsic). For
+   example, ``quat_from_euler(e, 0, 1, 2)`` equals
+   ``quat_rpy(e[0], e[1], e[2])``.
    
-   .. rubric:: Notes
+   For proper Euler sequences (``i == k``), ``e[i]`` is used for both the
+   first and the third rotation.
    
-   Angles are read by axis index (``e[0]``=X, ``e[1]``=Y, ``e[2]``=Z),
-   so use distinct axes ``(i, j, k)`` for an unambiguous inverse with
-   :func:`quat_to_euler`.
+   :param e: Euler angles in radians, indexed by axis, not by sequence position:
+             ``e[0]`` is the angle about X, ``e[1]`` about Y, and ``e[2]`` about Z.
+   :param i: Index of the first axis, in ``{0, 1, 2}``.
+   :param j: Index of the second axis, in ``{0, 1, 2}`` and different from ``i``.
+   :param k: Index of the third axis, in ``{0, 1, 2}`` and different from ``j``.
    
-   :returns: Quaternion in ``(x, y, z, w)`` layout.
+   :returns: Unit quaternion ``qk * qj * qi``, where ``qi`` is the rotation
+             of ``e[i]`` about axis ``i``, and similarly for ``qj`` and ``qk``.
    :rtype: warp.quat
    

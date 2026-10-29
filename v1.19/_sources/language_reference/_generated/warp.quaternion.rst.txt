@@ -10,10 +10,16 @@
       :python: false
       :differentiable: true
 
-   Construct a quaternion.
+   Construct a zero-initialized quaternion.
    
-   Zero-initialize the quaternion. Quaternions are laid out as
-   ``[ix, iy, iz, r]``, where ``ix``, ``iy``, ``iz`` are the imaginary part, and ``r`` the real part.
+   Quaternions store their components in ``(x, y, z, w)`` order, where ``x``, ``y``, and ``z`` form
+   the vector (imaginary) part and ``w`` is the scalar (real) part. For the identity rotation, use
+   :func:`~warp.quat_identity`.
+   
+   :param dtype: Scalar type of the components. Defaults to ``float32``.
+   
+   :returns: The quaternion ``(0, 0, 0, 0)``.
+   
 
 .. function:: quaternion(x: Float, y: Float, z: Float, w: Float, dtype: Float = ...) -> Quaternion[Float]
    :noindex:
@@ -23,9 +29,18 @@
       :python: false
       :differentiable: true
 
-   Construct a quaternion.
+   Construct a quaternion from its components.
    
-   Use the supplied components (type inferred from component type).
+   All arguments must have the same scalar type, which must match ``dtype`` when it is given.
+   
+   :param x: ``x`` component of the vector (imaginary) part.
+   :param y: ``y`` component of the vector (imaginary) part.
+   :param z: ``z`` component of the vector (imaginary) part.
+   :param w: Scalar (real) part.
+   :param dtype: Scalar type of the components, inferred from the other arguments when omitted.
+   
+   :returns: The quaternion ``(x, y, z, w)``.
+   
 
 .. function:: quaternion(ijk: Vector[Float, Literal[3]], real: Float, dtype: Float = ...) -> Quaternion[Float]
    :noindex:
@@ -35,9 +50,16 @@
       :python: false
       :differentiable: true
 
-   Construct a quaternion.
+   Construct a quaternion from its vector and scalar parts.
    
-   Use the supplied vector/scalar (type inferred from scalar type).
+   All arguments must have the same scalar type, which must match ``dtype`` when it is given.
+   
+   :param ijk: Vector (imaginary) part, stored as the ``x``, ``y``, and ``z`` components.
+   :param real: Scalar (real) part, stored as the ``w`` component.
+   :param dtype: Scalar type of the components, inferred from the other arguments when omitted.
+   
+   :returns: The quaternion ``(ijk[0], ijk[1], ijk[2], real)``.
+   
 
 .. function:: quaternion(quat: Quaternion[Float], dtype: Float = ...) -> Quaternion[Float]
    :noindex:
@@ -47,6 +69,10 @@
       :python: false
       :differentiable: true
 
-   Construct a quaternion.
+   Construct a copy of a quaternion, optionally converting its scalar type.
    
-   Convert ``quat`` to the specified ``dtype``.
+   :param quat: Quaternion to copy.
+   :param dtype: Scalar type of the result. Defaults to the scalar type of ``quat``.
+   
+   :returns: A quaternion with the components of ``quat``, converted to ``dtype``.
+   

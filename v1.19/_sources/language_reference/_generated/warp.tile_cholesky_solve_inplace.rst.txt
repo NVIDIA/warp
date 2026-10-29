@@ -3,28 +3,27 @@
 
 .. currentmodule:: warp._src.lang
 
-.. function:: tile_cholesky_solve_inplace(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[int]], fill_mode: str = "lower") -> None
+.. function:: tile_cholesky_solve_inplace(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[int, ...]], fill_mode: str = "lower") -> None
 
    .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
 
-   Solve for ``x`` in ``Ax = y`` by overwriting ``y`` with ``x``.
+   Solve ``A x = y`` in place, overwriting ``y`` with ``x``.
    
-   When ``fill_mode="lower"``, ``L`` is lower-triangular such that ``LL^T = A``.
-   When ``fill_mode="upper"``, ``L`` is upper-triangular ``U`` such that ``U^T U = A``.
+   Behaves like :func:`~warp.tile_cholesky_solve`, including the meaning of ``L`` under
+   each ``fill_mode``, the dtype rules, the support for a 1D or 2D right-hand side, and
+   the backend selection, except that the solution overwrites ``y`` instead of being
+   returned.
    
-   The ``fill_mode`` parameter must be a compile-time constant.
+   This is a cooperative operation, so every thread in the block must call it.
    
-   Note: This inplace variant does not support automatic differentiation (adjoint computation),
-   but avoids allocating shared memory for the output ``x`` by reusing ``y``'s memory.
+   This in-place variant avoids allocating shared memory for a separate output.
    
-   Supported datatypes are:
-       * float32
-       * float64
-   
-   :param L: A square triangular Cholesky factor of ``A``.
-   :param y: A 1D or 2D tile of length ``M`` that gets overwritten by ``x`` where ``Ax = y``.
+   :param L: A square triangular Cholesky factor of ``A``, with ``shape=(M, M)``.
+   :param y: The right-hand side, a tile with ``shape=(M,)`` or ``shape=(M, NRHS)``,
+             overwritten by the solution ``x``.
    :param fill_mode: ``"lower"`` or ``"upper"``. Must be a compile-time constant.
    
+   See :func:`~warp.tile_cholesky` for a usage example.

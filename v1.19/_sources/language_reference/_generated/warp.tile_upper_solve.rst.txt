@@ -3,25 +3,33 @@
 
 .. currentmodule:: warp._src.lang
 
-.. function:: tile_upper_solve(U: Tile[Float, tuple[int, int]], z: Tile[Float, tuple[int]]) -> Tile[Float, tuple[int]]
+.. function:: tile_upper_solve(U: Tile[Float, tuple[int, int]], z: Tile[Float, tuple[int, ...]]) -> Tile[Float, tuple[int, ...]]
 
    .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
 
-   Solve for ``x`` in ``Ux = z``, where ``U`` is an upper triangular matrix.
+   Solve ``U x = z`` for an upper-triangular ``U`` and return ``x`` in a new tile.
    
-   This performs general back substitution for upper triangular systems.
+   Only the upper triangle of ``U``, including its diagonal, is read; the strictly lower
+   triangle is ignored. ``U`` must be non-singular with nonzero diagonal entries.
    
-   Note that computing the adjoint is not yet supported.
+   This is a cooperative operation, so every thread in the block must call it.
    
-   Supported datatypes are:
-       * float32
-       * float64
+   The right-hand side may be a 1D tile with ``shape=(M,)`` or a 2D tile with
+   ``shape=(M, NRHS)``, which solves for all ``NRHS`` columns at once. ``U`` and ``z``
+   must have the same dtype, either ``float32`` or ``float64``.
    
-   :param U: A square, non-singular, upper triangular matrix
-   :param z: A 1D or 2D tile with compatible shape
+   On CUDA devices, Warp uses cuSolverDx when it is built with libmathdx and
+   :attr:`warp.config.enable_mathdx_solver` (or the ``enable_mathdx_solver`` module
+   option) is ``True``. Otherwise, and on the CPU, it uses a cooperative fallback
+   implementation, which is slower than cuSolverDx on CUDA devices.
    
-   :returns: A tile of the same shape as ``z`` such that ``Ux = z``.
+   :param U: A square, non-singular, upper-triangular tile with ``shape=(M, M)``.
+   :param z: The right-hand side, a tile with ``shape=(M,)`` or ``shape=(M, NRHS)``.
    
+   :returns: A new tile in shared memory with the same shape and dtype as ``z``, holding the
+             solution ``x`` of ``U x = z``.
+   
+   See :func:`~warp.tile_lower_solve` for a usage example.

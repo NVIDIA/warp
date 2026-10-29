@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.quat_between_vectors &#8212; Warp 1.19.0rc1</title>
+    <title>warp.quat_between_vectors &#8212; Warp 1.19.0rc2</title>
   
   
   
@@ -70,7 +70,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.19.0rc1" />
+  <meta name="docsearch:version" content="1.19.0rc2" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -147,11 +147,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0rc1 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0rc1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0rc2 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0rc2 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.19.0rc1</p>
+    <p class="title logo__title">Warp 1.19.0rc2</p>
   
 </a></div>
     
@@ -291,11 +291,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0rc1 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0rc1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0rc2 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0rc2 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.19.0rc1</p>
+    <p class="title logo__title">Warp 1.19.0rc2</p>
   
 </a>
 
@@ -509,8 +509,29 @@
 <h1>warp.quat_between_vectors<a class="headerlink" href="#warp-quat-between-vectors" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.quat_between_vectors">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">quat_between_vectors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp.vec3f"><span class="pre">vec3f</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp.vec3f"><span class="pre">vec3f</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="warp.quatf.html#warp.quatf" title="warp.quatf"><span class="pre">quatf</span></a></span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/utils.py#L38-L46"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.quat_between_vectors" title="Link to this definition">#</a></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Compute the quaternion that rotates vector <code class="docutils literal notranslate"><span class="pre">a</span></code> to vector <code class="docutils literal notranslate"><span class="pre">b</span></code>.</p>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">quat_between_vectors</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">a</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp.vec3f"><span class="pre">vec3f</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="warp.vec3f.html#warp.vec3f" title="warp.vec3f"><span class="pre">vec3f</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="warp.quatf.html#warp.quatf" title="warp.quatf"><span class="pre">quatf</span></a></span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/utils.py#L38-L63"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.quat_between_vectors" title="Link to this definition">#</a></dt>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Return the rotation quaternion that rotates the direction of <code class="docutils literal notranslate"><span class="pre">a</span></code> onto the direction of <code class="docutils literal notranslate"><span class="pre">b</span></code>.</p>
+<p>Currently, opposite directions are not handled. This condition is not
+checked, and such inputs can produce an incorrect rotation.</p>
+<p>For opposite directions, use <a class="reference internal" href="../../language_reference/_generated/warp.quat_from_axis_angle.html#warp._src.lang.quat_from_axis_angle" title="warp._src.lang.quat_from_axis_angle"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.quat_from_axis_angle()</span></code></a> instead,
+with any unit axis perpendicular to <code class="docutils literal notranslate"><span class="pre">a</span></code> and an angle of <code class="docutils literal notranslate"><span class="pre">pi</span></code> radians.
+The resulting 180-degree rotation maps <code class="docutils literal notranslate"><span class="pre">normalize(a)</span></code> onto
+<code class="docutils literal notranslate"><span class="pre">normalize(b)</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>a</strong> – Source direction, of any nonzero length.</p></li>
+<li><p><strong>b</strong> – Target direction, of any nonzero length.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Shortest-arc unit rotation quaternion <code class="docutils literal notranslate"><span class="pre">q</span></code> such that <code class="docutils literal notranslate"><span class="pre">quat_rotate(q,</span> <span class="pre">normalize(a))</span></code>
+equals <code class="docutils literal notranslate"><span class="pre">normalize(b)</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="warp.quat.html#warp.quat" title="warp.quat">warp.quat</a></p>
+</dd>
+</dl>
 </dd></dl>
 
 </section>

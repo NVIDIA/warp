@@ -9,16 +9,17 @@
       :kernel: true
       :python: true
       :differentiable: true
-      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L151-L168
+      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L151-L169
 
-   Extract the twist quaternion of ``q`` around ``axis``.
+   Return the twist component of ``q`` about ``axis``.
    
-   This performs a swing-twist decomposition and returns the component of
-   rotation in ``q`` whose rotation axis is parallel to ``axis``.
+   A swing-twist decomposition splits a rotation into a twist about ``axis`` and a swing about an
+   axis perpendicular to ``axis``.
    
-   :param axis: Twist axis (expected to be normalized).
-   :param q: Input quaternion in ``(x, y, z, w)`` layout.
+   :param axis: Twist axis, with unit length.
+   :param q: Rotation quaternion.
    
-   :returns: Unit twist quaternion.
+   :returns: Unit twist quaternion. It is unspecified when ``q`` is a rotation of 180 degrees
+             about an axis perpendicular to ``axis``.
    :rtype: warp.quat
    

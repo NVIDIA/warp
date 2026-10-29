@@ -9,7 +9,7 @@
       :kernel: true
       :python: false
       :differentiable: true
-      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L452-L478
+      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L465-L491
 
    Transform a spatial twist between coordinate frames.
    

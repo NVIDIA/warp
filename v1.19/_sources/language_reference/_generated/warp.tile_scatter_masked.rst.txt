@@ -64,8 +64,8 @@
 
    Write a per-thread value into a 2D shared-memory tile.
    
-   Overload taking one index per tile dimension. For the full contract and a usage
-   example, see the 1D overload that takes only ``i`` as its index.
+   Overload taking one index per tile dimension. For usage details and an example,
+   see the 1D overload that takes only ``i`` as its index.
 
 .. function:: tile_scatter_masked(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, value: Any, has_value: bool) -> None
    :noindex:
@@ -77,8 +77,8 @@
 
    Write a per-thread value into a 3D shared-memory tile.
    
-   Overload taking one index per tile dimension. For the full contract and a usage
-   example, see the 1D overload that takes only ``i`` as its index.
+   Overload taking one index per tile dimension. For usage details and an example,
+   see the 1D overload that takes only ``i`` as its index.
 
 .. function:: tile_scatter_masked(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, l: int32, value: Any, has_value: bool) -> None
    :noindex:
@@ -90,5 +90,5 @@
 
    Write a per-thread value into a 4D shared-memory tile.
    
-   Overload taking one index per tile dimension. For the full contract and a usage
-   example, see the 1D overload that takes only ``i`` as its index.
+   Overload taking one index per tile dimension. For usage details and an example,
+   see the 1D overload that takes only ``i`` as its index.

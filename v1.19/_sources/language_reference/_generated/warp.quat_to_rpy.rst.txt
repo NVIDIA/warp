@@ -9,15 +9,20 @@
       :kernel: true
       :python: true
       :differentiable: true
-      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L220-L250
+      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L221-L256
 
-   Convert a quaternion to roll-pitch-yaw angles (ZYX convention).
+   Return the roll, pitch, and yaw angles in radians of the rotation ``q``.
    
-   The output is ``(roll, pitch, yaw)`` in radians using extrinsic rotations
-   about X, Y, and Z respectively.
+   This is the inverse of :func:`~warp.quat_rpy`, which applies roll, pitch, and yaw in that order
+   about the fixed ``x``, ``y``, and ``z`` axes (extrinsic x-y-z).
    
-   :param q: Input quaternion in ``(x, y, z, w)`` order.
+   Near gimbal lock, where pitch approaches ``pi/2`` or ``-pi/2``, the returned roll and yaw are
+   inaccurate and might not reproduce ``q``. ``quat_to_euler(q, 0, 1, 2)`` uses the same
+   convention and handles gimbal lock.
    
-   :returns: ``(roll, pitch, yaw)`` in radians.
+   :param q: Rotation quaternion, with unit length.
+   
+   :returns: ``(roll, pitch, yaw)`` in radians, with roll and yaw in ``[-pi, pi]`` and pitch in
+             ``[-pi/2, pi/2]``.
    :rtype: warp.vec3
    

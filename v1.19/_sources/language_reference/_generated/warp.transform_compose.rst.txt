@@ -9,7 +9,7 @@
       :kernel: true
       :python: true
       :differentiable: true
-      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L618-L651
+      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L631-L664
 
    Compose a 4x4 transformation matrix from a 3D position, quaternion orientation, and 3D scale.
    
@@ -45,7 +45,7 @@
       :kernel: true
       :python: true
       :differentiable: true
-      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L618-L651
+      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L631-L664
 
    Compose a 4x4 transformation matrix from a 3D position, quaternion orientation, and 3D scale.
    
@@ -81,7 +81,7 @@
       :kernel: true
       :python: true
       :differentiable: true
-      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L618-L651
+      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L631-L664
 
    Compose a 4x4 transformation matrix from a 3D position, quaternion orientation, and 3D scale.
    

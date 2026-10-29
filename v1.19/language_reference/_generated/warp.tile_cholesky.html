@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.tile_cholesky &#8212; Warp 1.19.0rc1</title>
+    <title>warp.tile_cholesky &#8212; Warp 1.19.0rc2</title>
   
   
   
@@ -70,7 +70,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.19.0rc1" />
+  <meta name="docsearch:version" content="1.19.0rc2" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -147,11 +147,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0rc1 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0rc1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0rc2 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0rc2 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.19.0rc1</p>
+    <p class="title logo__title">Warp 1.19.0rc2</p>
   
 </a></div>
     
@@ -291,11 +291,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0rc1 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0rc1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0rc2 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0rc2 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.19.0rc1</p>
+    <p class="title logo__title">Warp 1.19.0rc2</p>
   
 </a>
 
@@ -563,31 +563,64 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tile</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../api_reference/_generated/warp.Float.html#warp.Float" title="warp.Float"><span class="pre">Float</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.15)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#warp._src.lang.tile_cholesky" title="Link to this definition">#</a></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Compute the Cholesky factorization of a symmetric positive-definite matrix <code class="docutils literal notranslate"><span class="pre">A</span></code>.</p>
-<p>When <code class="docutils literal notranslate"><span class="pre">fill_mode=&quot;lower&quot;</span></code>, returns lower-triangular <code class="docutils literal notranslate"><span class="pre">L</span></code> such that <code class="docutils literal notranslate"><span class="pre">LL^T</span> <span class="pre">=</span> <span class="pre">A</span></code>.
-When <code class="docutils literal notranslate"><span class="pre">fill_mode=&quot;upper&quot;</span></code>, returns upper-triangular <code class="docutils literal notranslate"><span class="pre">U</span></code> such that <code class="docutils literal notranslate"><span class="pre">U^T</span> <span class="pre">U</span> <span class="pre">=</span> <span class="pre">A</span></code>.</p>
-<p>The <code class="docutils literal notranslate"><span class="pre">fill_mode</span></code> parameter must be a compile-time constant.</p>
-<p>Backward propagation computes gradients with respect to the corresponding
-triangular parameterization of <code class="docutils literal notranslate"><span class="pre">A</span></code> (lower triangle when <code class="docutils literal notranslate"><span class="pre">fill_mode=&quot;lower&quot;</span></code>,
-upper triangle when <code class="docutils literal notranslate"><span class="pre">fill_mode=&quot;upper&quot;</span></code>).</p>
-<dl class="simple">
-<dt>Supported datatypes are:</dt><dd><ul class="simple">
-<li><p>float32</p></li>
-<li><p>float64</p></li>
-</ul>
-</dd>
-</dl>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Compute the Cholesky factor of a symmetric positive-definite matrix <code class="docutils literal notranslate"><span class="pre">A</span></code> and return it in a new tile.</p>
+<p>With <code class="docutils literal notranslate"><span class="pre">fill_mode=&quot;lower&quot;</span></code>, returns the lower-triangular <code class="docutils literal notranslate"><span class="pre">L</span></code> such that
+<code class="docutils literal notranslate"><span class="pre">L</span> <span class="pre">&#64;</span> <span class="pre">L^T</span> <span class="pre">=</span> <span class="pre">A</span></code>; with <code class="docutils literal notranslate"><span class="pre">fill_mode=&quot;upper&quot;</span></code>, returns the upper-triangular <code class="docutils literal notranslate"><span class="pre">U</span></code> such
+that <code class="docutils literal notranslate"><span class="pre">U^T</span> <span class="pre">&#64;</span> <span class="pre">U</span> <span class="pre">=</span> <span class="pre">A</span></code>. <code class="docutils literal notranslate"><span class="pre">fill_mode</span></code> must be a compile-time constant.</p>
+<p>Only the triangle of <code class="docutils literal notranslate"><span class="pre">A</span></code> selected by <code class="docutils literal notranslate"><span class="pre">fill_mode</span></code> is read, so the opposite triangle
+may hold anything. <code class="docutils literal notranslate"><span class="pre">A</span></code> itself is not modified; use
+<a class="reference internal" href="warp.tile_cholesky_inplace.html#warp._src.lang.tile_cholesky_inplace" title="warp._src.lang.tile_cholesky_inplace"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_cholesky_inplace()</span></code></a> to factor <code class="docutils literal notranslate"><span class="pre">A</span></code> in place instead.</p>
+<p><code class="docutils literal notranslate"><span class="pre">A</span></code> must be symmetric positive definite.</p>
+<p>This is a cooperative operation, so every thread in the block must call it.</p>
+<p>Supported dtypes are <code class="docutils literal notranslate"><span class="pre">float32</span></code> and <code class="docutils literal notranslate"><span class="pre">float64</span></code>.</p>
+<p>On CUDA devices, Warp uses cuSolverDx when it is built with libmathdx and
+<a class="reference internal" href="../../api_reference/_generated/warp.config.enable_mathdx_solver.html#warp.config.enable_mathdx_solver" title="warp.config.enable_mathdx_solver"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.enable_mathdx_solver</span></code></a> (or the <code class="docutils literal notranslate"><span class="pre">enable_mathdx_solver</span></code> module
+option) is <code class="docutils literal notranslate"><span class="pre">True</span></code>. Otherwise, and on the CPU, it uses a cooperative fallback
+implementation, which is slower than cuSolverDx on CUDA devices.</p>
+<p>Backward propagation computes gradients with respect to the corresponding triangular
+parameterization of <code class="docutils literal notranslate"><span class="pre">A</span></code> (lower triangle when <code class="docutils literal notranslate"><span class="pre">fill_mode=&quot;lower&quot;</span></code>, upper triangle
+when <code class="docutils literal notranslate"><span class="pre">fill_mode=&quot;upper&quot;</span></code>).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>A</strong> – A square, symmetric positive-definite matrix.</p></li>
+<li><p><strong>A</strong> – A square, symmetric positive-definite tile with <code class="docutils literal notranslate"><span class="pre">shape=(N,</span> <span class="pre">N)</span></code>.</p></li>
 <li><p><strong>fill_mode</strong> – <code class="docutils literal notranslate"><span class="pre">&quot;lower&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;upper&quot;</span></code>. Must be a compile-time constant.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A triangular matrix <code class="docutils literal notranslate"><span class="pre">L</span></code> or <code class="docutils literal notranslate"><span class="pre">U</span></code>.</p>
+<dd class="field-even"><p>A new tile in shared memory with the same shape and dtype as <code class="docutils literal notranslate"><span class="pre">A</span></code>, holding the
+factor <code class="docutils literal notranslate"><span class="pre">L</span></code> or <code class="docutils literal notranslate"><span class="pre">U</span></code>. The opposite triangle is zero, so the tile can be used
+directly in a matrix product.</p>
 </dd>
 </dl>
+<p class="rubric">Example</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">solve_spd</span><span class="p">(</span><span class="n">a</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">b</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">ell</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="n">a_tile</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+    <span class="n">b_tile</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+    <span class="n">l_tile</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_cholesky</span><span class="p">(</span><span class="n">a_tile</span><span class="p">)</span>
+    <span class="n">x_tile</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_cholesky_solve</span><span class="p">(</span><span class="n">l_tile</span><span class="p">,</span> <span class="n">b_tile</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">ell</span><span class="p">,</span> <span class="n">l_tile</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">x_tile</span><span class="p">)</span>
+
+<span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mf">4.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">))</span>
+<span class="n">b</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">8.0</span><span class="p">,</span> <span class="mf">15.0</span><span class="p">,</span> <span class="mf">11.0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">))</span>
+<span class="n">ell</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
+
+<span class="c1"># one full warp cooperates on the factorization and solve</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span><span class="n">solve_spd</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">ell</span><span class="p">,</span> <span class="n">x</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="mi">32</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">ell</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="mi">3</span><span class="p">))</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="mi">3</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[[2.    0.    0.   ]
+ [1.    2.    0.   ]
+ [0.    0.5   1.658]]
+[1. 2. 3.]
+</pre></div>
+</div>
 </dd></dl>
 
 </section>

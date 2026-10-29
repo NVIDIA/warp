@@ -39,8 +39,9 @@ on platforms with NVIDIA CUDA support. The following table summarizes platform s
     | **macOS**           | ``x86-64``   | Intel-based Mac      | Discontinued       | None                |
     +---------------------+--------------+----------------------+--------------------+---------------------+
 
-Windows on Arm supports CPU execution and experimental CUDA acceleration through source builds.
-See :ref:`windows-arm64-builds` for requirements and current limitations.
+Windows on Arm supports CPU execution and experimental CUDA acceleration. Starting with Warp 1.19.0,
+PyPI releases and release candidates include a Windows on Arm wheel; nightly builds do not.
+See :ref:`windows-on-arm` for current limitations.
 
 Runtime requirements
 --------------------

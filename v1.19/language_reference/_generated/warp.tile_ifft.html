@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.tile_ifft &#8212; Warp 1.19.0rc1</title>
+    <title>warp.tile_ifft &#8212; Warp 1.19.0rc2</title>
   
   
   
@@ -70,7 +70,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.19.0rc1" />
+  <meta name="docsearch:version" content="1.19.0rc2" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -147,11 +147,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0rc1 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0rc1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0rc2 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0rc2 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.19.0rc1</p>
+    <p class="title logo__title">Warp 1.19.0rc2</p>
   
 </a></div>
     
@@ -291,11 +291,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0rc1 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0rc1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0rc2 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0rc2 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.19.0rc1</p>
+    <p class="title logo__title">Warp 1.19.0rc2</p>
   
 </a>
 
@@ -562,27 +562,20 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#warp._src.lang.tile_ifft" title="Link to this definition">#</a></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Compute the inverse FFT along the last dimension of an N-D tile of data.</p>
-<p>This function cooperatively computes the inverse FFT on a tile of data inplace.
-All leading dimensions are treated as independent batch dimensions.
-The tile must have at least two dimensions.</p>
-<p>The transform is unnormalized, meaning that applying <a class="reference internal" href="warp.tile_fft.html#warp._src.lang.tile_fft" title="warp._src.lang.tile_fft"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_fft()</span></code></a> followed by <a class="reference internal" href="#warp._src.lang.tile_ifft" title="warp._src.lang.tile_ifft"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_ifft()</span></code></a>
-will scale the data by N, where N is the FFT size (the last dimension of the tile).
-Normalization is left to the user to perform as needed.</p>
-<dl class="simple">
-<dt>Supported datatypes are:</dt><dd><ul class="simple">
-<li><p>vec2f, vec2d</p></li>
-</ul>
-</dd>
-</dl>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Compute the inverse FFT along the last dimension of an N-D tile, in place.</p>
+<p>Identical to <a class="reference internal" href="warp.tile_fft.html#warp._src.lang.tile_fft" title="warp._src.lang.tile_fft"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_fft()</span></code></a> apart from the sign of the exponent:
+<code class="docutils literal notranslate"><span class="pre">x[n]</span> <span class="pre">=</span> <span class="pre">sum_k</span> <span class="pre">X[k]</span> <span class="pre">*</span> <span class="pre">exp(+2*pi*i*k*n/N)</span></code>. The transform is unnormalized – it does
+not divide by <code class="docutils literal notranslate"><span class="pre">N</span></code> – so a forward transform followed by an inverse transform
+multiplies the data by <code class="docutils literal notranslate"><span class="pre">N</span></code>. <code class="docutils literal notranslate"><span class="pre">inout</span></code> is overwritten with its inverse transform.</p>
+<p>Supported dtypes, tile requirements, backend selection, and the supported transform
+sizes are the same as for <a class="reference internal" href="warp.tile_fft.html#warp._src.lang.tile_fft" title="warp._src.lang.tile_fft"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_fft()</span></code></a>; see it for details and a usage
+example.</p>
+<p>This is a cooperative operation, so every thread in the block must call it.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>inout</strong> – The input/output tile.</p>
+<dd class="field-odd"><p><strong>inout</strong> – The tile to transform in place.</p>
 </dd>
 </dl>
-<p class="rubric">Notes</p>
-<p>See <a class="reference internal" href="warp.tile_fft.html#warp._src.lang.tile_fft" title="warp._src.lang.tile_fft"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_fft()</span></code></a> for backend selection and supported sizes — the
-same constraints apply to <a class="reference internal" href="#warp._src.lang.tile_ifft" title="warp._src.lang.tile_ifft"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_ifft()</span></code></a>.</p>
 </dd></dl>
 
 </section>

@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.tile_fft &#8212; Warp 1.19.0rc1</title>
+    <title>warp.tile_fft &#8212; Warp 1.19.0rc2</title>
   
   
   
@@ -70,7 +70,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.19.0rc1" />
+  <meta name="docsearch:version" content="1.19.0rc2" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -147,11 +147,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0rc1 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0rc1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0rc2 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0rc2 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.19.0rc1</p>
+    <p class="title logo__title">Warp 1.19.0rc2</p>
   
 </a></div>
     
@@ -291,11 +291,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0rc1 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0rc1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0rc2 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0rc2 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.19.0rc1</p>
+    <p class="title logo__title">Warp 1.19.0rc2</p>
   
 </a>
 
@@ -562,38 +562,70 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/builtins/constants.html#None" title="(in Python v3.15)"><span class="pre">None</span></a></span></span><a class="headerlink" href="#warp._src.lang.tile_fft" title="Link to this definition">#</a></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Compute the forward FFT along the last dimension of an N-D tile of data.</p>
-<p>This function cooperatively computes the forward FFT on a tile of data inplace.
-All leading dimensions are treated as independent batch dimensions.
-The tile must have at least two dimensions.</p>
-<p>The transform is unnormalized, meaning that applying <a class="reference internal" href="#warp._src.lang.tile_fft" title="warp._src.lang.tile_fft"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_fft()</span></code></a> followed by <a class="reference internal" href="warp.tile_ifft.html#warp._src.lang.tile_ifft" title="warp._src.lang.tile_ifft"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_ifft()</span></code></a>
-will scale the data by N, where N is the FFT size (the last dimension of the tile).
-Normalization is left to the user to perform as needed.</p>
-<dl class="simple">
-<dt>Supported datatypes are:</dt><dd><ul class="simple">
-<li><p>vec2f, vec2d</p></li>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Compute the forward FFT along the last dimension of an N-D tile, in place.</p>
+<p>All leading dimensions are treated as independent batches and the last dimension is
+the transform size <code class="docutils literal notranslate"><span class="pre">N</span></code>. The tile must have at least two dimensions and <code class="docutils literal notranslate"><span class="pre">register</span></code>
+storage. <code class="docutils literal notranslate"><span class="pre">inout</span></code> is overwritten with its transform.</p>
+<p>Each element is a <code class="docutils literal notranslate"><span class="pre">vec2</span></code> interpreted as a complex number, with component <code class="docutils literal notranslate"><span class="pre">0</span></code> the
+real part and component <code class="docutils literal notranslate"><span class="pre">1</span></code> the imaginary part. The transform is the standard
+unnormalized DFT, <code class="docutils literal notranslate"><span class="pre">X[k]</span> <span class="pre">=</span> <span class="pre">sum_n</span> <span class="pre">x[n]</span> <span class="pre">*</span> <span class="pre">exp(-2*pi*i*k*n/N)</span></code>, with output bins in the
+usual order <code class="docutils literal notranslate"><span class="pre">k</span> <span class="pre">=</span> <span class="pre">0</span> <span class="pre">...</span> <span class="pre">N-1</span></code>, matching <a class="reference external" href="https://numpy.org/doc/stable/reference/generated/numpy.fft.fft.html#numpy.fft.fft" title="(in NumPy v2.5)"><code class="xref py py-func docutils literal notranslate"><span class="pre">numpy.fft.fft()</span></code></a>. Because no scaling is
+applied, a forward transform followed by an inverse transform multiplies the data by
+<code class="docutils literal notranslate"><span class="pre">N</span></code>; normalization is left to the caller.</p>
+<p>Supported dtypes are <code class="docutils literal notranslate"><span class="pre">vec2f</span></code> and <code class="docutils literal notranslate"><span class="pre">vec2d</span></code>.</p>
+<p>This is a cooperative operation, so every thread in the block must call it.</p>
+<p>Backward propagation applies an inverse FFT along the last dimension to the incoming
+gradient, without dividing by <code class="docutils literal notranslate"><span class="pre">N</span></code>.</p>
+<p>A MathDx-enabled build is not required, but the supported transform sizes depend on
+the backend:</p>
+<ul class="simple">
+<li><p><strong>CPU</strong>: any power-of-two size; non-power-of-two sizes go through an <code class="docutils literal notranslate"><span class="pre">O(N^2)</span></code> DFT
+and support at most 4096 elements per transform.</p></li>
+<li><p><strong>GPU with libmathdx</strong> (cuFFTDx), unless disabled by
+<a class="reference internal" href="../../api_reference/_generated/warp.config.enable_mathdx_fft.html#warp.config.enable_mathdx_fft" title="warp.config.enable_mathdx_fft"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.enable_mathdx_fft</span></code></a> or the <code class="docutils literal notranslate"><span class="pre">enable_mathdx_fft</span></code> module option:
+supported <code class="docutils literal notranslate"><span class="pre">N</span></code> and <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> combinations depend on the build. <code class="docutils literal notranslate"><span class="pre">block_dim</span></code>
+must be at most <code class="docutils literal notranslate"><span class="pre">N/2</span></code>.</p></li>
+<li><p><strong>GPU without libmathdx</strong>, or with cuFFTDx disabled: power-of-two sizes only, and
+<code class="docutils literal notranslate"><span class="pre">N</span></code> must be divisible by <code class="docutils literal notranslate"><span class="pre">block_dim</span></code>. Compiles faster but runs slower than the
+cuFFTDx path.</p></li>
 </ul>
-</dd>
-</dl>
+<p>Unsupported transform sizes or block dimensions raise an exception during kernel
+compilation, usually on the first launch.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>inout</strong> – The input/output tile.</p>
+<dd class="field-odd"><p><strong>inout</strong> – The tile to transform in place.</p>
 </dd>
 </dl>
-<p class="rubric">Notes</p>
-<p>Supported FFT sizes by backend:</p>
-<ul class="simple">
-<li><p><strong>CPU</strong>: Any size. Non-power-of-two sizes are capped at 4096;
-larger non-power-of-two sizes raise <code class="docutils literal notranslate"><span class="pre">ValueError</span></code>.</p></li>
-<li><p><strong>GPU with libmathdx</strong>: Any size. This is the default when Warp
-is built with libmathdx.</p></li>
-<li><p><strong>GPU without libmathdx</strong> (or <code class="docutils literal notranslate"><span class="pre">enable_mathdx_fft=False</span></code>):
-Power-of-two sizes only, and the FFT size must be divisible by
-<code class="docutils literal notranslate"><span class="pre">block_dim</span></code>. Other sizes raise <code class="docutils literal notranslate"><span class="pre">ValueError</span></code>. Slower than the
-libmathdx path.</p></li>
-</ul>
-<p>See <a class="reference internal" href="../../api_reference/_generated/warp.config.enable_mathdx_fft.html#warp.config.enable_mathdx_fft" title="warp.config.enable_mathdx_fft"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.enable_mathdx_fft</span></code></a> to control GPU backend
-selection.</p>
+<p class="rubric">Example</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">spectrum</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec2f</span><span class="p">]):</span>
+    <span class="n">x_tile</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_fft</span><span class="p">(</span><span class="n">x_tile</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">tile_store</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">x_tile</span><span class="p">)</span>
+
+<span class="c1"># two batches of four real samples; the FFT runs along the last dimension</span>
+<span class="n">signal</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">2</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="n">signal</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">]</span>
+<span class="n">signal</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="mf">4.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">signal</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec2f</span><span class="p">)</span>
+
+<span class="c1"># each thread owns two samples from every batch</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch_tiled</span><span class="p">(</span><span class="n">spectrum</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="p">],</span> <span class="n">block_dim</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="mi">3</span><span class="p">))</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[[[10.  0.]
+  [-2.  2.]
+  [-2.  0.]
+  [-2. -2.]]
+
+ [[10.  0.]
+  [ 2. -2.]
+  [ 2.  0.]
+  [ 2.  2.]]]
+</pre></div>
+</div>
 </dd></dl>
 
 </section>

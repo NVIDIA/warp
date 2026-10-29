@@ -9,21 +9,21 @@
       :kernel: true
       :python: true
       :differentiable: true
-      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L196-L217
+      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L197-L218
 
-   Return the signed twist angle of ``q`` around ``axis``.
+   Return the signed twist angle in radians of ``q`` around ``axis``.
    
    Unlike :func:`quat_twist_angle`, this preserves the sign of the twist, so
    rotations by ``+theta`` and ``-theta`` around ``axis`` return opposite
-   values.
+   values. Positive angles follow the right-hand rule about ``axis``.
    
-   The result follows the quaternion branch supplied by ``q``. Since ``q`` and
-   ``-q`` represent the same orientation but different quaternion branches,
-   they may produce signed angles that differ by ``2*pi``.
+   :param axis: Twist axis, with unit length.
+   :param q: Rotation quaternion.
    
-   :param axis: Twist axis. Expected to be normalized by the caller.
-   :param q: Input quaternion in ``(x, y, z, w)`` layout.
-   
-   :returns: Signed twist angle in radians in ``[-2*pi, 2*pi]``.
+   :returns: Signed twist angle in radians, in ``[-pi, pi]`` if ``q[3] >= 0`` and
+             in ``[-2*pi, 2*pi]`` otherwise, so ``q`` and ``-q`` can return different
+             angles even though they represent the same rotation. It is unspecified
+             when ``q`` is a rotation of 180 degrees about an axis perpendicular to
+             ``axis``.
    :rtype: float
    
