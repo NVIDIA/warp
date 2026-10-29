@@ -633,10 +633,6 @@ CPU execution and CUDA acceleration. It uses CUDA Toolkit 13.4 and has the same 
 as the other default wheels. Install it with <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">warp-lang</span></code> from an Arm64 Python environment;
 an x86-64 Python running under emulation installs the Windows x86-64 wheel instead.
 Nightly builds do not include a Windows on Arm wheel, and there is no <code class="docutils literal notranslate"><span class="pre">+cu12</span></code> variant.</p>
-<p>The Windows on Arm wheel is currently built without MathDx. Tile matrix multiplication, Cholesky, and triangular-solve
-operations use Warp’s built-in implementations instead, which can be slower.
-Without MathDx, <a class="reference internal" href="../language_reference/_generated/warp.tile_fft.html#warp._src.lang.tile_fft" title="warp._src.lang.tile_fft"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_fft()</span></code></a> and
-<a class="reference internal" href="../language_reference/_generated/warp.tile_ifft.html#warp._src.lang.tile_ifft" title="warp._src.lang.tile_ifft"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_ifft()</span></code></a> on CUDA devices support only power-of-two sizes.</p>
 </section>
 <section id="cuda-requirements">
 <span id="id2"></span><h2>CUDA Requirements<a class="headerlink" href="#cuda-requirements" title="Link to this heading">#</a></h2>
@@ -751,9 +747,6 @@ library will be reflected in the Python package.</p>
 <span id="windows-arm64-builds"></span><h3>Windows on Arm builds<a class="headerlink" href="#windows-on-arm-builds" title="Link to this heading">#</a></h3>
 <p>Building on Windows on Arm requires an Arm64 Python environment and Visual Studio’s ARM64 C++ build tools.
 CUDA-enabled builds require CUDA Toolkit 13.4 or newer; with the CMake build, they also require CMake 4.4 or newer.</p>
-<p>libmathdx builds for Windows on Arm are not currently available. To build without it, pass
-<code class="docutils literal notranslate"><span class="pre">--no-use-libmathdx</span></code> to <code class="docutils literal notranslate"><span class="pre">build_lib.py</span></code> or <code class="docutils literal notranslate"><span class="pre">-DWARP_USE_LIBMATHDX=OFF</span></code> to CMake.
-See <a class="reference internal" href="#windows-on-arm"><span class="std std-ref">Windows on Arm</span></a> for the limitations of builds without MathDx.</p>
 </section>
 <section id="cmake-build">
 <h3>CMake build<a class="headerlink" href="#cmake-build" title="Link to this heading">#</a></h3>
