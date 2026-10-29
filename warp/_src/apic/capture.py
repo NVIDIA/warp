@@ -542,9 +542,8 @@ class APICapture:
 
         # Build APICLaunchInfo
         info = APICLaunchInfo()
-        key_str = kernel.key if isinstance(kernel.key, str) else kernel.key.decode("utf-8")
         hash_str = self._hash_to_str(module_exec.module_hash)
-        info.kernel_key = key_str.encode("utf-8")
+        info.kernel_key = module_exec.get_kernel_mangled_name(kernel).encode("utf-8")
         info.module_hash = hash_str.encode("utf-8")
         info.is_forward = 0 if adjoint else 1
         info.params = param_array
@@ -594,12 +593,12 @@ class APICapture:
                 "cuda_compile_artifact": module_exec.cuda_compile_artifact,
             }
 
-        kernel_key = kernel.key
+        # Key kernels by this executable's symbol: overloads of a generic kernel share
+        # kernel.key and can share a module, and another block-size variant may have
+        # changed the kernel's current hash (so not kernel.get_mangled_name()).
+        kernel_key = name = module_exec.get_kernel_mangled_name(kernel)
         kernel_id = (module_hash, kernel_key)
         if kernel_id not in self.collected_kernels:
-            # Another block-size variant may have changed the kernel's current hash.
-            # Save this executable's symbol, not kernel.get_mangled_name().
-            name = module_exec.get_kernel_mangled_name(kernel)
             options = kernel.module.options | kernel.options
 
             if self.device.is_cuda:
