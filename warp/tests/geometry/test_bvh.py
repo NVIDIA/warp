@@ -1097,6 +1097,139 @@ def tile_bvh_query_valid_ray_kernel(
             wp.atomic_add(bounds_intersected, result_idx, 1)
 
 
+@wp.kernel
+def tile_bvh_query_aabb_batch_kernel(
+    bvh_id: wp.uint64,
+    lowers: wp.array[wp.vec3],
+    uppers: wp.array[wp.vec3],
+    counts: wp.array[int],
+    checksums: wp.array[wp.int64],
+):
+    q = wp.tid()
+    query = wp.tile_bvh_query_aabb(bvh_id, lowers[q], uppers[q])
+
+    while wp.tile_query_valid(query):
+        result_idx = wp.untile(wp.tile_bvh_query_next(query))
+        if result_idx >= 0:
+            wp.atomic_add(counts, q, 1)
+            wp.atomic_add(checksums, q, wp.int64(result_idx))
+
+
+@wp.kernel
+def bvh_query_aabb_batch_kernel(
+    bvh_id: wp.uint64,
+    lowers: wp.array[wp.vec3],
+    uppers: wp.array[wp.vec3],
+    counts: wp.array[int],
+    checksums: wp.array[wp.int64],
+):
+    q = wp.tid()
+    query = wp.bvh_query_aabb(bvh_id, lowers[q], uppers[q])
+
+    index = int(0)
+    while wp.bvh_query_next(query, index):
+        counts[q] += 1
+        checksums[q] += wp.int64(index)
+
+
+def test_tile_bvh_query_aabb_dense(test, device):
+    """Query boxes overlapping many items must not overflow the tile traversal stack."""
+    # Item bounds of the triangles of a UV sphere with 59,168 triangles. With a 256-thread
+    # block, boxes overlapping a large part of it used to push more nodes than the shared
+    # traversal stack holds (cuBQL trees in particular), which read garbage node indices.
+    rings = 172
+    theta = np.linspace(0.0, np.pi, rings + 1)
+    phi = np.linspace(0.0, 2.0 * np.pi, rings, endpoint=False)
+    t, p = np.meshgrid(theta, phi, indexing="ij")
+    points = np.stack((np.sin(t) * np.cos(p), np.sin(t) * np.sin(p), np.cos(t)), axis=-1).reshape(-1, 3)
+    i, j = np.meshgrid(np.arange(rings), np.arange(rings), indexing="ij")
+    a = i * rings + j
+    b = i * rings + (j + 1) % rings
+    indices = np.concatenate((np.stack((a, a + rings, b), axis=-1), np.stack((b, a + rings, b + rings), axis=-1)))
+    triangles = points[indices.reshape(-1, 3)]
+    item_lowers = wp.array(triangles.min(axis=1), dtype=wp.vec3, device=device)
+    item_uppers = wp.array(triangles.max(axis=1), dtype=wp.vec3, device=device)
+
+    rng = np.random.default_rng(42)
+    num_queries = 4096
+    centers = rng.uniform(-2.5, 2.5, size=(num_queries, 3))
+    half_extents = rng.uniform(0.4, 2.5, size=(num_queries, 3))
+    lowers = wp.array(centers - half_extents, dtype=wp.vec3, device=device)
+    uppers = wp.array(centers + half_extents, dtype=wp.vec3, device=device)
+
+    constructors = ["sah", "median", "lbvh"]
+    if wp.is_cubql_available():
+        constructors.append("cubql")
+
+    for constructor in constructors:
+        bvh = wp.Bvh(item_lowers, item_uppers, constructor=constructor)
+
+        expected_counts = wp.zeros(num_queries, dtype=int, device=device)
+        expected_checksums = wp.zeros(num_queries, dtype=wp.int64, device=device)
+        wp.launch(
+            bvh_query_aabb_batch_kernel,
+            dim=num_queries,
+            inputs=[bvh.id, lowers, uppers, expected_counts, expected_checksums],
+            device=device,
+        )
+
+        # Also cover a block size that is not a power of two
+        for block_dim in (256, 96):
+            counts = wp.zeros(num_queries, dtype=int, device=device)
+            checksums = wp.zeros(num_queries, dtype=wp.int64, device=device)
+            wp.launch_tiled(
+                tile_bvh_query_aabb_batch_kernel,
+                dim=num_queries,
+                inputs=[bvh.id, lowers, uppers, counts, checksums],
+                device=device,
+                block_dim=block_dim,
+            )
+            msg = f"constructor={constructor}, block_dim={block_dim}"
+            np.testing.assert_array_equal(counts.numpy(), expected_counts.numpy(), err_msg=msg)
+            np.testing.assert_array_equal(checksums.numpy(), expected_checksums.numpy(), err_msg=msg)
+
+
+def test_tile_bvh_query_ray_dense(test, device):
+    """A ray hitting every item must not overflow the tile traversal stack."""
+    # 65,536 boxes strung along the x-axis, all crossed by one ray. With a 256-thread block,
+    # traversing every node used to push more nodes than the shared traversal stack holds.
+    num_items = 65536
+    rng = np.random.default_rng(42)
+    x = np.sort(rng.uniform(0.0, num_items, size=num_items))
+    lowers = np.stack((x, rng.uniform(-1.0, -0.1, num_items), rng.uniform(-1.0, -0.1, num_items)), axis=1)
+    uppers = np.stack((x + 0.5, rng.uniform(0.1, 1.0, num_items), rng.uniform(0.1, 1.0, num_items)), axis=1)
+    item_lowers = wp.array(lowers, dtype=wp.vec3, device=device)
+    item_uppers = wp.array(uppers, dtype=wp.vec3, device=device)
+    start = wp.vec3(-1.0, 0.0, 0.0)
+    direction = wp.vec3(1.0, 0.0, 0.0)
+
+    constructors = ["sah", "median", "lbvh"]
+    if wp.is_cubql_available():
+        constructors.append("cubql")
+
+    for constructor in constructors:
+        bvh = wp.Bvh(item_lowers, item_uppers, constructor=constructor)
+
+        expected = wp.zeros(num_items, dtype=int, device=device)
+        wp.launch(bvh_query_ray, dim=1, inputs=[bvh.id, start, direction, expected], device=device)
+        expected = expected.numpy()
+        test.assertEqual(expected.sum(), num_items)
+
+        # Also cover a block size that is not a power of two
+        for block_dim in (256, 96):
+            bounds_intersected = wp.zeros(num_items, dtype=int, device=device)
+            wp.launch_tiled(
+                tile_bvh_query_ray_kernel,
+                dim=1,
+                inputs=[bvh.id, start, direction, bounds_intersected],
+                device=device,
+                block_dim=block_dim,
+            )
+            np.testing.assert_array_equal(
+                bounds_intersected.numpy(), expected, err_msg=f"constructor={constructor}, block_dim={block_dim}"
+            )
+
+
 devices = get_test_devices()
 cuda_devices = get_cuda_test_devices()
 cuda_devices_with_mempool = get_cuda_test_devices_with_mempool()
@@ -1223,6 +1356,8 @@ add_function_test(
 add_function_test(TestBvh, "test_bvh_refit_root_leaves", test_bvh_refit_root_leaves, devices=cuda_devices)
 add_function_test(TestBvh, "test_tile_bvh_query_aabb", test_tile_bvh_query, devices=devices)
 add_function_test(TestBvh, "test_tile_bvh_query_ray", test_tile_bvh_query_ray, devices=devices)
+add_function_test(TestBvh, "test_tile_bvh_query_aabb_dense", test_tile_bvh_query_aabb_dense, devices=cuda_devices)
+add_function_test(TestBvh, "test_tile_bvh_query_ray_dense", test_tile_bvh_query_ray_dense, devices=cuda_devices)
 
 # Compatibility tests for the deprecated bvh_query_*_tiled() aliases.
 add_function_test(TestBvh, "test_bvh_query_aabb_tiled", test_bvh_query_aabb_tiled, devices=devices)
