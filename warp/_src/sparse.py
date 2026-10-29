@@ -4362,6 +4362,20 @@ def _bsr_mm_add_scaled_existing_values(
     )
 
 
+def _validate_tile_size(device: wp._src.context.Device, tile_size: int) -> None:
+    """Raise if ``device`` can't run an explicitly requested ``tile_size`` threads per block.
+
+    CPU launches run one thread per block unless ``wp.config.enable_cpu_blocks`` is set,
+    and the tiled kernels need every lane of a tile in the same block.
+    """
+    if tile_size > 0 and wp._src.context._resolve_launch_block_dim(device, tile_size) != tile_size:
+        raise ValueError(
+            f"tile_size={tile_size} needs {tile_size} threads per block, but CPU launches run one thread "
+            "per block unless wp.config.enable_cpu_blocks is True. Enable it, or pass tile_size=0 to "
+            "choose automatically or a negative tile_size to disable tiles."
+        )
+
+
 def _bsr_mm_compute_values_dispatch(
     x: BsrMatrix,
     y: BsrMatrix,
@@ -4383,6 +4397,7 @@ def _bsr_mm_compute_values_dispatch(
     device = z.device
     max_subblock_dim = 12
     if tile_size > 0:
+        # bsr_mm() already rejected tile sizes the device can't run.
         use_tiles = True
     elif tile_size < 0:
         use_tiles = False
@@ -4506,8 +4521,9 @@ def bsr_mm(
         max_new_nnz: If provided, the maximum number of non-zeros for the matrix-matrix product result
            (not counting the existing non-zeros in ``z``).
         tile_size: If a positive integer, use tiles of this size to compute the matrix-matrix product.
-          If negative, disable tile-based computation. Defaults to ``0``, which determines whether to
-          use tiles using using an heuristic based on the matrix shape and number of non-zeros..
+          On CPU, values greater than ``1`` require :attr:`warp.config.enable_cpu_blocks` and otherwise
+          raise a :class:`ValueError`. If negative, disable tile-based computation. Defaults to ``0``,
+          which determines whether to use tiles using a heuristic based on the matrix shape and number of non-zeros.
         topology: Optional topology policy. ``"compact"`` keeps the existing
           compact rebuild behavior, ``"masked"`` keeps the non-zero topology of
           ``z`` unchanged, and ``"padded"`` writes the result topology into
@@ -4569,6 +4585,7 @@ def bsr_mm(
         )
 
     device = z.values.device
+    _validate_tile_size(device, tile_size)
 
     if topology == "padded":
         status = z._ensure_status()
@@ -5072,9 +5089,11 @@ def bsr_mv(
         work_buffer: Temporary storage is required if and only if ``x`` and ``y`` are the same vector.
           If provided, the ``work_buffer`` array will be used for this purpose,
           otherwise a temporary allocation will be performed.
-        tile_size: If a positive integer, use tiles of this size to compute the matrix-matrix product.
-          If negative, disable tile-based computation. Defaults to ``0``, which determines whether to
-          use tiles using using an heuristic based on the matrix shape and number of non-zeros..
+        tile_size: If a positive integer, use tiles of this size to compute the matrix-vector product.
+          On CPU, values greater than ``1`` require :attr:`warp.config.enable_cpu_blocks` and otherwise
+          raise a :class:`ValueError`. Ignored when ``transpose`` is ``True``. If negative, disable
+          tile-based computation. Defaults to ``0``, which determines whether to use tiles using a heuristic
+          based on the matrix shape and number of non-zeros.
     """
 
     A, A_scale = _extract_matrix_and_scale(A)
@@ -5102,6 +5121,10 @@ def bsr_mv(
         raise ValueError(
             f"A, x, and y must reside on the same device, got {A.values.device}, {x.device} and {y.device}"
         )
+
+    # The transposed product never uses tiles.
+    if not transpose:
+        _validate_tile_size(device, tile_size)
 
     if x.ptr == y.ptr:
         # Aliasing case, need temporary storage

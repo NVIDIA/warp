@@ -1457,6 +1457,90 @@ def make_test_bsr_multiply_deep(block_shape, scalar_type):
     return test_bsr_multiply_deep
 
 
+def _make_dense_bsr(nrow, ncol, block_shape, rng, device):
+    rows, cols = np.meshgrid(np.arange(nrow), np.arange(ncol), indexing="ij")
+    values = rng.random(size=(nrow * ncol, block_shape[0], block_shape[1]))
+    return bsr_from_triplets(
+        nrow,
+        ncol,
+        wp.array(rows.flatten(), dtype=int, device=device),
+        wp.array(cols.flatten(), dtype=int, device=device),
+        wp.array(values, dtype=wp.float64, device=device),
+    )
+
+
+def make_test_bsr_mv_tile_size(block_shape):
+    def test_bsr_mv_tile_size(test, device):
+        """Test that bsr_mv honors positive tile sizes on a device that runs full tiles.
+
+        Every row holds 80 blocks, so all lanes of a 64-wide tile have work.
+        """
+        rng = np.random.default_rng(123)
+
+        A = _make_dense_bsr(6, 80, block_shape, rng, device)
+        A_dense = _bsr_to_dense(A)
+
+        x_np = rng.random(size=80 * block_shape[1])
+        y0_np = rng.random(size=6 * block_shape[0])
+        x = wp.array(x_np, dtype=wp.float64, device=device)
+
+        y = wp.array(y0_np, dtype=wp.float64, device=device)
+        bsr_mv(A, x, y, alpha=2.0, beta=0.5, tile_size=32)
+        assert_np_equal(y.numpy(), 2.0 * A_dense @ x_np + 0.5 * y0_np, tol=1.0e-10)
+
+        y = wp.array(y0_np, dtype=wp.float64, device=device)
+        bsr_mv(A, x, y, alpha=2.0, beta=0.0, tile_size=64)
+        assert_np_equal(y.numpy(), 2.0 * A_dense @ x_np, tol=1.0e-10)
+
+        y = bsr_mv(A, x, tile_size=64)
+        assert_np_equal(y.numpy(), A_dense @ x_np, tol=1.0e-10)
+
+        y = wp.array(y0_np, dtype=wp.float64, device=device)
+        bsr_mv(A, x, y, alpha=2.0, beta=0.5, tile_size=1)
+        assert_np_equal(y.numpy(), 2.0 * A_dense @ x_np + 0.5 * y0_np, tol=1.0e-10)
+
+    return test_bsr_mv_tile_size
+
+
+def make_test_bsr_mm_tile_size(block_shape):
+    def test_bsr_mm_tile_size(test, device):
+        """Test that bsr_mm honors positive tile sizes on a device that runs full tiles, for every result topology.
+
+        Every row of ``x`` holds 80 blocks, so all lanes of a 64-wide tile have work.
+        """
+        rng = np.random.default_rng(123)
+
+        x = _make_dense_bsr(4, 80, block_shape, rng, device)
+        y = _make_dense_bsr(80, 3, block_shape[::-1], rng, device)
+        xy_dense = _bsr_to_dense(x) @ _bsr_to_dense(y)
+        z_block_type = wp.types.matrix(shape=(block_shape[0], block_shape[0]), dtype=wp.float64)
+
+        z = bsr_from_triplets(
+            4,
+            3,
+            wp.array([0, 1, 3], dtype=int, device=device),
+            wp.array([2, 0, 1], dtype=int, device=device),
+            wp.array(rng.random(size=(3, block_shape[0], block_shape[0])), dtype=wp.float64, device=device),
+        )
+        z0_dense = _bsr_to_dense(z)
+        bsr_mm(x, y, z, alpha=2.0, beta=0.5, tile_size=32)
+        assert_np_equal(_bsr_to_dense(z), 2.0 * xy_dense + 0.5 * z0_dense, tol=1.0e-10)
+
+        z = bsr_mm(x, y, tile_size=64)
+        assert_np_equal(_bsr_to_dense(z), xy_dense, tol=1.0e-10)
+
+        z = bsr_diag(rows_of_blocks=4, cols_of_blocks=3, block_type=z_block_type, device=device)
+        bsr_mm(x, y, z, topology="masked", tile_size=64)
+        diag_mask = np.kron(np.eye(4, 3), np.ones((block_shape[0], block_shape[0])))
+        assert_np_equal(_bsr_to_dense(z), diag_mask * xy_dense, tol=1.0e-10)
+
+        z = bsr_zeros(4, 3, z_block_type, device=device, row_capacity=3)
+        bsr_mm(x, y, z, topology="padded", tile_size=64)
+        assert_np_equal(_bsr_to_dense(z), xy_dense, tol=1.0e-10)
+
+    return test_bsr_mm_tile_size
+
+
 def test_bsr_mm_max_new_nnz(test, device):
     """Test BSR matrix multiplication with ``max_new_nnz``."""
     A = bsr_from_triplets(
@@ -2023,6 +2107,66 @@ class TestSparse(unittest.TestCase):
         diag_pruned = _bsr_pruned(diag_copy)
         self.assertEqual(diag_pruned.nnz_sync(), 0)
 
+    @unittest.skipUnless(wp.is_cpu_available(), "Requires CPU support")
+    def test_bsr_mv_tile_size_cpu_blocks(self):
+        with mock.patch.object(wp.config, "enable_cpu_blocks", True):
+            make_test_bsr_mv_tile_size((3, 2))(self, "cpu")
+
+    @unittest.skipUnless(wp.is_cpu_available(), "Requires CPU support")
+    def test_bsr_mm_tile_size_cpu_blocks(self):
+        with mock.patch.object(wp.config, "enable_cpu_blocks", True):
+            make_test_bsr_mm_tile_size((3, 2))(self, "cpu")
+
+    @unittest.skipUnless(wp.is_cpu_available(), "Requires CPU support")
+    def test_bsr_mv_tile_size_without_cpu_blocks(self):
+        rng = np.random.default_rng(123)
+
+        A = _make_dense_bsr(6, 80, (3, 2), rng, "cpu")
+        A_dense = _bsr_to_dense(A)
+
+        x_np = rng.random(size=80 * 2)
+        y0_np = rng.random(size=6 * 3)
+        x = wp.array(x_np, dtype=wp.float64, device="cpu")
+        y = wp.array(y0_np, dtype=wp.float64, device="cpu")
+
+        with mock.patch.object(wp.config, "enable_cpu_blocks", False):
+            with self.assertRaisesRegex(ValueError, r"tile_size=32 .* wp\.config\.enable_cpu_blocks is True"):
+                bsr_mv(A, x, y, alpha=2.0, beta=0.5, tile_size=32)
+            assert_np_equal(y.numpy(), y0_np)
+
+            bsr_mv(A, x, y, alpha=2.0, beta=0.5, tile_size=1)
+            assert_np_equal(y.numpy(), 2.0 * A_dense @ x_np + 0.5 * y0_np, tol=1.0e-10)
+
+            y = wp.array(y0_np, dtype=wp.float64, device="cpu")
+            x = bsr_mv(A, y, transpose=True, tile_size=32)
+            assert_np_equal(x.numpy(), A_dense.T @ y0_np, tol=1.0e-10)
+
+    @unittest.skipUnless(wp.is_cpu_available(), "Requires CPU support")
+    def test_bsr_mm_tile_size_without_cpu_blocks(self):
+        rng = np.random.default_rng(123)
+
+        x = _make_dense_bsr(4, 80, (3, 2), rng, "cpu")
+        y = _make_dense_bsr(80, 3, (2, 3), rng, "cpu")
+        xy_dense = _bsr_to_dense(x) @ _bsr_to_dense(y)
+
+        z = bsr_from_triplets(
+            4,
+            3,
+            wp.array([0, 1, 3], dtype=int, device="cpu"),
+            wp.array([2, 0, 1], dtype=int, device="cpu"),
+            wp.array(rng.random(size=(3, 3, 3)), dtype=wp.float64, device="cpu"),
+        )
+        z0_dense = _bsr_to_dense(z)
+
+        with mock.patch.object(wp.config, "enable_cpu_blocks", False):
+            with self.assertRaisesRegex(ValueError, r"tile_size=32 .* wp\.config\.enable_cpu_blocks is True"):
+                bsr_mm(x, y, z, alpha=2.0, beta=0.5, tile_size=32)
+            self.assertEqual(z.nnz, 3)
+            assert_np_equal(_bsr_to_dense(z), z0_dense)
+
+            bsr_mm(x, y, z, alpha=2.0, beta=0.5, tile_size=1)
+            assert_np_equal(_bsr_to_dense(z), 2.0 * xy_dense + 0.5 * z0_dense, tol=1.0e-10)
+
 
 add_function_test(TestSparse, "test_csr_from_triplets", test_csr_from_triplets, devices=devices)
 add_function_test(TestSparse, "test_bsr_from_triplets", test_bsr_from_triplets, devices=devices)
@@ -2086,6 +2230,15 @@ add_function_test(
 add_function_test(TestSparse, "test_csr_mv", make_test_bsr_mv((1, 1), wp.float32), devices=devices)
 add_function_test(TestSparse, "test_bsr_mv_1_3", make_test_bsr_mv((1, 3), wp.float32), devices=devices)
 add_function_test(TestSparse, "test_bsr_mv_3_3", make_test_bsr_mv((3, 3), wp.float64), devices=devices)
+
+add_function_test(TestSparse, "test_csr_mv_tile_size", make_test_bsr_mv_tile_size((1, 1)), devices=cuda_test_devices)
+add_function_test(
+    TestSparse, "test_bsr_mv_tile_size_3_2", make_test_bsr_mv_tile_size((3, 2)), devices=cuda_test_devices
+)
+add_function_test(TestSparse, "test_csr_mm_tile_size", make_test_bsr_mm_tile_size((1, 1)), devices=cuda_test_devices)
+add_function_test(
+    TestSparse, "test_bsr_mm_tile_size_3_2", make_test_bsr_mm_tile_size((3, 2)), devices=cuda_test_devices
+)
 
 add_function_test(TestSparse, "test_capturability", test_capturability, devices=cuda_test_devices_with_mempool)
 add_function_test(
