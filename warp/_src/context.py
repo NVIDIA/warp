@@ -10956,35 +10956,34 @@ def pack_arg(kernel, arg_type, arg_name, value, device, adjoint=False):
             if not array_matches:
                 # if a regular Warp array is required, try converting from __cuda_array_interface__ or __array_interface__
                 if value_family is None and warp._src.types.matches_array_class(arg_type, warp.array):
+                    interface = None
                     if device.is_cuda:
                         # check for __cuda_array_interface__
                         try:
                             interface = value.__cuda_array_interface__
                         except AttributeError:
                             pass
-                        else:
-                            return warp._src.types.array_ctype_from_interface(
-                                interface, dtype=arg_type.dtype, owner=value
-                            )
                     else:
                         # check for __array_interface__
                         try:
                             interface = value.__array_interface__
                         except AttributeError:
-                            pass
-                        else:
-                            return warp._src.types.array_ctype_from_interface(
-                                interface, dtype=arg_type.dtype, owner=value
+                            # check for __array__() method, e.g. Torch CPU tensors
+                            try:
+                                interface = value.__array__().__array_interface__
+                            except AttributeError:
+                                pass
+
+                    if interface is not None:
+                        array_ctype = warp._src.types.array_ctype_from_interface(
+                            interface, dtype=arg_type.dtype, owner=value
+                        )
+                        if array_ctype.ndim != arg_type.ndim:
+                            adj = "adjoint " if adjoint else ""
+                            raise RuntimeError(
+                                f"Error launching kernel '{kernel.key}', {adj}argument '{arg_name}' expects an array with {arg_type.ndim} dimension(s) but the passed array has {array_ctype.ndim} dimension(s)."
                             )
-                        # check for __array__() method, e.g. Torch CPU tensors
-                        try:
-                            interface = value.__array__().__array_interface__
-                        except AttributeError:
-                            pass
-                        else:
-                            return warp._src.types.array_ctype_from_interface(
-                                interface, dtype=arg_type.dtype, owner=value
-                            )
+                        return array_ctype
 
                 adj = "adjoint " if adjoint else ""
                 raise RuntimeError(
