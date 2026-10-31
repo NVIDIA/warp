@@ -12,6 +12,7 @@
 #endif
 
 namespace wp {
+WP_TILE_DEFAULT_DEVICE_BEGIN
 
 
 // After this threshold, using segmented_sort from cub is faster
@@ -1372,6 +1373,7 @@ adj_tile_sort(TileK& t, TileV& t2, int start, int length, TileK& adj_t1, TileV& 
     // permutation to adj outputs within [start, start+length)
 }
 
+WP_TILE_DEFAULT_DEVICE_END
 }  // namespace wp
 
 #if defined(__clang__)

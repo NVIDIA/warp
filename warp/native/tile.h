@@ -237,7 +237,19 @@ template <int BlockDim> WP_FORCEINLINE int tile_thread_idx()
 
 */
 
+// Some toolchains compile the tile headers without a default device execution
+// space, and the entry points below are not all annotated individually. These two
+// markers bracket the regions that are device code, so such a build can define
+// them to whatever its compiler needs. Both default to nothing, so every build
+// that does not define them sees exactly the code it saw before.
+#ifndef WP_TILE_DEFAULT_DEVICE_BEGIN
+#define WP_TILE_DEFAULT_DEVICE_BEGIN
+#endif
+#ifndef WP_TILE_DEFAULT_DEVICE_END
+#define WP_TILE_DEFAULT_DEVICE_END
+#endif
 namespace wp {
+WP_TILE_DEFAULT_DEVICE_BEGIN
 
 // Primary template
 template <typename T, typename U> struct is_same {
@@ -5456,9 +5468,11 @@ CUDA_CALLABLE void adj_tile_sub_inplace(
 // or cuFFTDx LTO at template-instantiation time based on `wp_is_null_func`.
 // tile_fft.h opens its own `namespace wp { ... }`, so we close the surrounding
 // one to avoid nesting it as `wp::wp`.
+WP_TILE_DEFAULT_DEVICE_END
 }  // namespace wp
 #include "tile_fft.h"
 namespace wp {
+WP_TILE_DEFAULT_DEVICE_BEGIN
 
 template <typename Tile> inline CUDA_CALLABLE auto tile_transpose(Tile& t)
 {
@@ -6326,6 +6340,7 @@ template <typename T, int Capacity> inline CUDA_CALLABLE int tile_stack_count(ti
     return *s.count;
 }
 
+WP_TILE_DEFAULT_DEVICE_END
 }  // namespace wp
 
 

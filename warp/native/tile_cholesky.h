@@ -45,6 +45,7 @@
 #endif  // __clang__
 
 namespace wp {
+WP_TILE_DEFAULT_DEVICE_BEGIN
 
 namespace partitioned_gemm {
 
@@ -512,6 +513,7 @@ CUDA_CALLABLE void adj_tile_cholesky_inplace(Fwd fun_forward, TileA& A, AdjFwd a
 }
 
 
+WP_TILE_DEFAULT_DEVICE_END
 }  // namespace wp
 
 #ifdef __clang__
