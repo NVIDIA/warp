@@ -4999,6 +4999,9 @@ class array(Array[DType, NDim]):
             shape.append(self.shape[a])
             strides.append(self.strides[a])
 
+        if len({a % self.ndim for a in axes}) != len(axes):
+            raise RuntimeError(f"repeated axis in transpose: {tuple(axes)}")
+
         a = array(
             ptr=self.ptr,
             dtype=self.dtype,

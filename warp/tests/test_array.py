@@ -603,6 +603,20 @@ def test_transpose(test, device):
     assert_np_equal(arr.transpose().numpy(), np_arr.transpose())
 
 
+def test_transpose_repeated_axis(test, device):
+    """A repeated axis would make a view that aliases elements and reads past the end of the array."""
+    arr = wp.zeros((2, 3), dtype=float, device=device)
+    for axes in ((0, 0), (1, 1), (1, -1)):
+        with test.assertRaisesRegex(RuntimeError, "repeated axis"):
+            arr.transpose(axes)
+
+    arr3d = wp.zeros((2, 3, 4), dtype=float, device=device)
+    with test.assertRaisesRegex(RuntimeError, "repeated axis"):
+        arr3d.transpose((0, 2, 0))
+
+    test.assertEqual(arr3d.transpose((0, -1, 1)).shape, (2, 4, 3))
+
+
 def test_fill_scalar(test, device):
     dim_x = 4
 
@@ -4242,6 +4256,7 @@ add_function_test(TestArray, "test_reshape", test_reshape, devices=devices)
 
 add_function_test(TestArray, "test_slicing", test_slicing, devices=devices)
 add_function_test(TestArray, "test_transpose", test_transpose, devices=devices)
+add_function_test(TestArray, "test_transpose_repeated_axis", test_transpose_repeated_axis, devices=devices)
 add_function_test(TestArray, "test_view", test_view, devices=devices)
 add_function_test(TestArray, "test_clone_adjoint", test_clone_adjoint, devices=devices)
 add_function_test(TestArray, "test_assign_adjoint", test_assign_adjoint, devices=devices)
