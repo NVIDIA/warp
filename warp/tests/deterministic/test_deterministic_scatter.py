@@ -99,6 +99,205 @@ def atomic_sub_kernel(
     wp.atomic_sub(output, idx, data[tid])
 
 
+@wp.kernel(
+    module="unique",
+    module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN},
+    deterministic_deferred_atomics=("mass",),
+)
+def deferred_tree_reduce_kernel(parent: wp.array[wp.int32], level: wp.array[wp.int32], mass: wp.array[wp.float32]):
+    """Accumulate one level of a tree using safe pre-atomic reads."""
+    body = level[wp.tid()]
+    wp.atomic_add(mass, parent[body], mass[body])
+
+
+@wp.func
+def deferred_tree_reduce_helper(
+    parent: wp.array[wp.int32], level: wp.array[wp.int32], mass: wp.array[wp.float32], tid: int
+):
+    """Tree-level reduction helper whose argument is remapped by its caller."""
+    body = level[tid]
+    wp.atomic_add(mass, parent[body], mass[body])
+
+
+@wp.kernel(
+    module="unique",
+    module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN},
+    deterministic_deferred_atomics=("mass",),
+)
+def deferred_tree_reduce_helper_kernel(
+    parent: wp.array[wp.int32], level: wp.array[wp.int32], mass: wp.array[wp.float32]
+):
+    """Call the tree-level helper with a declared deferred target."""
+    deferred_tree_reduce_helper(parent, level, mass, wp.tid())
+
+
+@wp.kernel(
+    module="unique",
+    module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN},
+    deterministic_deferred_atomics=("out",),
+)
+def declared_deferred_read_after_kernel(out: wp.array[wp.float32], observed: wp.array[wp.float32]):
+    """Unsafe read-after-atomic pattern that must remain rejected."""
+    wp.atomic_add(out, 0, 1.0)
+    observed[0] = out[0]
+
+
+@wp.kernel(
+    module="unique",
+    module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN},
+    deterministic_deferred_atomics=("out",),
+)
+def declared_deferred_store_kernel(out: wp.array[wp.float32]):
+    """Direct stores remain unsafe even when pre-atomic reads are declared."""
+    out[1] = 5.0
+    wp.atomic_add(out, 0, 1.0)
+
+
+@wp.kernel(
+    module="unique",
+    module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN},
+    deterministic_deferred_atomics=("out",),
+)
+def declared_deferred_dynamic_for_read_kernel(count: int, out: wp.array[wp.float32]):
+    """Exercise a repeated read-after-update hazard in a dynamic loop."""
+    for _ in range(count):
+        value = out[0]
+        wp.atomic_add(out, 0, value)
+
+
+@wp.kernel(
+    module="unique",
+    module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN},
+    deterministic_deferred_atomics=("out",),
+)
+def declared_deferred_dynamic_while_read_kernel(count: int, out: wp.array[wp.float32]):
+    """Exercise the repeated read-after-update hazard in a while loop."""
+    i = int(0)
+    while i < count:
+        value = out[0]
+        wp.atomic_add(out, 0, value)
+        i = i + 1
+
+
+@wp.func
+def deferred_repeated_read_helper(out: wp.array[wp.float32]):
+    """Read a value before atomically accumulating it into the same array."""
+    value = out[0]
+    wp.atomic_add(out, 0, value)
+
+
+@wp.func
+def deferred_atomic_then_read_helper(
+    src: wp.array[wp.float32], dst: wp.array[wp.float32], observed: wp.array[wp.float32]
+):
+    """Read through a separate parameter after a deferred atomic update."""
+    wp.atomic_add(dst, 0, 1.0)
+    observed[0] = src[0]
+
+
+@wp.kernel(
+    module="unique",
+    module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN},
+    deterministic_deferred_atomics=("out",),
+)
+def declared_deferred_helper_read_after_kernel(out: wp.array[wp.float32], observed: wp.array[wp.float32]):
+    """Map a helper's read-after-atomic parameters to the same target."""
+    deferred_atomic_then_read_helper(out, out, observed)
+
+
+@wp.func
+def deferred_nested_atomic_then_read_helper(
+    src: wp.array[wp.float32], dst: wp.array[wp.float32], observed: wp.array[wp.float32]
+):
+    """Forward an ordered deferred access pattern through another helper."""
+    deferred_atomic_then_read_helper(src, dst, observed)
+
+
+@wp.kernel(
+    module="unique",
+    module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN},
+    deterministic_deferred_atomics=("out",),
+)
+def declared_deferred_nested_helper_read_after_kernel(out: wp.array[wp.float32], observed: wp.array[wp.float32]):
+    """Map nested helper parameters to the same declared target."""
+    deferred_nested_atomic_then_read_helper(out, out, observed)
+
+
+@wp.func
+def deferred_nested_scatter_helper(out: wp.array[wp.float32]):
+    """Emit one deterministic accumulation update."""
+    wp.atomic_add(out, 0, 1.0)
+
+
+@wp.func
+def deferred_direct_and_nested_scatter_helper(out: wp.array[wp.float32]):
+    """Emit one direct and one nested deterministic accumulation update."""
+    wp.atomic_add(out, 0, 1.0)
+    deferred_nested_scatter_helper(out)
+
+
+@wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
+def nested_helper_scatter_kernel(out: wp.array[wp.float32]):
+    """Exercise buffer sizing for updates imported through nested helpers."""
+    deferred_direct_and_nested_scatter_helper(out)
+
+
+@wp.kernel(
+    module="unique",
+    module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN},
+    deterministic_deferred_atomics=("out",),
+)
+def declared_deferred_dynamic_helper_read_kernel(count: int, out: wp.array[wp.float32]):
+    """Exercise the repeated-read hazard through a helper called in a loop."""
+    for _ in range(count):
+        deferred_repeated_read_helper(out)
+
+
+@wp.func
+def deferred_separate_loop_helper(src: wp.array[wp.float32], dst: wp.array[wp.float32], count: int):
+    """Read one array while reducing into another from a dynamic helper loop."""
+    for _ in range(count):
+        value = src[0]
+        wp.atomic_add(dst, 0, value)
+
+
+@wp.kernel(
+    module="unique",
+    module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN, "deterministic_max_records": 2},
+    deterministic_deferred_atomics=("a", "b"),
+)
+def declared_deferred_separate_helper_calls_kernel(
+    a: wp.array[wp.float32], b: wp.array[wp.float32], c: wp.array[wp.float32], count: int
+):
+    """Use separate helper calls whose local loops must not share a scope."""
+    deferred_separate_loop_helper(a, b, count)
+    deferred_separate_loop_helper(c, a, count)
+
+
+@wp.kernel(
+    module="unique",
+    module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN},
+    deterministic_deferred_atomics=("out",),
+)
+def declared_deferred_tile_load_kernel(out: wp.array[wp.float32], observed: wp.array[wp.float32]):
+    """Read a declared target through a tile before accumulating into it."""
+    wp.tile_store(observed, wp.tile_load(out, shape=32))
+    wp.atomic_add(out, 0, 1.0)
+
+
+@wp.kernel(
+    module="unique",
+    module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN},
+    deterministic_deferred_atomics=("out",),
+)
+def deferred_tree_reduce_alias_kernel(
+    parent: wp.array[wp.int32], level: wp.array[wp.int32], values: wp.array[wp.float32], out: wp.array[wp.float32]
+):
+    """Read tree values through an input that may alias the deferred output."""
+    body = level[wp.tid()]
+    wp.atomic_add(out, parent[body], values[body])
+
+
 @wp.kernel
 def atomic_add_2d_kernel(
     data: wp.array[wp.float32],
@@ -1055,6 +1254,80 @@ def test_scatter_target_direct_access_aliasing_rejected(test, device):
                 wp.launch(kernel, dim=1, inputs=[alias], outputs=[output], device=device)
 
 
+def test_declared_deferred_atomic_pre_read(test, device):
+    """Allow a declared tree reduction, including a read-only launch-time alias."""
+    parent = wp.array([-1, 0, 0, 1, 1, 2, 2], dtype=wp.int32, device=device)
+    levels = [
+        wp.array([3, 4, 5, 6], dtype=wp.int32, device=device),
+        wp.array([1, 2], dtype=wp.int32, device=device),
+    ]
+    expected = np.array([7.0, 3.0, 3.0, 1.0, 1.0, 1.0, 1.0], dtype=np.float32)
+
+    def launch_once(kernel, *, alias):
+        mass = wp.ones(7, dtype=wp.float32, device=device)
+        for level in levels:
+            if alias:
+                wp.launch(kernel, dim=level.shape[0], inputs=[parent, level, mass], outputs=[mass], device=device)
+            else:
+                wp.launch(kernel, dim=level.shape[0], inputs=[parent, level], outputs=[mass], device=device)
+        return mass.numpy().copy()
+
+    for kernel, alias in (
+        (deferred_tree_reduce_kernel, False),
+        (deferred_tree_reduce_helper_kernel, False),
+        (deferred_tree_reduce_alias_kernel, True),
+    ):
+        with test.subTest(kernel=kernel.key):
+            np.testing.assert_array_equal(
+                assert_equal_repeated(lambda kernel=kernel, alias=alias: launch_once(kernel, alias=alias)), expected
+            )
+
+
+def test_declared_deferred_tile_load_pre_read(test, device):
+    """Allow a declared target to be tile-loaded before its atomic update."""
+    out = wp.ones(32, dtype=wp.float32, device=device)
+    observed = wp.zeros_like(out)
+
+    wp.launch_tiled(
+        declared_deferred_tile_load_kernel,
+        dim=1,
+        inputs=[out],
+        outputs=[observed],
+        block_dim=32,
+        device=device,
+    )
+
+    np.testing.assert_array_equal(observed.numpy(), np.ones(32, dtype=np.float32))
+    np.testing.assert_array_equal(out.numpy(), np.array([33.0] + [1.0] * 31, dtype=np.float32))
+
+
+def test_declared_deferred_separate_helper_calls(test, device):
+    """Allow safe reads and updates from separate calls to a looping helper."""
+    a = wp.full(1, value=2.0, dtype=wp.float32, device=device)
+    b = wp.zeros(1, dtype=wp.float32, device=device)
+    c = wp.full(1, value=3.0, dtype=wp.float32, device=device)
+
+    wp.launch(
+        declared_deferred_separate_helper_calls_kernel,
+        dim=1,
+        inputs=[a, b, c, 2],
+        device=device,
+    )
+
+    np.testing.assert_array_equal(a.numpy(), [8.0])
+    np.testing.assert_array_equal(b.numpy(), [4.0])
+
+
+def test_nested_helper_scatter_capacity(test, device):
+    """Allocate enough deterministic scatter storage for nested helper calls."""
+    thread_count = 1024
+    out = wp.zeros(1, dtype=wp.float32, device=device)
+
+    wp.launch(nested_helper_scatter_kernel, dim=thread_count, outputs=[out], device=device)
+
+    np.testing.assert_array_equal(out.numpy(), [2.0 * thread_count])
+
+
 def test_scatter_tile_access_rejected(test, device):
     """Validate deferred targets against tile reads, stores, and ordinary tile atomics."""
 
@@ -1189,6 +1462,59 @@ class TestDeterministicScatter(DeterministicTestBase):
                 ):
                     wp.load_module(module=kernel.module, device="cpu")
 
+    def test_declared_deferred_atomic_accesses(self):
+        """Permit safe pre-atomic reads but reject unsafe accesses and dynamic loops."""
+        wp.load_module(module=deferred_tree_reduce_kernel.module, device="cpu")
+        wp.load_module(module=deferred_tree_reduce_helper_kernel.module, device="cpu")
+        wp.load_module(module=declared_deferred_separate_helper_calls_kernel.module, device="cpu")
+
+        @wp.kernel(module="unique", module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN})
+        def undeclared_pre_atomic_read_kernel(out: wp.array[wp.float32]):
+            value = out[1]
+            wp.atomic_add(out, 0, value)
+
+        for kernel, error in (
+            (declared_deferred_read_after_kernel, "read directly"),
+            (declared_deferred_helper_read_after_kernel, "read directly"),
+            (declared_deferred_nested_helper_read_after_kernel, "read directly"),
+            (declared_deferred_store_kernel, "written directly"),
+            (undeclared_pre_atomic_read_kernel, "read directly"),
+            (declared_deferred_dynamic_for_read_kernel, "same dynamic loop"),
+            (declared_deferred_dynamic_while_read_kernel, "same dynamic loop"),
+            (declared_deferred_dynamic_helper_read_kernel, "same dynamic loop"),
+        ):
+            with self.subTest(kernel=kernel.key):
+                with self.assertRaisesRegex(
+                    wp.WarpDeterminismError,
+                    error,
+                ):
+                    wp.load_module(module=kernel.module, device="cpu")
+
+    def test_deferred_atomic_declaration_validation(self):
+        """Validate declared targets when the kernel is defined and built."""
+        with self.assertRaisesRegex(ValueError, "unknown argument"):
+
+            @wp.kernel(deterministic_deferred_atomics=("missing",))
+            def unknown_deferred_atomic_argument(out: wp.array[wp.float32]):
+                wp.atomic_add(out, 0, 1.0)
+
+        with self.assertRaisesRegex(TypeError, "requires array argument"):
+
+            @wp.kernel(deterministic_deferred_atomics=("scale",))
+            def scalar_deferred_atomic_argument(out: wp.array[wp.float32], scale: float):
+                wp.atomic_add(out, 0, scale)
+
+        @wp.kernel(
+            module="unique",
+            module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN},
+            deterministic_deferred_atomics=("out",),
+        )
+        def unused_deferred_atomic_argument(out: wp.array[wp.float32]):
+            out[0] = 1.0
+
+        with self.assertRaisesRegex(wp.WarpDeterminismError, "without deterministic accumulation atomics"):
+            wp.load_module(module=unused_deferred_atomic_argument.module, device="cpu")
+
 
 def _add(name, devices=cuda_devices, **kwargs):
     add_function_test(TestDeterministicScatter, name, globals()[name], devices=devices, **kwargs)
@@ -1220,6 +1546,10 @@ for _name in (
     "test_mixed_reduce_ops_same_array",
     "test_scatter_target_aliasing_rejected",
     "test_scatter_target_direct_access_aliasing_rejected",
+    "test_declared_deferred_atomic_pre_read",
+    "test_declared_deferred_tile_load_pre_read",
+    "test_declared_deferred_separate_helper_calls",
+    "test_nested_helper_scatter_capacity",
     "test_scatter_tile_access_rejected",
     "test_helper_name_collision",
     "test_deterministic_closure_kernel",

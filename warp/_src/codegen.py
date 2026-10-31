@@ -2306,7 +2306,14 @@ class Adjoint:
 
     # generate function ssa form and adjoint
     @synchronized(_codegen_lock)
-    def build(adj, builder, default_builder_options=None, callable_arg_values=None):
+    def build(
+        adj,
+        builder,
+        default_builder_options=None,
+        callable_arg_values=None,
+        *,
+        deterministic_deferred_atomics=(),
+    ):
         # arg Var read/write flags are held during module rebuilds, so we reset here before rebuilding
         for arg in adj.args:
             arg.is_read = False
@@ -2328,7 +2335,10 @@ class Adjoint:
         global options
         options = adj.builder_options
 
-        adj.deterministic.begin_build(adj.builder_options)
+        adj.deterministic.begin_build(
+            adj.builder_options,
+            deterministic_deferred_atomics=deterministic_deferred_atomics,
+        )
 
         adj.symbols = {}  # map from symbols to adjoint variables
         adj.variables = []  # list of local variables (in order)
