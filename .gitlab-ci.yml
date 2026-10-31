@@ -673,6 +673,26 @@ linux-x86_64 cu13 debug-mode test:
   script:
     - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml --suite debug --warp-debug --isolate-test-processes --failfast
 
+# Compile CUDA kernels with Clang instead of NVRTC. NVRTC treats native functions
+# without CUDA_CALLABLE as device functions, so only Clang-based toolchains
+# reject them.
+linux-x86_64 cu13 llvm-cuda test:
+  stage: test
+  needs: [linux-x86_64 cu13 build]
+  image: $UV_TRIXIE_SLIM_IMAGE
+  variables:
+    IPP_RUNNER_EXECUTION_DURATION: "2700"
+  extends:
+    - .ipp_lnx_x86_64_gpu
+    - .save_test_report_artifact
+    - .basic_test_changes_rules
+  before_script:
+    - df -h
+    - !reference [.snippets, move-linux-x86_64-binaries]
+  script:
+    - uv run --extra dev python -c "import warp as wp; wp.print_diagnostics(); assert wp.get_cuda_devices(), 'No CUDA device visible to Warp'"
+    - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml --suite llvm-cuda --warp-llvm-cuda --failfast
+
 # Note that for throughput reasons this runs on a single-GPU runner
 windows-x86_64 cu12 test:
   stage: test
