@@ -347,7 +347,7 @@ template <typename Tile, typename Op = OpAdd<typename Tile::Type>> inline auto t
 
 #endif  // !defined(__CUDA_ARCH__)
 
-template <typename Tile> auto tile_scan_inclusive(Tile& t) { return tile_scan_inclusive_impl(t); }
+template <typename Tile> CUDA_CALLABLE auto tile_scan_inclusive(Tile& t) { return tile_scan_inclusive_impl(t); }
 
 template <typename Tile, typename AdjTile>
 CUDA_CALLABLE void adj_tile_scan_inclusive(Tile& t, Tile& adj_t, AdjTile& adj_ret)
@@ -355,7 +355,7 @@ CUDA_CALLABLE void adj_tile_scan_inclusive(Tile& t, Tile& adj_t, AdjTile& adj_re
     // MISSINGADJOINT: adjoint of inclusive prefix sum is reverse-suffix sum of adj_ret
 }
 
-template <typename Tile> auto tile_scan_exclusive(Tile& t) { return tile_scan_exclusive_impl(t); }
+template <typename Tile> CUDA_CALLABLE auto tile_scan_exclusive(Tile& t) { return tile_scan_exclusive_impl(t); }
 
 template <typename Tile, typename AdjTile>
 CUDA_CALLABLE void adj_tile_scan_exclusive(Tile& t, Tile& adj_t, AdjTile& adj_ret)
@@ -365,7 +365,7 @@ CUDA_CALLABLE void adj_tile_scan_exclusive(Tile& t, Tile& adj_t, AdjTile& adj_re
 }
 
 // Max scan operations
-template <typename Tile> auto tile_scan_max_inclusive(Tile& t)
+template <typename Tile> CUDA_CALLABLE auto tile_scan_max_inclusive(Tile& t)
 {
     return tile_scan_inclusive_impl<Tile, OpMax<typename Tile::Type>>(t);
 }
@@ -377,7 +377,7 @@ CUDA_CALLABLE void adj_tile_scan_max_inclusive(Tile& t, Tile& adj_t, AdjTile& ad
 }
 
 // Min scan operations
-template <typename Tile> auto tile_scan_min_inclusive(Tile& t)
+template <typename Tile> CUDA_CALLABLE auto tile_scan_min_inclusive(Tile& t)
 {
     return tile_scan_inclusive_impl<Tile, OpMin<typename Tile::Type>>(t);
 }
