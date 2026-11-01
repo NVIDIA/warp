@@ -509,6 +509,7 @@ noise_level_compose(const noise_level_t<N>& A, const noise_level_t<N>& B, unsign
     return F;
 }
 
+WP_COMPILE_IF_USED
 inline CUDA_CALLABLE mat22 noise_2d_hessian(uint32 state, int x0, int y0, int x1, int y1, float dx, float dy)
 {
     vec2 g00 = random_gradient_2d(state, x0, y0);
@@ -531,6 +532,7 @@ inline CUDA_CALLABLE mat22 noise_2d_hessian(uint32 state, int x0, int y0, int x1
     return N.hess;
 }
 
+WP_COMPILE_IF_USED
 inline CUDA_CALLABLE mat33
 noise_3d_hessian(uint32 state, int x0, int y0, int z0, int x1, int y1, int z1, float dx, float dy, float dz)
 {
@@ -569,6 +571,7 @@ noise_3d_hessian(uint32 state, int x0, int y0, int z0, int x1, int y1, int z1, f
     return N.hess;
 }
 
+WP_COMPILE_IF_USED
 inline CUDA_CALLABLE mat44 noise_4d_hessian(
     uint32 state, int x0, int y0, int z0, int t0, int x1, int y1, int z1, int t1, float dx, float dy, float dz, float dt
 )
@@ -983,6 +986,7 @@ curlnoise(uint32 state, const vec2& xy, const uint32 octaves, const float lacuna
 // Per-octave Jacobian of ret wrt xy (chain rule through pt = freq * xy):
 //   J_i = amp_i * freq_i * [[-H[0,1], -H[1,1]], [H[0,0], H[0,1]]]
 // where H = noise_2d_hessian at pt_i. Reverse-mode accumulates J^T @ adj_ret.
+WP_COMPILE_IF_USED
 inline CUDA_CALLABLE void adj_curlnoise(
     uint32 state,
     const vec2& xy,
@@ -1072,6 +1076,7 @@ curlnoise(uint32 state, const vec3& xyz, const uint32 octaves, const float lacun
 //   J_i.row1 = H1.row2 - H3.row0
 //   J_i.row2 = H2.row0 - H1.row1
 // where H_k is the Hessian of N_k at pt_i. Reverse-mode accumulates J^T @ adj_ret.
+WP_COMPILE_IF_USED
 inline CUDA_CALLABLE void adj_curlnoise(
     uint32 state,
     const vec3& xyz,
@@ -1167,6 +1172,7 @@ curlnoise(uint32 state, const vec4& xyzt, const uint32 octaves, const float lacu
 // Hessians are 4x4 (the input has a trailing ``t`` axis not in the curl
 // output). adj_xyzt picks up contributions along all 4 axes via the
 // extra Hessian column.
+WP_COMPILE_IF_USED
 inline CUDA_CALLABLE void adj_curlnoise(
     uint32 state,
     const vec4& xyzt,

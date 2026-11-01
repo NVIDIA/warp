@@ -35,6 +35,18 @@
 #define WP_FORCEINLINE inline __attribute__((always_inline))
 #endif
 
+// Compiles a non-template function only in modules that call it.
+//
+// Every module includes the native headers, so a plain inline function that
+// calls large templates makes every module instantiate them, used or not. An
+// unnamed, defaulted template parameter turns the function into a template,
+// which defers that work until a call needs it. Call sites don't change.
+//
+// Apply it up to the kernel-facing entry points: a non-template caller would
+// instantiate the function anyway. Removing it doesn't change behavior, but
+// slows down the compilation of every module.
+#define WP_COMPILE_IF_USED template <typename = void>
+
 // Tile block dimension used while building the warp core library
 #ifndef WP_TILE_BLOCK_DIM
 #define WP_TILE_BLOCK_DIM 256

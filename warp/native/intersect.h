@@ -678,12 +678,14 @@ CUDA_CALLABLE inline void adj_intersect_ray_tri_woop(
 // Möller's method
 #include "intersect_tri.h"
 
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline int intersect_tri_tri(vec3& v0, vec3& v1, vec3& v2, vec3& u0, vec3& u1, vec3& u2)
 {
     return NoDivTriTriIsect<float>(&v0[0], &v1[0], &v2[0], &u0[0], &u1[0], &u2[0]);
 }
 
 
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline int intersect_tri_tri(vec3d& v0, vec3d& v1, vec3d& v2, vec3d& u0, vec3d& u1, vec3d& u2)
 {
     return NoDivTriTriIsect<double>(&v0[0], &v1[0], &v2[0], &u0[0], &u1[0], &u2[0]);

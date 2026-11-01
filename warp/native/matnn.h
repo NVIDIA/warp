@@ -132,6 +132,7 @@ dense_solve(int n, const array_t<float>& A, const array_t<float>& L, const array
 // }
 
 // adjoint methods
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline void adj_dense_gemm(
     int m,
     int n,

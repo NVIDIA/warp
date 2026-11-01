@@ -653,24 +653,28 @@ CUDA_CALLABLE inline bool bvh_query_next_impl(bvh_query_t& query, int& index, co
 // traversal loop per kernel — no runtime dispatch, no code bloat.
 
 // AABB query iterator (backward-compatible; _BvhQueryAabb type, existing callers unchanged)
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline bool bvh_query_next(bvh_query_t& query, int& index, const float& max_dist)
 {
     return bvh_query_next_impl<BvhQueryKind::AABB>(query, index, max_dist);
 }
 
 // Plain ray iterator (_BvhQueryRay type)
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline bool bvh_query_ray_next(bvh_query_t& query, int& index, const float& max_dist)
 {
     return bvh_query_next_impl<BvhQueryKind::RAY>(query, index, max_dist);
 }
 
 // Capsule iterator (_BvhQueryCapsule type)
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline bool bvh_query_capsule_next(bvh_query_t& query, int& index, const float& max_dist)
 {
     return bvh_query_next_impl<BvhQueryKind::CAPSULE>(query, index, max_dist);
 }
 
 // Sphere iterator (_BvhQuerySphere type)
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline bool bvh_query_sphere_next(bvh_query_t& query, int& index, const float& max_dist)
 {
     return bvh_query_next_impl<BvhQueryKind::SPHERE>(query, index, max_dist);
@@ -680,6 +684,7 @@ CUDA_CALLABLE inline bool bvh_query_sphere_next(bvh_query_t& query, int& index, 
 // at compile time (a kernel branch merging two kinds, or a function parameter
 // annotated with the parent type), so it dispatches on the kind stored at
 // construction. The statically-typed iterators above never route through here.
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline bool bvh_query_next_dynamic(bvh_query_t& query, int& index, const float& max_dist)
 {
     switch (query.kind) {
@@ -696,6 +701,7 @@ CUDA_CALLABLE inline bool bvh_query_next_dynamic(bvh_query_t& query, int& index,
 
 CUDA_CALLABLE inline int iter_next(bvh_query_t& query) { return query.bounds_nr; }
 
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline bool iter_cmp(bvh_query_t& query)
 {
     // The for-loop protocol shares one iter_cmp across all query kinds, so it must
