@@ -1147,7 +1147,7 @@ add_function_test(TestFemGeometry, "test_hex_mesh", test_hex_mesh, devices=devic
 add_function_test(
     TestFemGeometry, "test_hex_mesh_evaluation_mode_identity", test_hex_mesh_evaluation_mode_identity, devices=devices
 )
-add_function_test(TestFemGeometry, "test_nanogrid", test_nanogrid, devices=cuda_devices)
+add_function_test(TestFemGeometry, "test_nanogrid", test_nanogrid, devices=devices)
 add_function_test(TestFemGeometry, "test_nanogrid_rebuild", test_nanogrid_rebuild, devices=devices)
 add_function_test(
     TestFemGeometry,
@@ -1156,7 +1156,7 @@ add_function_test(
     devices=capture_allocation_devices,
 )
 add_function_test(
-    TestFemGeometry, "test_nanogrid_guess_lookup_radius", test_nanogrid_guess_lookup_radius, devices=cuda_devices
+    TestFemGeometry, "test_nanogrid_guess_lookup_radius", test_nanogrid_guess_lookup_radius, devices=devices
 )
 add_function_test(
     TestFemGeometry,
@@ -1164,7 +1164,7 @@ add_function_test(
     test_nanogrid_single_env_nearby_lookup,
     devices=cuda_devices,
 )
-add_function_test(TestFemGeometry, "test_adaptive_nanogrid", test_adaptive_nanogrid, devices=cuda_devices)
+add_function_test(TestFemGeometry, "test_adaptive_nanogrid", test_adaptive_nanogrid, devices=devices)
 add_function_test(TestFemGeometry, "test_deformed_geometry", test_deformed_geometry, devices=devices)
 add_function_test(TestFemGeometry, "test_deformed_geometry_2d", test_deformed_geometry_2d, devices=devices)
 add_function_test(

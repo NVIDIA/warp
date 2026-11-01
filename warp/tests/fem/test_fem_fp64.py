@@ -306,9 +306,7 @@ def test_fp64_scalar_type_operator(test, device):
 
 
 def test_fp64_nanogrid_volume(test, device):
-    """Test nanogrid fp64 volume integral (CUDA only)."""
-    if not wp.get_device(device).is_cuda:
-        return
+    """Verify that an fp64 Nanogrid integrates its unit cell to a volume of 1.0 at double precision."""
     with wp.ScopedDevice(device):
         geo = _make_nanogrid()
         test.assertEqual(geo.scalar_type, wp.float64)

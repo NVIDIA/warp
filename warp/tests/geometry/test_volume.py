@@ -1573,15 +1573,8 @@ add_function_test(
     test_volume_allocate_bad_voxel_size,
     devices=devices,
 )
-add_function_test(
-    TestVolume,
-    "test_volume_allocate_anisotropic",
-    test_volume_allocate_anisotropic,
-    devices=get_selected_cuda_test_devices(),
-)
-add_function_test(
-    TestVolume, "test_volume_aniso_transform", test_volume_aniso_transform, devices=get_selected_cuda_test_devices()
-)
+add_function_test(TestVolume, "test_volume_allocate_anisotropic", test_volume_allocate_anisotropic, devices=devices)
+add_function_test(TestVolume, "test_volume_aniso_transform", test_volume_aniso_transform, devices=devices)
 add_function_test(TestVolume, "test_volume_multiple_grids", test_volume_multiple_grids, devices=devices)
 add_function_test(TestVolume, "test_volume_feature_array", test_volume_feature_array, devices=devices)
 add_function_test(TestVolume, "test_volume_sample_index", test_volume_sample_index, devices=devices)
