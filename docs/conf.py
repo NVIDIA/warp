@@ -368,7 +368,7 @@ def _is_inherited_builtin_member(cls, member):
     return False
 
 
-def _hide_inherited_builtin_members(context):
+def _filter_class_members(context):
     module_name = context.get("module")
     object_name = context.get("objname")
     if not module_name or not object_name:
@@ -381,6 +381,13 @@ def _hide_inherited_builtin_members(context):
         return
 
     if not inspect.isclass(cls):
+        return
+
+    if cls is wp.fixedarray:
+        # fixedarray is a compiler-only type descriptor. Its inherited array API
+        # and internal vars property are not part of its public interface.
+        context["methods"] = []
+        context["attributes"] = []
         return
 
     for member_group in ("methods", "attributes"):
@@ -409,7 +416,7 @@ class AutosummaryRenderer(AutosummaryRenderer):
         context["wp_no_value"] = _is_type_var(context.get("fullname", ""))
 
         if context.get("objtype") == "class":
-            _hide_inherited_builtin_members(context)
+            _filter_class_members(context)
 
         # Autosummary classifies a `warp._src.context.Function` as data, which renders
         # its `repr()` in place of a signature.  Route the registered ones through the
