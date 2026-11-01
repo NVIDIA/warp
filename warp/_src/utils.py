@@ -1032,7 +1032,7 @@ def array_cast(in_array: warp.array, out_array: warp.array, count: int | None = 
         in_array: Input array to cast from.
         out_array: Output array to cast to. Must have the same device as in_array.
         count: Number of elements to process. If ``None``, processes entire array.
-          or multi-dimensional arrays, partial casting is not supported.
+          For multi-dimensional arrays, partial casting is not supported.
 
     Raises:
         RuntimeError: If arrays have different devices, if attempting partial casting
