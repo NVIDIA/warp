@@ -569,9 +569,10 @@ order on every device.</p>
 only for the duration of the kernel invocation and does not carry over between
 launches. Re-launching with the same seed and per-thread offsets reproduces the
 same sequences. To draw different sequences across launches, change the seed or
-include a launch-specific value in the <code class="docutils literal notranslate"><span class="pre">rand_init(seed,</span> <span class="pre">offset)</span></code> offset. See
+include a launch-specific value in the <code class="docutils literal notranslate"><span class="pre">offset</span></code> of the <code class="docutils literal notranslate"><span class="pre">wp.rand_init(seed,</span> <span class="pre">offset)</span></code>
+overload. See
 <a class="reference internal" href="../../user_guide/runtime.html#avoiding-correlated-sequences"><span class="std std-ref">Avoiding Correlated Sequences</span></a> for examples.</p>
-<p>For parallel kernels, prefer the <code class="docutils literal notranslate"><span class="pre">rand_init(seed,</span> <span class="pre">offset)</span></code> overload with a
+<p>For parallel kernels, prefer the <code class="docutils literal notranslate"><span class="pre">wp.rand_init(seed,</span> <span class="pre">offset)</span></code> overload with a
 unique per-thread <code class="docutils literal notranslate"><span class="pre">offset</span></code> so each thread draws a distinct sequence. See
 the <a class="reference internal" href="../../user_guide/runtime.html#random-number-generation"><span class="std std-ref">Random Number Generation</span></a> user guide
 section for more details.</p>

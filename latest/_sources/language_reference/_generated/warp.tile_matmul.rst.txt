@@ -14,8 +14,8 @@
    
    Computes ``out = alpha * a @ b + beta * out``, updating ``out`` in place. ``out`` is
    read only when ``beta`` is nonzero, so it must be initialized before the call unless
-   ``beta`` is zero. Use the two-argument overload to obtain a freshly computed tile
-   instead.
+   ``beta`` is zero. Use the ``wp.tile_matmul(a, b)`` overload to obtain a freshly computed
+   tile instead.
    
    ``out`` must not alias ``a`` or ``b``: the operands are read while ``out`` is being
    written, so overlapping tiles give undefined results. Passing the same tile as both

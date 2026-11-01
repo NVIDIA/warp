@@ -14,8 +14,9 @@
    
    All six vertices must be in the same coordinate space. Coplanar triangles are handled (an
    overlap within their common plane counts as an intersection). This single-precision overload
-   may return incorrect results in near-degenerate cases; use the double-precision overload
-   (``vec3d`` inputs) for greater robustness.
+   may return incorrect results in near-degenerate cases; use the
+   ``wp.intersect_tri_tri(v0, v1, v2, u0, u1, u2)`` overload with ``vec3d`` vertices for greater
+   robustness.
    
    :returns: ``1`` if the triangles intersect, ``0`` otherwise.
    
@@ -50,7 +51,8 @@
    
    All six vertices must be in the same coordinate space. Coplanar triangles are handled (an
    overlap within their common plane counts as an intersection). This double-precision overload is
-   more accurate than the single-precision (``vec3`` inputs) overload.
+   more accurate than the ``wp.intersect_tri_tri(v0, v1, v2, u0, u1, u2)`` overload with ``vec3``
+   vertices.
    
    :returns: ``1`` if the triangles intersect, ``0`` otherwise.
    

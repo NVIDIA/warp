@@ -64,7 +64,7 @@
    and must have the same type. With no arguments, all components are zero, including the
    quaternion; use :func:`~warp.transform_identity` for an identity.
    
-   See the overload that accepts ``p`` and ``q`` for an example.
+   See the ``wp.transformation(p, q)`` overload for an example.
    
    :param args: No arguments, one scalar, or seven scalar components.
    :param dtype: Scalar type of the components, inferred from the arguments when omitted.

@@ -92,8 +92,8 @@
    Compute the eigendecomposition of a symmetric 3x3 matrix and store
    the eigenpairs in caller-provided output arguments.
    
-   See the return-value overload for the factorization convention, numerical
-   behavior, and autodiff guidance.
+   See the ``wp.eig3(A)`` overload for the factorization convention, numerical behavior, and
+   autodiff guidance.
    
    :param A: Symmetric matrix to decompose.
    :param Q: Output matrix whose columns are eigenvectors.

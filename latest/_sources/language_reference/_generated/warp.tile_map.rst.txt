@@ -121,9 +121,10 @@
    additional argument can be a tile with the same dimensions as ``a`` or a non-tile
    value (scalar, vector, matrix, or Warp struct), which is broadcast across all elements.
    
-   Unlike the one- and two-argument forms, ``op`` must be a user function declared with
-   :func:`@wp.func <warp.func>`; a built-in cannot be used here. The result's data type
-   is ``op``'s return type, which must be a scalar, vector, matrix, or Warp struct.
+   Unlike the ``wp.tile_map(op, a)`` and ``wp.tile_map(op, a, b)`` overloads, ``op`` must be
+   a user function declared with :func:`@wp.func <warp.func>`; a built-in cannot be used here.
+   The result's data type is ``op``'s return type, which must be a scalar, vector, matrix, or
+   Warp struct.
    
    The adjoint of each non-tile runtime argument is the sum of its per-element
    contributions across the mapped tile.

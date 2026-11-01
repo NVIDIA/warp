@@ -64,9 +64,11 @@
 
    Advance a hash grid query to the next candidate neighbor and report whether one was found (float16 precision).
    
-   The ``float16`` overload of :func:`hash_grid_query_next`, taking the query returned by the
-   ``float16`` :func:`hash_grid_query`. Behavior and usage match the default ``float32``
-   overload; see it for details and a usage example.
+   The ``float16`` overload of :func:`hash_grid_query_next`, taking the query returned by
+   the ``wp.hash_grid_query(id, wp.vec3h(...), max_dist)`` overload. Behavior and usage match the
+   ``wp.hash_grid_query_next(query, index)`` overload on a query from the
+   ``wp.hash_grid_query(id, wp.vec3(...), max_dist)`` overload; see that ``hash_grid_query_next`` overload for details and a
+   usage example.
    
    :param query: The query to advance, from :func:`hash_grid_query`
    :param index: Output; receives the index of the current candidate neighbor
@@ -85,9 +87,11 @@
 
    Advance a hash grid query to the next candidate neighbor and report whether one was found (float64 precision).
    
-   The ``float64`` overload of :func:`hash_grid_query_next`, taking the query returned by the
-   ``float64`` :func:`hash_grid_query`. Behavior and usage match the default ``float32``
-   overload; see it for details and a usage example.
+   The ``float64`` overload of :func:`hash_grid_query_next`, taking the query returned by
+   the ``wp.hash_grid_query(id, wp.vec3d(...), max_dist)`` overload. Behavior and usage match the
+   ``wp.hash_grid_query_next(query, index)`` overload on a query from the
+   ``wp.hash_grid_query(id, wp.vec3(...), max_dist)`` overload; see that ``hash_grid_query_next`` overload for details and a
+   usage example.
    
    :param query: The query to advance, from :func:`hash_grid_query`
    :param index: Output; receives the index of the current candidate neighbor

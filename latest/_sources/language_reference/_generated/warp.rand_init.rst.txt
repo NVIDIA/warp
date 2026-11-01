@@ -25,10 +25,11 @@
    only for the duration of the kernel invocation and does not carry over between
    launches. Re-launching with the same seed and per-thread offsets reproduces the
    same sequences. To draw different sequences across launches, change the seed or
-   include a launch-specific value in the ``rand_init(seed, offset)`` offset. See
+   include a launch-specific value in the ``offset`` of the ``wp.rand_init(seed, offset)``
+   overload. See
    :ref:`Avoiding Correlated Sequences <avoiding_correlated_sequences>` for examples.
    
-   For parallel kernels, prefer the ``rand_init(seed, offset)`` overload with a
+   For parallel kernels, prefer the ``wp.rand_init(seed, offset)`` overload with a
    unique per-thread ``offset`` so each thread draws a distinct sequence. See
    the :ref:`Random Number Generation <random_number_generation>` user guide
    section for more details.

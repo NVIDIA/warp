@@ -62,9 +62,10 @@
 
    Return whether a thread-block parallel mesh AABB query should continue.
    
-   This overload accepts a :class:`warp.MeshQueryAABBTiled`. The overload taking a
-   :class:`warp.BvhQueryTiled` documents the shared iteration protocol and includes a
-   usage example; use :func:`~warp.tile_mesh_query_aabb_next` to advance this query.
+   This overload accepts a :class:`warp.MeshQueryAABBTiled`. See the
+   ``wp.tile_query_valid(wp.tile_bvh_query_aabb(id, low, high))`` overload for the shared
+   iteration protocol and a usage example; use :func:`~warp.tile_mesh_query_aabb_next` to advance
+   this query.
    Always test each returned face index for ``>= 0``.
    
    :param query: The query to test, from :func:`~warp.tile_mesh_query_aabb`

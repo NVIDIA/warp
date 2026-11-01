@@ -56,6 +56,6 @@
 
    Allocate a tile filled with the specified value.
    
-   Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
-   ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
-   details and an example.
+   Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing ``(shape,)``.
+   See the ``wp.tile_full(shape=(m, n), value=value)`` overload for usage details and an
+   example.

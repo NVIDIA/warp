@@ -88,9 +88,9 @@
 
    Allocate a tile filled with a value from a specific thread.
    
-   Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
-   ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
-   details and an example.
+   Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing ``(shape,)``.
+   See the ``wp.tile_from_thread(shape=(m, n), value=value, thread_idx=thread_idx)`` overload for
+   usage details and an example.
    
    On a partial CPU block, ``thread_idx`` must identify an active lane. If the
    selected lane is inactive, no producer executes and the result is undefined.

@@ -68,8 +68,8 @@
 
    Return an approximate inverse of a 3x3 matrix.
    
-   See the 2x2 overload for device behavior, numerical accuracy, and
-   autodiff guidance.
+   See the ``wp.inverse_approx(wp.mat22(...))`` overload for device behavior, numerical accuracy,
+   and autodiff guidance.
    
    :param a: Matrix to invert. Must be nonsingular.
    
@@ -86,8 +86,8 @@
 
    Return an approximate inverse of a 4x4 matrix.
    
-   See the 2x2 overload for device behavior, numerical accuracy, and
-   autodiff guidance.
+   See the ``wp.inverse_approx(wp.mat22(...))`` overload for device behavior, numerical accuracy,
+   and autodiff guidance.
    
    :param a: Matrix to invert. Must be nonsingular.
    

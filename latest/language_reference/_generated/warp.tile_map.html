@@ -677,9 +677,10 @@ them, so every thread must reach the call.</p>
 <p>The first argument <code class="docutils literal notranslate"><span class="pre">a</span></code> must be a tile and determines the output shape. Each
 additional argument can be a tile with the same dimensions as <code class="docutils literal notranslate"><span class="pre">a</span></code> or a non-tile
 value (scalar, vector, matrix, or Warp struct), which is broadcast across all elements.</p>
-<p>Unlike the one- and two-argument forms, <code class="docutils literal notranslate"><span class="pre">op</span></code> must be a user function declared with
-<a class="reference internal" href="../../api_reference/_generated/warp.func.html#warp.func" title="warp.func"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.func</span></code></a>; a built-in cannot be used here. The result’s data type
-is <code class="docutils literal notranslate"><span class="pre">op</span></code>’s return type, which must be a scalar, vector, matrix, or Warp struct.</p>
+<p>Unlike the <code class="docutils literal notranslate"><span class="pre">wp.tile_map(op,</span> <span class="pre">a)</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.tile_map(op,</span> <span class="pre">a,</span> <span class="pre">b)</span></code> overloads, <code class="docutils literal notranslate"><span class="pre">op</span></code> must be
+a user function declared with <a class="reference internal" href="../../api_reference/_generated/warp.func.html#warp.func" title="warp.func"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.func</span></code></a>; a built-in cannot be used here.
+The result’s data type is <code class="docutils literal notranslate"><span class="pre">op</span></code>’s return type, which must be a scalar, vector, matrix, or
+Warp struct.</p>
 <p>The adjoint of each non-tile runtime argument is the sum of its per-element
 contributions across the mapped tile.</p>
 <dl class="field-list simple">

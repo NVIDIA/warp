@@ -12,7 +12,7 @@
 
    Return a zero 6D spatial vector.
    
-   See the overload that accepts ``w`` and ``v`` for an example.
+   See the ``wp.spatial_vector(w, v)`` overload for an example.
    
    :param dtype: Scalar type of the components. Defaults to ``float32``.
    
@@ -69,7 +69,7 @@
 
    Construct a 6D spatial vector from six scalar components.
    
-   See the overload that accepts ``w`` and ``v`` for the twist and wrench interpretations. All
+   See the ``wp.spatial_vector(w, v)`` overload for the twist and wrench interpretations. All
    values must have the same scalar type.
    
    :param wx: First component of the first 3D part.
@@ -82,4 +82,4 @@
    
    :returns: The spatial vector ``(wx, wy, wz, vx, vy, vz)``.
    
-   See the overload that accepts ``w`` and ``v`` for an example.
+   See the ``wp.spatial_vector(w, v)`` overload for an example.

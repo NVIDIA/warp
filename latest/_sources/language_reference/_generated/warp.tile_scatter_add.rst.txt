@@ -73,7 +73,7 @@
    Scatter-add a per-thread value into a 2D shared-memory tile.
    
    Overload taking one index per tile dimension. For usage details and an example,
-   see the 1D overload that takes only ``i`` as its index.
+   see the ``wp.tile_scatter_add(a, i, value, has_value)`` overload.
 
 .. function:: tile_scatter_add(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, value: Any, has_value: bool, atomic: bool = True) -> None
    :noindex:
@@ -86,7 +86,7 @@
    Scatter-add a per-thread value into a 3D shared-memory tile.
    
    Overload taking one index per tile dimension. For usage details and an example,
-   see the 1D overload that takes only ``i`` as its index.
+   see the ``wp.tile_scatter_add(a, i, value, has_value)`` overload.
 
 .. function:: tile_scatter_add(a: Tile[Any, tuple[int, ...]], i: int32, j: int32, k: int32, l: int32, value: Any, has_value: bool, atomic: bool = True) -> None
    :noindex:
@@ -99,4 +99,4 @@
    Scatter-add a per-thread value into a 4D shared-memory tile.
    
    Overload taking one index per tile dimension. For usage details and an example,
-   see the 1D overload that takes only ``i`` as its index.
+   see the ``wp.tile_scatter_add(a, i, value, has_value)`` overload.

@@ -73,9 +73,8 @@
 
    Generate a tile of random integers.
    
-   Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
-   ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
-   details and an example.
+   Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing ``(shape,)``.
+   See the ``wp.tile_randi(shape=(m, n), rng=rng)`` overload for usage details and an example.
 
 .. function:: tile_randi(shape: tuple[int, ...], rng: uint32, min: int32, max: int32, storage: str = "register") -> Tile[Any, tuple[int, ...]]
    :noindex:
@@ -87,8 +86,8 @@
 
    Generate a tile of random integers in the range ``[min, max)``.
    
-   See the overload without ``min`` and ``max`` for reproducibility details and a usage
-   example.
+   See the ``wp.tile_randi(shape=(m, n), rng=rng)`` overload for reproducibility details and a
+   usage example.
    
    :param shape: Shape of the output tile. Must be a compile-time constant.
    :param rng: Random number generator state, typically from :func:`~warp.rand_init`.
@@ -113,6 +112,5 @@
 
    Generate a tile of random integers in the range ``[min, max)``.
    
-   Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
-   ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument with ``min``
-   and ``max`` for usage details and an example.
+   Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing ``(shape,)``.
+   See the ``wp.tile_randi(shape=(m, n), rng=rng, min=lo, max=hi)`` overload for usage details.

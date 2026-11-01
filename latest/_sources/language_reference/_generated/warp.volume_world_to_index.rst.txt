@@ -36,4 +36,4 @@
    using the inverse of the volume's affine index-to-world transform (float64 precision).
    
    The ``float64`` overload of :func:`~warp.volume_world_to_index`. Behavior and usage match the
-   default ``float32`` overload; see it for details and a usage example.
+   ``wp.volume_world_to_index(id, wp.vec3(...))`` overload; see it for details.

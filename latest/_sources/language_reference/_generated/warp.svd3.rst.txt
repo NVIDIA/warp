@@ -98,8 +98,8 @@
    Compute the singular value decomposition of a 3x3 matrix and store the
    factors in caller-provided output arguments.
    
-   See the return-value overload for the factorization convention, numerical
-   behavior, and autodiff guidance.
+   See the ``wp.svd3(A)`` overload for the factorization convention, numerical behavior, and
+   autodiff guidance.
    
    :param A: Matrix to decompose.
    :param U: Output matrix for the left singular vectors.

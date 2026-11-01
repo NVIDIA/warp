@@ -56,6 +56,5 @@
 
    Allocate a tile of zero-initialized items.
    
-   Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
-   ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
-   details and an example.
+   Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing ``(shape,)``.
+   See the ``wp.tile_zeros(shape=(m, n))`` overload for usage details and an example.

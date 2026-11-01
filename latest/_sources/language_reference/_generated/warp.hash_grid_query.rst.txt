@@ -94,8 +94,8 @@
 
    Construct a point query against a :class:`warp.HashGrid` (float16 precision).
    
-   The ``float16`` overload of :func:`hash_grid_query`. Behavior and usage match the default
-   ``float32`` overload; see it for details and a usage example.
+   The ``float16`` overload of :func:`hash_grid_query`. Behavior and usage match the
+   ``wp.hash_grid_query(id, wp.vec3(...), max_dist)`` overload; see it for details and a usage example.
    
    :param id: The :class:`warp.HashGrid` identifier
    :param point: The query point
@@ -114,8 +114,8 @@
 
    Construct a point query against a :class:`warp.HashGrid`, restricted to one point group (float16 precision).
    
-   The ``float16`` overload of :func:`hash_grid_query`. Behavior and usage match the default
-   ``float32`` overload; see it for details and a usage example.
+   The ``float16`` overload of :func:`hash_grid_query`. Behavior and usage match the
+   ``wp.hash_grid_query(id, wp.vec3(...), max_dist)`` overload; see it for details and a usage example.
    
    If the grid was built with groups, only points whose group id equals ``group`` are returned as
    candidates; any ``int32`` value is a valid group id. Omit the ``group`` argument to visit all
@@ -140,8 +140,8 @@
 
    Construct a point query against a :class:`warp.HashGrid` (float64 precision).
    
-   The ``float64`` overload of :func:`hash_grid_query`. Behavior and usage match the default
-   ``float32`` overload; see it for details and a usage example.
+   The ``float64`` overload of :func:`hash_grid_query`. Behavior and usage match the
+   ``wp.hash_grid_query(id, wp.vec3(...), max_dist)`` overload; see it for details and a usage example.
    
    :param id: The :class:`warp.HashGrid` identifier
    :param point: The query point
@@ -160,8 +160,8 @@
 
    Construct a point query against a :class:`warp.HashGrid`, restricted to one point group (float64 precision).
    
-   The ``float64`` overload of :func:`hash_grid_query`. Behavior and usage match the default
-   ``float32`` overload; see it for details and a usage example.
+   The ``float64`` overload of :func:`hash_grid_query`. Behavior and usage match the
+   ``wp.hash_grid_query(id, wp.vec3(...), max_dist)`` overload; see it for details and a usage example.
    
    If the grid was built with groups, only points whose group id equals ``group`` are returned as
    candidates; any ``int32`` value is a valid group id. Omit the ``group`` argument to visit all
