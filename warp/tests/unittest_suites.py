@@ -13,6 +13,7 @@ can be used in parallel or serial unit tests (with optional code coverage)
 # cleared Warp caches. Keep this exception local to this file.
 # ruff: noqa: PLC0415
 
+import importlib
 import os
 import unittest
 
@@ -1011,6 +1012,149 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     return _create_suite_from_test_classes(test_loader, test_classes)
 
 
+def llvm_cuda_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
+    """Focused test suite for validating ``warp.config.llvm_cuda = True``.
+
+    NVRTC compiles Warp's native code with ``--device-as-default-execution-space``,
+    which treats functions without ``CUDA_CALLABLE`` as device functions.
+    Clang-based toolchains such as HIP treat them as host functions and reject
+    device code that calls them, as does the Clang backend that ``llvm_cuda``
+    selects.
+
+    The suite runs every discovered test class except those in ``excluded``, so
+    new test classes run with the Clang backend without being listed here. Each
+    excluded class lists the known causes of its failures. After fixing a cause,
+    delete its variable; Ruff then flags each entry that still lists it. Delete
+    an entry once its class passes with ``--warp-llvm-cuda``. Tests that run in
+    a child process still compile with NVRTC.
+
+    Usage:
+        python -m warp.tests --suite llvm-cuda --warp-llvm-cuda
+    """
+    # Known causes of failures with the Clang backend.
+    aot_apic = "AOT and APIC reject modules compiled with llvm_cuda."
+    child_process = "Runs each example in a child process, which compiles with NVRTC regardless of --warp-llvm-cuda."
+    cluster_ptx = "Clang always emits sm_75 PTX, so cluster probes fail to JIT on sm_90+ GPUs."
+    fast_math = "llvm_cuda ignores the fast_math option."
+    mathdx = "llvm_cuda can't link mathdx code."
+    no_align = "cuda_crt.h lacks __align__."
+    no_atomic_bitwise = "cuda_crt.h lacks atomicAnd/atomicOr/atomicXor."
+    no_atomic_min_max = "cuda_crt.h lacks atomicMin/atomicMax for unsigned and 64-bit integers."
+    no_shfl_64 = "cuda_crt.h lacks __shfl_down_sync/__shfl_xor_sync for 64-bit types."
+    no_shfl_up = "cuda_crt.h lacks __shfl_up_sync."
+    shared_ctor = "tile.h declares a __shared__ variable whose type has a constructor."
+    shared_init = "One test's control case relies on NVRTC accepting a __shared__ initializer with a warning."
+    texture_zeros = "Texture sampling returns zeros with llvm_cuda."
+    tile_h = "Calls functions in tile.h that lack CUDA_CALLABLE."
+    tile_reduce_h = "Calls functions in tile_reduce.h that lack CUDA_CALLABLE."
+    tile_scan_h = "Calls functions in tile_scan.h that lack CUDA_CALLABLE."
+    tile_solve_h = "Calls functions in tile_solve.h that lack CUDA_CALLABLE."
+    ulp = "Float results differ from NVRTC by 1 ulp."
+    verify_fp = "llvm_cuda ignores the verify_fp option."
+
+    excluded = {
+        "warp.tests.aot.test_module_aot.TestModuleAOT": [aot_apic],
+        "warp.tests.cuda.test_cluster_dim.TestClusterDim": [cluster_ptx],
+        "warp.tests.cuda.test_kernel_attributes.TestKernelAttributes": [no_align],
+        "warp.tests.cuda.test_occupancy.TestOccupancy": [no_align],
+        "warp.tests.cuda.test_texture.TestTexture": [texture_zeros],
+        "warp.tests.cuda.test_texture_compiler.TestTextureCompiler": [texture_zeros],
+        "warp.tests.deterministic.test_deterministic_counter.TestDeterministicCounter": [no_atomic_bitwise],
+        "warp.tests.deterministic.test_deterministic_scatter.TestDeterministicScatter": [tile_h],
+        "warp.tests.fem.test_fem_examples.TestFemDiffusionExamples": [child_process],
+        "warp.tests.fem.test_fem_examples.TestFemExamples": [child_process],
+        "warp.tests.fem.test_fem_field.TestFemField": [tile_h, tile_reduce_h],
+        "warp.tests.fem.test_fem_fp64.TestFemFp64": [tile_h, tile_reduce_h, no_shfl_64, no_atomic_bitwise],
+        "warp.tests.fem.test_fem_geometry.TestFemGeometry": [no_atomic_bitwise],
+        "warp.tests.fem.test_fem_integrate.TestFemIntegrate": [tile_h, tile_reduce_h, no_shfl_64],
+        "warp.tests.fem.test_fem_multi_env.TestFemMultiEnv": [no_atomic_bitwise],
+        "warp.tests.fem.test_fem_quadrature.TestFemQuadrature": [tile_h, tile_reduce_h, no_shfl_64],
+        "warp.tests.geometry.test_delaunay.TestDelaunay": [no_atomic_min_max],
+        "warp.tests.geometry.test_swept_volume.TestSweptVolume": [no_atomic_min_max],
+        "warp.tests.test_apic.TestApic": [tile_h, tile_reduce_h, mathdx, aot_apic],
+        "warp.tests.test_atomic.TestAtomic": [no_atomic_min_max],
+        "warp.tests.test_atomic_bitwise.TestAtomicBitwise": [no_atomic_bitwise],
+        "warp.tests.test_block_dim_dispatch.TestBlockDimDispatch": [tile_h],
+        "warp.tests.test_codegen.TestCodeGen": [ulp],
+        "warp.tests.test_composite_component_adjoint.TestCompositeComponentAdjoint": [no_atomic_bitwise],
+        "warp.tests.test_examples.TestCoreExamples": [child_process],
+        "warp.tests.test_examples.TestGeometryExamples": [child_process],
+        "warp.tests.test_examples.TestOptimExamples": [child_process],
+        "warp.tests.test_examples.TestTileExamples": [child_process],
+        "warp.tests.test_fabricarray.TestFabricArray": [tile_h],
+        "warp.tests.test_fast_math.TestFastMath": [fast_math],
+        "warp.tests.test_fsai.TestFSAI": [tile_h, tile_reduce_h],
+        "warp.tests.test_grad_customs.TestGradCustoms": [tile_h, mathdx],
+        "warp.tests.test_linear_solvers.TestLinearSolvers": [
+            tile_h,
+            tile_reduce_h,
+            tile_scan_h,
+            no_shfl_64,
+            no_shfl_up,
+            mathdx,
+        ],
+        "warp.tests.test_map.TestMap": [ulp],
+        "warp.tests.test_sparse.TestSparse": [tile_h, tile_reduce_h, no_shfl_64],
+        "warp.tests.test_subscript_types.TestSubscriptTypes": [tile_h],
+        "warp.tests.test_template_launch_bounds.TestTemplateLaunchBounds": [tile_h],
+        "warp.tests.test_tuple.TestTuple": [ulp],
+        "warp.tests.test_verify_fp.TestVerifyFP": [verify_fp],
+        "warp.tests.tile.test_tile.TestTile": [tile_h, tile_reduce_h],
+        "warp.tests.tile.test_tile_atomic_bitwise.TestTileAtomicBitwise": [tile_h, no_atomic_bitwise],
+        "warp.tests.tile.test_tile_cholesky.TestTileCholesky": [tile_h, mathdx],
+        "warp.tests.tile.test_tile_cholesky_no_mathdx.TestTileCholeskyNoMathDx": [tile_h],
+        "warp.tests.tile.test_tile_composite_row.TestTileCompositeRow": [tile_h],
+        "warp.tests.tile.test_tile_construction.TestTileConstruction": [tile_h, tile_reduce_h],
+        "warp.tests.tile.test_tile_empty.TestTileEmpty": [tile_h],
+        "warp.tests.tile.test_tile_fft.TestTileFFT": [tile_h, mathdx],
+        "warp.tests.tile.test_tile_fft_no_mathdx.TestTileFFTNoMathDx": [tile_h],
+        "warp.tests.tile.test_tile_func_arg.TestTileFuncArg": [tile_h, tile_reduce_h],
+        "warp.tests.tile.test_tile_fused_ops.TestTileFusedOps": [tile_h],
+        "warp.tests.tile.test_tile_large_offsets.TestTileLargeOffsets": [tile_h],
+        "warp.tests.tile.test_tile_load.TestTileLoad": [tile_h],
+        "warp.tests.tile.test_tile_load_assign.TestTileLoadAssign": [tile_h],
+        "warp.tests.tile.test_tile_load_extract.TestTileLoadExtract": [tile_h],
+        "warp.tests.tile.test_tile_load_indexed.TestTileLoadIndexed": [tile_h],
+        "warp.tests.tile.test_tile_load_vectorized.TestTileLoadVectorized": [tile_h],
+        "warp.tests.tile.test_tile_low_precision_stack.TestTileLowPrecisionStack": [tile_h, tile_reduce_h],
+        "warp.tests.tile.test_tile_matmul.TestTileMatmul": [tile_h, mathdx],
+        "warp.tests.tile.test_tile_matmul_no_mathdx.TestTileMatmulNoMathDx": [tile_h],
+        "warp.tests.tile.test_tile_matmul_strides.TestTileMatmulStrides": [tile_h, mathdx],
+        "warp.tests.tile.test_tile_print.TestTilePrint": [tile_h],
+        "warp.tests.tile.test_tile_reduce.TestTileReduce": [
+            tile_h,
+            tile_reduce_h,
+            tile_scan_h,
+            no_shfl_up,
+            shared_init,
+        ],
+        "warp.tests.tile.test_tile_shared_memory.TestTileSharedMemory": [tile_h, tile_reduce_h],
+        "warp.tests.tile.test_tile_solve.TestTileSolve": [tile_h, mathdx],
+        "warp.tests.tile.test_tile_solve_no_mathdx.TestTileSolveNoMathDx": [tile_h, tile_solve_h],
+        "warp.tests.tile.test_tile_sort.TestTileSort": [tile_h, no_shfl_64, no_shfl_up],
+        "warp.tests.tile.test_tile_stack.TestTileStack": [tile_h],
+        "warp.tests.tile.test_tile_struct.TestTileStruct": [tile_h, tile_reduce_h, shared_ctor, no_shfl_64],
+        "warp.tests.tile.test_tile_view.TestTileView": [tile_h],
+    }
+
+    # Resolve names by import rather than against discovery, which drops
+    # classes left without tests by -k or missing optional dependencies.
+    for name in excluded:
+        module_name, class_name = name.rsplit(".", 1)
+        try:
+            getattr(importlib.import_module(module_name), class_name)
+        except (ImportError, AttributeError) as e:
+            raise RuntimeError(f"Cannot resolve excluded test class '{name}'; update or remove its entry") from e
+
+    suite = unittest.TestSuite()
+    for class_suite in _iter_class_suites(auto_discover_suite(test_loader)):
+        test_class = type(next(iter(class_suite)))
+        if f"{test_class.__module__}.{test_class.__qualname__}" not in excluded:
+            suite.addTest(class_suite)
+
+    return suite
+
+
 # Registry of named test-suite factories keyed by the ``--suite`` value that
 # selects them. This is the single source of truth for the runner's suite
 # choices: ``unittest_parallel`` derives its accepted ``--suite`` values from
@@ -1020,4 +1164,5 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
 SUITE_FACTORIES = {
     "default": default_suite,
     "debug": debug_suite,
+    "llvm-cuda": llvm_cuda_suite,
 }

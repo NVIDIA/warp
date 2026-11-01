@@ -202,6 +202,11 @@ def main(argv=None):
         "--no-shared-cache", action="store_true", help="Use a separate kernel cache per test process."
     )
     group_warp.add_argument("--warp-debug", action="store_true", help="Set warp.config.mode to 'debug'")
+    group_warp.add_argument(
+        "--warp-llvm-cuda",
+        action="store_true",
+        help="Set warp.config.llvm_cuda to True to compile CUDA kernels with Clang instead of NVRTC",
+    )
     args = parser.parse_args(args=argv)
 
     if args.isolate_test_processes and args.serial_fallback:
@@ -412,6 +417,8 @@ def main(argv=None):
 
             if args.warp_debug:
                 wp.config.mode = "debug"
+            if args.warp_llvm_cuda:
+                wp.config.llvm_cuda = True
 
             # Run the tests in serial
             start_time = time.perf_counter()
@@ -758,6 +765,8 @@ def initialize_test_process(lock, shared_index, args, temp_dir):
 
         if args.warp_debug:
             wp.config.mode = "debug"
+        if args.warp_llvm_cuda:
+            wp.config.llvm_cuda = True
 
         warp_cache_base_path = _get_warp_cache_base_path()
 
