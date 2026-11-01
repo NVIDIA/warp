@@ -2432,8 +2432,8 @@ def svd3(
     """Compute the singular value decomposition of a 3x3 matrix and store the
     factors in caller-provided output arguments.
 
-    See the return-value overload for the factorization convention, numerical
-    behavior, and autodiff guidance.
+    See the ``wp.svd3(A)`` overload for the factorization convention, numerical behavior, and
+    autodiff guidance.
 
     Args:
         A: Matrix to decompose.
@@ -2529,8 +2529,8 @@ def svd2(
     """Compute the singular value decomposition of a 2x2 matrix and store the
     factors in caller-provided output arguments.
 
-    See the return-value overload for the factorization convention, numerical
-    behavior, and autodiff guidance.
+    See the ``wp.svd2(A)`` overload for the factorization convention, numerical behavior, and
+    autodiff guidance.
 
     Args:
         A: Matrix to decompose.
@@ -2638,8 +2638,8 @@ def qr3(
     """Compute the QR decomposition of a 3x3 matrix and store the factors in
     caller-provided output arguments.
 
-    See the return-value overload for the factorization convention, numerical
-    behavior, and autodiff guidance.
+    See the ``wp.qr3(A)`` overload for the factorization convention, numerical behavior, and
+    autodiff guidance.
 
     Args:
         A: Matrix to decompose.
@@ -2746,8 +2746,8 @@ def eig3(
     """Compute the eigendecomposition of a symmetric 3x3 matrix and store
     the eigenpairs in caller-provided output arguments.
 
-    See the return-value overload for the factorization convention, numerical
-    behavior, and autodiff guidance.
+    See the ``wp.eig3(A)`` overload for the factorization convention, numerical behavior, and
+    autodiff guidance.
 
     Args:
         A: Symmetric matrix to decompose.
@@ -3266,7 +3266,7 @@ def transformation(*args: Float) -> Transformation[Float]:
     and must have the same type. With no arguments, all components are zero, including the
     quaternion; use :func:`~warp.transform_identity` for an identity.
 
-    See the overload that accepts ``p`` and ``q`` for an example.
+    See the ``wp.transformation(p, q)`` overload for an example.
 
     Args:
         args: No arguments, one scalar, or seven scalar components.
@@ -3284,7 +3284,7 @@ def transformation(*args: Float, dtype: type[DTypeFloat]) -> Transformation[DTyp
     and must have the same type. With no arguments, all components are zero, including the
     quaternion; use :func:`~warp.transform_identity` for an identity.
 
-    See the overload that accepts ``p`` and ``q`` for an example.
+    See the ``wp.transformation(p, q)`` overload for an example.
 
     Args:
         args: No arguments, one scalar, or seven scalar components.
@@ -3673,7 +3673,7 @@ def transform_inverse(xform: Transformation[Float]) -> Transformation[Float]:
 def spatial_vector() -> Vector[Float, Literal[6]]:
     """Return a zero 6D spatial vector.
 
-    See the overload that accepts ``w`` and ``v`` for an example.
+    See the ``wp.spatial_vector(w, v)`` overload for an example.
 
     Args:
         dtype: Scalar type of the components. Defaults to ``float32``.
@@ -3686,7 +3686,7 @@ def spatial_vector() -> Vector[Float, Literal[6]]:
 def spatial_vector(dtype: type[DTypeFloat]) -> Vector[DTypeFloat, Literal[6]]:
     """Return a zero 6D spatial vector.
 
-    See the overload that accepts ``w`` and ``v`` for an example.
+    See the ``wp.spatial_vector(w, v)`` overload for an example.
 
     Args:
         dtype: Scalar type of the components. Defaults to ``float32``.
@@ -3775,7 +3775,7 @@ def spatial_vector(
 def spatial_vector(wx: Float, wy: Float, wz: Float, vx: Float, vy: Float, vz: Float) -> Vector[Float, Literal[6]]:
     """Construct a 6D spatial vector from six scalar components.
 
-    See the overload that accepts ``w`` and ``v`` for the twist and wrench interpretations. All
+    See the ``wp.spatial_vector(w, v)`` overload for the twist and wrench interpretations. All
     values must have the same scalar type.
 
     Args:
@@ -3790,7 +3790,7 @@ def spatial_vector(wx: Float, wy: Float, wz: Float, vx: Float, vy: Float, vz: Fl
     Returns:
         The spatial vector ``(wx, wy, wz, vx, vy, vz)``.
 
-    See the overload that accepts ``w`` and ``v`` for an example."""
+    See the ``wp.spatial_vector(w, v)`` overload for an example."""
     ...
 
 @over
@@ -3805,7 +3805,7 @@ def spatial_vector(
 ) -> Vector[DTypeFloat, Literal[6]]:
     """Construct a 6D spatial vector from six scalar components.
 
-    See the overload that accepts ``w`` and ``v`` for the twist and wrench interpretations. All
+    See the ``wp.spatial_vector(w, v)`` overload for the twist and wrench interpretations. All
     values must have the same scalar type.
 
     Args:
@@ -3820,7 +3820,7 @@ def spatial_vector(
     Returns:
         The spatial vector ``(wx, wy, wz, vx, vy, vz)``.
 
-    See the overload that accepts ``w`` and ``v`` for an example."""
+    See the ``wp.spatial_vector(w, v)`` overload for an example."""
     ...
 
 def spatial_adjoint(
@@ -4084,9 +4084,8 @@ def tile_zeros(shape: tuple[int, ...], dtype: Any = float, storage: str = "regis
 def tile_zeros(shape: int32 | int, dtype: Any = float, storage: str = "register") -> Tile[Any, tuple[int, ...]]:
     """Allocate a tile of zero-initialized items.
 
-    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
-    ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
-    details and an example."""
+    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing ``(shape,)``.
+    See the ``wp.tile_zeros(shape=(m, n))`` overload for usage details and an example."""
     ...
 
 @over
@@ -4136,9 +4135,8 @@ def tile_ones(shape: tuple[int, ...], dtype: Any = float, storage: str = "regist
 def tile_ones(shape: int32 | int, dtype: Any = float, storage: str = "register") -> Tile[Any, tuple[int, ...]]:
     """Allocate a tile of one-initialized items.
 
-    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
-    ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
-    details and an example."""
+    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing ``(shape,)``.
+    See the ``wp.tile_ones(shape=(m, n))`` overload for usage details and an example."""
     ...
 
 @over
@@ -4190,9 +4188,8 @@ def tile_empty(shape: tuple[int, ...], dtype: Any = float, storage: str = "regis
 def tile_empty(shape: int32 | int, dtype: Any = float, storage: str = "register") -> Tile[Any, tuple[int, ...]]:
     """Allocate a tile of uninitialized items.
 
-    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
-    ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
-    details and an example."""
+    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing ``(shape,)``.
+    See the ``wp.tile_empty(shape=(m, n))`` overload for usage details and an example."""
     ...
 
 @over
@@ -4249,9 +4246,9 @@ def tile_full(
 ) -> Tile[Any, tuple[int, ...]]:
     """Allocate a tile filled with the specified value.
 
-    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
-    ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
-    details and an example."""
+    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing ``(shape,)``.
+    See the ``wp.tile_full(shape=(m, n), value=value)`` overload for usage details and an
+    example."""
     ...
 
 @over
@@ -4340,9 +4337,9 @@ def tile_from_thread(
 ) -> Tile[Any, tuple[int, ...]]:
     """Allocate a tile filled with a value from a specific thread.
 
-    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
-    ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
-    details and an example.
+    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing ``(shape,)``.
+    See the ``wp.tile_from_thread(shape=(m, n), value=value, thread_idx=thread_idx)`` overload for
+    usage details and an example.
 
     On a partial CPU block, ``thread_idx`` must identify an active lane. If the
     selected lane is inactive, no producer executes and the result is undefined.
@@ -4411,9 +4408,8 @@ def tile_randi(shape: tuple[int, ...], rng: uint32, storage: str = "register") -
 def tile_randi(shape: int32 | int, rng: uint32, storage: str = "register") -> Tile[Any, tuple[int, ...]]:
     """Generate a tile of random integers.
 
-    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
-    ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
-    details and an example."""
+    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing ``(shape,)``.
+    See the ``wp.tile_randi(shape=(m, n), rng=rng)`` overload for usage details and an example."""
     ...
 
 @over
@@ -4426,8 +4422,8 @@ def tile_randi(
 ) -> Tile[Any, tuple[int, ...]]:
     """Generate a tile of random integers in the range ``[min, max)``.
 
-    See the overload without ``min`` and ``max`` for reproducibility details and a usage
-    example.
+    See the ``wp.tile_randi(shape=(m, n), rng=rng)`` overload for reproducibility details and a
+    usage example.
 
     Args:
         shape: Shape of the output tile. Must be a compile-time constant.
@@ -4454,9 +4450,8 @@ def tile_randi(
 ) -> Tile[Any, tuple[int, ...]]:
     """Generate a tile of random integers in the range ``[min, max)``.
 
-    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
-    ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument with ``min``
-    and ``max`` for usage details and an example."""
+    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing ``(shape,)``.
+    See the ``wp.tile_randi(shape=(m, n), rng=rng, min=lo, max=hi)`` overload for usage details."""
     ...
 
 @over
@@ -4519,9 +4514,8 @@ def tile_randf(shape: tuple[int, ...], rng: uint32, storage: str = "register") -
 def tile_randf(shape: int32 | int, rng: uint32, storage: str = "register") -> Tile[Any, tuple[int, ...]]:
     """Generate a tile of random floats.
 
-    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
-    ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
-    details and an example."""
+    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing ``(shape,)``.
+    See the ``wp.tile_randf(shape=(m, n), rng=rng)`` overload for usage details and an example."""
     ...
 
 @over
@@ -4534,8 +4528,8 @@ def tile_randf(
 ) -> Tile[Any, tuple[int, ...]]:
     """Generate a tile of random floats in the range ``[min, max)``.
 
-    See the overload without ``min`` and ``max`` for reproducibility details and a usage
-    example.
+    See the ``wp.tile_randf(shape=(m, n), rng=rng)`` overload for reproducibility details and a
+    usage example.
 
     Args:
         shape: Shape of the output tile. Must be a compile-time constant.
@@ -4562,9 +4556,8 @@ def tile_randf(
 ) -> Tile[Any, tuple[int, ...]]:
     """Generate a tile of random floats in the range ``[min, max)``.
 
-    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
-    ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument with ``min``
-    and ``max`` for usage details and an example."""
+    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing ``(shape,)``.
+    See the ``wp.tile_randf(shape=(m, n), rng=rng, min=lo, max=hi)`` overload for usage details."""
     ...
 
 @over
@@ -4756,8 +4749,8 @@ def tile_load(
     """Load a 1D tile from a 1D global memory array.
 
     Overload for a scalar ``shape`` and ``offset``, equivalent to passing one-element
-    tuples. For usage details and an example, see the overload that takes tuple-valued
-    ``shape`` and ``offset`` arguments."""
+    tuples. For usage details and an example, see the
+    ``wp.tile_load(a, shape=(m, n), offset=(i, j))`` overload."""
     ...
 
 def tile_load_indexed(
@@ -4895,8 +4888,7 @@ def tile_store(
     """Store a 1D tile to a 1D global memory array.
 
     Overload for a scalar ``offset``, equivalent to passing a one-element tuple. For
-    usage details and an example, see the overload that takes a tuple-valued ``offset``
-    argument."""
+    usage details and an example, see the ``wp.tile_store(a, t, offset=(i, j))`` overload."""
     ...
 
 def tile_store_indexed(
@@ -5043,8 +5035,7 @@ def tile_atomic_add(
     """Atomically add a 1D tile onto the 1D array ``a`` and return the values it replaced.
 
     Overload for a scalar ``offset``, equivalent to passing a one-element tuple. For
-    usage details and an example, see the overload that takes a tuple-valued ``offset``
-    argument."""
+    usage details and an example, see the ``wp.tile_atomic_add(a, t, offset=(i, j))`` overload."""
     ...
 
 def tile_atomic_add_indexed(
@@ -5583,8 +5574,8 @@ def tile_extract(a: Tile[Any, tuple[int, ...]], i: int32 | int, j: int32 | int) 
 
     Two-index overload: both indices select an element of a 2D tile, or ``i`` indexes a
     1D tile of vectors and ``j`` selects a component of that vector, or ``i`` indexes a
-    1D tile of matrices and ``j`` selects a row of that matrix. See the one-index
-    overload for usage details and an example.
+    1D tile of matrices and ``j`` selects a row of that matrix. See the
+    ``wp.tile_extract(a, i)`` overload for usage details and an example.
 
     Args:
         a: Tile to extract the element from. All index arguments may be runtime values.
@@ -5604,7 +5595,7 @@ def tile_extract(a: Tile[Any, tuple[int, ...]], i: int32 | int, j: int32 | int, 
 
     Three-index overload: the indices select an element of a 3D tile, a component from a
     2D tile of vectors, a row from a 2D tile of matrices, or an entry from a 1D tile of
-    matrices. See the one-index overload for usage details and an example.
+    matrices. See the ``wp.tile_extract(a, i)`` overload for usage details and an example.
 
     Args:
         a: Tile to extract the element from. All index arguments may be runtime values.
@@ -5625,7 +5616,7 @@ def tile_extract(a: Tile[Any, tuple[int, ...]], i: int32 | int, j: int32 | int, 
 
     Four-index overload: the indices select an element of a 4D tile, a component from a
     3D tile of vectors, a row from a 3D tile of matrices, or an entry from a 2D tile of
-    matrices. See the one-index overload for usage details and an example.
+    matrices. See the ``wp.tile_extract(a, i)`` overload for usage details and an example.
 
     Args:
         a: Tile to extract the element from. All index arguments may be runtime values.
@@ -5654,7 +5645,7 @@ def tile_extract(
 
     Five-index overload: the indices select an element of a 5D tile, a component from a
     4D tile of vectors, a row from a 4D tile of matrices, or an entry from a 3D tile of
-    matrices. See the one-index overload for usage details and an example.
+    matrices. See the ``wp.tile_extract(a, i)`` overload for usage details and an example.
 
     Args:
         a: Tile to extract the element from. All index arguments may be runtime values.
@@ -5683,8 +5674,8 @@ def tile_extract(
     """Extract a single element from a tile.
 
     Six-index overload: the indices select an element of a 4D tile of matrices,
-    followed by a row and a column index. See the one-index overload for usage details
-    and an example.
+    followed by a row and a column index. See the ``wp.tile_extract(a, i)`` overload for usage
+    details and an example.
 
     Args:
         a: Tile to extract the element from
@@ -5773,7 +5764,7 @@ def tile_scatter_add(
     """Scatter-add a per-thread value into a 2D shared-memory tile.
 
     Overload taking one index per tile dimension. For usage details and an example,
-    see the 1D overload that takes only ``i`` as its index."""
+    see the ``wp.tile_scatter_add(a, i, value, has_value)`` overload."""
     ...
 
 @over
@@ -5789,7 +5780,7 @@ def tile_scatter_add(
     """Scatter-add a per-thread value into a 3D shared-memory tile.
 
     Overload taking one index per tile dimension. For usage details and an example,
-    see the 1D overload that takes only ``i`` as its index."""
+    see the ``wp.tile_scatter_add(a, i, value, has_value)`` overload."""
     ...
 
 @over
@@ -5806,7 +5797,7 @@ def tile_scatter_add(
     """Scatter-add a per-thread value into a 4D shared-memory tile.
 
     Overload taking one index per tile dimension. For usage details and an example,
-    see the 1D overload that takes only ``i`` as its index."""
+    see the ``wp.tile_scatter_add(a, i, value, has_value)`` overload."""
     ...
 
 @over
@@ -5872,7 +5863,7 @@ def tile_scatter_masked(
     """Write a per-thread value into a 2D shared-memory tile.
 
     Overload taking one index per tile dimension. For usage details and an example,
-    see the 1D overload that takes only ``i`` as its index."""
+    see the ``wp.tile_scatter_masked(a, i, value, has_value)`` overload."""
     ...
 
 @over
@@ -5887,7 +5878,7 @@ def tile_scatter_masked(
     """Write a per-thread value into a 3D shared-memory tile.
 
     Overload taking one index per tile dimension. For usage details and an example,
-    see the 1D overload that takes only ``i`` as its index."""
+    see the ``wp.tile_scatter_masked(a, i, value, has_value)`` overload."""
     ...
 
 @over
@@ -5903,7 +5894,7 @@ def tile_scatter_masked(
     """Write a per-thread value into a 4D shared-memory tile.
 
     Overload taking one index per tile dimension. For usage details and an example,
-    see the 1D overload that takes only ``i`` as its index."""
+    see the ``wp.tile_scatter_masked(a, i, value, has_value)`` overload."""
     ...
 
 def tile_transpose(a: Tile[Any, tuple[int, int]]) -> Tile[Any, tuple[int, int]]:
@@ -6644,9 +6635,10 @@ def tile_map(op: Callable, a: Tile[Any, tuple[int, ...]], *args: Any) -> Tile[An
     additional argument can be a tile with the same dimensions as ``a`` or a non-tile
     value (scalar, vector, matrix, or Warp struct), which is broadcast across all elements.
 
-    Unlike the one- and two-argument forms, ``op`` must be a user function declared with
-    :func:`@wp.func <warp.func>`; a built-in cannot be used here. The result's data type
-    is ``op``'s return type, which must be a scalar, vector, matrix, or Warp struct.
+    Unlike the ``wp.tile_map(op, a)`` and ``wp.tile_map(op, a, b)`` overloads, ``op`` must be
+    a user function declared with :func:`@wp.func <warp.func>`; a built-in cannot be used here.
+    The result's data type is ``op``'s return type, which must be a scalar, vector, matrix, or
+    Warp struct.
 
     The adjoint of each non-tile runtime argument is the sum of its per-element
     contributions across the mapped tile.
@@ -7149,9 +7141,10 @@ def tile_query_valid(query: BvhQueryTiled) -> bool:
 def tile_query_valid(query: MeshQueryAABBTiled) -> bool:
     """Return whether a thread-block parallel mesh AABB query should continue.
 
-    This overload accepts a :class:`warp.MeshQueryAABBTiled`. The overload taking a
-    :class:`warp.BvhQueryTiled` documents the shared iteration protocol and includes a
-    usage example; use :func:`~warp.tile_mesh_query_aabb_next` to advance this query.
+    This overload accepts a :class:`warp.MeshQueryAABBTiled`. See the
+    ``wp.tile_query_valid(wp.tile_bvh_query_aabb(id, low, high))`` overload for the shared
+    iteration protocol and a usage example; use :func:`~warp.tile_mesh_query_aabb_next` to advance
+    this query.
     Always test each returned face index for ``>= 0``.
 
     Args:
@@ -8256,8 +8249,8 @@ def hash_grid_query(id: uint64, point: vec3f, max_dist: float32 | float, group: 
 def hash_grid_query(id: uint64, point: vec3h, max_dist: float16) -> HashGridQuery:
     """Construct a point query against a :class:`warp.HashGrid` (float16 precision).
 
-    The ``float16`` overload of :func:`hash_grid_query`. Behavior and usage match the default
-    ``float32`` overload; see it for details and a usage example.
+    The ``float16`` overload of :func:`hash_grid_query`. Behavior and usage match the
+    ``wp.hash_grid_query(id, wp.vec3(...), max_dist)`` overload; see it for details and a usage example.
 
     Args:
         id: The :class:`warp.HashGrid` identifier
@@ -8272,8 +8265,8 @@ def hash_grid_query(id: uint64, point: vec3h, max_dist: float16) -> HashGridQuer
 def hash_grid_query(id: uint64, point: vec3h, max_dist: float16, group: int32 | int) -> HashGridQuery:
     """Construct a point query against a :class:`warp.HashGrid`, restricted to one point group (float16 precision).
 
-    The ``float16`` overload of :func:`hash_grid_query`. Behavior and usage match the default
-    ``float32`` overload; see it for details and a usage example.
+    The ``float16`` overload of :func:`hash_grid_query`. Behavior and usage match the
+    ``wp.hash_grid_query(id, wp.vec3(...), max_dist)`` overload; see it for details and a usage example.
 
     If the grid was built with groups, only points whose group id equals ``group`` are returned as
     candidates; any ``int32`` value is a valid group id. Omit the ``group`` argument to visit all
@@ -8294,8 +8287,8 @@ def hash_grid_query(id: uint64, point: vec3h, max_dist: float16, group: int32 | 
 def hash_grid_query(id: uint64, point: vec3d, max_dist: float64) -> HashGridQuery:
     """Construct a point query against a :class:`warp.HashGrid` (float64 precision).
 
-    The ``float64`` overload of :func:`hash_grid_query`. Behavior and usage match the default
-    ``float32`` overload; see it for details and a usage example.
+    The ``float64`` overload of :func:`hash_grid_query`. Behavior and usage match the
+    ``wp.hash_grid_query(id, wp.vec3(...), max_dist)`` overload; see it for details and a usage example.
 
     Args:
         id: The :class:`warp.HashGrid` identifier
@@ -8310,8 +8303,8 @@ def hash_grid_query(id: uint64, point: vec3d, max_dist: float64) -> HashGridQuer
 def hash_grid_query(id: uint64, point: vec3d, max_dist: float64, group: int32 | int) -> HashGridQuery:
     """Construct a point query against a :class:`warp.HashGrid`, restricted to one point group (float64 precision).
 
-    The ``float64`` overload of :func:`hash_grid_query`. Behavior and usage match the default
-    ``float32`` overload; see it for details and a usage example.
+    The ``float64`` overload of :func:`hash_grid_query`. Behavior and usage match the
+    ``wp.hash_grid_query(id, wp.vec3(...), max_dist)`` overload; see it for details and a usage example.
 
     If the grid was built with groups, only points whose group id equals ``group`` are returned as
     candidates; any ``int32`` value is a valid group id. Omit the ``group`` argument to visit all
@@ -8422,8 +8415,9 @@ def intersect_tri_tri(v0: vec3f, v1: vec3f, v2: vec3f, u0: vec3f, u1: vec3f, u2:
 
     All six vertices must be in the same coordinate space. Coplanar triangles are handled (an
     overlap within their common plane counts as an intersection). This single-precision overload
-    may return incorrect results in near-degenerate cases; use the double-precision overload
-    (``vec3d`` inputs) for greater robustness.
+    may return incorrect results in near-degenerate cases; use the
+    ``wp.intersect_tri_tri(v0, v1, v2, u0, u1, u2)`` overload with ``vec3d`` vertices for greater
+    robustness.
 
     Returns:
         ``1`` if the triangles intersect, ``0`` otherwise.
@@ -8453,7 +8447,8 @@ def intersect_tri_tri(v0: vec3d, v1: vec3d, v2: vec3d, u0: vec3d, u1: vec3d, u2:
 
     All six vertices must be in the same coordinate space. Coplanar triangles are handled (an
     overlap within their common plane counts as an intersection). This double-precision overload is
-    more accurate than the single-precision (``vec3`` inputs) overload.
+    more accurate than the ``wp.intersect_tri_tri(v0, v1, v2, u0, u1, u2)`` overload with ``vec3``
+    vertices.
 
     Returns:
         ``1`` if the triangles intersect, ``0`` otherwise.
@@ -9239,7 +9234,8 @@ def volume_index_to_world(id: uint64, uvw: vec3d) -> vec3d:
     using the volume's affine index-to-world transform (float64 precision).
 
     The ``float64`` overload of :func:`~warp.volume_index_to_world`. Behavior and usage match the
-    default ``float32`` overload; see it for details and a usage example."""
+    ``wp.volume_index_to_world(id, wp.vec3(...))`` overload; see it for details and a usage
+    example."""
     ...
 
 @over
@@ -9267,7 +9263,7 @@ def volume_world_to_index(id: uint64, xyz: vec3d) -> vec3d:
     using the inverse of the volume's affine index-to-world transform (float64 precision).
 
     The ``float64`` overload of :func:`~warp.volume_world_to_index`. Behavior and usage match the
-    default ``float32`` overload; see it for details and a usage example."""
+    ``wp.volume_world_to_index(id, wp.vec3(...))`` overload; see it for details."""
     ...
 
 @over
@@ -9293,8 +9289,8 @@ def volume_index_to_world_dir(id: uint64, uvw: vec3d) -> vec3d:
     """Transform the direction ``uvw`` from the volume's index space to world space using the linear
     part of the volume's affine transform (float64 precision).
 
-    The ``float64`` overload of :func:`~warp.volume_index_to_world_dir`. Behavior and usage match
-    the default ``float32`` overload; see it for details and a usage example."""
+    The ``float64`` overload of :func:`~warp.volume_index_to_world_dir`. Behavior and usage
+    match the ``wp.volume_index_to_world_dir(id, wp.vec3(...))`` overload; see it for details."""
     ...
 
 @over
@@ -9320,8 +9316,8 @@ def volume_world_to_index_dir(id: uint64, xyz: vec3d) -> vec3d:
     """Transform the direction ``xyz`` from world space to the volume's index space using the linear
     part of the volume's affine transform (float64 precision).
 
-    The ``float64`` overload of :func:`~warp.volume_world_to_index_dir`. Behavior and usage match
-    the default ``float32`` overload; see it for details and a usage example."""
+    The ``float64`` overload of :func:`~warp.volume_world_to_index_dir`. Behavior and usage
+    match the ``wp.volume_world_to_index_dir(id, wp.vec3(...))`` overload; see it for details."""
     ...
 
 @over
@@ -9658,10 +9654,11 @@ def rand_init(seed: int32 | int) -> uint32:
     only for the duration of the kernel invocation and does not carry over between
     launches. Re-launching with the same seed and per-thread offsets reproduces the
     same sequences. To draw different sequences across launches, change the seed or
-    include a launch-specific value in the ``rand_init(seed, offset)`` offset. See
+    include a launch-specific value in the ``offset`` of the ``wp.rand_init(seed, offset)``
+    overload. See
     :ref:`Avoiding Correlated Sequences <avoiding_correlated_sequences>` for examples.
 
-    For parallel kernels, prefer the ``rand_init(seed, offset)`` overload with a
+    For parallel kernels, prefer the ``wp.rand_init(seed, offset)`` overload with a
     unique per-thread ``offset`` so each thread draws a distinct sequence. See
     the :ref:`Random Number Generation <random_number_generation>` user guide
     section for more details.
@@ -11329,8 +11326,8 @@ def tile_matmul(
 
     Computes ``out = alpha * a @ b + beta * out``, updating ``out`` in place. ``out`` is
     read only when ``beta`` is nonzero, so it must be initialized before the call unless
-    ``beta`` is zero. Use the two-argument overload to obtain a freshly computed tile
-    instead.
+    ``beta`` is zero. Use the ``wp.tile_matmul(a, b)`` overload to obtain a freshly computed
+    tile instead.
 
     ``out`` must not alias ``a`` or ``b``: the operands are read while ``out`` is being
     written, so overlapping tiles give undefined results. Passing the same tile as both

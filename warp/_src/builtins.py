@@ -919,7 +919,7 @@ add_builtin(
     group="Vector Math",
     doc="""Return the inverse of a 3x3 matrix.
 
-    See the 2x2 overload for numerical and autodiff guidance.
+    See the ``wp.inverse(wp.mat22(...))`` overload for numerical and autodiff guidance.
 
     Args:
         a: Matrix to invert. Must be nonsingular.
@@ -937,7 +937,7 @@ add_builtin(
     group="Vector Math",
     doc="""Return the inverse of a 4x4 matrix.
 
-    See the 2x2 overload for numerical and autodiff guidance.
+    See the ``wp.inverse(wp.mat22(...))`` overload for numerical and autodiff guidance.
 
     Args:
         a: Matrix to invert. Must be nonsingular.
@@ -1014,8 +1014,8 @@ add_builtin(
     group="Vector Math",
     doc="""Return an approximate inverse of a 3x3 matrix.
 
-    See the 2x2 overload for device behavior, numerical accuracy, and
-    autodiff guidance.
+    See the ``wp.inverse_approx(wp.mat22(...))`` overload for device behavior, numerical accuracy,
+    and autodiff guidance.
 
     Args:
         a: Matrix to invert. Must be nonsingular.
@@ -1034,8 +1034,8 @@ add_builtin(
     group="Vector Math",
     doc="""Return an approximate inverse of a 4x4 matrix.
 
-    See the 2x2 overload for device behavior, numerical accuracy, and
-    autodiff guidance.
+    See the ``wp.inverse_approx(wp.mat22(...))`` overload for device behavior, numerical accuracy,
+    and autodiff guidance.
 
     Args:
         a: Matrix to invert. Must be nonsingular.
@@ -1699,8 +1699,8 @@ add_builtin(
     doc="""Compute the singular value decomposition of a 3x3 matrix and store the
     factors in caller-provided output arguments.
 
-    See the return-value overload for the factorization convention, numerical
-    behavior, and autodiff guidance.
+    See the ``wp.svd3(A)`` overload for the factorization convention, numerical behavior, and
+    autodiff guidance.
 
     Args:
         A: Matrix to decompose.
@@ -1818,8 +1818,8 @@ add_builtin(
     doc="""Compute the singular value decomposition of a 2x2 matrix and store the
     factors in caller-provided output arguments.
 
-    See the return-value overload for the factorization convention, numerical
-    behavior, and autodiff guidance.
+    See the ``wp.svd2(A)`` overload for the factorization convention, numerical behavior, and
+    autodiff guidance.
 
     Args:
         A: Matrix to decompose.
@@ -1947,8 +1947,8 @@ add_builtin(
     doc="""Compute the QR decomposition of a 3x3 matrix and store the factors in
     caller-provided output arguments.
 
-    See the return-value overload for the factorization convention, numerical
-    behavior, and autodiff guidance.
+    See the ``wp.qr3(A)`` overload for the factorization convention, numerical behavior, and
+    autodiff guidance.
 
     Args:
         A: Matrix to decompose.
@@ -2072,8 +2072,8 @@ add_builtin(
     doc="""Compute the eigendecomposition of a symmetric 3x3 matrix and store
     the eigenpairs in caller-provided output arguments.
 
-    See the return-value overload for the factorization convention, numerical
-    behavior, and autodiff guidance.
+    See the ``wp.eig3(A)`` overload for the factorization convention, numerical behavior, and
+    autodiff guidance.
 
     Args:
         A: Symmetric matrix to decompose.
@@ -2739,7 +2739,7 @@ add_builtin(
     and must have the same type. With no arguments, all components are zero, including the
     quaternion; use :func:`~warp.transform_identity` for an identity.
 
-    See the overload that accepts ``p`` and ``q`` for an example.
+    See the ``wp.transformation(p, q)`` overload for an example.
 
     Args:
         args: No arguments, one scalar, or seven scalar components.
@@ -3255,7 +3255,7 @@ add_builtin(
     group="Spatial Math",
     doc="""Return a zero 6D spatial vector.
 
-    See the overload that accepts ``w`` and ``v`` for an example.
+    See the ``wp.spatial_vector(w, v)`` overload for an example.
 
     Args:
         dtype: Scalar type of the components. Defaults to ``float32``.
@@ -3322,7 +3322,7 @@ add_builtin(
     group="Spatial Math",
     doc="""Construct a 6D spatial vector from six scalar components.
 
-    See the overload that accepts ``w`` and ``v`` for the twist and wrench interpretations. All
+    See the ``wp.spatial_vector(w, v)`` overload for the twist and wrench interpretations. All
     values must have the same scalar type.
 
     Args:
@@ -3337,7 +3337,7 @@ add_builtin(
     Returns:
         The spatial vector ``(wx, wy, wz, vx, vy, vz)``.
 
-    See the overload that accepts ``w`` and ``v`` for an example.""",
+    See the ``wp.spatial_vector(w, v)`` overload for an example.""",
     export=False,
 )
 
@@ -3688,9 +3688,8 @@ add_builtin(
     is_differentiable=False,
     doc="""Allocate a tile of zero-initialized items.
 
-    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
-    ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
-    details and an example.""",
+    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing ``(shape,)``.
+    See the ``wp.tile_zeros(shape=(m, n))`` overload for usage details and an example.""",
     group="Tile Primitives",
     export=False,
 )
@@ -3798,9 +3797,8 @@ add_builtin(
     is_differentiable=False,
     doc="""Allocate a tile of one-initialized items.
 
-    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
-    ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
-    details and an example.""",
+    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing ``(shape,)``.
+    See the ``wp.tile_ones(shape=(m, n))`` overload for usage details and an example.""",
     group="Tile Primitives",
     export=False,
 )
@@ -3910,9 +3908,8 @@ add_builtin(
     is_differentiable=False,
     doc="""Allocate a tile of uninitialized items.
 
-    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
-    ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
-    details and an example.""",
+    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing ``(shape,)``.
+    See the ``wp.tile_empty(shape=(m, n))`` overload for usage details and an example.""",
     group="Tile Primitives",
     export=False,
 )
@@ -4035,9 +4032,9 @@ add_builtin(
     is_differentiable=False,
     doc="""Allocate a tile filled with the specified value.
 
-    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
-    ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
-    details and an example.""",
+    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing ``(shape,)``.
+    See the ``wp.tile_full(shape=(m, n), value=value)`` overload for usage details and an
+    example.""",
     group="Tile Primitives",
     export=False,
 )
@@ -4164,9 +4161,9 @@ add_builtin(
     is_differentiable=False,
     doc="""Allocate a tile filled with a value from a specific thread.
 
-    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
-    ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
-    details and an example.
+    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing ``(shape,)``.
+    See the ``wp.tile_from_thread(shape=(m, n), value=value, thread_idx=thread_idx)`` overload for
+    usage details and an example.
 
     On a partial CPU block, ``thread_idx`` must identify an active lane. If the
     selected lane is inactive, no producer executes and the result is undefined.
@@ -4309,9 +4306,8 @@ add_builtin(
     is_differentiable=False,
     doc="""Generate a tile of random integers.
 
-    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
-    ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
-    details and an example.""",
+    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing ``(shape,)``.
+    See the ``wp.tile_randi(shape=(m, n), rng=rng)`` overload for usage details and an example.""",
     group="Tile Primitives",
     export=False,
 )
@@ -4325,8 +4321,8 @@ add_builtin(
     is_differentiable=False,
     doc="""Generate a tile of random integers in the range ``[min, max)``.
 
-    See the overload without ``min`` and ``max`` for reproducibility details and a usage
-    example.
+    See the ``wp.tile_randi(shape=(m, n), rng=rng)`` overload for reproducibility details and a
+    usage example.
 
     Args:
         shape: Shape of the output tile. Must be a compile-time constant.
@@ -4355,9 +4351,8 @@ add_builtin(
     is_differentiable=False,
     doc="""Generate a tile of random integers in the range ``[min, max)``.
 
-    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
-    ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument with ``min``
-    and ``max`` for usage details and an example.""",
+    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing ``(shape,)``.
+    See the ``wp.tile_randi(shape=(m, n), rng=rng, min=lo, max=hi)`` overload for usage details.""",
     group="Tile Primitives",
     export=False,
 )
@@ -4494,9 +4489,8 @@ add_builtin(
     is_differentiable=False,
     doc="""Generate a tile of random floats.
 
-    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
-    ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument for usage
-    details and an example.""",
+    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing ``(shape,)``.
+    See the ``wp.tile_randf(shape=(m, n), rng=rng)`` overload for usage details and an example.""",
     group="Tile Primitives",
     export=False,
 )
@@ -4510,8 +4504,8 @@ add_builtin(
     is_differentiable=False,
     doc="""Generate a tile of random floats in the range ``[min, max)``.
 
-    See the overload without ``min`` and ``max`` for reproducibility details and a usage
-    example.
+    See the ``wp.tile_randf(shape=(m, n), rng=rng)`` overload for reproducibility details and a
+    usage example.
 
     Args:
         shape: Shape of the output tile. Must be a compile-time constant.
@@ -4540,9 +4534,8 @@ add_builtin(
     is_differentiable=False,
     doc="""Generate a tile of random floats in the range ``[min, max)``.
 
-    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing
-    ``(shape,)``. See the overload taking a tuple-valued ``shape`` argument with ``min``
-    and ``max`` for usage details and an example.""",
+    Overload for 1D tiles: ``shape`` is the number of elements, equivalent to passing ``(shape,)``.
+    See the ``wp.tile_randf(shape=(m, n), rng=rng, min=lo, max=hi)`` overload for usage details.""",
     group="Tile Primitives",
     export=False,
 )
@@ -4974,8 +4967,8 @@ add_builtin(
     doc="""Load a 1D tile from a 1D global memory array.
 
     Overload for a scalar ``shape`` and ``offset``, equivalent to passing one-element
-    tuples. For usage details and an example, see the overload that takes tuple-valued
-    ``shape`` and ``offset`` arguments.""",
+    tuples. For usage details and an example, see the
+    ``wp.tile_load(a, shape=(m, n), offset=(i, j))`` overload.""",
     group="Tile Primitives",
     export=False,
 )
@@ -5277,8 +5270,7 @@ add_builtin(
     doc="""Store a 1D tile to a 1D global memory array.
 
     Overload for a scalar ``offset``, equivalent to passing a one-element tuple. For
-    usage details and an example, see the overload that takes a tuple-valued ``offset``
-    argument.""",
+    usage details and an example, see the ``wp.tile_store(a, t, offset=(i, j))`` overload.""",
     group="Tile Primitives",
     export=False,
 )
@@ -5593,8 +5585,7 @@ add_builtin(
     doc="""Atomically add a 1D tile onto the 1D array ``a`` and return the values it replaced.
 
     Overload for a scalar ``offset``, equivalent to passing a one-element tuple. For
-    usage details and an example, see the overload that takes a tuple-valued ``offset``
-    argument.""",
+    usage details and an example, see the ``wp.tile_atomic_add(a, t, offset=(i, j))`` overload.""",
     group="Tile Primitives",
     export=False,
 )
@@ -7019,8 +7010,8 @@ add_builtin(
 
     Two-index overload: both indices select an element of a 2D tile, or ``i`` indexes a
     1D tile of vectors and ``j`` selects a component of that vector, or ``i`` indexes a
-    1D tile of matrices and ``j`` selects a row of that matrix. See the one-index
-    overload for usage details and an example.
+    1D tile of matrices and ``j`` selects a row of that matrix. See the
+    ``wp.tile_extract(a, i)`` overload for usage details and an example.
 
     Args:
         a: Tile to extract the element from. All index arguments may be runtime values.
@@ -7045,7 +7036,7 @@ add_builtin(
 
     Three-index overload: the indices select an element of a 3D tile, a component from a
     2D tile of vectors, a row from a 2D tile of matrices, or an entry from a 1D tile of
-    matrices. See the one-index overload for usage details and an example.
+    matrices. See the ``wp.tile_extract(a, i)`` overload for usage details and an example.
 
     Args:
         a: Tile to extract the element from. All index arguments may be runtime values.
@@ -7071,7 +7062,7 @@ add_builtin(
 
     Four-index overload: the indices select an element of a 4D tile, a component from a
     3D tile of vectors, a row from a 3D tile of matrices, or an entry from a 2D tile of
-    matrices. See the one-index overload for usage details and an example.
+    matrices. See the ``wp.tile_extract(a, i)`` overload for usage details and an example.
 
     Args:
         a: Tile to extract the element from. All index arguments may be runtime values.
@@ -7105,7 +7096,7 @@ add_builtin(
 
     Five-index overload: the indices select an element of a 5D tile, a component from a
     4D tile of vectors, a row from a 4D tile of matrices, or an entry from a 3D tile of
-    matrices. See the one-index overload for usage details and an example.
+    matrices. See the ``wp.tile_extract(a, i)`` overload for usage details and an example.
 
     Args:
         a: Tile to extract the element from. All index arguments may be runtime values.
@@ -7139,8 +7130,8 @@ add_builtin(
     doc="""Extract a single element from a tile.
 
     Six-index overload: the indices select an element of a 4D tile of matrices,
-    followed by a row and a column index. See the one-index overload for usage details
-    and an example.
+    followed by a row and a column index. See the ``wp.tile_extract(a, i)`` overload for usage
+    details and an example.
 
     Args:
         a: Tile to extract the element from
@@ -7284,7 +7275,7 @@ add_builtin(
     doc="""Scatter-add a per-thread value into a 2D shared-memory tile.
 
     Overload taking one index per tile dimension. For usage details and an example,
-    see the 1D overload that takes only ``i`` as its index.""",
+    see the ``wp.tile_scatter_add(a, i, value, has_value)`` overload.""",
 )
 add_builtin(
     "tile_scatter_add",
@@ -7305,7 +7296,7 @@ add_builtin(
     doc="""Scatter-add a per-thread value into a 3D shared-memory tile.
 
     Overload taking one index per tile dimension. For usage details and an example,
-    see the 1D overload that takes only ``i`` as its index.""",
+    see the ``wp.tile_scatter_add(a, i, value, has_value)`` overload.""",
 )
 add_builtin(
     "tile_scatter_add",
@@ -7327,7 +7318,7 @@ add_builtin(
     doc="""Scatter-add a per-thread value into a 4D shared-memory tile.
 
     Overload taking one index per tile dimension. For usage details and an example,
-    see the 1D overload that takes only ``i`` as its index.""",
+    see the ``wp.tile_scatter_add(a, i, value, has_value)`` overload.""",
 )
 
 
@@ -7422,7 +7413,7 @@ add_builtin(
     doc="""Write a per-thread value into a 2D shared-memory tile.
 
     Overload taking one index per tile dimension. For usage details and an example,
-    see the 1D overload that takes only ``i`` as its index.""",
+    see the ``wp.tile_scatter_masked(a, i, value, has_value)`` overload.""",
 )
 add_builtin(
     "tile_scatter_masked",
@@ -7440,7 +7431,7 @@ add_builtin(
     doc="""Write a per-thread value into a 3D shared-memory tile.
 
     Overload taking one index per tile dimension. For usage details and an example,
-    see the 1D overload that takes only ``i`` as its index.""",
+    see the ``wp.tile_scatter_masked(a, i, value, has_value)`` overload.""",
 )
 add_builtin(
     "tile_scatter_masked",
@@ -7459,7 +7450,7 @@ add_builtin(
     doc="""Write a per-thread value into a 4D shared-memory tile.
 
     Overload taking one index per tile dimension. For usage details and an example,
-    see the 1D overload that takes only ``i`` as its index.""",
+    see the ``wp.tile_scatter_masked(a, i, value, has_value)`` overload.""",
 )
 
 
@@ -9380,9 +9371,10 @@ add_builtin(
     additional argument can be a tile with the same dimensions as ``a`` or a non-tile
     value (scalar, vector, matrix, or Warp struct), which is broadcast across all elements.
 
-    Unlike the one- and two-argument forms, ``op`` must be a user function declared with
-    :func:`@wp.func <warp.func>`; a built-in cannot be used here. The result's data type
-    is ``op``'s return type, which must be a scalar, vector, matrix, or Warp struct.
+    Unlike the ``wp.tile_map(op, a)`` and ``wp.tile_map(op, a, b)`` overloads, ``op`` must be
+    a user function declared with :func:`@wp.func <warp.func>`; a built-in cannot be used here.
+    The result's data type is ``op``'s return type, which must be a scalar, vector, matrix, or
+    Warp struct.
 
     The adjoint of each non-tile runtime argument is the sum of its per-element
     contributions across the mapped tile.
@@ -11849,9 +11841,10 @@ add_builtin(
     group="Tile Primitives",
     doc="""Return whether a thread-block parallel mesh AABB query should continue.
 
-    This overload accepts a :class:`warp.MeshQueryAABBTiled`. The overload taking a
-    :class:`warp.BvhQueryTiled` documents the shared iteration protocol and includes a
-    usage example; use :func:`~warp.tile_mesh_query_aabb_next` to advance this query.
+    This overload accepts a :class:`warp.MeshQueryAABBTiled`. See the
+    ``wp.tile_query_valid(wp.tile_bvh_query_aabb(id, low, high))`` overload for the shared
+    iteration protocol and a usage example; use :func:`~warp.tile_mesh_query_aabb_next` to advance
+    this query.
     Always test each returned face index for ``>= 0``.
 
     Args:
@@ -12002,13 +11995,15 @@ def _add_hash_grid_query_builtins(vec_type, scalar_type, query_type, precision_d
     """
     doc_suffix = f" ({precision_doc} precision)" if precision_doc else ""
     example = "" if precision_doc else _HASH_GRID_QUERY_EXAMPLE
+    default_query_call = "``wp.hash_grid_query(id, wp.vec3(...), max_dist)``"
+    query_call = f"``wp.hash_grid_query(id, wp.{vec_type.__name__}(...), max_dist)``"
 
     # Query.
 
     if precision_doc:
         body = (
-            f"The ``{precision_doc}`` overload of :func:`hash_grid_query`. Behavior and usage match the default\n"
-            f"    ``float32`` overload; see it for details and a usage example."
+            f"The ``{precision_doc}`` overload of :func:`hash_grid_query`. Behavior and usage match the\n"
+            f"    {default_query_call} overload; see it for details and a usage example."
         )
     else:
         body = (
@@ -12074,9 +12069,11 @@ def _add_hash_grid_query_builtins(vec_type, scalar_type, query_type, precision_d
 
     if precision_doc:
         body = (
-            f"The ``{precision_doc}`` overload of :func:`hash_grid_query_next`, taking the query returned by the\n"
-            f"    ``{precision_doc}`` :func:`hash_grid_query`. Behavior and usage match the default ``float32``\n"
-            f"    overload; see it for details and a usage example."
+            f"The ``{precision_doc}`` overload of :func:`hash_grid_query_next`, taking the query returned by\n"
+            f"    the {query_call} overload. Behavior and usage match the\n"
+            f"    ``wp.hash_grid_query_next(query, index)`` overload on a query from the\n"
+            f"    {default_query_call} overload; see that ``hash_grid_query_next`` overload for details and a\n"
+            f"    usage example."
         )
     else:
         body = (
@@ -12171,8 +12168,9 @@ add_builtin(
 
     All six vertices must be in the same coordinate space. Coplanar triangles are handled (an
     overlap within their common plane counts as an intersection). This single-precision overload
-    may return incorrect results in near-degenerate cases; use the double-precision overload
-    (``vec3d`` inputs) for greater robustness.
+    may return incorrect results in near-degenerate cases; use the
+    ``wp.intersect_tri_tri(v0, v1, v2, u0, u1, u2)`` overload with ``vec3d`` vertices for greater
+    robustness.
 
     Returns:
         ``1`` if the triangles intersect, ``0`` otherwise.
@@ -12208,7 +12206,8 @@ add_builtin(
 
     All six vertices must be in the same coordinate space. Coplanar triangles are handled (an
     overlap within their common plane counts as an intersection). This double-precision overload is
-    more accurate than the single-precision (``vec3`` inputs) overload.
+    more accurate than the ``wp.intersect_tri_tri(v0, v1, v2, u0, u1, u2)`` overload with ``vec3``
+    vertices.
 
     Returns:
         ``1`` if the triangles intersect, ``0`` otherwise.
@@ -13424,7 +13423,8 @@ add_builtin(
     using the volume's affine index-to-world transform (float64 precision).
 
     The ``float64`` overload of :func:`~warp.volume_index_to_world`. Behavior and usage match the
-    default ``float32`` overload; see it for details and a usage example.""",
+    ``wp.volume_index_to_world(id, wp.vec3(...))`` overload; see it for details and a usage
+    example.""",
 )
 add_builtin(
     "volume_world_to_index",
@@ -13435,7 +13435,7 @@ add_builtin(
     using the inverse of the volume's affine index-to-world transform (float64 precision).
 
     The ``float64`` overload of :func:`~warp.volume_world_to_index`. Behavior and usage match the
-    default ``float32`` overload; see it for details and a usage example.""",
+    ``wp.volume_world_to_index(id, wp.vec3(...))`` overload; see it for details.""",
 )
 add_builtin(
     "volume_index_to_world_dir",
@@ -13445,8 +13445,8 @@ add_builtin(
     doc="""Transform the direction ``uvw`` from the volume's index space to world space using the linear
     part of the volume's affine transform (float64 precision).
 
-    The ``float64`` overload of :func:`~warp.volume_index_to_world_dir`. Behavior and usage match
-    the default ``float32`` overload; see it for details and a usage example.""",
+    The ``float64`` overload of :func:`~warp.volume_index_to_world_dir`. Behavior and usage
+    match the ``wp.volume_index_to_world_dir(id, wp.vec3(...))`` overload; see it for details.""",
 )
 add_builtin(
     "volume_world_to_index_dir",
@@ -13456,8 +13456,8 @@ add_builtin(
     doc="""Transform the direction ``xyz`` from world space to the volume's index space using the linear
     part of the volume's affine transform (float64 precision).
 
-    The ``float64`` overload of :func:`~warp.volume_world_to_index_dir`. Behavior and usage match
-    the default ``float32`` overload; see it for details and a usage example.""",
+    The ``float64`` overload of :func:`~warp.volume_world_to_index_dir`. Behavior and usage
+    match the ``wp.volume_world_to_index_dir(id, wp.vec3(...))`` overload; see it for details.""",
 )
 
 
@@ -13905,10 +13905,11 @@ add_builtin(
     only for the duration of the kernel invocation and does not carry over between
     launches. Re-launching with the same seed and per-thread offsets reproduces the
     same sequences. To draw different sequences across launches, change the seed or
-    include a launch-specific value in the ``rand_init(seed, offset)`` offset. See
+    include a launch-specific value in the ``offset`` of the ``wp.rand_init(seed, offset)``
+    overload. See
     :ref:`Avoiding Correlated Sequences <avoiding_correlated_sequences>` for examples.
 
-    For parallel kernels, prefer the ``rand_init(seed, offset)`` overload with a
+    For parallel kernels, prefer the ``wp.rand_init(seed, offset)`` overload with a
     unique per-thread ``offset`` so each thread draws a distinct sequence. See
     the :ref:`Random Number Generation <random_number_generation>` user guide
     section for more details.
@@ -18661,8 +18662,8 @@ add_builtin(
 
     Computes ``out = alpha * a @ b + beta * out``, updating ``out`` in place. ``out`` is
     read only when ``beta`` is nonzero, so it must be initialized before the call unless
-    ``beta`` is zero. Use the two-argument overload to obtain a freshly computed tile
-    instead.
+    ``beta`` is zero. Use the ``wp.tile_matmul(a, b)`` overload to obtain a freshly computed
+    tile instead.
 
     ``out`` must not alias ``a`` or ``b``: the operands are read while ``out`` is being
     written, so overlapping tiles give undefined results. Passing the same tile as both
