@@ -37,7 +37,7 @@ class LinearOperator:
         shape: Tuple containing the number of rows and columns of the operator
         dtype: Type of the operator elements
         device: Device on which computations involving the operator should be performed
-        matvec: Matrix-vector multiplication routine
+        matvec: Matrix-vector multiplication function
         batch_offsets: Optional array of shape ``(B+1,)`` partitioning scalar degrees of freedom into
             ``B`` independent subproblems. ``batch_offsets[i]`` is the first scalar degree of freedom of
             subproblem ``i``. For vector-valued arrays, offsets must be aligned to the vector length.
@@ -49,7 +49,7 @@ class LinearOperator:
             without accessing the offsets on the host. It must not be smaller than the largest difference between
             consecutive offsets. Stateful solvers require this value to remain fixed between calls.
 
-    The matrix-vector multiplication routine should have the following signature:
+    The matrix-vector multiplication function should have the following signature:
 
     .. code-block:: python
 
@@ -62,7 +62,7 @@ class LinearOperator:
             ...
 
     For performance reasons, by default the iterative linear solvers in this module will try to capture the calls
-    for one or more iterations in CUDA graphs. If the ``matvec`` routine of a custom :class:`LinearOperator`
+    for one or more iterations in CUDA graphs. If the ``matvec`` function of a custom :class:`LinearOperator`
     cannot be graph-captured, the ``use_cuda_graph=False`` parameter should be passed to the solver function.
 
     """
@@ -91,22 +91,39 @@ class LinearOperator:
 
     @property
     def shape(self) -> tuple[int, int]:
+        """Number of rows and columns of the operator.
+
+        Currently, an operator created by :func:`aslinearoperator` from a one-dimensional array of diagonal values
+        retains that array's one-dimensional shape.
+        """
         return self._shape
 
     @property
     def dtype(self) -> type:
+        """Type of the operator elements, such as a scalar type or a matrix block type."""
         return self._dtype
 
     @property
     def device(self) -> wp.Device:
+        """Device on which computations involving the operator are performed."""
         return self._device
 
     @property
     def matvec(self) -> Callable:
+        """Matrix-vector multiplication function.
+
+        Call as ``operator.matvec(x, y, z, alpha, beta)`` to store ``alpha * (A @ x) + beta * y`` in ``z``,
+        where ``A`` is ``operator``.
+        """
         return self._matvec
 
     @property
     def scalar_type(self):
+        """Scalar component type of the operator's elements.
+
+        For scalar elements, ``scalar_type`` equals :attr:`~warp.optim.linear.LinearOperator.dtype`.
+        For vector or matrix elements, ``scalar_type`` is the type of each component.
+        """
         return type_scalar_type(self.dtype)
 
     @property

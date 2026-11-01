@@ -1354,6 +1354,18 @@ def matrix(shape, dtype):
             return True
 
         def get_row(self, r):
+            """Return row ``r`` of the matrix as a new vector.
+
+            Args:
+                r: Zero-based row index in the range ``-rows <= r < rows``, where ``rows`` is the number of matrix rows.
+                    Negative values count from the end, so ``-1`` is the last row.
+
+            Returns:
+                A vector with one component per matrix column and the matrix's scalar type.
+
+            Raises:
+                IndexError: If ``r`` is out of range.
+            """
             if r < -self._shape_[0] or r >= self._shape_[0]:
                 raise IndexError("Invalid row index")
             if r < 0:
@@ -1367,6 +1379,18 @@ def matrix(shape, dtype):
                 return self._wp_row_type_(row_data)
 
         def get_col(self, c):
+            """Return column ``c`` of the matrix as a new vector.
+
+            Args:
+                c: Zero-based column index in the range ``-cols <= c < cols``, where ``cols`` is the number of matrix
+                    columns. Negative values count from the end, so ``-1`` is the last column.
+
+            Returns:
+                A vector with one component per matrix row and the matrix's scalar type.
+
+            Raises:
+                IndexError: If ``c`` is out of range.
+            """
             if c < -self._shape_[1] or c >= self._shape_[1]:
                 raise IndexError("Invalid column index")
             if c < 0:
@@ -1381,6 +1405,18 @@ def matrix(shape, dtype):
                 return self._wp_col_type_(col_data)
 
         def set_row(self, r, v):
+            """Set row ``r`` of the matrix to ``v`` in place.
+
+            Args:
+                r: Zero-based row index in the range ``-rows <= r < rows``, where ``rows`` is the number of matrix rows.
+                    Negative values count from the end, so ``-1`` is the last row.
+                v: Scalar to assign to every element of the row, or a sequence with one value per matrix column,
+                    such as a vector, list, or tuple. Values must be compatible with the matrix's scalar type.
+                    Currently, integer matrices require integer values.
+
+            Raises:
+                IndexError: If ``r`` is out of range.
+            """
             if r < -self._shape_[0] or r >= self._shape_[0]:
                 raise IndexError("Invalid row index")
             if r < 0:
@@ -1417,6 +1453,18 @@ def matrix(shape, dtype):
             super().__setitem__(slice(row_start, row_end), v)
 
         def set_col(self, c, v):
+            """Set column ``c`` of the matrix to ``v`` in place.
+
+            Args:
+                c: Zero-based column index in the range ``-cols <= c < cols``, where ``cols`` is the number of matrix
+                    columns. Negative values count from the end, so ``-1`` is the last column.
+                v: Scalar to assign to every element of the column, or a sequence with one value per matrix row,
+                    such as a vector, list, or tuple. Values must be compatible with the matrix's scalar type.
+                    Currently, integer matrices require integer values.
+
+            Raises:
+                IndexError: If ``c`` is out of range.
+            """
             if c < -self._shape_[1] or c >= self._shape_[1]:
                 raise IndexError("Invalid col index")
             if c < 0:
@@ -4374,6 +4422,12 @@ class array(Array[DType, NDim]):
 
     @property
     def grad(self):
+        """Array that accumulates gradients for this array during the backward pass, or ``None``.
+
+        Assigning an array also sets :attr:`requires_grad` to ``True``. The assigned array must have the same
+        dtype, shape, strides, and device as this array. Assigning ``None`` removes the gradient array and sets
+        :attr:`requires_grad` to ``False``.
+        """
         return self._grad
 
     @grad.setter
@@ -4409,6 +4463,12 @@ class array(Array[DType, NDim]):
 
     @property
     def requires_grad(self):
+        """Whether gradients are tracked for this array.
+
+        Setting this to ``True`` allocates a zero-initialized :attr:`grad` array if none exists. Setting it to
+        ``False`` removes :attr:`grad` and sets :attr:`retain_grad` to ``False``. See :class:`warp.Tape` for how
+        gradients are recorded and propagated.
+        """
         return self._requires_grad
 
     @requires_grad.setter
@@ -4428,6 +4488,16 @@ class array(Array[DType, NDim]):
 
     @property
     def retain_grad(self):
+        """Whether the backward pass preserves this array's gradient instead of zeroing it.
+
+        By default, the backward pass zeroes an element's gradient after propagating it through a write to that
+        element, so only the final forward-pass write to each element receives the gradient. Set this to ``True``
+        to keep the gradient of an intermediate or output array for inspection after the backward pass. Only do so
+        when each element is written at most once during the forward pass; otherwise, gradients are double-counted.
+
+        Raises:
+            ValueError: If ``retain_grad`` is set to ``True`` while :attr:`requires_grad` is ``False``.
+        """
         return self._retain_grad
 
     @retain_grad.setter
