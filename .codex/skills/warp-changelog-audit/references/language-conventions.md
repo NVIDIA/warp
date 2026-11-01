@@ -13,7 +13,7 @@ user-perspective subagent prompt.
 ## What belongs in a fragment
 
 - New, removed, deprecated, or changed user-facing APIs (functions, classes, decorators, scalar types, kernel builtins, configuration flags).
-- Breaking changes (always flagged with `**Breaking:**`).
+- Breaking changes (flagged with `**Breaking:**` in Changed or Fixed; Removed already conveys removal).
 - Bug fixes for behavior users would observe.
 - New top-level documentation: a brand-new user-guide page, a new example, or a new doctest-driven reference. (A typo fix in an existing page does NOT belong.)
 - Performance changes that cross a user-visible threshold (default optimization level, default codegen path, default alignment behavior).
@@ -28,6 +28,39 @@ user-perspective subagent prompt.
 - Single-entry doctest fixes, single-sentence doc reword, error-message wording tweaks (unless the message wording itself is part of a documented contract).
 
 If unsure, default to **drop**. Release notes and `git log` capture the long tail. The CHANGELOG is the curated user-visible manifest.
+
+## User outcome and scope
+
+Lead with what becomes possible, correct, faster, or easier to diagnose. Use
+implementation details to explain that outcome. Name the work reduced, such as
+sorting work, compilation time, or Python declaration overhead; avoid implying
+a measured speedup from a change in implementation alone. State important
+performance limits even when the feature is functionally complete.
+
+Performance entries contain the shipped capability and its practical limits.
+Keep benchmark corrections and unmerged follow-up measurements in the review
+justification, where they explain the evidence for the proposed wording.
+
+Describe exactly what is new. An existing dtype gaining data initialization is
+not a new dtype. A precision option can ship before an optimized execution path.
+Keep eligibility, actionable triggers, and migration guidance; leave exhaustive
+option inventories in the API reference.
+
+Qualify a backend or execution path when it limits the change. A change applying
+universally needs no CPU-and-CUDA or "all backends" qualifier. In merged entries,
+attach a restriction only to the sentence or clause it actually qualifies.
+For a CUDA-only result fix followed by a universal gradient fix, use separate
+subjects: "Fix incorrect CUDA reduction results… . Axis gradients now… ."
+The new subject resets the scope; the gradient sentence needs no backend label.
+
+Explain unfamiliar compiler terminology by its effect: SLP combines independent
+scalar operations into vector instructions. Preserve accurate established terms
+such as "adjoint" rather than substituting a more familiar but different term.
+
+Keep example options that demonstrate a feature with that feature's entry.
+Describe the example's new behavior declaratively. An existing runnable example's
+computation or execution bug belongs in Fixed; new examples and explanatory
+improvements belong in Documentation. Justify categories by user-visible change.
 
 ## Internal-jargon flag list
 
@@ -76,6 +109,10 @@ pending fragments, report the count, and include it in the consolidated diff.
 
 Warp marks experimental features with a literal `**Experimental**:` prefix (or `**Experimental:**`) at the start of the entry. The canonical exemplar is the cuBQL BVH backend: `**Experimental**: Add cuBQL BVH backend for \`wp.Mesh\`, selectable via \`bvh_constructor="cubql"\`.` That bold marker is the *only* consistent way to signal "this surface may change before stabilizing" — informal hedging in prose blurs the bar and gets missed by users skimming for stable changes.
 
+Check the documented status of the containing API when reviewing a subfeature.
+When restoring functionality that was previously rejected, verify the history
+and describe the supported subset and remaining restrictions explicitly.
+
 **Flag entries that hedge with informal language instead of using the marker.** Hedge words to detect:
 
 - `preliminary` — "preliminary support for X", "preliminary X API"
@@ -104,8 +141,9 @@ Only apply this rewrite to pending fragments.
 
 ## Imperative mood
 
-Fragment contents start with an imperative-mood verb. Consistent voice helps
-users skim the generated release section.
+The opening sentence starts with an imperative change verb. Subsequent
+sentences describe Warp's resulting behavior declaratively. This separates
+release changes from instructions that readers must perform.
 
 ✅ "Add `wp.tile_dot()` for tile dot products."
 ✅ "Fix crash in `wp.tile_load()` for non-contiguous arrays."
@@ -114,7 +152,7 @@ users skim the generated release section.
 
 ❌ "Added `wp.tile_dot()` ..." — past tense, rewrite to "Add `wp.tile_dot()` ...".
 ❌ "Adds support for ..." — present indicative, rewrite to "Add support for ..." or "Support ...".
-❌ "`wp.foo()` now does X" — declarative, rewrite to "Make `wp.foo()` do X" or "Update `wp.foo()` to do X".
+❌ Opening with "`wp.foo()` now does X" — use "Make `wp.foo()` do X" or "Update `wp.foo()` to do X". Declarative wording is appropriate in follow-up sentences.
 ❌ "X is now experimental" — passive, rewrite to "Mark X as experimental".
 ❌ "X has been deprecated" — passive past, rewrite to "Deprecate X".
 
@@ -128,6 +166,18 @@ Common imperative-mood verbs by section:
 - **Documentation**: Document, Add, Update, Polish.
 
 For entries that lead with a `**Breaking:**` or `**Experimental**:` marker, the imperative verb follows the marker: "**Breaking:** Change `wp.foo()` ...". The marker counts as a prefix; the imperative-mood rule still applies to the verb that follows it.
+
+For example:
+
+> Add `warp.geometry.IsoSurfaceNets` for extracting triangle or quad meshes from
+> dense 3-D scalar fields. The `warp/examples/geometry/example_isosurface.py`
+> example now accepts `--method` and `--topology` to select the extractor and
+> face type.
+
+Actual migration instructions identify the affected caller and required action,
+such as "Callers on older NumPy versions can use `wp.dtype_to_numpy()`."
+Follow-up descriptions of the release use subjects such as "Warp now…", "The
+example now…", or "Axis reductions now…" rather than another "Add…" or "Fix…".
 
 ## Hyphenation
 
@@ -164,6 +214,11 @@ Apply standard English compound-modifier hyphenation. The CHANGELOG is read by u
 
 Judgment cases: when in doubt, follow the dominant pattern in the pending
 Towncrier draft. Do not invent rare hyphenations.
+
+## Technical numbers
+
+Write technical counts and thresholds without thousands separators, matching
+code values: `2048` and `1024`. Use the same notation throughout an entry.
 
 ## GitHub issue links
 

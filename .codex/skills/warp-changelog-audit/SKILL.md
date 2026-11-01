@@ -2,7 +2,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 name: warp-changelog-audit
-description: "Use when auditing and recovering Warp changelog fragments, finalizing a release changelog, or synchronizing a tagged release back to main."
+description: "Use when auditing or recovering Warp changelog fragments, reviewing or finalizing a generated release changelog, or synchronizing a tagged release back to main."
 license: Apache-2.0
 ---
 
@@ -15,11 +15,17 @@ historical release record, not the source of pending entries.
 Read `changelog/README.md` from the target ref before acting. Its fragment
 naming and content rules are authoritative.
 
+Keep the requested artifact and current stage explicit. GitHub release notes
+are a separate task. Continue an established changelog review from its last
+approved state, including on a release cleanup branch.
+
 ## Modes
 
 - **Main:** audit and edit pending fragments. Never build a release section.
 - **Release branch:** audit fragments, build the release section, then sort the
   generated section by user impact and update comparison links.
+- **Generated-release review:** after fragment consumption, review the new
+  unreleased section's wording, consolidation, and ordering in context.
 - **Post-release sync:** on main, bring back the exact release build commit so
   the tagged section's final wording and ordering win while only shipped
   fragments are removed.
@@ -27,7 +33,9 @@ naming and content rules are authoritative.
 ## Hard rules
 
 - Run Towncrier through the pinned command from `changelog/README.md`.
-- Use a draft build for every preview. A draft must not modify the repository.
+- Render fragment previews with a Towncrier draft that leaves the repository
+  untouched. After the release build, stage editorial previews from the
+  generated section; an empty fragment draft does not replace that review.
 - Edit fragment files before release finalization, not `CHANGELOG.md`.
 - After the final build, edit only the new generated release section and the
   comparison-link block. This release-only normalization is where impact
@@ -37,9 +45,10 @@ naming and content rules are authoritative.
 - Delete shipped fragments only when the release build commit proves which
   paths Towncrier consumed. Never delete pending fragments by prose similarity
   or shared issue number.
-- Keep all proposed edits in a temporary staging area until the user reviews a
-  consolidated diff. Release finalization and post-release cherry-picks each
-  require a separate explicit confirmation.
+- Keep proposals in a temporary staging area with a full-file preview and
+  reviewable diff. Follow the user's chosen review granularity and record
+  approvals. Release finalization and post-release cherry-picks each require
+  explicit confirmation; retain confirmations already given in the session.
 - Use a unique `WARP_CACHE_PATH` for every Warp command. Build Warp when a
   verification needs it; do not skip verification because binaries are stale.
 
@@ -51,13 +60,14 @@ Read these references when their phases begin:
 
 - `references/language-conventions.md` for fragment inclusion and language.
 - `references/sorting-rubric.md` for final generated-section ordering.
+- `references/editorial-review.md` when presenting or applying review proposals.
 
 ## Phase 1: Resolve scope
 
-1. Resolve the ref, symbolic name, SHA, and working directory. Strip
-   `origin/` or `upstream/` before classifying the branch. A name beginning
-   with `release-` selects release-branch mode; everything else selects main
-   mode.
+1. Resolve the ref, symbolic name, SHA, and working directory. Use an established
+   release target and review stage from the session first. Otherwise strip
+   `origin/` or `upstream/` before classifying the branch: `release-` selects
+   release-branch mode; other names select main mode.
 2. Read `VERSION.md` and `warp/config.py` at the ref. Parse the leading
    `MAJOR.MINOR.PATCH`; `VERSION.md` wins on conflict.
 3. Resolve the previous stable tag using integer version components. For a
@@ -97,8 +107,8 @@ Read these references when their phases begin:
    remaining fragments.
 7. If edits are needed, require a writable feature or release branch. Never
    mutate `main`, `master`, or detached `HEAD`; propose a feature branch and
-   wait. Surface a dirty worktree and let the user decide how to handle it.
-   Never auto-stash.
+   wait. Preserve authorized session edits. Surface unrelated dirty changes
+   that conflict with the next action; never auto-stash.
 8. Present mode, ref/SHA, working directory, target version, previous tag,
    fragment count, draft result, and missing release tags. Wait for explicit
    confirmation.
@@ -210,12 +220,19 @@ Find candidate commits through fragment history, issue IDs, symbols, and the
 release range; never search pending prose in `CHANGELOG.md`.
 
 Read diffs and confirm symbol names, signatures, defaults, behavior, and issue
-topic. For non-obvious runtime claims, write a temporary script and run it with
+topic. Compare with the previous stable release to identify the exact newly
+supported operation, such as data initialization rather than a new dtype.
+For performance claims or limitations, read relevant issues and later comments
+for benchmark corrections and distinguish shipped code from implementation
+branches. Use connected GitHub tools or available CLI/web access. Keep hardware,
+application names, and measured ratios only when they help scope the claim.
+
+For non-obvious runtime claims, write a temporary script and run it with
 `uv run`. Kernel scripts must be real files, never `python -c`. If native code
 changed or binaries are stale, rebuild first. Record accurate, revised, and
 unverifiable results.
 
-### Pre-release iteration consolidation
+### Consolidation
 
 Group fragments that describe Add/Fix/Change iterations on the same feature
 when none of those states shipped. Draft one entry describing the final state.
@@ -225,14 +242,26 @@ Show original paths/text and proposed paths/text, then confirm before staging.
 Do not consolidate a change to already-released behavior with its earlier
 introduction.
 
+Also consider related fixes to the same public operation or bug family. Merge
+when one entry can explain the affected cases clearly; shared subsystem or
+issue identity alone is insufficient. Retain every issue identity, trigger,
+backend restriction, and migration requirement. Scope each sentence separately
+when merged fixes affect different backends. After the language pass, recheck
+the whole section for remaining useful merges before sorting.
+
 ### Identifier and category review
 
 - If an orphan fragment has a clearly matching GitHub issue, propose renaming
   it to that issue ID. Never put the generated issue link in its text.
 - If a category is wrong, propose a suffix rename such as
   `.fixed.md` to `.changed.md`.
-- Propose `**Breaking:**` for source-incompatible Changed, Removed, or new
-  requirement entries. Confirm because it is a public stability signal.
+- Propose `**Breaking:**` for source-incompatible Changed or Fixed entries and
+  new requirements. Under Removed, the heading conveys the removal; omit the
+  redundant prefix and retain migration guidance.
+- Classify by the behavior changed. A computation or execution fix in a runnable
+  example belongs in Fixed; a new example or explanatory improvement belongs
+  in Documentation. Historical entries support style decisions, not the main
+  semantic justification.
 - Flag lifted documented limitations for the matching documentation update.
 
 Use per-entry confirmation for identifier changes, category moves,
@@ -254,6 +283,9 @@ fragment.
    ambiguous entries. The subagent reacts; it does not write the replacement.
 5. Wrap fragment contents to at most 120 columns without breaking Markdown
    links or inline code.
+6. Recheck consolidation, then present proposals using the editorial-review
+   reference. Mechanical corrections may be batched; meaning changes retain
+   the user's requested review granularity.
 
 Track every deletion and meaning-bearing rewrite with a one-line reason.
 Mechanical corrections may be summarized by count.
@@ -298,6 +330,10 @@ in one dedicated release changelog commit when the user has authorized a
 commit. Record its full SHA; post-release synchronization depends on it. Do not
 silently create a commit when the user requested only an audit.
 
+If the user continues editorial review after that build, use generated-release
+review mode. Preserve the build commit's fragment-consumption evidence and
+record any later user-requested editorial checkpoint commits separately.
+
 ## Final report
 
 Report:
@@ -316,9 +352,10 @@ Report:
 
 ## Failure modes
 
-- **No pending fragments:** report a clean empty draft. In release mode, ask
-  whether the release was already built; never infer pending content from the
-  newest historical section.
+- **No pending fragments:** report a clean empty draft. If the session already
+  establishes a generated release under review, continue that review. Otherwise
+  resolve whether a build commit exists before proposing release edits; never
+  infer missing fragments from historical prose.
 - **No previous tag:** skip missing-fragment recovery and report the omission.
 - **Draft render fails:** surface Towncrier output and stop prose editing until
   naming or configuration is fixed.
@@ -333,8 +370,8 @@ Report:
 - **Final build differs from simulation:** stop and show both diffs.
 - **Warp verification build fails:** report the error verbatim and mark only
   affected claims unverifiable; continue with non-runtime review.
-- **GitHub CLI is unavailable:** skip live issue lookup, retain filename-based
-  identity, and report lookup omissions.
+- **Issue lookup is unavailable:** retain filename-based identity and report
+  affected claims as unverified; avoid unsupported performance promises.
 
 ## Parsing rules
 
