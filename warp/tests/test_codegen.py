@@ -1949,6 +1949,11 @@ def test_non_ascii_source(test, device):
     np.testing.assert_array_equal(out.numpy(), [1])
 
 
+@wp.struct
+class _ComparisonStruct:
+    value: float
+
+
 class TestCodeGen(unittest.TestCase):
     def _codegen_cuda_source(self, kernel):
         module = kernel.module
@@ -1971,6 +1976,55 @@ class TestCodeGen(unittest.TestCase):
         builder = wp._src.context.ModuleBuilder(module, options=options, hasher=hasher)
         builder.codegen("cuda")
         return builder.build_meta()
+
+    def test_struct_comparisons_raise_codegen_type_error(self):
+        """Reject struct comparisons before emitting invalid native code."""
+
+        @wp.kernel(module="unique")
+        def less():
+            if _ComparisonStruct() < _ComparisonStruct():
+                pass
+
+        @wp.kernel(module="unique")
+        def less_equal():
+            if _ComparisonStruct() <= _ComparisonStruct():
+                pass
+
+        @wp.kernel(module="unique")
+        def greater():
+            if _ComparisonStruct() > _ComparisonStruct():
+                pass
+
+        @wp.kernel(module="unique")
+        def greater_equal():
+            if _ComparisonStruct() >= _ComparisonStruct():
+                pass
+
+        @wp.kernel(module="unique")
+        def equal():
+            if _ComparisonStruct() == _ComparisonStruct():
+                pass
+
+        @wp.kernel(module="unique")
+        def not_equal():
+            if _ComparisonStruct() != _ComparisonStruct():
+                pass
+
+        for operator, kernel in (
+            ("<", less),
+            ("<=", less_equal),
+            (">", greater),
+            (">=", greater_equal),
+            ("==", equal),
+            ("!=", not_equal),
+        ):
+            with self.subTest(operator=operator):
+                with self.assertRaisesRegex(
+                    wp.WarpCodegenTypeError,
+                    rf"Comparison '{operator}' is not supported between values of type .*_ComparisonStruct "
+                    r"and .*_ComparisonStruct\.",
+                ):
+                    self._codegen_cpu_source(kernel)
 
     def test_max_unroll_uses_range_trip_count(self):
         """Verify ``max_unroll`` is compared against the exact trip count of constant ``range()`` loops."""
