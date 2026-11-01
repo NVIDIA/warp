@@ -6,18 +6,6 @@
 .. autoclass:: MemoryKind
    
    
-   .. rubric:: Methods
-
-   .. autosummary::
-   
-      ~MemoryKind.conjugate
-      ~MemoryKind.bit_length
-      ~MemoryKind.bit_count
-      ~MemoryKind.to_bytes
-      ~MemoryKind.from_bytes
-      ~MemoryKind.as_integer_ratio
-      ~MemoryKind.is_integer
-   
    
    
    
@@ -25,10 +13,6 @@
 
    .. autosummary::
    
-      ~MemoryKind.real
-      ~MemoryKind.imag
-      ~MemoryKind.numerator
-      ~MemoryKind.denominator
       ~MemoryKind.UNKNOWN
       ~MemoryKind.HOST
       ~MemoryKind.PINNED

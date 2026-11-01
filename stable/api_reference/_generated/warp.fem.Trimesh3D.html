@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.fem.Trimesh3D &#8212; Warp 1.18.0</title>
+    <title>warp.fem.Trimesh3D &#8212; Warp 1.19.0</title>
   
   
   
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../../_static/documentation_options.js?v=9d419c5b"></script>
+    <script src="../../_static/documentation_options.js?v=39391842"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -53,7 +53,7 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.18';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.19';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -70,7 +70,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.18.0" />
+  <meta name="docsearch:version" content="1.19.0" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -147,11 +147,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.18.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.18.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.18.0</p>
+    <p class="title logo__title">Warp 1.19.0</p>
   
 </a></div>
     
@@ -291,11 +291,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.18.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.18.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.18.0</p>
+    <p class="title logo__title">Warp 1.19.0</p>
   
 </a>
 
@@ -520,7 +520,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">env_count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.18/warp/_src/fem/geometry/trimesh.py#L631-L634"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Trimesh3D" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/fem/geometry/trimesh.py#L631-L634"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Trimesh3D" title="Link to this definition">#</a></dt>
 <dd><p>3D Triangular mesh geometry</p>
 <p>Construct a D-dimensional triangular mesh.</p>
 <dl class="field-list simple">
@@ -531,7 +531,7 @@
 <li><p><strong>temporary_store</strong> (<a class="reference internal" href="warp.fem.TemporaryStore.html#warp.fem.TemporaryStore" title="warp._src.fem.cache.TemporaryStore"><em>TemporaryStore</em></a><em> | </em><em>None</em>) – shared pool from which to allocate temporary arrays</p></li>
 <li><p><strong>build_bvh</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether to also build the triangle BVH, which is necessary for the global <code class="docutils literal notranslate"><span class="pre">fem.lookup</span></code> operator to function without initial guess</p></li>
 <li><p><strong>cell_env</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>) – Optional per-cell environment indices. If provided, <code class="docutils literal notranslate"><span class="pre">env_count</span></code> must also be provided.</p></li>
-<li><p><strong>env_count</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em> | </em><em>None</em>) – Number of environments represented by <code class="docutils literal notranslate"><span class="pre">cell_env</span></code>.</p></li>
+<li><p><strong>env_count</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a><em> | </em><em>None</em>) – Number of environments represented by <code class="docutils literal notranslate"><span class="pre">cell_env</span></code>.</p></li>
 </ul>
 </dd>
 </dl>

@@ -9,7 +9,7 @@
       :kernel: true
       :python: unknown
       :differentiable: unknown
-      :source: https://github.com/NVIDIA/warp/blob/release-1.18/warp/_src/geometry/delaunay.py#L311-L337
+      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/geometry/delaunay.py#L311-L337
 
    Return the local edge of ``triangle`` shared with ``neighbor``.
    

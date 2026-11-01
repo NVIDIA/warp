@@ -10,32 +10,49 @@
       :python: false
       :differentiable: true
 
-   Cooperatively compute the sum of the tile elements.
+   Compute the sum of the tile elements along one axis.
    
-   Reduce across a tile axis using all threads in the block.
+   This is a cooperative operation: the threads of the block divide the work between
+   them, so every thread must reach the call.
    
-   :param a: The input tile. Must reside in shared memory.
-   :param axis: The tile axis to compute the sum across. Must be a compile-time constant.
+   Reduces over ``axis``, producing a tile with that dimension removed. The input tile is
+   placed in shared memory automatically, so it counts against the block's shared-memory
+   budget (see :ref:`tile_shared_memory_budget`) even when the input uses register
+   storage. Elements are combined in an unspecified order, so a floating-point sum may
+   vary with ``block_dim`` and between CPU and GPU.
    
-   :returns: A tile with the same shape as the input tile less the axis dimension and the same data type as the input tile.
+   :param a: The input tile.
+   :param axis: The axis to reduce over. Must be a compile-time constant in
+                ``[0, len(shape))``.
+   
+   :returns: A register tile with the same dtype as ``a``. For an input with two or more dimensions,
+             the result has the shape of ``a`` with ``axis`` removed. For a one-dimensional input,
+             it has shape ``(1,)``.
    
    .. rubric:: Example
    
-   .. code-block:: python
+   .. testcode::
    
        @wp.kernel
-       def compute():
+       def sum_rows_and_columns(x: wp.array2d[float], row_sums: wp.array[float], col_sums: wp.array[float]):
+           t = wp.tile_load(x, shape=(2, 3))
+           # axis=1 sums along each row, axis=0 down each column
+           wp.tile_store(row_sums, wp.tile_sum(t, axis=1))
+           wp.tile_store(col_sums, wp.tile_sum(t, axis=0))
    
-           t = wp.tile_ones(dtype=float, shape=(8, 8))
-           s = wp.tile_sum(t, axis=0)
+       x = wp.array([[1.0, 2.0, 3.0], [10.0, 20.0, 30.0]], dtype=float)
+       row_sums = wp.zeros(2, dtype=float)
+       col_sums = wp.zeros(3, dtype=float)
    
-           print(s)
+       wp.launch_tiled(sum_rows_and_columns, dim=1, inputs=[x], outputs=[row_sums, col_sums], block_dim=4)
    
-       wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
+       print(row_sums.numpy())
+       print(col_sums.numpy())
    
-   .. code-block:: text
+   .. testoutput::
    
-       [8 8 8 8 8 8 8 8] = tile(shape=(8), storage=register)
+       [ 6. 60.]
+       [11. 22. 33.]
    
 
 .. function:: tile_sum(a: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[Literal[1]]]
@@ -46,29 +63,38 @@
       :python: false
       :differentiable: true
 
-   Cooperatively compute the sum of the tile elements.
+   Compute the sum of all elements of a tile.
    
-   Reduce across all elements using all threads in the block.
+   This is a cooperative operation: the threads of the block divide the work between
+   them, so every thread must reach the call.
    
-   :param a: The tile to compute the sum of
+   The reduction covers every element of ``a`` regardless of its rank. Elements are
+   combined in an unspecified order, so a floating-point sum may vary with ``block_dim``
+   and between CPU and GPU.
    
-   :returns: A single-element tile holding the sum.
+   :param a: The tile to sum. Any element type supporting addition is accepted, including
+             vector and matrix elements.
+   
+   :returns: A shape-``(1,)`` register tile holding the sum. Read the value with ``[0]``, or
+             write it out with :func:`~warp.tile_store`.
    
    .. rubric:: Example
    
-   .. code-block:: python
+   .. testcode::
    
        @wp.kernel
-       def compute():
+       def sum_elements(x: wp.array2d[float], s: wp.array[float]):
+           t = wp.tile_load(x, shape=(2, 3))
+           wp.tile_store(s, wp.tile_sum(t))
    
-           t = wp.tile_ones(dtype=float, shape=(16, 16))
-           s = wp.tile_sum(t)
+       x = wp.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], dtype=float)
+       s = wp.zeros(1, dtype=float)
    
-           print(s)
+       wp.launch_tiled(sum_elements, dim=1, inputs=[x], outputs=[s], block_dim=4)
    
-       wp.launch_tiled(compute, dim=[1], inputs=[], block_dim=64)
+       print(s.numpy())
    
-   .. code-block:: text
+   .. testoutput::
    
-       [256] = tile(shape=(1), storage=register)
+       [21.]
    

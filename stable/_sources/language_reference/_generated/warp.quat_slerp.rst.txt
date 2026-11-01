@@ -10,4 +10,48 @@
       :python: true
       :differentiable: true
 
-   Linearly interpolate between two quaternions.
+   Return the spherical linear interpolation (slerp) between the rotations ``a`` and ``b``.
+   
+   The result follows the shortest arc between the two rotations at a constant angular rate. When
+   ``dot(a, b)`` is zero, the rotations differ by 180 degrees and the shortest arc is not unique.
+   Near that case, small changes to the inputs can reverse the direction of the interpolation.
+   
+   :param a: Rotation at ``t = 0``, with unit length. Gradient updates do not preserve its unit length,
+             so re-normalize it after each update.
+   :param b: Rotation at ``t = 1``, nonzero.
+   :param t: Interpolation parameter in ``[0, 1]``.
+   
+   :returns: The interpolated unit quaternion. It equals ``a`` at ``t = 0``. At ``t = 1``, it equals
+             ``normalize(b)`` when ``dot(a, b) >= 0`` and ``-normalize(b)`` otherwise.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def interpolate(a: wp.quat, b: wp.quat, t: wp.array[float], out: wp.array[wp.quat]):
+           i = wp.tid()
+           out[i] = wp.quat_slerp(a, b, t[i])
+   
+       # identity to a quarter turn about z
+       a = wp.quat_identity()
+       b = wp.quat_from_axis_angle(wp.vec3(0.0, 0.0, 1.0), wp.pi / 2.0)
+       t = wp.array([0.0, 0.5, 1.0], dtype=float)
+       out = wp.empty(3, dtype=wp.quat)
+   
+       wp.launch(interpolate, dim=3, inputs=[a, b, t], outputs=[out])
+       print(np.round(out.numpy(), 3))
+   
+       # -b is the same rotation as b, so the interpolation is unchanged
+       wp.launch(interpolate, dim=3, inputs=[a, -b, t], outputs=[out])
+       print(np.round(out.numpy(), 3))
+   
+   .. testoutput::
+   
+       [[0.    0.    0.    1.   ]
+        [0.    0.    0.383 0.924]
+        [0.    0.    0.707 0.707]]
+       [[0.    0.    0.    1.   ]
+        [0.    0.    0.383 0.924]
+        [0.    0.    0.707 0.707]]
+   

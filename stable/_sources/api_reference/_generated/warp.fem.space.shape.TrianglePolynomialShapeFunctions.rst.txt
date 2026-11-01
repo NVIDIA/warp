@@ -15,6 +15,7 @@
       ~TrianglePolynomialShapeFunctions.make_element_inner_weight
       ~TrianglePolynomialShapeFunctions.make_element_inner_weight_gradient
       ~TrianglePolynomialShapeFunctions.make_node_coords_in_element
+      ~TrianglePolynomialShapeFunctions.make_node_dual_weight
       ~TrianglePolynomialShapeFunctions.make_node_quadrature_weight
       ~TrianglePolynomialShapeFunctions.make_trace_node_quadrature_weight
       ~TrianglePolynomialShapeFunctions.node_type_and_index

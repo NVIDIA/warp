@@ -9,7 +9,7 @@
       :kernel: true
       :python: unknown
       :differentiable: unknown
-      :source: https://github.com/NVIDIA/warp/blob/release-1.18/warp/_src/fem/linalg.py#L10-L21
+      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/fem/linalg.py#L10-L21
 
    Compute a generalized outer product.
    
@@ -26,7 +26,7 @@
       :kernel: true
       :python: unknown
       :differentiable: unknown
-      :source: https://github.com/NVIDIA/warp/blob/release-1.18/warp/_src/fem/linalg.py#L24-L35
+      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/fem/linalg.py#L24-L35
 
    Compute a generalized outer product.
    
@@ -43,7 +43,7 @@
       :kernel: true
       :python: unknown
       :differentiable: unknown
-      :source: https://github.com/NVIDIA/warp/blob/release-1.18/warp/_src/fem/linalg.py#L38-L49
+      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/fem/linalg.py#L38-L49
 
    Compute a generalized outer product.
    
@@ -60,7 +60,7 @@
       :kernel: true
       :python: unknown
       :differentiable: unknown
-      :source: https://github.com/NVIDIA/warp/blob/release-1.18/warp/_src/fem/linalg.py#L52-L63
+      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/fem/linalg.py#L52-L63
 
    Compute a generalized outer product.
    

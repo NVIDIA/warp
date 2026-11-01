@@ -57,6 +57,14 @@ When a generic kernel is being launched, Warp infers the concrete types from the
 * Vectors and matrices should be passed as Warp types rather than tuples or lists (e.g., ``wp.vec3f(1.0, 2.0, 3.0)`` or ``wp.mat22h([[1.0, 0.0], [0.0, 1.0]])``).
 * Warp arrays and structs can be passed normally.
 
+Runtime :ref:`array subclasses <array-subclasses>` are inferred as their native
+parent family, dtype, and dimensionality. A parent array and its subclasses
+share a specialization when those properties match; Python class names,
+metadata, and constructor parameters do not participate in the signature.
+Use the built-in family in annotations, such as ``wp.array[Any]``. The same
+normalization applies when initialized arrays are supplied as type descriptors
+to :func:`warp.overload`.
+
 .. _implicit_instantiation:
 
 Implicit Instantiation
@@ -209,6 +217,45 @@ Like Warp kernels, we can also define generic Warp functions:
     [ 1  4  9 16 25 36 49 64 81]
 
 A generic function can be used in regular and generic kernels.  It's not necessary to explicitly overload generic functions.  All required function overloads are generated automatically when those functions are used in kernels.
+
+
+.. _generic_type_annotations:
+
+Generic Type Annotations
+------------------------
+
+Annotating a parameter of a generic kernel or function with ``typing.Any`` lets it accept any type. To accept only
+one family of scalar types, annotate it with :data:`wp.Int <Int>`, :data:`wp.Float <Float>`, or
+:data:`wp.Scalar <Scalar>` instead.
+These annotations can also serve as the ``dtype`` of generic arrays, such as ``wp.array[wp.Float]``:
+
+.. testcode::
+
+    @wp.func
+    def square(x: wp.Float):
+        return x * x
+
+    @wp.kernel
+    def square_all(a: wp.array[wp.Float]):
+        i = wp.tid()
+        a[i] = square(a[i])
+
+    a16 = wp.array([1.0, 2.0, 3.0], dtype=wp.float16)
+    a64 = wp.array([1.0, 2.0, 3.0], dtype=wp.float64)
+
+    wp.launch(square_all, dim=3, inputs=[a16])
+    wp.launch(square_all, dim=3, inputs=[a64])
+
+    print(a16)
+    print(a64)
+
+.. testoutput::
+
+    [1. 4. 9.]
+    [1. 4. 9.]
+
+Launching ``square_all`` with an array of :class:`wp.int32 <int32>` raises an error, because ``int32``
+doesn't match ``wp.Float``.
 
 
 type() Operator

@@ -13,6 +13,8 @@
       ~FunctionSpace.divergence_valid
       ~FunctionSpace.dof_value
       ~FunctionSpace.gradient_valid
+      ~FunctionSpace.local_inverse_value_map_inner
+      ~FunctionSpace.local_inverse_value_map_outer
       ~FunctionSpace.local_value_map_inner
       ~FunctionSpace.local_value_map_outer
       ~FunctionSpace.make_field

@@ -1,0 +1,26 @@
+﻿warp.sparse.BsrTripletMap
+=========================
+
+.. currentmodule:: warp.sparse
+
+.. autoclass:: BsrTripletMap
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~BsrTripletMap.validate
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~BsrTripletMap.capacity
+      ~BsrTripletMap.device
+      ~BsrTripletMap.triplet_count
+   
+   

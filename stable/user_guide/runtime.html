@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Runtime &#8212; Warp 1.18.0</title>
+    <title>Runtime &#8212; Warp 1.19.0</title>
   
   
   
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../_static/documentation_options.js?v=9d419c5b"></script>
+    <script src="../_static/documentation_options.js?v=39391842"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -54,7 +54,7 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.18';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.19';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -71,7 +71,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.18.0" />
+  <meta name="docsearch:version" content="1.19.0" />
   
     
     <script src="../_static/searchtools.js"></script>
@@ -148,11 +148,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.18.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.18.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.18.0</p>
+    <p class="title logo__title">Warp 1.19.0</p>
   
 </a></div>
     
@@ -292,11 +292,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.18.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.18.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.18.0</p>
+    <p class="title logo__title">Warp 1.19.0</p>
   
 </a>
 
@@ -1063,6 +1063,7 @@ using <code class="docutils literal notranslate"><span class="pre">wp.zeros(shap
 </table>
 </div>
 <p>Warp supports <code class="docutils literal notranslate"><span class="pre">float</span></code> and <code class="docutils literal notranslate"><span class="pre">int</span></code> as aliases for <a class="reference internal" href="../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.float32</span></code></a> and <a class="reference internal" href="../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.int32</span></code></a> respectively.</p>
+<p>Use <a class="reference internal" href="../api_reference/_generated/warp.dtype_to_numpy.html#warp.dtype_to_numpy" title="warp.dtype_to_numpy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.dtype_to_numpy()</span></code></a> to convert Warp scalar types to NumPy dtype specifications. See <a class="reference internal" href="interoperability.html#numpy-scalar-dtypes"><span class="std std-ref">Scalar data types</span></a> for examples and behavior across NumPy versions.</p>
 <section id="bfloat16-and-numpy-interop">
 <h4>bfloat16 and NumPy Interop<a class="headerlink" href="#bfloat16-and-numpy-interop" title="Link to this heading">#</a></h4>
 <p>NumPy does not natively support the bfloat16 format, so Warp stores
@@ -1070,7 +1071,7 @@ using <code class="docutils literal notranslate"><span class="pre">wp.zeros(shap
 how array contents are displayed when calling <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.numpy" title="warp.array.numpy"><code class="xref py py-meth docutils literal notranslate"><span class="pre">numpy()</span></code></a> or
 printing an array.</p>
 <p>Without <a class="reference external" href="https://github.com/jax-ml/ml_dtypes">ml-dtypes</a>,
-<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.numpy" title="warp.array.numpy"><code class="xref py py-meth docutils literal notranslate"><span class="pre">numpy()</span></code></a> and <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#print" title="(in Python v3.14)"><code class="xref py py-func docutils literal notranslate"><span class="pre">print()</span></code></a> show raw <code class="docutils literal notranslate"><span class="pre">uint16</span></code> values:</p>
+<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.numpy" title="warp.array.numpy"><code class="xref py py-meth docutils literal notranslate"><span class="pre">numpy()</span></code></a> and <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#print" title="(in Python v3.15)"><code class="xref py py-func docutils literal notranslate"><span class="pre">print()</span></code></a> show raw <code class="docutils literal notranslate"><span class="pre">uint16</span></code> values:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">,</span> <span class="mf">3.14</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">bfloat16</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
 <span class="go">array([16256, 16416, 16457], dtype=uint16)</span>
@@ -1081,7 +1082,7 @@ printing an array.</p>
 </pre></div>
 </div>
 <p>With <code class="docutils literal notranslate"><span class="pre">ml-dtypes</span></code> installed (<code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">ml-dtypes</span></code>),
-<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.numpy" title="warp.array.numpy"><code class="xref py py-meth docutils literal notranslate"><span class="pre">numpy()</span></code></a> and <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#print" title="(in Python v3.14)"><code class="xref py py-func docutils literal notranslate"><span class="pre">print()</span></code></a> show human-readable floats:</p>
+<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.numpy" title="warp.array.numpy"><code class="xref py py-meth docutils literal notranslate"><span class="pre">numpy()</span></code></a> and <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#print" title="(in Python v3.15)"><code class="xref py py-func docutils literal notranslate"><span class="pre">print()</span></code></a> show human-readable floats:</p>
 <div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">,</span> <span class="mf">3.14</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">bfloat16</span><span class="p">)</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">a</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
 <span class="go">array([1, 2.5, 3.14062], dtype=bfloat16)</span>
@@ -1892,7 +1893,7 @@ the <em>original</em> default device.</p>
 <p class="admonition-title">Note</p>
 <p>For CUDA devices, <a class="reference internal" href="../api_reference/_generated/warp.set_device.html#warp.set_device" title="warp.set_device"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.set_device()</span></code></a> does two things: It sets the Warp default device and it makes the device’s CUDA context current.  This helps to minimize the number of CUDA context switches in blocks of code targeting a single device.</p>
 </div>
-<p>For PyTorch users, this function is similar to <a class="reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.cuda.set_device.html#torch.cuda.set_device" title="(in PyTorch v2.14)"><code class="xref py py-func docutils literal notranslate"><span class="pre">torch.cuda.set_device()</span></code></a>.
+<p>For PyTorch users, this function is similar to <a class="reference external" href="https://docs.pytorch.org/docs/stable/generated/torch.cuda.set_device.html#torch.cuda.set_device" title="(in PyTorch v2.15)"><code class="xref py py-func docutils literal notranslate"><span class="pre">torch.cuda.set_device()</span></code></a>.
 It is still possible to specify a different device in individual API calls, like in this snippet:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># set default device</span>
 <span class="n">wp</span><span class="o">.</span><span class="n">set_device</span><span class="p">(</span><span class="s2">"cuda:0"</span><span class="p">)</span>
@@ -2415,31 +2416,32 @@ on replay. <code class="docutils literal notranslate"><span class="pre">Device.i
 <li><p><a class="reference internal" href="../api_reference/_generated/warp.utils.array_scan.html#warp.utils.array_scan" title="warp.utils.array_scan"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_scan()</span></code></a> records <code class="docutils literal notranslate"><span class="pre">int32</span></code>, <code class="docutils literal notranslate"><span class="pre">float32</span></code>,
 <code class="docutils literal notranslate"><span class="pre">int64</span></code>, and <code class="docutils literal notranslate"><span class="pre">float64</span></code> scalar and vector scans – including positively-strided
 (non-contiguous) 1D arrays – into the CPU graph’s operation stream. Non-empty scans
-with negative strides raise <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a> inside a CPU
+with negative strides raise <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#NotImplementedError" title="(in Python v3.15)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a> inside a CPU
 <a class="reference internal" href="../api_reference/_generated/warp.ScopedCapture.html#warp.ScopedCapture" title="warp.ScopedCapture"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScopedCapture</span></code></a>; run them outside the captured region.</p></li>
 <li><p><a class="reference internal" href="../api_reference/_generated/warp.utils.array_sum.html#warp.utils.array_sum" title="warp.utils.array_sum"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_sum()</span></code></a> and
 <a class="reference internal" href="../api_reference/_generated/warp.utils.array_inner.html#warp.utils.array_inner" title="warp.utils.array_inner"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_inner()</span></code></a> require an explicit
 <code class="docutils literal notranslate"><span class="pre">out</span></code> array for non-empty calls during CPU graph capture. Explicit counts, composite dtypes,
 and positive-stride axis reductions are recorded; negative strides raise
-<a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>, and negative counts raise <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#RuntimeError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">RuntimeError</span></code></a>.
+<a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#NotImplementedError" title="(in Python v3.15)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>, and negative counts raise <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#RuntimeError" title="(in Python v3.15)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">RuntimeError</span></code></a>.
 Counts and reduction strides must fit a signed 32-bit integer, and participating
 addresses and layout strides must be aligned to the reduction’s scalar type.</p></li>
 <li><p><a class="reference internal" href="../api_reference/_generated/warp.utils.runlength_encode.html#warp.utils.runlength_encode" title="warp.utils.runlength_encode"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.runlength_encode()</span></code></a> requires an explicit
 <code class="docutils literal notranslate"><span class="pre">run_count</span></code> array during CPU graph capture; the host-return form (<code class="docutils literal notranslate"><span class="pre">run_count=None</span></code>)
-raises <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>, because its capture-time host integer cannot
+raises <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#NotImplementedError" title="(in Python v3.15)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>, because its capture-time host integer cannot
 represent the replay-time result.</p></li>
 <li><p>Non-contiguous <a class="reference internal" href="../api_reference/_generated/warp.copy.html#warp.copy" title="warp.copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.copy()</span></code></a>, non-contiguous
 <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a>, and fills on
 <a class="reference internal" href="../api_reference/_generated/warp.indexedarray.html#warp.indexedarray" title="warp.indexedarray"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.indexedarray</span></code></a> / <code class="docutils literal notranslate"><span class="pre">wp.fabricarray</span></code> raise
-<a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a> inside a CPU <a class="reference internal" href="../api_reference/_generated/warp.ScopedCapture.html#warp.ScopedCapture" title="warp.ScopedCapture"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScopedCapture</span></code></a>.</p></li>
+<a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#NotImplementedError" title="(in Python v3.15)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a> inside a CPU <a class="reference internal" href="../api_reference/_generated/warp.ScopedCapture.html#warp.ScopedCapture" title="warp.ScopedCapture"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScopedCapture</span></code></a>.</p></li>
 <li><p>Reusable launches with array parameters must be updated through Warp-level
 setters such as <a class="reference internal" href="../api_reference/_generated/warp.Launch.html#warp.Launch.set_param_at_index" title="warp.Launch.set_param_at_index"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Launch.set_param_at_index()</span></code></a>.
 Raw ctype array parameters passed through
 <a class="reference internal" href="../api_reference/_generated/warp.Launch.html#warp.Launch.set_param_at_index_from_ctype" title="warp.Launch.set_param_at_index_from_ctype"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Launch.set_param_at_index_from_ctype()</span></code></a>
 cannot be recorded because APIC needs the original <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>
 object to preserve its replay-time memory reference.</p></li>
-<li><p>Kernel parameters of type <code class="docutils literal notranslate"><span class="pre">wp.fixedarray</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.fabricarray</span></code>, or
-<code class="docutils literal notranslate"><span class="pre">wp.indexedfabricarray</span></code> cannot yet be recorded by APIC.</p></li>
+<li><p>Kernel parameters of type <code class="docutils literal notranslate"><span class="pre">wp.fabricarray</span></code> or <code class="docutils literal notranslate"><span class="pre">wp.indexedfabricarray</span></code>
+cannot yet be recorded by APIC. <code class="docutils literal notranslate"><span class="pre">wp.fixedarray</span></code> is a compiler-only stack
+array type and cannot be passed as a host kernel argument.</p></li>
 <li><p><a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.nnz_sync" title="warp.sparse.BsrMatrix.nnz_sync"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BsrMatrix.nnz_sync()</span></code></a> cannot read the
 result of a topology update recorded earlier in the same CPU capture. Read the
 count after replay, or avoid the readback inside the captured region.</p></li>
@@ -2477,12 +2479,10 @@ undefined behavior.</p></li>
 <p>API Capture (APIC) is experimental. The <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file format, the Python
 <a class="reference internal" href="../api_reference/_generated/warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_save()</span></code></a> / <a class="reference internal" href="../api_reference/_generated/warp.capture_load.html#warp.capture_load" title="warp.capture_load"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_load()</span></code></a>
 surface, the C <code class="docutils literal notranslate"><span class="pre">wp_apic_*</span></code> API, and the recorded operation set are all
-subject to change without a formal deprecation cycle. <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> files written
-by one version of Warp may not be loadable by another. The current writer
-emits format version 16, and the reader accepts versions 13 through 16.
-Version 16 stores kernel launch extents as unsigned 32-bit values. Older
-files whose launch extents have the high bit set are rejected because those
-values overflowed the signed representation used by their format.</p>
+subject to change without a formal deprecation cycle. The writer and loader
+must use the same Warp version. The current writer and reader use format
+version 18, which stores explicit element counts for handle relocations.
+Recapture graphs saved with earlier formats.</p>
 </div>
 <p>The APIC operation stream lets Warp serialize a supported captured graph to
 disk and load it back later from another Python program or a standalone C++
@@ -2528,12 +2528,12 @@ readback and remains unavailable during graph capture.</p>
 <a class="reference internal" href="../api_reference/_generated/warp.utils.array_sum.html#warp.utils.array_sum" title="warp.utils.array_sum"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_sum()</span></code></a> and
 <a class="reference internal" href="../api_reference/_generated/warp.utils.array_inner.html#warp.utils.array_inner" title="warp.utils.array_inner"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_inner()</span></code></a> require an explicit
 <code class="docutils literal notranslate"><span class="pre">out</span></code> array. Explicit counts, composite dtypes, and positive-stride axis reductions are
-recorded. A negative count raises <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#RuntimeError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">RuntimeError</span></code></a> in that capture, and any negative input
-or output stride raises <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>, including for a zero-count call. Counts and
+recorded. A negative count raises <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#RuntimeError" title="(in Python v3.15)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">RuntimeError</span></code></a> in that capture, and any negative input
+or output stride raises <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#NotImplementedError" title="(in Python v3.15)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>, including for a zero-count call. Counts and
 reduction strides must fit a signed 32-bit integer, and participating addresses and layout
 strides must be aligned to the reduction’s scalar type.</p>
 <p>A few operations cannot be captured for save/load on CUDA and raise
-<a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a> during an <code class="docutils literal notranslate"><span class="pre">apic=True</span></code> capture; build these outside the captured
+<a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#NotImplementedError" title="(in Python v3.15)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a> during an <code class="docutils literal notranslate"><span class="pre">apic=True</span></code> capture; build these outside the captured
 region:</p>
 <ul class="simple">
 <li><p><a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid.build" title="warp.HashGrid.build"><code class="xref py py-meth docutils literal notranslate"><span class="pre">HashGrid.build()</span></code></a>, because <code class="docutils literal notranslate"><span class="pre">HashGrid</span></code>
@@ -2582,6 +2582,37 @@ memory region snapshots, kernel and module metadata, and named bindings.</p></li
 (<code class="docutils literal notranslate"><span class="pre">.cubin</span></code> / <code class="docutils literal notranslate"><span class="pre">.ptx</span></code> for CUDA, <code class="docutils literal notranslate"><span class="pre">.o</span></code> for CPU) referenced by the operation
 stream.</p></li>
 </ul>
+<p>By default, <a class="reference internal" href="../api_reference/_generated/warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_save()</span></code></a> uses
+<code class="docutils literal notranslate"><span class="pre">source_fallback=False</span></code>: CUDA artifacts contain compiled binaries without
+generated <code class="docutils literal notranslate"><span class="pre">.cu</span></code> source, and saving does not report source portability
+limitations. To package generated CUDA source for replay on another supported
+GPU, pass <code class="docutils literal notranslate"><span class="pre">source_fallback=True</span></code> alongside any <code class="docutils literal notranslate"><span class="pre">inputs</span></code> and <code class="docutils literal notranslate"><span class="pre">outputs</span></code>.</p>
+<p>When source fallback is requested, every captured CUDA module must have
+generated source that has not changed since the module loaded and a
+reproducible compile recipe. Warp uses the shared <code class="docutils literal notranslate"><span class="pre">.cu</span></code> file that code
+generation wrote beside the module binary, in the kernel cache or an
+ahead-of-time module directory, and checks its file identity before and after
+reading it at save time. Source reads, hashing, and dependency checks for APIC
+occur only when saving with source fallback enabled. Keep the generated source
+available until saving completes.</p>
+<p>Missing or changed source, binary names that cannot be verified against the
+hashed module identifier (including any module that uses <code class="docutils literal notranslate"><span class="pre">strip_hash=True</span></code>),
+caller-provided CUDA include directories, LLVM-CUDA builds, and LTO-IR or
+fatbin link inputs cause saving to fail before publishing the artifact. The
+error lists all affected modules and their reasons. If the source was missing
+when the module loaded or changed afterwards, restore source known to match the
+binary or force a rebuild of the binary and generated source together, then
+reload the module and capture again. Reloading alone can reuse the cached
+binary and does not verify that it matches the source. Hashed AOT modules are
+supported when their generated source is present and unchanged. File identity
+checks detect changes on a best-effort basis; they do not prove which source
+produced the binary. Link-input detection is similarly
+best-effort because it inspects only the generated source. Guest hardware,
+driver, and compiler compatibility are checked when loading; successful saving
+does not guarantee that every guest can replay the graph.</p>
+<p>Saving stages the graph and its companion files before replacing the
+destination. Failed exports or serialization leave an existing artifact
+intact. If publication fails, Warp restores the previous companion directory.</p>
 <p>For a graph with recorded kernels, the <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file and its companion
 <code class="docutils literal notranslate"><span class="pre">_modules</span></code> directory are one artifact. Keep their relative names and
 distribute or move them together; the graph cannot be loaded from either part
@@ -2634,13 +2665,50 @@ graphs returned by <a class="reference internal" href="../api_reference/_generat
 <a class="reference internal" href="../api_reference/_generated/warp.Graph.html#warp.Graph.get_param_ptr" title="warp.Graph.get_param_ptr"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Graph.get_param_ptr()</span></code></a> returns the graph-owned
 address of a binding (a host address for CPU graphs or a device address for CUDA
 graphs), which remains valid only until the graph is destroyed.</p>
-<p>A <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file captured on a CUDA device must be loaded on a CUDA device with
-a compatible companion module; a file captured on a CPU device must be loaded
-on a CPU device. The <code class="docutils literal notranslate"><span class="pre">device</span></code> passed to
-<a class="reference internal" href="../api_reference/_generated/warp.capture_load.html#warp.capture_load" title="warp.capture_load"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_load()</span></code></a> must match the captured device
-family. This is currently a caller requirement: the experimental loader does
-not reliably diagnose a mismatch when it first opens the file. Architecture and
-platform constraints are listed under the current limitations below.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file captured on a CUDA device must be loaded on a CUDA device; a
+file captured on a CPU device must be loaded on a CPU device. The loader first
+tries each packaged PTX or CUBIN. If the CUDA driver rejects it, Warp checks for
+a compatible compiled entry in the companion <code class="docutils literal notranslate"><span class="pre">_modules</span></code> directory and then,
+when reproducible source was retained, compiles that source for the guest GPU
+with NVRTC. Successfully compiled output is cached in <code class="docutils literal notranslate"><span class="pre">_modules</span></code> under a
+content-addressed <code class="docutils literal notranslate"><span class="pre">apic_guest_*</span></code> name. A read-only directory still works, but
+the source is compiled again on the next load.</p>
+<p>Source fallback requires the exact Warp version that wrote the artifact.
+It is available only when the graph was saved with <code class="docutils literal notranslate"><span class="pre">source_fallback=True</span></code>.
+Graphs saved with the default <code class="docutils literal notranslate"><span class="pre">source_fallback=False</span></code> require compatible
+compiled binaries. If no usable binary is available, <code class="docutils literal notranslate"><span class="pre">capture_load()</span></code> reports
+the binary-load failure. For opted-in saves, it also reports why source fallback
+is unavailable or failed.</p>
+</section>
+<section id="loading-from-bytes">
+<h4>Loading from bytes<a class="headerlink" href="#loading-from-bytes" title="Link to this heading">#</a></h4>
+<p><a class="reference internal" href="../api_reference/_generated/warp.capture_load_from_bytes.html#warp.capture_load_from_bytes" title="warp.capture_load_from_bytes"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_load_from_bytes()</span></code></a> loads a
+saved graph from memory instead of files. It suits applications that store a
+capture inside another artifact, such as a model file. Pass the contents of the
+<code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file and a mapping from each file in the companion <code class="docutils literal notranslate"><span class="pre">_modules</span></code>
+directory to its contents:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+<span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">"simulation.wrp"</span><span class="p">,</span> <span class="s2">"rb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+    <span class="n">wrp_data</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+
+<span class="n">modules</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="k">for</span> <span class="n">filename</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="s2">"simulation_modules"</span><span class="p">):</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s2">"simulation_modules"</span><span class="p">,</span> <span class="n">filename</span><span class="p">),</span> <span class="s2">"rb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">modules</span><span class="p">[</span><span class="n">filename</span><span class="p">]</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+
+<span class="n">graph</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">capture_load_from_bytes</span><span class="p">(</span><span class="n">wrp_data</span><span class="p">,</span> <span class="n">modules</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The returned graph behaves the same as one returned by
+<a class="reference internal" href="../api_reference/_generated/warp.capture_load.html#warp.capture_load" title="warp.capture_load"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_load()</span></code></a>. Module names are the filenames
+<a class="reference internal" href="../api_reference/_generated/warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_save()</span></code></a> wrote, without a directory
+prefix. Entries the graph doesn’t use are ignored. Warp copies everything it
+needs while loading, so the buffers can be released once the call returns.</p>
+<p>Loading from bytes requires compatible packaged binaries. Generated-source
+recompilation and persistent guest-cache lookup use the file-based loader.</p>
 </section>
 <section id="standalone-c-replay">
 <h4>Standalone C++ replay<a class="headerlink" href="#standalone-c-replay" title="Link to this heading">#</a></h4>
@@ -2650,6 +2718,20 @@ declared in <a class="reference external" href="https://github.com/NVIDIA/warp/b
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="c1">// Load a .wrp file. device_type: 0 = CUDA, 1 = CPU.</span>
 <span class="c1">// For CUDA, context is a CUcontext; for CPU it is ignored (pass NULL).</span>
 <span class="n">APICGraph</span><span class="o">*</span><span class="w"> </span><span class="nf">wp_apic_load_graph</span><span class="p">(</span><span class="kt">void</span><span class="o">*</span><span class="w"> </span><span class="n">context</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="n">path</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">device_type</span><span class="p">);</span>
+
+<span class="c1">// Load from memory: the .wrp contents plus the modules for a CUDA graph.</span>
+<span class="c1">// Each APICModuleBytes entry holds a module's recorded filename</span>
+<span class="c1">// (const char* filename) and its contents (const void* data, size_t size).</span>
+<span class="c1">// Buffers must be host memory that is not modified during the call.</span>
+<span class="c1">// For a CPU graph the module list is not used: load each object with</span>
+<span class="c1">// wp_load_obj_from_bytes() instead (see below).</span>
+<span class="n">APICGraph</span><span class="o">*</span><span class="w"> </span><span class="nf">wp_apic_load_graph_from_bytes</span><span class="p">(</span><span class="kt">void</span><span class="o">*</span><span class="w"> </span><span class="n">context</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">void</span><span class="o">*</span><span class="w"> </span><span class="n">data</span><span class="p">,</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="n">size</span><span class="p">,</span>
+<span class="w">                                         </span><span class="k">const</span><span class="w"> </span><span class="n">APICModuleBytes</span><span class="o">*</span><span class="w"> </span><span class="n">modules</span><span class="p">,</span>
+<span class="w">                                         </span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">num_modules</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">device_type</span><span class="p">);</span>
+
+<span class="c1">// Also permit CUDA source fallback using headers from the linked Warp.</span>
+<span class="n">APICGraph</span><span class="o">*</span><span class="w"> </span><span class="nf">wp_apic_load_graph_ex</span><span class="p">(</span><span class="kt">void</span><span class="o">*</span><span class="w"> </span><span class="n">context</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="n">path</span><span class="p">,</span>
+<span class="w">                                 </span><span class="kt">int</span><span class="w"> </span><span class="n">device_type</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="n">warp_include_dir</span><span class="p">);</span>
 
 <span class="c1">// Update or read named parameter regions on the loaded graph.</span>
 <span class="kt">bool</span><span class="w"> </span><span class="nf">wp_apic_set_param</span><span class="p">(</span><span class="n">APICGraph</span><span class="o">*</span><span class="w"> </span><span class="n">graph</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="n">name</span><span class="p">,</span>
@@ -2670,6 +2752,12 @@ declared in <a class="reference external" href="https://github.com/NVIDIA/warp/b
 </div>
 <p>For native library headers, build-system setup, platform-specific linking,
 deployment, and version compatibility, see <a class="reference internal" href="programming_model/cpp_cuda_workflows.html#native-library-linking"><span class="std std-ref">Native Library Linking and Version Checks</span></a>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">wp_apic_load_graph()</span></code> preserves the original binary-only standalone behavior
+and is used by the CUDA example below. It can load a compatible packaged module
+or an existing guest-cache entry, but it cannot compile retained source. To opt
+in to source fallback for cross-system CUDA replay, call
+<code class="docutils literal notranslate"><span class="pre">wp_apic_load_graph_ex()</span></code> and pass the path to the <code class="docutils literal notranslate"><span class="pre">warp/native</span></code> headers
+from the same Warp installation as the linked native library.</p>
 <p>Two reference C++ examples ship with Warp under <code class="docutils literal notranslate"><span class="pre">warp/examples/cpp/</span></code>. Both
 implement the same interactive 2-D wave simulation visualized with GLFW/OpenGL,
 and both take their captured <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> file from a Python <code class="docutils literal notranslate"><span class="pre">capture_wave.py</span></code>
@@ -2752,12 +2840,14 @@ resolved from the <code class="docutils literal notranslate"><span class="pre">.
 CPU example links against <code class="docutils literal notranslate"><span class="pre">warp-clang</span></code> at build time, loads each object with
 <code class="docutils literal notranslate"><span class="pre">wp_load_obj()</span></code>, resolves its functions with <code class="docutils literal notranslate"><span class="pre">wp_lookup()</span></code>, and registers
 each pointer with the loaded graph via
-<code class="docutils literal notranslate"><span class="pre">wp_apic_register_loaded_cpu_kernel()</span></code>.</p>
-<p>Before the first call to <code class="docutils literal notranslate"><span class="pre">wp_load_obj()</span></code>, a standalone native consumer must
-pass the core runtime table returned by <code class="docutils literal notranslate"><span class="pre">wp_cpu_block_runtime_get_api()</span></code> to
-<code class="docutils literal notranslate"><span class="pre">wp_llvm_set_cpu_block_runtime()</span></code>. This lets JIT-loaded kernels resolve the
-cooperative CPU block entry points implemented by the core Warp library. Warp’s
-Python runtime performs the same binding during initialization.</p>
+<code class="docutils literal notranslate"><span class="pre">wp_apic_register_loaded_cpu_kernel()</span></code>. When the object files are in memory,
+<code class="docutils literal notranslate"><span class="pre">wp_load_obj_from_bytes()</span></code> loads one from a buffer instead of a path.</p>
+<p>Before the first call to <code class="docutils literal notranslate"><span class="pre">wp_load_obj()</span></code> or <code class="docutils literal notranslate"><span class="pre">wp_load_obj_from_bytes()</span></code>, a
+standalone native consumer must pass the core runtime table returned by
+<code class="docutils literal notranslate"><span class="pre">wp_cpu_block_runtime_get_api()</span></code> to <code class="docutils literal notranslate"><span class="pre">wp_llvm_set_cpu_block_runtime()</span></code>. This
+lets JIT-loaded kernels resolve the cooperative CPU block entry points
+implemented by the core Warp library. Warp’s Python runtime performs the same
+binding during initialization.</p>
 <p>The example walks every kernel returned by <code class="docutils literal notranslate"><span class="pre">wp_apic_get_num_kernels()</span></code> and
 does this resolution once at startup. Kernel metadata includes both the kernel
 key and module hash so same-key kernels from distinct <code class="docutils literal notranslate"><span class="pre">module=&quot;unique&quot;</span></code>
@@ -2777,8 +2867,11 @@ surface for this lookup is:</p>
 <p>Loading a CPU <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graph uses the pure-C++ APIC loader in the Warp native
 library and does not require a CUDA-enabled build. CPU replay
 (<code class="docutils literal notranslate"><span class="pre">wp_apic_cpu_replay_graph</span></code>) still requires the warp-clang backend and the
-companion <code class="docutils literal notranslate"><span class="pre">_modules</span></code> directory described above. Loading a CUDA <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graph
-requires a CUDA-enabled build.</p>
+compiled kernel objects. These can come from the companion <code class="docutils literal notranslate"><span class="pre">_modules</span></code>
+directory, from the module buffers passed to
+<a class="reference internal" href="../api_reference/_generated/warp.capture_load_from_bytes.html#warp.capture_load_from_bytes" title="warp.capture_load_from_bytes"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_load_from_bytes()</span></code></a>, or, in a
+native program, from buffers loaded with <code class="docutils literal notranslate"><span class="pre">wp_load_obj_from_bytes()</span></code>. Loading
+a CUDA <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graph requires a CUDA-enabled build.</p>
 </section>
 <section id="building-and-running">
 <h5>Building and running<a class="headerlink" href="#building-and-running" title="Link to this heading">#</a></h5>
@@ -2808,24 +2901,40 @@ options, controls, and platform-specific notes.</p>
 <li><p>Only <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Mesh</span></code></a> object handles are serialized.
 <a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Volume</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Bvh</span></code></a>, and
 <a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.HashGrid</span></code></a> handles are not yet supported.</p></li>
-<li><p>Kernel arguments of type <code class="docutils literal notranslate"><span class="pre">wp.fixedarray</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.fabricarray</span></code>, and
-<code class="docutils literal notranslate"><span class="pre">wp.indexedfabricarray</span></code> cannot yet be recorded by APIC.</p></li>
+<li><p>A mesh ID is remapped to the reloaded mesh only when its type is
+<a class="reference internal" href="../api_reference/_generated/warp.handle.html#warp.handle" title="warp.handle"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.handle</span></code></a>:
+a <code class="docutils literal notranslate"><span class="pre">wp.handle</span></code> kernel parameter or struct field,
+or an element of an array whose dtype is <code class="docutils literal notranslate"><span class="pre">wp.handle</span></code> or a struct with <code class="docutils literal notranslate"><span class="pre">wp.handle</span></code> fields.
+A mesh ID passed as <code class="docutils literal notranslate"><span class="pre">wp.uint64</span></code> is saved as a plain integer
+and is not valid when the graph is loaded in another process.</p></li>
+<li><p>Mesh IDs written into an array by <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a> during a capture
+are not remapped when the graph is loaded.
+Write them with a kernel that takes the mesh as a <code class="docutils literal notranslate"><span class="pre">wp.handle</span></code> argument instead.</p></li>
+<li><p>Kernel arguments of type <code class="docutils literal notranslate"><span class="pre">wp.fabricarray</span></code> or <code class="docutils literal notranslate"><span class="pre">wp.indexedfabricarray</span></code>
+cannot yet be recorded by APIC. <code class="docutils literal notranslate"><span class="pre">wp.fixedarray</span></code> is a compiler-only stack
+array type and cannot be passed as a host kernel argument.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">HashGrid.build()</span></code> is supported by live CPU graphs captured with
 <code class="docutils literal notranslate"><span class="pre">apic=False</span></code>. It is not supported by saveable captures because <code class="docutils literal notranslate"><span class="pre">HashGrid</span></code>
 resources and their process-local IDs cannot yet be serialized. Calling
-<code class="docutils literal notranslate"><span class="pre">HashGrid.build()</span></code> with <code class="docutils literal notranslate"><span class="pre">apic=True</span></code> raises <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#NotImplementedError" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>.
+<code class="docutils literal notranslate"><span class="pre">HashGrid.build()</span></code> with <code class="docutils literal notranslate"><span class="pre">apic=True</span></code> raises <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#NotImplementedError" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>.
 Pre-reserving is optional for CPU replay but avoids allocation on the first
 launch. If used, call <code class="docutils literal notranslate"><span class="pre">HashGrid.reserve()</span></code> before capture; reserve calls
 inside CPU capture are rejected.</p></li>
-<li><p>A CUBIN companion is specific to its compiled CUDA architecture. PTX may be
-JIT-compiled on architectures supported by its target and the installed
-driver, but PTX is not an unconditional cross-architecture guarantee. One
-APIC graph cannot span multiple GPUs.</p></li>
-<li><p>Loading CPU <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graphs requires the warp-clang backend and the companion
-<code class="docutils literal notranslate"><span class="pre">_modules</span></code> directory with compatible CPU kernel object files. Those
-<code class="docutils literal notranslate"><span class="pre">.o</span></code> files are tied to their platform, architecture, compiler ABI, and Warp
-runtime. CPU loading does not require a CUDA-enabled Warp native library;
-loading CUDA <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graphs does.</p></li>
+<li><p>A CUBIN companion is specific to its compiled CUDA architecture, and PTX is
+not an unconditional cross-architecture guarantee. CUDA APIC loading can
+recover by compiling generated source packaged with
+<code class="docutils literal notranslate"><span class="pre">capture_save(source_fallback=True)</span></code> for the guest GPU. This save option
+rejects modules using caller-provided CUDA include directories, LLVM-CUDA
+builds, <code class="docutils literal notranslate"><span class="pre">strip_hash=True</span></code>, or LTO-IR and fatbin link inputs (detected from
+the generated source), and modules whose generated source is missing or
+changed after the module loaded. Default binary-only saving remains
+available for these modules. One APIC graph cannot span multiple GPUs.</p></li>
+<li><p>Loading CPU <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graphs requires the warp-clang backend and compatible
+CPU kernel object files, either in the companion <code class="docutils literal notranslate"><span class="pre">_modules</span></code> directory or
+passed to <a class="reference internal" href="../api_reference/_generated/warp.capture_load_from_bytes.html#warp.capture_load_from_bytes" title="warp.capture_load_from_bytes"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_load_from_bytes()</span></code></a>.
+Those <code class="docutils literal notranslate"><span class="pre">.o</span></code> files are tied to their platform, architecture, compiler ABI,
+and Warp runtime. CPU loading does not require a CUDA-enabled Warp native
+library; loading CUDA <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graphs does.</p></li>
 <li><p>Both CPU and CUDA <code class="docutils literal notranslate"><span class="pre">.wrp</span></code> graph replay support APIC-recorded
 <a class="reference internal" href="../api_reference/_generated/warp.capture_if.html#warp.capture_if" title="warp.capture_if"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_if()</span></code></a> and
 <a class="reference internal" href="../api_reference/_generated/warp.capture_while.html#warp.capture_while" title="warp.capture_while"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_while()</span></code></a> conditionals and loops. Stream
@@ -2863,6 +2972,8 @@ freed, causing crashes and undefined behavior.</p>
 </div>
 <p>Meshes can be passed to kernels using their <code class="docutils literal notranslate"><span class="pre">id</span></code> attribute, which is a <code class="docutils literal notranslate"><span class="pre">uint64</span></code> value that uniquely identifies
 the mesh.
+To save a captured graph that uses a mesh with <a class="reference internal" href="../api_reference/_generated/warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_save()</span></code></a>,
+type the ID as <a class="reference internal" href="../api_reference/_generated/warp.handle.html#warp.handle" title="warp.handle"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.handle</span></code></a> instead (see <a class="reference internal" href="#apic-save-load"><span class="std std-ref">API Capture: Saving and Loading Graphs</span></a>).
 Once inside a kernel, you can perform geometric queries against the mesh such as ray-casts or closest-point lookups.
 For example, the result object returned by <a class="reference internal" href="../language_reference/_generated/warp.mesh_query_point.html#warp._src.lang.mesh_query_point" title="warp._src.lang.mesh_query_point"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.mesh_query_point()</span></code></a> stores the
 hit face and barycentric coordinates, which can be passed to
@@ -3184,9 +3295,24 @@ addressing modes (wrap, clamp, mirror, border), making them ideal for efficientl
 <p>Supported data types include <code class="docutils literal notranslate"><span class="pre">wp.uint8</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.uint16</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.uint32</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.int8</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.int16</span></code>,
 <code class="docutils literal notranslate"><span class="pre">wp.int32</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.float16</span></code>, and <code class="docutils literal notranslate"><span class="pre">wp.float32</span></code>. Unsigned 8- and 16-bit integer textures are
 automatically normalized to the [0, 1] range when sampled; signed 8- and 16-bit integer textures are
-normalized to [-1, 1]; float types are returned as-is. Sampling a <code class="docutils literal notranslate"><span class="pre">wp.uint32</span></code> or <code class="docutils literal notranslate"><span class="pre">wp.int32</span></code>
-texture causes kernel execution to fail, but these dtypes remain usable for storage, copies, and
-interop.</p>
+normalized to [-1, 1]; float types are returned as-is. <code class="docutils literal notranslate"><span class="pre">wp.uint32</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.int32</span></code> textures
+support only closest filtering and are converted numerically to <code class="docutils literal notranslate"><span class="pre">float32</span></code> without normalization.
+Integers outside <code class="docutils literal notranslate"><span class="pre">[-2**24,</span> <span class="pre">2**24]</span></code> may round during this conversion.</p>
+<p>Texture sampling is differentiable with respect to sampling coordinates wherever the sample is
+locally linear, and with respect to <code class="docutils literal notranslate"><span class="pre">lod</span></code> for linear mip-level blending, so sampling positions
+can be optimized with <a class="reference internal" href="../api_reference/_generated/warp.Tape.html#warp.Tape" title="warp.Tape"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Tape</span></code></a>. At boundaries where the derivative is not
+unique, Warp differentiates the branch selected by the forward sample. At an unclamped integer
+LOD, linear mip filtering uses the right-hand derivative. The LOD gradient is zero in the clamped
+ranges. With closest spatial or mip filtering the corresponding coordinate or <code class="docutils literal notranslate"><span class="pre">lod</span></code> gradients
+are zero. Texture data gradients are not propagated. On CUDA, <code class="docutils literal notranslate"><span class="pre">WRAP</span></code> and <code class="docutils literal notranslate"><span class="pre">MIRROR</span></code> require
+normalized coordinates; with unnormalized coordinates, CUDA treats both modes as <code class="docutils literal notranslate"><span class="pre">CLAMP</span></code> for
+the forward sample and its coordinate gradient.</p>
+<p>Gradients use float32 arithmetic and are subject to rounding, overflow, underflow, and
+cancellation. Intermediate calculations can lose small contributions or overflow even when
+the mathematical final gradient is representable. CUDA filtering has limited fractional
+precision and can flush subnormal samples to zero; CUDA float32 gradient-array accumulation
+can also flush subnormal contributions and results to zero. With <code class="docutils literal notranslate"><span class="pre">fast_math</span></code> enabled,
+subnormal inputs can also be flushed before the gradient calculation.</p>
 <div class="admonition seealso">
 <p class="admonition-title">See also</p>
 <p><a class="reference internal" href="../language_reference/builtins.html#builtins-textures"><span class="std std-ref">Reference</span></a> for the texture sampling functions available in kernels.</p>
@@ -3328,10 +3454,80 @@ graph retains the array inputs captured by <code class="docutils literal notrans
 normalized views and their backing allocations.</p>
 </section>
 </section>
+<section id="isosurface-extraction">
+<h2>Isosurface Extraction<a class="headerlink" href="#isosurface-extraction" title="Link to this heading">#</a></h2>
+<p>An isosurface is the surface where a 3-D scalar field equals a given threshold,
+such as the zero level of a signed distance field. Warp provides several methods
+to extract a mesh approximating it.</p>
+<p>For dense fields, Warp provides <a class="reference internal" href="../api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes" title="warp.geometry.IsoSurfaceMarchingCubes"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.geometry.IsoSurfaceMarchingCubes</span></code></a> and <a class="reference internal" href="../api_reference/_generated/warp.geometry.IsoSurfaceNets.html#warp.geometry.IsoSurfaceNets" title="warp.geometry.IsoSurfaceNets"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.geometry.IsoSurfaceNets</span></code></a>, which implement the common
+<a class="reference internal" href="../api_reference/_generated/warp.geometry.IsoSurfaceBase.html#warp.geometry.IsoSurfaceBase" title="warp.geometry.IsoSurfaceBase"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.geometry.IsoSurfaceBase</span></code></a> interface.
+They share the same domain-bounds semantics, face winding, and flat
+<a class="reference internal" href="../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.int32</span></code></a> index arrays. Switching between them only
+requires changing the class being instantiated.</p>
+<section id="choosing-an-extractor">
+<h3>Choosing an Extractor<a class="headerlink" href="#choosing-an-extractor" title="Link to this heading">#</a></h3>
+<div class="pst-scrollable-table-container"><table class="table">
+<colgroup>
+<col style="width: 16.0%" />
+<col style="width: 20.0%" />
+<col style="width: 12.0%" />
+<col style="width: 26.0%" />
+<col style="width: 26.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Method</p></th>
+<th class="head"><p>Input</p></th>
+<th class="head"><p>Faces</p></th>
+<th class="head"><p>Strengths</p></th>
+<th class="head"><p>Trade-offs</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="#marching-cubes">Marching Cubes</a></p></td>
+<td><p>Dense 3-D array</p></td>
+<td><p>Triangles</p></td>
+<td><p>Places vertices at interpolated surface crossings on grid edges.
+Meshes up to the edge of the grid.</p></td>
+<td><p>Can produce thin, sliver triangles where the surface passes close to
+grid nodes.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#sparse-marching-cubes">Sparse Marching Cubes</a></p></td>
+<td><p>Function sampled only near the surface, or near-surface cells and
+their sampled corner values</p></td>
+<td><p>Triangles</p></td>
+<td><p>Avoids sampling the whole grid, which makes high resolutions affordable.
+Produces the same mesh as Marching Cubes.</p></td>
+<td><p>Needs a function with a known Lipschitz bound, or precomputed
+near-surface cells and their sampled corner values.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#surface-nets">Surface Nets</a></p></td>
+<td><p>Dense 3-D array</p></td>
+<td><p>Triangles or quads</p></td>
+<td><p>Typically produces more regular faces and fewer sliver triangles.</p></td>
+<td><p>Averages edge crossings within each cell, which can move vertices away
+from the isosurface and smooth features. The mesh may stop slightly
+before the edge of the grid.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>All of these methods support reverse-mode automatic differentiation from the
+field values to the vertex positions. None of them closes off the mesh where the
+surface leaves the grid.</p>
+<p>To compare the dense extractors on the same scene, run
+<a class="extlink-github reference external" href="https://github.com/NVIDIA/warp/blob/release-1.19/warp/examples/geometry/example_isosurface.py">warp/examples/geometry/example_isosurface.py</a> with <code class="docutils literal notranslate"><span class="pre">&lt;method&gt;</span></code> set to
+<code class="docutils literal notranslate"><span class="pre">marching_cubes</span></code> or <code class="docutils literal notranslate"><span class="pre">surface_nets</span></code>:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>warp.examples.geometry.example_isosurface<span class="w"> </span>--method<span class="w"> </span>&lt;method&gt;
+</pre></div>
+</div>
+<p>Methods that produce quads, as listed in the table above, also accept
+<code class="docutils literal notranslate"><span class="pre">--topology</span> <span class="pre">quad</span></code>.</p>
+</section>
 <section id="marching-cubes">
-<h2>Marching Cubes<a class="headerlink" href="#marching-cubes" title="Link to this heading">#</a></h2>
+<h3>Marching Cubes<a class="headerlink" href="#marching-cubes" title="Link to this heading">#</a></h3>
 <p>The <a class="reference internal" href="../api_reference/_generated/warp.geometry.IsoSurfaceMarchingCubes.html#warp.geometry.IsoSurfaceMarchingCubes" title="warp.geometry.IsoSurfaceMarchingCubes"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.geometry.IsoSurfaceMarchingCubes</span></code></a> class can be used to extract a 2-D mesh
-approximating an isosurface of a 3-D scalar field. The resulting triangle mesh
+approximating an isosurface of a 3-D scalar field. Each vertex lies on a grid
+edge, at the point where the surface crosses it. The resulting triangle mesh
 can be saved to a USD file using the <a class="reference internal" href="../api_reference/_generated/warp.render.UsdRenderer.html#warp.render.UsdRenderer" title="warp.render.UsdRenderer"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.render.UsdRenderer</span></code></a>.</p>
 <div class="deprecated">
 <p><span class="versionmodified deprecated">Deprecated since version 1.18: </span><code class="docutils literal notranslate"><span class="pre">wp.MarchingCubes</span></code> is a deprecated alias of
@@ -3365,7 +3561,8 @@ True
 </div>
 <p>The resulting mesh is stored in <code class="docutils literal notranslate"><span class="pre">mc.verts</span></code> as a <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.array</span></code></a> of
 <a class="reference internal" href="../api_reference/_generated/warp.vec3.html#warp.vec3" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.vec3</span></code></a> vertices and in <code class="docutils literal notranslate"><span class="pre">mc.indices</span></code> as a flat <a class="reference internal" href="../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.int32</span></code></a> index array.</p>
-<p>See <a class="extlink-github reference external" href="https://github.com/NVIDIA/warp/blob/release-1.18/warp/examples/geometry/example_isosurface.py">warp/examples/geometry/example_isosurface.py</a> for a complete usage example.</p>
+<p>See <a class="extlink-github reference external" href="https://github.com/NVIDIA/warp/blob/release-1.19/warp/examples/geometry/example_isosurface.py">warp/examples/geometry/example_isosurface.py</a> for a complete usage example.</p>
+</section>
 <section id="sparse-marching-cubes">
 <h3>Sparse Marching Cubes<a class="headerlink" href="#sparse-marching-cubes" title="Link to this heading">#</a></h3>
 <p>If we have access to a scalar field as a samplable function, we can extract its
@@ -3520,11 +3717,11 @@ vertices lie on the sphere: True
 cells – more than ten times what the search evaluated – and the gap grows
 with resolution. The subscripts here are also centered on the origin and
 therefore negative on one side, which the extractor handles directly.</p>
-<p>See <a class="extlink-github reference external" href="https://github.com/NVIDIA/warp/blob/release-1.18/warp/examples/geometry/example_sparse_marching_cubes.py">warp/examples/geometry/example_sparse_marching_cubes.py</a> for a
+<p>See <a class="extlink-github reference external" href="https://github.com/NVIDIA/warp/blob/release-1.19/warp/examples/geometry/example_sparse_marching_cubes.py">warp/examples/geometry/example_sparse_marching_cubes.py</a> for a
 complete usage example, with an interactive rendering mode and a
 <code class="docutils literal notranslate"><span class="pre">--show-cells</span></code> option that draws the octree leaf cells as a voxel cage
 around the surface, and
-<a class="extlink-github reference external" href="https://github.com/NVIDIA/warp/blob/release-1.18/warp/examples/benchmarks/benchmark_sparse_marching_cubes.py">warp/examples/benchmarks/benchmark_sparse_marching_cubes.py</a> for a
+<a class="extlink-github reference external" href="https://github.com/NVIDIA/warp/blob/release-1.19/warp/examples/benchmarks/benchmark_sparse_marching_cubes.py">warp/examples/benchmarks/benchmark_sparse_marching_cubes.py</a> for a
 sparse-versus-dense performance comparison.</p>
 </section>
 </section>
@@ -3569,6 +3766,24 @@ bit <em>i</em> is set if corner <em>i</em> is inside the surface:</p>
 <li><p>Edges 4-7: Top face (z=1), cycling 4→5→6→7→4</p></li>
 <li><p>Edges 8-11: Vertical edges connecting corner <em>i</em> to corner <em>i+4</em></p></li>
 </ul>
+</section>
+<section id="surface-nets">
+<h3>Surface Nets<a class="headerlink" href="#surface-nets" title="Link to this heading">#</a></h3>
+<p>The <a class="reference internal" href="../api_reference/_generated/warp.geometry.IsoSurfaceNets.html#warp.geometry.IsoSurfaceNets" title="warp.geometry.IsoSurfaceNets"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.geometry.IsoSurfaceNets</span></code></a> class
+extracts a triangle or quad mesh approximating an isosurface of a 3-D scalar
+field. It places vertices inside the grid cells, at the average of the points
+where the surface crosses each cell’s edges. A surface that lies entirely inside
+the grid produces a closed mesh with no holes. The implementation is based on
+OpenVDB’s volume-to-mesh tool.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">topology</span></code> parameter selects the type of the faces in <code class="docutils literal notranslate"><span class="pre">indices</span></code>:
+<code class="docutils literal notranslate"><span class="pre">&quot;triangle&quot;</span></code> (the default) stores three consecutive vertex indices per face,
+and <code class="docutils literal notranslate"><span class="pre">&quot;quad&quot;</span></code> stores four. For example, to extract quads from the field of the
+<a class="reference internal" href="#marching-cubes">Marching Cubes</a> example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">iso</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">geometry</span><span class="o">.</span><span class="n">IsoSurfaceNets</span><span class="p">(</span><span class="n">nx</span><span class="o">=</span><span class="n">dim</span><span class="p">,</span> <span class="n">ny</span><span class="o">=</span><span class="n">dim</span><span class="p">,</span> <span class="n">nz</span><span class="o">=</span><span class="n">dim</span><span class="p">,</span> <span class="n">topology</span><span class="o">=</span><span class="s2">"quad"</span><span class="p">)</span>
+<span class="n">iso</span><span class="o">.</span><span class="n">surface</span><span class="p">(</span><span class="n">field</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+<span class="n">quads</span> <span class="o">=</span> <span class="n">iso</span><span class="o">.</span><span class="n">indices</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">)</span>
+</pre></div>
+</div>
 </section>
 </section>
 <section id="profiling">
@@ -3909,6 +4124,7 @@ Journal of Computer Graphics Techniques (JCGT), vol. 9, no. 3, 20–38, 2020.</p
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#api-capture-saving-and-loading-graphs">API Capture: Saving and Loading Graphs</a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#capturing-for-serialization">Capturing for serialization</a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#loading-and-replaying">Loading and replaying</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#loading-from-bytes">Loading from bytes</a></li>
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#standalone-c-replay">Standalone C++ replay</a><ul class="nav section-nav flex-column">
 <li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#cuda-replay-02-apic-visualization">CUDA replay (<code class="docutils literal notranslate"><span class="pre">02_apic_visualization</span></code>)</a></li>
 <li class="toc-h5 nav-item toc-entry"><a class="reference internal nav-link" href="#cpu-replay-03-apic-visualization-cpu">CPU replay (<code class="docutils literal notranslate"><span class="pre">03_apic_visualization_cpu</span></code>)</a></li>
@@ -3935,12 +4151,15 @@ Journal of Computer Graphics Techniques (JCGT), vol. 9, no. 3, 20–38, 2020.</p
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#object-lifetime-pitfall">Object Lifetime Pitfall</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#marching-cubes">Marching Cubes</a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#isosurface-extraction">Isosurface Extraction</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#choosing-an-extractor">Choosing an Extractor</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#marching-cubes">Marching Cubes</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#sparse-marching-cubes">Sparse Marching Cubes</a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#extracting-from-an-explicit-cell-set">Extracting from an explicit cell set</a></li>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#custom-marching-cubes-implementations">Custom Marching Cubes Implementations</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#surface-nets">Surface Nets</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#profiling">Profiling</a></li>
@@ -3958,7 +4177,7 @@ Journal of Computer Graphics Techniques (JCGT), vol. 9, no. 3, 20–38, 2020.</p
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/release-1.18/docs/user_guide/runtime.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.19/docs/user_guide/runtime.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

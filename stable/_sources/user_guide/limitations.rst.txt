@@ -25,6 +25,9 @@ Kernels and User Functions
 * :func:`wp.atomic_add() <warp._src.lang.atomic_add>` does not support :class:`wp.float16 <float16>` or
   :class:`wp.bfloat16 <bfloat16>` on GPUs with compute capability below 7.0.
   On such devices, the function will return ``0.0`` without modifying the target memory.
+* :func:`wp.atomic_add() <warp._src.lang.atomic_add>` does not support :class:`wp.float64 <float64>` when targeting
+  CUDA GPUs with compute capability below 6.0.
+  In this case, the function returns ``0.0`` without modifying the target memory.
 * Using ``wp.atomic_add()`` or related functions on the same memory address from
   overlapping CPU and GPU kernels is currently unsupported.
 * :func:`wp.tid() <warp._src.lang.tid>` cannot be called from user functions.
@@ -172,6 +175,16 @@ functions is the same type as the input:
     # Python-scope behavior:
     a = round(0.5) # a is 0
     c = round(1.5) # c is 2
+
+Bit Count
+"""""""""
+
+:func:`wp.bit_count() <warp._src.lang.bit_count>` counts set bits in an integer's fixed-width binary
+representation, including the sign bit for signed inputs. In contrast, Python's
+:external+python:py:meth:`int.bit_count` counts set bits in the absolute value.
+
+For example, ``wp.bit_count(wp.int8(-1))`` returns ``8``, whereas Python's ``(-1).bit_count()`` returns ``1``.
+The difference applies both in Warp kernels and when calling ``wp.bit_count()`` from Python.
 
 Variable Scope
 --------------

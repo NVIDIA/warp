@@ -413,6 +413,10 @@ The generated code will not contain the for-loop but instead the loop body will 
     printf(var_6, var_5);
     printf(var_9, var_8);
 
+A ``continue`` statement does not prevent an otherwise eligible loop from
+being unrolled, even when its condition depends on runtime values.
+Loops containing ``break`` are not normally unrolled.
+
 .. note::
 
     When a static ``range()`` loop is unrolled, its index leaks into the enclosing scope as a

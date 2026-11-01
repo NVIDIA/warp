@@ -13,6 +13,8 @@
       ~CovariantFunctionSpace.divergence_valid
       ~CovariantFunctionSpace.dof_value
       ~CovariantFunctionSpace.gradient_valid
+      ~CovariantFunctionSpace.local_inverse_value_map_inner
+      ~CovariantFunctionSpace.local_inverse_value_map_outer
       ~CovariantFunctionSpace.local_value_map_inner
       ~CovariantFunctionSpace.local_value_map_outer
       ~CovariantFunctionSpace.make_field

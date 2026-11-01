@@ -9,7 +9,7 @@
       :kernel: true
       :python: true
       :differentiable: true
-      :source: https://github.com/NVIDIA/warp/blob/release-1.18/warp/_src/math.py#L68-L88
+      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/math.py#L68-L88
 
    Compute the Huber norm of a vector v with a given delta.
    

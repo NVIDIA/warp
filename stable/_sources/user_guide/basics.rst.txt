@@ -287,6 +287,15 @@ For further details on mapping arbitrary functions to Warp arrays, see :func:`wa
 
 Please see the :ref:`Arrays Reference <Arrays>` for more details.
 
+Array Subclasses
+^^^^^^^^^^^^^^^^
+
+Initialized subclasses of Warp arrays can attach Python metadata and be passed
+wherever their native parent family is accepted. Use the built-in array family
+in kernel and function annotations, such as ``wp.array[float]``. See
+:ref:`Array subclass compatibility <array-subclasses>` for the supported
+families, input contract, and limitations.
+
 User Functions
 --------------
 

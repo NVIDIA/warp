@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.fem.TemporaryStore &#8212; Warp 1.18.0</title>
+    <title>warp.fem.TemporaryStore &#8212; Warp 1.19.0</title>
   
   
   
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../../_static/documentation_options.js?v=9d419c5b"></script>
+    <script src="../../_static/documentation_options.js?v=39391842"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -53,7 +53,7 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.18';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.19';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -70,7 +70,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.18.0" />
+  <meta name="docsearch:version" content="1.19.0" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -147,11 +147,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.18.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.18.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.18.0</p>
+    <p class="title logo__title">Warp 1.19.0</p>
   
 </a></div>
     
@@ -291,11 +291,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.18.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.18.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.18.0</p>
+    <p class="title logo__title">Warp 1.19.0</p>
   
 </a>
 
@@ -509,7 +509,7 @@
 <h1>warp.fem.TemporaryStore<a class="headerlink" href="#warp-fem-temporarystore" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.fem.TemporaryStore">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">TemporaryStore</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.18/warp/_src/fem/cache.py#L432-L625"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.TemporaryStore" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">TemporaryStore</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/fem/cache.py#L432-L625"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.TemporaryStore" title="Link to this definition">#</a></dt>
 <dd><p>Shared pool of temporary arrays that will be persisted and reused across invocations of <code class="docutils literal notranslate"><span class="pre">warp.fem</span></code> functions.</p>
 <p>A <a class="reference internal" href="#warp.fem.TemporaryStore" title="warp.fem.TemporaryStore"><code class="xref py py-class docutils literal notranslate"><span class="pre">TemporaryStore</span></code></a> instance may either be passed explicitly to <code class="docutils literal notranslate"><span class="pre">warp.fem</span></code> functions that accept such an argument, for instance <a class="reference internal" href="warp.fem.integrate.html#warp.fem.integrate" title="warp.fem.integrate"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.fem.integrate()</span></code></a>,
 or can be set globally as the default store using <a class="reference internal" href="warp.fem.set_default_temporary_store.html#warp.fem.set_default_temporary_store" title="warp.fem.set_default_temporary_store"><code class="xref py py-func docutils literal notranslate"><span class="pre">set_default_temporary_store()</span></code></a>.</p>
@@ -531,7 +531,7 @@ or can be set globally as the default store using <a class="reference internal" 
 </div>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.fem.TemporaryStore.Pool">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">Pool</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pinned</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.18/warp/_src/fem/cache.py#L444-L545"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.TemporaryStore.Pool" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">Pool</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pinned</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/fem/cache.py#L444-L545"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.TemporaryStore.Pool" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>pinned</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>)</p>
@@ -539,7 +539,7 @@ or can be set globally as the default store using <a class="reference internal" 
 </dl>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.fem.TemporaryStore.Pool.Deleter">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">Deleter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pool</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.18/warp/_src/fem/cache.py#L445-L457"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.TemporaryStore.Pool.Deleter" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">Deleter</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pool</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/fem/cache.py#L445-L457"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.TemporaryStore.Pool.Deleter" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>pool</strong> (<a class="reference internal" href="#warp.fem.TemporaryStore.Pool" title="warp.fem.TemporaryStore.Pool"><em>TemporaryStore.Pool</em></a>)</p>
@@ -547,7 +547,7 @@ or can be set globally as the default store using <a class="reference internal" 
 </dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.TemporaryStore.Pool.Deleter.detach">
-<span class="sig-name descname"><span class="pre">detach</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">temporary</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.18/warp/_src/fem/cache.py#L454-L457"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.TemporaryStore.Pool.Deleter.detach" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">detach</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">temporary</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/fem/cache.py#L454-L457"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.TemporaryStore.Pool.Deleter.detach" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>temporary</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>)</p>
@@ -559,7 +559,7 @@ or can be set globally as the default store using <a class="reference internal" 
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.TemporaryStore.Pool.borrow">
-<span class="sig-name descname"><span class="pre">borrow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.18/warp/_src/fem/cache.py#L473-L522"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.TemporaryStore.Pool.borrow" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">borrow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">shape</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/fem/cache.py#L473-L522"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.TemporaryStore.Pool.borrow" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>requires_grad</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>)</p>
@@ -569,17 +569,17 @@ or can be set globally as the default store using <a class="reference internal" 
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.TemporaryStore.Pool.redeem">
-<span class="sig-name descname"><span class="pre">redeem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ptr</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.18/warp/_src/fem/cache.py#L524-L532"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.TemporaryStore.Pool.redeem" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">redeem</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ptr</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/fem/cache.py#L524-L532"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.TemporaryStore.Pool.redeem" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>ptr</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a>)</p>
+<dd class="field-odd"><p><strong>ptr</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a>)</p>
 </dd>
 </dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.TemporaryStore.Pool.detach">
-<span class="sig-name descname"><span class="pre">detach</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.18/warp/_src/fem/cache.py#L534-L536"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.TemporaryStore.Pool.detach" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">detach</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">array</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/fem/cache.py#L534-L536"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.TemporaryStore.Pool.detach" title="Link to this definition">#</a></dt>
 <dd><dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>array</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>)</p>
@@ -591,7 +591,7 @@ or can be set globally as the default store using <a class="reference internal" 
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.TemporaryStore.clear">
-<span class="sig-name descname"><span class="pre">clear</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.18/warp/_src/fem/cache.py#L550-L552"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.TemporaryStore.clear" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">clear</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/fem/cache.py#L550-L552"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.TemporaryStore.clear" title="Link to this definition">#</a></dt>
 <dd><p>Clear all cached temporary pools.</p>
 </dd></dl>
 
@@ -607,7 +607,7 @@ or can be set globally as the default store using <a class="reference internal" 
 <dd><em class="sig-param"><span class="n"><span class="pre">requires_grad</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.18/warp/_src/fem/cache.py#L554-L582"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.TemporaryStore.borrow" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/fem/cache.py#L554-L582"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.TemporaryStore.borrow" title="Link to this definition">#</a></dt>
 <dd><p>Borrow a temporary array from the pool.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -627,7 +627,7 @@ or can be set globally as the default store using <a class="reference internal" 
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.TemporaryStore.add_temporary_convenience_methods">
-<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">add_temporary_convenience_methods</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">temporary</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.18/warp/_src/fem/cache.py#L584-L590"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.TemporaryStore.add_temporary_convenience_methods" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">static</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">add_temporary_convenience_methods</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">temporary</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/fem/cache.py#L584-L590"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.TemporaryStore.add_temporary_convenience_methods" title="Link to this definition">#</a></dt>
 <dd><p>Attach <code class="docutils literal notranslate"><span class="pre">release</span></code> and <code class="docutils literal notranslate"><span class="pre">detach</span></code> convenience methods to a temporary.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>

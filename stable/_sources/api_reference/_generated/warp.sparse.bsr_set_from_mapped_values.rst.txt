@@ -1,0 +1,6 @@
+﻿warp.sparse.bsr\_set\_from\_mapped\_values
+==========================================
+
+.. currentmodule:: warp.sparse
+
+.. autofunction:: bsr_set_from_mapped_values

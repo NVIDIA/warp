@@ -70,7 +70,12 @@
 
    Multiply two values.
    
-   Compute the Hamilton product of two quaternions.
+   Compute the Hamilton product ``a * b`` of two quaternions. For rotation quaternions, the product
+   applies ``b`` first and then ``a``, so ``quat_rotate(a * b, v)`` equals
+   ``quat_rotate(a, quat_rotate(b, v))``.
+   
+   When composing many unit rotation quaternions, rounding errors accumulate over the successive
+   products, so re-normalize the result periodically.
 
 .. function:: mul(a: Scalar, b: Matrix[Scalar, Any, Any]) -> Matrix[Scalar, Any, Any]
    :noindex:

@@ -54,10 +54,72 @@ For full framework coverage, see:
 
 Paddle is documented inline below. NumPy, CuPy, Numba, and DLPack interop is protocol-level and covered in the sections that follow.
 
+.. _array-subclass-migration:
+
 Pass Arrays Directly
 --------------------
 
-Any object that implements ``__array_interface__`` (CPU) or ``__cuda_array_interface__`` (GPU) can be passed to :func:`wp.launch <warp.launch>` inputs without calling a conversion function. This is the fastest on-ramp for most use cases.
+External objects that implement ``__array_interface__`` (CPU) or
+``__cuda_array_interface__`` (GPU) can be passed to concrete regular-array
+parameters of :func:`wp.launch <warp.launch>` without calling a conversion
+function. This is the fastest on-ramp for most use cases.
+
+Warp arrays and their :ref:`subclasses <array-subclasses>` use their native Warp
+descriptor when launched. Warp checks their native family, dtype, and ndim
+instead of reinterpreting an inherited or overridden array interface. Their
+gradient pointer and ``retain_grad`` flag follow the parent's behavior. Code
+that previously reached the external-interface fallback for a Warp subclass
+must account for these changes:
+
+* Native gradient pointers and flags are preserved. Tape gradients for
+  overwritten outputs or in-place writes can therefore change to match the
+  parent array's behavior, and ``retain_grad=True`` is honored.
+* Native storage is used even when a subclass overrides its array interface.
+  The kernel no longer receives storage, a dtype, or a shape supplied by that
+  alternate interface. Struct and ``bfloat16`` arrays use their native dtype
+  support without requiring an array-interface representation.
+* Family, dtype, and dimensionality mismatches are rejected through normal
+  Warp array validation. Use :meth:`array.view() <warp.array.view>` for a
+  supported dtype reinterpretation, or :meth:`array.reshape() <warp.array.reshape>`
+  and :meth:`array.flatten() <warp.array.flatten>` to change shape explicitly.
+  Use a typed Warp array and a conversion such as :func:`warp.utils.array_cast`
+  when element values need to be converted rather than reinterpreted.
+  Explicit conversion expresses the intended element layout; it does not
+  reproduce accidental strided reads from a rank mismatch. For example,
+  float32 data of shape ``(4, 3)`` can use ``a.view(wp.vec3)`` for a
+  ``wp.array[wp.vec3]`` parameter. A vec3 array can use
+  ``a.view(wp.float32).flatten()`` for a one-dimensional scalar parameter,
+  while a two-dimensional scalar array can use ``a.flatten()``.
+* Device-access validation follows
+  :attr:`warp.config.launch_array_access_mode`. The default ``RELAXED`` mode
+  performs no pre-launch access checks; ``CHECKED`` diagnoses known-invalid
+  access and warns when access cannot be verified, while ``STRICT`` requires
+  arrays to be allocated on the launch device. See
+  :ref:`Checked Launch Validation <launch_array_access_checks>`.
+  Wrong-device storage that the interface path previously rejected can now
+  reach a kernel unchecked in ``RELAXED`` mode, just as for a parent array.
+  Move arrays to the launch device or select an appropriate validation mode.
+* The subclass's ``__ctype__()`` method is now called by concrete launches.
+  Overrides must describe the object's own storage and preserve the native
+  descriptor contract. Fully initialize the parent and allow its descriptor
+  cache and bookkeeping writes; a shell that only forwards public attributes
+  through an array interface is insufficient.
+* Classification uses actual inheritance. A ``weakref.proxy`` or a wrapper
+  whose ``__class__`` property advertises a Warp class is not a Warp array at
+  native-family boundaries. Pass the referenced Warp array for struct fields,
+  indexed/strided copies, and explicit adjoint arguments. Its separate external
+  array interface can still be used for concrete regular-array launch parameters.
+* Recorded commands from ``wp.launch(..., record_cmd=True)`` retain arguments.
+  Manually constructing ``wp.Launch`` does not retain the incidental owner
+  reference previously supplied by the interface fallback; use recorded commands
+  or keep the arrays alive explicitly.
+
+A separate, non-Warp object that owns or references an array and exposes an
+array interface continues to use the external-interface path for concrete
+regular-array parameters. Keep its storage owner alive according to that
+protocol's requirements. CPU ``array.numpy()`` and ``np.asarray`` still use the
+array interface for interface-compatible dtypes. CUDA ``array.numpy()`` copies
+native Warp storage instead.
 
 .. code:: python
 
@@ -91,25 +153,48 @@ When passing CUDA arrays, ensure the device on which the arrays reside matches t
 NumPy
 -----
 
-Warp arrays may be converted to a NumPy array through the :meth:`array.numpy() <warp.array.numpy>` method. When the Warp array lives on the ``cpu`` device this returns a zero-copy view onto the underlying Warp allocation. If the array lives on a ``cuda`` device, it is first copied back to a temporary buffer and then copied to NumPy.
+Warp arrays may be converted to a NumPy array through the :meth:`array.numpy() <warp.array.numpy>` method. When the Warp array lives on the ``cpu`` device, this returns a zero-copy view onto the underlying Warp allocation. When the array lives on a ``cuda`` device, this method synchronously copies the data to a temporary CPU allocation and returns a NumPy view of that allocation.
 
-Warp CPU arrays also implement the ``__array_interface__`` protocol and can be used to construct NumPy arrays directly::
+Warp CPU arrays also implement the ``__array_interface__`` protocol, so NumPy can create zero-copy views of them directly:
+
+.. testcode::
 
     w = wp.array([1.0, 2.0, 3.0], dtype=float, device="cpu")
-    a = np.array(w)
+    a = np.asarray(w)
     print(a)
-    > [1. 2. 3.]
 
-Data type conversion utilities are also available for convenience:
+.. testoutput::
+
+    [1. 2. 3.]
+
+Warp does not support implicit NumPy conversion of arrays on CUDA devices, such as passing them to ``np.asarray()``. Call :meth:`array.numpy() <warp.array.numpy>` explicitly to obtain a NumPy array.
+
+.. _numpy-scalar-dtypes:
+
+Scalar data types
+^^^^^^^^^^^^^^^^^
+
+Use :func:`wp.dtype_to_numpy() <warp.dtype_to_numpy>` to convert Warp scalar types to NumPy dtype specifications. Explicit conversion ensures the intended NumPy dtype is selected across both older and newer NumPy versions:
 
 .. code:: python
 
-    warp_type = wp.float32
-    ...
-    numpy_type = wp.dtype_to_numpy(warp_type)
-    ...
-    a = wp.zeros(n, dtype=warp_type)
-    b = np.zeros(n, dtype=numpy_type)
+    import numpy as np
+    import warp as wp
+
+    indices = np.zeros(100, dtype=wp.dtype_to_numpy(wp.int32))
+    values = np.full(100, 1.25, dtype=wp.dtype_to_numpy(wp.float32))
+    assert indices.dtype == np.dtype(np.int32)
+    assert values.dtype == np.dtype(np.float32)
+
+The converted dtype can also be used with ``np.dtype()``, ``astype()``, and structured dtype fields. Warp scalar values require an explicit dtype when constructing NumPy arrays.
+
+.. note::
+
+    Warp's Boolean, signed and unsigned integer, and float16/float32/float64 types expose their equivalent NumPy dtype through the ``__numpy_dtype__`` attribute. NumPy 2.4 and later recognize this attribute, avoiding object-dtype allocations and their performance overhead when a Warp scalar type is passed directly as a dtype specification. Older NumPy versions still select the object dtype in that case. Continue using ``wp.dtype_to_numpy()`` for consistent behavior across NumPy versions. This protocol does not change dtype inference from Warp scalar values.
+
+:class:`wp.bfloat16 <warp.bfloat16>` does not expose ``__numpy_dtype__`` because NumPy has no native bfloat16 dtype.
+
+The existing ``wp.dtype_to_numpy(wp.bfloat16)`` mapping returns ``np.uint16`` for raw storage. When initializing or filling arrays with this dtype, use values that are already encoded as bfloat16 bit patterns. To convert floating-point values to bfloat16, use ``wp.array([1.5], dtype=wp.bfloat16)`` or ``ml_dtypes.bfloat16`` as the NumPy dtype.
 
 To create Warp arrays from NumPy arrays, use :func:`warp.from_numpy` or pass the NumPy array as the ``data`` argument of the :class:`warp.array` constructor directly.
 

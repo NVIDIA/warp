@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.optim.linear.gmres &#8212; Warp 1.18.0</title>
+    <title>warp.optim.linear.gmres &#8212; Warp 1.19.0</title>
   
   
   
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../../_static/documentation_options.js?v=9d419c5b"></script>
+    <script src="../../_static/documentation_options.js?v=39391842"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -53,7 +53,7 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.18';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.19';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -70,7 +70,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.18.0" />
+  <meta name="docsearch:version" content="1.19.0" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -147,11 +147,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.18.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.18.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.18.0</p>
+    <p class="title logo__title">Warp 1.19.0</p>
   
 </a></div>
     
@@ -291,11 +291,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.18.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.18.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.18.0</p>
+    <p class="title logo__title">Warp 1.19.0</p>
   
 </a>
 
@@ -530,7 +530,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">run</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.18/warp/_src/optim/linear.py#L1918-L1994"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.gmres" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/optim/linear.py#L2494-L2570"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.gmres" title="Link to this definition">#</a></dt>
 <dd><p>Compute an approximate solution to a linear system using the restarted Generalized Minimum Residual method (GMRES[k]).</p>
 <p>Supports batched systems when <code class="docutils literal notranslate"><span class="pre">A</span></code> is a <a class="reference internal" href="warp.optim.linear.LinearOperator.html#warp.optim.linear.LinearOperator" title="warp.optim.linear.LinearOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">LinearOperator</span></code></a> with <code class="docutils literal notranslate"><span class="pre">batch_offsets</span></code> set;
 all subproblems iterate together and convergence uses the worst-case residual.</p>
@@ -540,13 +540,13 @@ all subproblems iterate together and convergence uses the worst-case residual.</
 <li><p><strong>A</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><a class="reference internal" href="warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a><em> | </em><a class="reference internal" href="warp.optim.linear.LinearOperator.html#warp.optim.linear.LinearOperator" title="warp._src.optim.linear.LinearOperator"><em>LinearOperator</em></a>) – the linear system’s left-hand-side</p></li>
 <li><p><strong>b</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – the linear system’s right-hand-side</p></li>
 <li><p><strong>x</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – initial guess and solution vector</p></li>
-<li><p><strong>tol</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> | </em><em>None</em>) – relative tolerance for the residual, as a ratio of the right-hand-side norm</p></li>
-<li><p><strong>atol</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> | </em><em>None</em>) – absolute tolerance for the residual</p></li>
+<li><p><strong>tol</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.15)"><em>float</em></a><em> | </em><em>None</em>) – relative tolerance for the residual, as a ratio of the right-hand-side norm</p></li>
+<li><p><strong>atol</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.15)"><em>float</em></a><em> | </em><em>None</em>) – absolute tolerance for the residual</p></li>
 <li><p><strong>restart</strong> – The restart parameter, i.e, the <cite>k</cite> in <cite>GMRES[k]</cite>. In general, increasing this parameter reduces the number of iterations but increases memory consumption.</p></li>
-<li><p><strong>maxiter</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.14)"><em>float</em></a><em> | </em><em>None</em>) – maximum number of iterations to perform before aborting. Defaults to the system size.
+<li><p><strong>maxiter</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.15)"><em>float</em></a><em> | </em><em>None</em>) – maximum number of iterations to perform before aborting. Defaults to the system size.
 Note that the current implementation always perform <cite>restart</cite> iterations at a time, and as a result may exceed the specified maximum number of iterations by <code class="docutils literal notranslate"><span class="pre">restart-1</span></code>.</p></li>
 <li><p><strong>M</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><a class="reference internal" href="warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a><em> | </em><a class="reference internal" href="warp.optim.linear.LinearOperator.html#warp.optim.linear.LinearOperator" title="warp._src.optim.linear.LinearOperator"><em>LinearOperator</em></a><em> | </em><em>None</em>) – optional left- or right-preconditioner, ideally chosen such that <code class="docutils literal notranslate"><span class="pre">M</span> <span class="pre">A</span></code> (resp <code class="docutils literal notranslate"><span class="pre">A</span> <span class="pre">M</span></code>) is close to identity.</p></li>
-<li><p><strong>callback</strong> (<a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable" title="(in Python v3.14)"><em>Callable</em></a><em> | </em><em>None</em>) – function to be called every <cite>check_every</cite> iteration with the current iteration number, residual and tolerance.
+<li><p><strong>callback</strong> (<a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable" title="(in Python v3.15)"><em>Callable</em></a><em> | </em><em>None</em>) – function to be called every <cite>check_every</cite> iteration with the current iteration number, residual and tolerance.
 If <cite>check_every</cite> is 0, the callback should be a Warp kernel.</p></li>
 <li><p><strong>check_every</strong> – number of iterations every which to call <cite>callback</cite>, check the residual against the tolerance and possibility terminate the algorithm.
 Setting <cite>check_every</cite> to 0 disables host-side residual checks, making the solver fully CUDA-graph capturable.

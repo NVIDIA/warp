@@ -1,0 +1,27 @@
+﻿warp.geometry.IsoSurfaceNets
+============================
+
+.. currentmodule:: warp.geometry
+
+.. autoclass:: IsoSurfaceNets
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~IsoSurfaceNets.extract
+      ~IsoSurfaceNets.resize
+      ~IsoSurfaceNets.surface
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~IsoSurfaceNets.verts
+      ~IsoSurfaceNets.indices
+   
+   

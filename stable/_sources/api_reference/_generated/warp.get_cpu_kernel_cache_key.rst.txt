@@ -1,0 +1,6 @@
+﻿warp.get\_cpu\_kernel\_cache\_key
+=================================
+
+.. currentmodule:: warp
+
+.. autofunction:: get_cpu_kernel_cache_key

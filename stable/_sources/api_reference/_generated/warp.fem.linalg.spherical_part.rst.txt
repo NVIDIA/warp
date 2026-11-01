@@ -9,7 +9,7 @@
       :kernel: true
       :python: unknown
       :differentiable: unknown
-      :source: https://github.com/NVIDIA/warp/blob/release-1.18/warp/_src/fem/linalg.py#L171-L174
+      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/fem/linalg.py#L171-L174
 
    Spherical part of a square tensor.
 
@@ -20,6 +20,6 @@
       :kernel: true
       :python: unknown
       :differentiable: unknown
-      :source: https://github.com/NVIDIA/warp/blob/release-1.18/warp/_src/fem/linalg.py#L177-L180
+      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/fem/linalg.py#L177-L180
 
    Spherical part of a square tensor.

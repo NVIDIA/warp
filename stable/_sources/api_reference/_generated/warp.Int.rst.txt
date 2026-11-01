@@ -4,3 +4,4 @@
 .. currentmodule:: warp
 
 .. autodata:: Int
+   :no-value:

@@ -24,4 +24,4 @@
 
    Compute the normalized value of ``a``.
    
-   If ``length(a)`` is 0, the zero quaternion is returned.
+   If ``length(a)`` is 0, the identity quaternion ``(0, 0, 0, 1)`` is returned.

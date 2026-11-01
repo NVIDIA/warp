@@ -15,6 +15,7 @@
       ~TetrahedronPolynomialShapeFunctions.make_element_inner_weight
       ~TetrahedronPolynomialShapeFunctions.make_element_inner_weight_gradient
       ~TetrahedronPolynomialShapeFunctions.make_node_coords_in_element
+      ~TetrahedronPolynomialShapeFunctions.make_node_dual_weight
       ~TetrahedronPolynomialShapeFunctions.make_node_quadrature_weight
       ~TetrahedronPolynomialShapeFunctions.make_trace_node_quadrature_weight
       ~TetrahedronPolynomialShapeFunctions.node_type_and_index

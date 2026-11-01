@@ -4,3 +4,4 @@
 .. currentmodule:: warp
 
 .. autodata:: Float
+   :no-value:

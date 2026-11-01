@@ -10,22 +10,23 @@
       :python: false
       :differentiable: false
 
-   Compute the Cholesky factorization of a symmetric positive-definite matrix ``A`` inplace.
+   Compute the Cholesky factorization of a symmetric positive-definite matrix ``A`` in place.
    
-   When ``fill_mode="lower"``, the lower triangle of ``A`` is replaced by ``L``
-   such that ``LL^T = A``; the upper triangle is set to zero.
-   When ``fill_mode="upper"``, the upper triangle of ``A`` is replaced by ``U``
-   such that ``U^T U = A``; the lower triangle is set to zero.
+   With ``fill_mode="lower"`` the lower triangle of ``A`` is replaced by
+   the factor ``L`` such that ``L @ L^T = A`` and the upper triangle is set to zero;
+   with ``fill_mode="upper"`` the upper triangle is replaced by ``U`` such that
+   ``U^T @ U = A`` and the lower triangle is set to zero. Only the triangle selected by
+   ``fill_mode`` is read. ``fill_mode`` must be a compile-time constant.
    
-   The ``fill_mode`` parameter must be a compile-time constant.
+   Supported dtypes, the positive-definiteness requirement, and backend selection match
+   :func:`~warp.tile_cholesky`; see it for details and a usage example.
    
-   Note: This inplace variant does not support automatic differentiation (adjoint computation),
-   but offers improved performance and uses half the shared memory compared to the standard version.
+   This is a cooperative operation, so every thread in the block must call it.
    
-   Supported datatypes are:
-       * float32
-       * float64
+   This in-place variant avoids the input copy and uses half the shared memory of
+   :func:`~warp.tile_cholesky`, but is not differentiable.
    
-   :param A: A square, symmetric positive-definite matrix.
+   :param A: A square, symmetric positive-definite tile with ``shape=(N, N)``, overwritten
+             by the factor.
    :param fill_mode: ``"lower"`` or ``"upper"``. Must be a compile-time constant.
    

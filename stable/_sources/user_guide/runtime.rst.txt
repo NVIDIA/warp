@@ -553,6 +553,8 @@ The following scalar storage types are supported for array structures:
 
 Warp supports ``float`` and ``int`` as aliases for :class:`wp.float32 <warp.float32>` and :class:`wp.int32 <warp.int32>` respectively.
 
+Use :func:`wp.dtype_to_numpy() <warp.dtype_to_numpy>` to convert Warp scalar types to NumPy dtype specifications. See :ref:`numpy-scalar-dtypes` for examples and behavior across NumPy versions.
+
 bfloat16 and NumPy Interop
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -1952,8 +1954,9 @@ Important CPU graph behavior and current limitations:
   :meth:`Launch.set_param_at_index_from_ctype() <warp.Launch.set_param_at_index_from_ctype>`
   cannot be recorded because APIC needs the original :class:`warp.array`
   object to preserve its replay-time memory reference.
-- Kernel parameters of type ``wp.fixedarray``, ``wp.fabricarray``, or
-  ``wp.indexedfabricarray`` cannot yet be recorded by APIC.
+- Kernel parameters of type ``wp.fabricarray`` or ``wp.indexedfabricarray``
+  cannot yet be recorded by APIC. ``wp.fixedarray`` is a compiler-only stack
+  array type and cannot be passed as a host kernel argument.
 - :meth:`BsrMatrix.nnz_sync() <warp.sparse.BsrMatrix.nnz_sync>` cannot read the
   result of a topology update recorded earlier in the same CPU capture. Read the
   count after replay, or avoid the readback inside the captured region.
@@ -1994,12 +1997,10 @@ API Capture: Saving and Loading Graphs
     API Capture (APIC) is experimental. The ``.wrp`` file format, the Python
     :func:`wp.capture_save() <warp.capture_save>` / :func:`wp.capture_load() <warp.capture_load>`
     surface, the C ``wp_apic_*`` API, and the recorded operation set are all
-    subject to change without a formal deprecation cycle. ``.wrp`` files written
-    by one version of Warp may not be loadable by another. The current writer
-    emits format version 16, and the reader accepts versions 13 through 16.
-    Version 16 stores kernel launch extents as unsigned 32-bit values. Older
-    files whose launch extents have the high bit set are rejected because those
-    values overflowed the signed representation used by their format.
+    subject to change without a formal deprecation cycle. The writer and loader
+    must use the same Warp version. The current writer and reader use format
+    version 18, which stores explicit element counts for handle relocations.
+    Recapture graphs saved with earlier formats.
 
 The APIC operation stream lets Warp serialize a supported captured graph to
 disk and load it back later from another Python program or a standalone C++
@@ -2121,6 +2122,41 @@ This writes:
   (``.cubin`` / ``.ptx`` for CUDA, ``.o`` for CPU) referenced by the operation
   stream.
 
+By default, :func:`wp.capture_save() <warp.capture_save>` uses
+``source_fallback=False``: CUDA artifacts contain compiled binaries without
+generated ``.cu`` source, and saving does not report source portability
+limitations. To package generated CUDA source for replay on another supported
+GPU, pass ``source_fallback=True`` alongside any ``inputs`` and ``outputs``.
+
+When source fallback is requested, every captured CUDA module must have
+generated source that has not changed since the module loaded and a
+reproducible compile recipe. Warp uses the shared ``.cu`` file that code
+generation wrote beside the module binary, in the kernel cache or an
+ahead-of-time module directory, and checks its file identity before and after
+reading it at save time. Source reads, hashing, and dependency checks for APIC
+occur only when saving with source fallback enabled. Keep the generated source
+available until saving completes.
+
+Missing or changed source, binary names that cannot be verified against the
+hashed module identifier (including any module that uses ``strip_hash=True``),
+caller-provided CUDA include directories, LLVM-CUDA builds, and LTO-IR or
+fatbin link inputs cause saving to fail before publishing the artifact. The
+error lists all affected modules and their reasons. If the source was missing
+when the module loaded or changed afterwards, restore source known to match the
+binary or force a rebuild of the binary and generated source together, then
+reload the module and capture again. Reloading alone can reuse the cached
+binary and does not verify that it matches the source. Hashed AOT modules are
+supported when their generated source is present and unchanged. File identity
+checks detect changes on a best-effort basis; they do not prove which source
+produced the binary. Link-input detection is similarly
+best-effort because it inspects only the generated source. Guest hardware,
+driver, and compiler compatibility are checked when loading; successful saving
+does not guarantee that every guest can replay the graph.
+
+Saving stages the graph and its companion files before replacing the
+destination. Failed exports or serialization leave an existing artifact
+intact. If publication fails, Warp restores the previous companion directory.
+
 For a graph with recorded kernels, the ``.wrp`` file and its companion
 ``_modules`` directory are one artifact. Keep their relative names and
 distribute or move them together; the graph cannot be loaded from either part
@@ -2180,13 +2216,55 @@ graphs returned by :func:`wp.capture_end() <warp.capture_end>`.
 address of a binding (a host address for CPU graphs or a device address for CUDA
 graphs), which remains valid only until the graph is destroyed.
 
-A ``.wrp`` file captured on a CUDA device must be loaded on a CUDA device with
-a compatible companion module; a file captured on a CPU device must be loaded
-on a CPU device. The ``device`` passed to
-:func:`wp.capture_load() <warp.capture_load>` must match the captured device
-family. This is currently a caller requirement: the experimental loader does
-not reliably diagnose a mismatch when it first opens the file. Architecture and
-platform constraints are listed under the current limitations below.
+A ``.wrp`` file captured on a CUDA device must be loaded on a CUDA device; a
+file captured on a CPU device must be loaded on a CPU device. The loader first
+tries each packaged PTX or CUBIN. If the CUDA driver rejects it, Warp checks for
+a compatible compiled entry in the companion ``_modules`` directory and then,
+when reproducible source was retained, compiles that source for the guest GPU
+with NVRTC. Successfully compiled output is cached in ``_modules`` under a
+content-addressed ``apic_guest_*`` name. A read-only directory still works, but
+the source is compiled again on the next load.
+
+Source fallback requires the exact Warp version that wrote the artifact.
+It is available only when the graph was saved with ``source_fallback=True``.
+Graphs saved with the default ``source_fallback=False`` require compatible
+compiled binaries. If no usable binary is available, ``capture_load()`` reports
+the binary-load failure. For opted-in saves, it also reports why source fallback
+is unavailable or failed.
+
+Loading from bytes
+^^^^^^^^^^^^^^^^^^
+
+:func:`wp.capture_load_from_bytes() <warp.capture_load_from_bytes>` loads a
+saved graph from memory instead of files. It suits applications that store a
+capture inside another artifact, such as a model file. Pass the contents of the
+``.wrp`` file and a mapping from each file in the companion ``_modules``
+directory to its contents:
+
+.. code:: python
+
+    import os
+
+    import warp as wp
+
+    with open("simulation.wrp", "rb") as f:
+        wrp_data = f.read()
+
+    modules = {}
+    for filename in os.listdir("simulation_modules"):
+        with open(os.path.join("simulation_modules", filename), "rb") as f:
+            modules[filename] = f.read()
+
+    graph = wp.capture_load_from_bytes(wrp_data, modules, device="cuda")
+
+The returned graph behaves the same as one returned by
+:func:`wp.capture_load() <warp.capture_load>`. Module names are the filenames
+:func:`wp.capture_save() <warp.capture_save>` wrote, without a directory
+prefix. Entries the graph doesn't use are ignored. Warp copies everything it
+needs while loading, so the buffers can be released once the call returns.
+
+Loading from bytes requires compatible packaged binaries. Generated-source
+recompilation and persistent guest-cache lookup use the file-based loader.
 
 Standalone C++ replay
 ^^^^^^^^^^^^^^^^^^^^^
@@ -2200,6 +2278,20 @@ declared in `warp/native/apic.h <https://github.com/NVIDIA/warp/blob/main/warp/n
     // Load a .wrp file. device_type: 0 = CUDA, 1 = CPU.
     // For CUDA, context is a CUcontext; for CPU it is ignored (pass NULL).
     APICGraph* wp_apic_load_graph(void* context, const char* path, int device_type);
+
+    // Load from memory: the .wrp contents plus the modules for a CUDA graph.
+    // Each APICModuleBytes entry holds a module's recorded filename
+    // (const char* filename) and its contents (const void* data, size_t size).
+    // Buffers must be host memory that is not modified during the call.
+    // For a CPU graph the module list is not used: load each object with
+    // wp_load_obj_from_bytes() instead (see below).
+    APICGraph* wp_apic_load_graph_from_bytes(void* context, const void* data, size_t size,
+                                             const APICModuleBytes* modules,
+                                             uint32_t num_modules, int device_type);
+
+    // Also permit CUDA source fallback using headers from the linked Warp.
+    APICGraph* wp_apic_load_graph_ex(void* context, const char* path,
+                                     int device_type, const char* warp_include_dir);
 
     // Update or read named parameter regions on the loaded graph.
     bool wp_apic_set_param(APICGraph* graph, const char* name,
@@ -2219,6 +2311,13 @@ declared in `warp/native/apic.h <https://github.com/NVIDIA/warp/blob/main/warp/n
 
 For native library headers, build-system setup, platform-specific linking,
 deployment, and version compatibility, see :ref:`native_library_linking`.
+
+``wp_apic_load_graph()`` preserves the original binary-only standalone behavior
+and is used by the CUDA example below. It can load a compatible packaged module
+or an existing guest-cache entry, but it cannot compile retained source. To opt
+in to source fallback for cross-system CUDA replay, call
+``wp_apic_load_graph_ex()`` and pass the path to the ``warp/native`` headers
+from the same Warp installation as the linked native library.
 
 Two reference C++ examples ship with Warp under ``warp/examples/cpp/``. Both
 implement the same interactive 2-D wave simulation visualized with GLFW/OpenGL,
@@ -2311,13 +2410,15 @@ resolved from the ``.o`` files in the companion ``_modules/`` directory. The
 CPU example links against ``warp-clang`` at build time, loads each object with
 ``wp_load_obj()``, resolves its functions with ``wp_lookup()``, and registers
 each pointer with the loaded graph via
-``wp_apic_register_loaded_cpu_kernel()``.
+``wp_apic_register_loaded_cpu_kernel()``. When the object files are in memory,
+``wp_load_obj_from_bytes()`` loads one from a buffer instead of a path.
 
-Before the first call to ``wp_load_obj()``, a standalone native consumer must
-pass the core runtime table returned by ``wp_cpu_block_runtime_get_api()`` to
-``wp_llvm_set_cpu_block_runtime()``. This lets JIT-loaded kernels resolve the
-cooperative CPU block entry points implemented by the core Warp library. Warp's
-Python runtime performs the same binding during initialization.
+Before the first call to ``wp_load_obj()`` or ``wp_load_obj_from_bytes()``, a
+standalone native consumer must pass the core runtime table returned by
+``wp_cpu_block_runtime_get_api()`` to ``wp_llvm_set_cpu_block_runtime()``. This
+lets JIT-loaded kernels resolve the cooperative CPU block entry points
+implemented by the core Warp library. Warp's Python runtime performs the same
+binding during initialization.
 
 The example walks every kernel returned by ``wp_apic_get_num_kernels()`` and
 does this resolution once at startup. Kernel metadata includes both the kernel
@@ -2340,8 +2441,11 @@ surface for this lookup is:
 Loading a CPU ``.wrp`` graph uses the pure-C++ APIC loader in the Warp native
 library and does not require a CUDA-enabled build. CPU replay
 (``wp_apic_cpu_replay_graph``) still requires the warp-clang backend and the
-companion ``_modules`` directory described above. Loading a CUDA ``.wrp`` graph
-requires a CUDA-enabled build.
+compiled kernel objects. These can come from the companion ``_modules``
+directory, from the module buffers passed to
+:func:`wp.capture_load_from_bytes() <warp.capture_load_from_bytes>`, or, in a
+native program, from buffers loaded with ``wp_load_obj_from_bytes()``. Loading
+a CUDA ``.wrp`` graph requires a CUDA-enabled build.
 
 Building and running
 """"""""""""""""""""
@@ -2375,8 +2479,18 @@ Current limitations of API Capture:
 - Only :class:`wp.Mesh <warp.Mesh>` object handles are serialized.
   :class:`wp.Volume <warp.Volume>`, :class:`wp.Bvh <warp.Bvh>`, and
   :class:`wp.HashGrid <warp.HashGrid>` handles are not yet supported.
-- Kernel arguments of type ``wp.fixedarray``, ``wp.fabricarray``, and
-  ``wp.indexedfabricarray`` cannot yet be recorded by APIC.
+- A mesh ID is remapped to the reloaded mesh only when its type is
+  :class:`wp.handle <warp.handle>`:
+  a ``wp.handle`` kernel parameter or struct field,
+  or an element of an array whose dtype is ``wp.handle`` or a struct with ``wp.handle`` fields.
+  A mesh ID passed as ``wp.uint64`` is saved as a plain integer
+  and is not valid when the graph is loaded in another process.
+- Mesh IDs written into an array by :meth:`array.fill_() <warp.array.fill_>` during a capture
+  are not remapped when the graph is loaded.
+  Write them with a kernel that takes the mesh as a ``wp.handle`` argument instead.
+- Kernel arguments of type ``wp.fabricarray`` or ``wp.indexedfabricarray``
+  cannot yet be recorded by APIC. ``wp.fixedarray`` is a compiler-only stack
+  array type and cannot be passed as a host kernel argument.
 - ``HashGrid.build()`` is supported by live CPU graphs captured with
   ``apic=False``. It is not supported by saveable captures because ``HashGrid``
   resources and their process-local IDs cannot yet be serialized. Calling
@@ -2384,15 +2498,21 @@ Current limitations of API Capture:
   Pre-reserving is optional for CPU replay but avoids allocation on the first
   launch. If used, call ``HashGrid.reserve()`` before capture; reserve calls
   inside CPU capture are rejected.
-- A CUBIN companion is specific to its compiled CUDA architecture. PTX may be
-  JIT-compiled on architectures supported by its target and the installed
-  driver, but PTX is not an unconditional cross-architecture guarantee. One
-  APIC graph cannot span multiple GPUs.
-- Loading CPU ``.wrp`` graphs requires the warp-clang backend and the companion
-  ``_modules`` directory with compatible CPU kernel object files. Those
-  ``.o`` files are tied to their platform, architecture, compiler ABI, and Warp
-  runtime. CPU loading does not require a CUDA-enabled Warp native library;
-  loading CUDA ``.wrp`` graphs does.
+- A CUBIN companion is specific to its compiled CUDA architecture, and PTX is
+  not an unconditional cross-architecture guarantee. CUDA APIC loading can
+  recover by compiling generated source packaged with
+  ``capture_save(source_fallback=True)`` for the guest GPU. This save option
+  rejects modules using caller-provided CUDA include directories, LLVM-CUDA
+  builds, ``strip_hash=True``, or LTO-IR and fatbin link inputs (detected from
+  the generated source), and modules whose generated source is missing or
+  changed after the module loaded. Default binary-only saving remains
+  available for these modules. One APIC graph cannot span multiple GPUs.
+- Loading CPU ``.wrp`` graphs requires the warp-clang backend and compatible
+  CPU kernel object files, either in the companion ``_modules`` directory or
+  passed to :func:`wp.capture_load_from_bytes() <warp.capture_load_from_bytes>`.
+  Those ``.o`` files are tied to their platform, architecture, compiler ABI,
+  and Warp runtime. CPU loading does not require a CUDA-enabled Warp native
+  library; loading CUDA ``.wrp`` graphs does.
 - Both CPU and CUDA ``.wrp`` graph replay support APIC-recorded
   :func:`wp.capture_if() <warp.capture_if>` and
   :func:`wp.capture_while() <warp.capture_while>` conditionals and loops. Stream
@@ -2429,6 +2549,8 @@ Warp provides a :class:`wp.Mesh <warp.Mesh>` class to manage triangle mesh data.
 
 Meshes can be passed to kernels using their ``id`` attribute, which is a ``uint64`` value that uniquely identifies
 the mesh.
+To save a captured graph that uses a mesh with :func:`wp.capture_save() <warp.capture_save>`,
+type the ID as :class:`wp.handle <warp.handle>` instead (see :ref:`apic_save_load`).
 Once inside a kernel, you can perform geometric queries against the mesh such as ray-casts or closest-point lookups.
 For example, the result object returned by :func:`wp.mesh_query_point() <warp._src.lang.mesh_query_point>` stores the
 hit face and barycentric coordinates, which can be passed to
@@ -2786,9 +2908,26 @@ Textures can be sampled inside kernels using the :func:`wp.texture_sample() <war
 Supported data types include ``wp.uint8``, ``wp.uint16``, ``wp.uint32``, ``wp.int8``, ``wp.int16``,
 ``wp.int32``, ``wp.float16``, and ``wp.float32``. Unsigned 8- and 16-bit integer textures are
 automatically normalized to the [0, 1] range when sampled; signed 8- and 16-bit integer textures are
-normalized to [-1, 1]; float types are returned as-is. Sampling a ``wp.uint32`` or ``wp.int32``
-texture causes kernel execution to fail, but these dtypes remain usable for storage, copies, and
-interop.
+normalized to [-1, 1]; float types are returned as-is. ``wp.uint32`` and ``wp.int32`` textures
+support only closest filtering and are converted numerically to ``float32`` without normalization.
+Integers outside ``[-2**24, 2**24]`` may round during this conversion.
+
+Texture sampling is differentiable with respect to sampling coordinates wherever the sample is
+locally linear, and with respect to ``lod`` for linear mip-level blending, so sampling positions
+can be optimized with :class:`wp.Tape <warp.Tape>`. At boundaries where the derivative is not
+unique, Warp differentiates the branch selected by the forward sample. At an unclamped integer
+LOD, linear mip filtering uses the right-hand derivative. The LOD gradient is zero in the clamped
+ranges. With closest spatial or mip filtering the corresponding coordinate or ``lod`` gradients
+are zero. Texture data gradients are not propagated. On CUDA, ``WRAP`` and ``MIRROR`` require
+normalized coordinates; with unnormalized coordinates, CUDA treats both modes as ``CLAMP`` for
+the forward sample and its coordinate gradient.
+
+Gradients use float32 arithmetic and are subject to rounding, overflow, underflow, and
+cancellation. Intermediate calculations can lose small contributions or overflow even when
+the mathematical final gradient is representable. CUDA filtering has limited fractional
+precision and can flush subnormal samples to zero; CUDA float32 gradient-array accumulation
+can also flush subnormal contributions and results to zero. With ``fast_math`` enabled,
+subnormal inputs can also be flushed before the gradient calculation.
 
 .. seealso:: :ref:`Reference <builtins-textures>` for the texture sampling functions available in kernels.
 
@@ -2946,12 +3085,78 @@ This caller-ownership contract is the same for live CPU and CUDA graphs. The
 graph retains the array inputs captured by ``HashGrid.build()``, including
 normalized views and their backing allocations.
 
+Isosurface Extraction
+---------------------
+
+An isosurface is the surface where a 3-D scalar field equals a given threshold,
+such as the zero level of a signed distance field. Warp provides several methods
+to extract a mesh approximating it.
+
+For dense fields, Warp provides :class:`wp.geometry.IsoSurfaceMarchingCubes
+<warp.geometry.IsoSurfaceMarchingCubes>` and :class:`wp.geometry.IsoSurfaceNets
+<warp.geometry.IsoSurfaceNets>`, which implement the common
+:class:`wp.geometry.IsoSurfaceBase <warp.geometry.IsoSurfaceBase>` interface.
+They share the same domain-bounds semantics, face winding, and flat
+:class:`wp.int32 <warp.int32>` index arrays. Switching between them only
+requires changing the class being instantiated.
+
+Choosing an Extractor
+#####################
+
+.. list-table::
+    :header-rows: 1
+    :widths: 16 20 12 26 26
+
+    * - Method
+      - Input
+      - Faces
+      - Strengths
+      - Trade-offs
+    * - `Marching Cubes`_
+      - Dense 3-D array
+      - Triangles
+      - Places vertices at interpolated surface crossings on grid edges.
+        Meshes up to the edge of the grid.
+      - Can produce thin, sliver triangles where the surface passes close to
+        grid nodes.
+    * - `Sparse Marching Cubes`_
+      - Function sampled only near the surface, or near-surface cells and
+        their sampled corner values
+      - Triangles
+      - Avoids sampling the whole grid, which makes high resolutions affordable.
+        Produces the same mesh as Marching Cubes.
+      - Needs a function with a known Lipschitz bound, or precomputed
+        near-surface cells and their sampled corner values.
+    * - `Surface Nets`_
+      - Dense 3-D array
+      - Triangles or quads
+      - Typically produces more regular faces and fewer sliver triangles.
+      - Averages edge crossings within each cell, which can move vertices away
+        from the isosurface and smooth features. The mesh may stop slightly
+        before the edge of the grid.
+
+All of these methods support reverse-mode automatic differentiation from the
+field values to the vertex positions. None of them closes off the mesh where the
+surface leaves the grid.
+
+To compare the dense extractors on the same scene, run
+:github:`warp/examples/geometry/example_isosurface.py` with ``<method>`` set to
+``marching_cubes`` or ``surface_nets``:
+
+.. code-block:: shell
+
+    python -m warp.examples.geometry.example_isosurface --method <method>
+
+Methods that produce quads, as listed in the table above, also accept
+``--topology quad``.
+
 Marching Cubes
---------------
+##############
 
 The :class:`wp.geometry.IsoSurfaceMarchingCubes
 <warp.geometry.IsoSurfaceMarchingCubes>` class can be used to extract a 2-D mesh
-approximating an isosurface of a 3-D scalar field. The resulting triangle mesh
+approximating an isosurface of a 3-D scalar field. Each vertex lies on a grid
+edge, at the point where the surface crosses it. The resulting triangle mesh
 can be saved to a USD file using the :class:`warp.render.UsdRenderer`.
 
 .. deprecated:: 1.18
@@ -3224,6 +3429,29 @@ bit *i* is set if corner *i* is inside the surface:
 - Edges 0-3: Bottom face (z=0), cycling 0→1→2→3→0
 - Edges 4-7: Top face (z=1), cycling 4→5→6→7→4
 - Edges 8-11: Vertical edges connecting corner *i* to corner *i+4*
+
+
+Surface Nets
+############
+
+The :class:`wp.geometry.IsoSurfaceNets <warp.geometry.IsoSurfaceNets>` class
+extracts a triangle or quad mesh approximating an isosurface of a 3-D scalar
+field. It places vertices inside the grid cells, at the average of the points
+where the surface crosses each cell's edges. A surface that lies entirely inside
+the grid produces a closed mesh with no holes. The implementation is based on
+OpenVDB's volume-to-mesh tool.
+
+The ``topology`` parameter selects the type of the faces in ``indices``:
+``"triangle"`` (the default) stores three consecutive vertex indices per face,
+and ``"quad"`` stores four. For example, to extract quads from the field of the
+`Marching Cubes`_ example:
+
+.. testcode::
+    :skipif: wp.get_cuda_device_count() == 0
+
+    iso = wp.geometry.IsoSurfaceNets(nx=dim, ny=dim, nz=dim, topology="quad")
+    iso.surface(field, threshold=0.0)
+    quads = iso.indices.numpy().reshape(-1, 4)
 
 
 Profiling

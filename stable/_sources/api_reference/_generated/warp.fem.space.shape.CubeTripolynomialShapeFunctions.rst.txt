@@ -16,6 +16,7 @@
       ~CubeTripolynomialShapeFunctions.make_element_inner_weight
       ~CubeTripolynomialShapeFunctions.make_element_inner_weight_gradient
       ~CubeTripolynomialShapeFunctions.make_node_coords_in_element
+      ~CubeTripolynomialShapeFunctions.make_node_dual_weight
       ~CubeTripolynomialShapeFunctions.make_node_quadrature_weight
       ~CubeTripolynomialShapeFunctions.make_trace_node_quadrature_weight
    

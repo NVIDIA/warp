@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Differentiability &#8212; Warp 1.18.0</title>
+    <title>Differentiability &#8212; Warp 1.19.0</title>
   
   
   
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../_static/documentation_options.js?v=9d419c5b"></script>
+    <script src="../_static/documentation_options.js?v=39391842"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -54,7 +54,7 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.18';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.19';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -71,7 +71,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.18.0" />
+  <meta name="docsearch:version" content="1.19.0" />
   
     
     <script src="../_static/searchtools.js"></script>
@@ -148,11 +148,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.18.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.18.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.18.0</p>
+    <p class="title logo__title">Warp 1.19.0</p>
   
 </a></div>
     
@@ -292,11 +292,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.18.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.18.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.18.0</p>
+    <p class="title logo__title">Warp 1.19.0</p>
   
 </a>
 
@@ -1730,6 +1730,7 @@ meant to be computed in the loop and may be necessary for adjoint calculations a
 <p>We can fix the latter case by switching to a static loop (e.g. replacing <code class="docutils literal notranslate"><span class="pre">range(iters)</span></code> with <code class="docutils literal notranslate"><span class="pre">range(3)</span></code>). Static loops are
 automatically unrolled if the number of loop iterations is less than or equal to the <code class="docutils literal notranslate"><span class="pre">max_unroll</span></code> parameter set in <a class="reference internal" href="../api_reference/warp_config.html#module-warp.config" title="warp.config"><code class="xref py py-const docutils literal notranslate"><span class="pre">wp.config</span></code></a>
 or at the module level with <code class="docutils literal notranslate"><span class="pre">wp.set_module_options({&quot;max_unroll&quot;:</span> <span class="pre">N})</span></code>, and so intermediate values in the loop are individually stored.
+This also applies to loops containing <code class="docutils literal notranslate"><span class="pre">continue</span></code>.
 But in scenarios where this is not possible, you may consider allocating additional memory to store intermediate values in the dynamic loop.
 For example, we can fix the above case like so:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
@@ -1988,7 +1989,7 @@ depends on them to the caller.</p>
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/release-1.18/docs/user_guide/differentiability.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.19/docs/user_guide/differentiability.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

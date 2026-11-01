@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.sparse.bsr_set_from_triplets &#8212; Warp 1.18.0</title>
+    <title>warp.sparse.bsr_set_from_triplets &#8212; Warp 1.19.0</title>
   
   
   
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../../_static/documentation_options.js?v=9d419c5b"></script>
+    <script src="../../_static/documentation_options.js?v=39391842"></script>
     <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -53,7 +53,7 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.18';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.19';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -65,12 +65,12 @@
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
     <link rel="next" title="warp.sparse.bsr_set_identity" href="warp.sparse.bsr_set_identity.html" />
-    <link rel="prev" title="warp.sparse.bsr_set_diag" href="warp.sparse.bsr_set_diag.html" />
+    <link rel="prev" title="warp.sparse.bsr_set_from_mapped_values" href="warp.sparse.bsr_set_from_mapped_values.html" />
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.18.0" />
+  <meta name="docsearch:version" content="1.19.0" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -147,11 +147,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.18.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.18.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.18.0</p>
+    <p class="title logo__title">Warp 1.19.0</p>
   
 </a></div>
     
@@ -291,11 +291,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.18.0 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.18.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.18.0</p>
+    <p class="title logo__title">Warp 1.19.0</p>
   
 </a>
 
@@ -518,33 +518,43 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">values</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">prune_numerical_zeros</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">masked</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">topology</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">build_mapping</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.18/warp/_src/sparse.py#L1278-L1526"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_set_from_triplets" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/sparse.py#L1417-L1713"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_set_from_triplets" title="Link to this definition">#</a></dt>
 <dd><p>Fill a BSR matrix with values defined by coordinate-oriented (COO) triplets, discarding existing blocks.</p>
 <p>The first dimension of the three input arrays must match and indicates the number of COO triplets.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>dest</strong> (<a class="reference internal" href="warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix" title="warp.sparse.BsrMatrix"><em>BsrMatrix</em></a><em>[</em><em>BlockType</em><em>[</em><em>Rows</em><em>, </em><em>Cols</em><em>, </em><a class="reference internal" href="warp.Scalar.html#warp.Scalar" title="warp.Scalar"><em>Scalar</em></a><em>]</em><em>]</em>) – Sparse matrix to populate.</p></li>
-<li><p><strong>rows</strong> (<em>Array</em><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>]</em>) – Row index for each non-zero.</p></li>
-<li><p><strong>columns</strong> (<em>Array</em><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>]</em>) – Columns index for each non-zero.</p></li>
-<li><p><strong>values</strong> (<em>Array</em><em>[</em><a class="reference internal" href="warp.Scalar.html#warp.Scalar" title="warp.Scalar"><em>Scalar</em></a><em> | </em><em>BlockType</em><em>[</em><em>Rows</em><em>, </em><em>Cols</em><em>, </em><a class="reference internal" href="warp.Scalar.html#warp.Scalar" title="warp.Scalar"><em>Scalar</em></a><em>]</em><em>] </em><em>| </em><em>None</em>) – Block values for each non-zero. Must be either a one-dimensional array with data type identical
-to the <code class="docutils literal notranslate"><span class="pre">dest</span></code> matrix’s block type, or a 3d array with data type equal to the <code class="docutils literal notranslate"><span class="pre">dest</span></code> matrix’s scalar type.
+<li><p><strong>rows</strong> (<em>Array</em><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a><em>]</em>) – Row index for each non-zero.</p></li>
+<li><p><strong>columns</strong> (<em>Array</em><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a><em>]</em>) – Columns index for each non-zero.</p></li>
+<li><p><strong>values</strong> (<em>Array</em><em>[</em><a class="reference internal" href="warp.Scalar.html#warp.Scalar" title="warp.Scalar"><em>Scalar</em></a><em> | </em><em>BlockType</em><em>[</em><em>Rows</em><em>, </em><em>Cols</em><em>, </em><a class="reference internal" href="warp.Scalar.html#warp.Scalar" title="warp.Scalar"><em>Scalar</em></a><em>]</em><em>] </em><em>| </em><em>None</em>) – Block values for each non-zero. Must be contiguous and either a one-dimensional array with data type
+identical to the <code class="docutils literal notranslate"><span class="pre">dest</span></code> matrix’s block type, or a 3d array with data type equal to the <code class="docutils literal notranslate"><span class="pre">dest</span></code> matrix’s
+scalar type.
 If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the values array of the resulting matrix will be allocated but uninitialized.</p></li>
-<li><p><strong>count</strong> (<em>Array</em><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.14)"><em>int</em></a><em>] </em><em>| </em><em>None</em>) – Single-element array indicating the number of triplets. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the number of triplets is determined from the shape of
+<li><p><strong>count</strong> (<em>Array</em><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a><em>] </em><em>| </em><em>None</em>) – Single-element array indicating the number of triplets. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the number of triplets is determined from the shape of
 <code class="docutils literal notranslate"><span class="pre">rows</span></code> and <code class="docutils literal notranslate"><span class="pre">columns</span></code> arrays.</p></li>
 <li><p><strong>prune_numerical_zeros</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, will ignore the zero-valued blocks.</p></li>
-<li><p><strong>masked</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Deprecated. Use <code class="docutils literal notranslate"><span class="pre">topology=&quot;masked&quot;</span></code> instead. If <code class="docutils literal notranslate"><span class="pre">True</span></code>,
-ignore blocks that are not existing non-zeros of <code class="docutils literal notranslate"><span class="pre">dest</span></code>.</p></li>
 <li><p><strong>topology</strong> (<em>Literal</em><em>[</em><em>'compact'</em><em>, </em><em>'masked'</em><em>, </em><em>'padded'</em><em>] </em><em>| </em><em>None</em>) – Optional topology policy. <code class="docutils literal notranslate"><span class="pre">&quot;compact&quot;</span></code> keeps the existing
-compact rebuild behavior, <code class="docutils literal notranslate"><span class="pre">&quot;masked&quot;</span></code> is equivalent to
-the deprecated <code class="docutils literal notranslate"><span class="pre">masked=True</span></code>, and <code class="docutils literal notranslate"><span class="pre">&quot;padded&quot;</span></code> writes the compacted triplet
+compact rebuild behavior, <code class="docutils literal notranslate"><span class="pre">&quot;masked&quot;</span></code> updates only existing non-zero
+blocks of <code class="docutils literal notranslate"><span class="pre">dest</span></code>, and <code class="docutils literal notranslate"><span class="pre">&quot;padded&quot;</span></code> writes the compacted triplet
 topology into existing destination row capacity and records capacity
 overflow in <code class="docutils literal notranslate"><span class="pre">dest.status_sync()</span></code>.</p></li>
+<li><p><strong>build_mapping</strong> (<a class="reference internal" href="warp.sparse.BsrTripletMap.html#warp.sparse.BsrTripletMap" title="warp.sparse.BsrTripletMap"><em>BsrTripletMap</em></a><em> | </em><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a><em> | </em><em>None</em>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, build and return a new reusable mapping from
+the input entries to the compact destination blocks, see <a class="reference internal" href="warp.sparse.BsrTripletMap.html#warp.sparse.BsrTripletMap" title="warp.sparse.BsrTripletMap"><code class="xref py py-class docutils literal notranslate"><span class="pre">BsrTripletMap</span></code></a>.
+If a <a class="reference internal" href="warp.sparse.BsrTripletMap.html#warp.sparse.BsrTripletMap" title="warp.sparse.BsrTripletMap"><code class="xref py py-class docutils literal notranslate"><span class="pre">BsrTripletMap</span></code></a>, rebuild that mapping in place, reusing its
+storage, and return it. This is only supported for <code class="docutils literal notranslate"><span class="pre">topology=&quot;compact&quot;</span></code>
+and requires <code class="docutils literal notranslate"><span class="pre">prune_numerical_zeros=False</span></code>.</p></li>
 </ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The built <a class="reference internal" href="warp.sparse.BsrTripletMap.html#warp.sparse.BsrTripletMap" title="warp.sparse.BsrTripletMap"><code class="xref py py-class docutils literal notranslate"><span class="pre">BsrTripletMap</span></code></a> when <code class="docutils literal notranslate"><span class="pre">build_mapping</span></code> is provided; otherwise <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="warp.sparse.BsrTripletMap.html#warp.sparse.BsrTripletMap" title="warp.sparse.BsrTripletMap">BsrTripletMap</a> | None</p>
 </dd>
 </dl>
 </dd></dl>
@@ -562,12 +572,12 @@ overflow in <code class="docutils literal notranslate"><span class="pre">dest.st
                   
 <div class="prev-next-area">
     <a class="left-prev"
-       href="warp.sparse.bsr_set_diag.html"
+       href="warp.sparse.bsr_set_from_mapped_values.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">warp.sparse.bsr_set_diag</p>
+        <p class="prev-next-title">warp.sparse.bsr_set_from_mapped_values</p>
       </div>
     </a>
     <a class="right-next"

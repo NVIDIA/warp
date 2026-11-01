@@ -10,23 +10,18 @@
       :python: false
       :differentiable: true
 
-   Compute the inverse FFT along the last dimension of an N-D tile of data.
+   Compute the inverse FFT along the last dimension of an N-D tile, in place.
    
-   This function cooperatively computes the inverse FFT on a tile of data inplace.
-   All leading dimensions are treated as independent batch dimensions.
-   The tile must have at least two dimensions.
+   Identical to :func:`~warp.tile_fft` apart from the sign of the exponent:
+   ``x[n] = sum_k X[k] * exp(+2*pi*i*k*n/N)``. The transform is unnormalized -- it does
+   not divide by ``N`` -- so a forward transform followed by an inverse transform
+   multiplies the data by ``N``. ``inout`` is overwritten with its inverse transform.
    
-   The transform is unnormalized, meaning that applying :func:`tile_fft` followed by :func:`tile_ifft`
-   will scale the data by N, where N is the FFT size (the last dimension of the tile).
-   Normalization is left to the user to perform as needed.
+   Supported dtypes, tile requirements, backend selection, and the supported transform
+   sizes are the same as for :func:`~warp.tile_fft`; see it for details and a usage
+   example.
    
-   Supported datatypes are:
-       * vec2f, vec2d
+   This is a cooperative operation, so every thread in the block must call it.
    
-   :param inout: The input/output tile.
-   
-   .. rubric:: Notes
-   
-   See :func:`tile_fft` for backend selection and supported sizes — the
-   same constraints apply to :func:`tile_ifft`.
+   :param inout: The tile to transform in place.
    

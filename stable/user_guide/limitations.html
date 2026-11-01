@@ -9,7 +9,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Limitations &#8212; Warp 1.18.0</title>
+    <title>Limitations &#8212; Warp 1.19.0</title>
   
   
   
@@ -44,7 +44,7 @@
 
 
 
-    <script src="../_static/documentation_options.js?v=9d419c5b"></script>
+    <script src="../_static/documentation_options.js?v=39391842"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
@@ -54,7 +54,7 @@
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
-        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.18';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.19';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
             true;
         </script>
@@ -71,7 +71,7 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.18.0" />
+  <meta name="docsearch:version" content="1.19.0" />
   
     
     <script src="../_static/searchtools.js"></script>
@@ -148,11 +148,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.18.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.18.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.18.0</p>
+    <p class="title logo__title">Warp 1.19.0</p>
   
 </a></div>
     
@@ -292,11 +292,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.18.0 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.18.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.19.0 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.19.0 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.18.0</p>
+    <p class="title logo__title">Warp 1.19.0</p>
   
 </a>
 
@@ -572,6 +572,9 @@ Problems, questions, and feature requests can be opened on <a class="reference e
 <li><p><a class="reference internal" href="../language_reference/_generated/warp.atomic_add.html#warp._src.lang.atomic_add" title="warp._src.lang.atomic_add"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.atomic_add()</span></code></a> does not support <a class="reference internal" href="../api_reference/_generated/warp.float16.html#warp.float16" title="warp.float16"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.float16</span></code></a> or
 <a class="reference internal" href="../api_reference/_generated/warp.bfloat16.html#warp.bfloat16" title="warp.bfloat16"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.bfloat16</span></code></a> on GPUs with compute capability below 7.0.
 On such devices, the function will return <code class="docutils literal notranslate"><span class="pre">0.0</span></code> without modifying the target memory.</p></li>
+<li><p><a class="reference internal" href="../language_reference/_generated/warp.atomic_add.html#warp._src.lang.atomic_add" title="warp._src.lang.atomic_add"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.atomic_add()</span></code></a> does not support <a class="reference internal" href="../api_reference/_generated/warp.float64.html#warp.float64" title="warp.float64"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.float64</span></code></a> when targeting
+CUDA GPUs with compute capability below 6.0.
+In this case, the function returns <code class="docutils literal notranslate"><span class="pre">0.0</span></code> without modifying the target memory.</p></li>
 <li><p>Using <code class="docutils literal notranslate"><span class="pre">wp.atomic_add()</span></code> or related functions on the same memory address from
 overlapping CPU and GPU kernels is currently unsupported.</p></li>
 <li><p><a class="reference internal" href="../language_reference/_generated/warp.tid.html#warp._src.lang.tid" title="warp._src.lang.tid"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tid()</span></code></a> cannot be called from user functions.</p></li>
@@ -683,19 +686,19 @@ The behavior of the modulus operator in a Warp kernel follows that of C++11: The
 </section>
 <section id="power-operator">
 <h3>Power Operator<a class="headerlink" href="#power-operator" title="Link to this heading">#</a></h3>
-<p>The power operator (<code class="docutils literal notranslate"><span class="pre">**</span></code>) in Warp kernels only works on floating-point numbers (also see <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#pow" title="(in Python v3.14)"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.pow()</span></code></a>).
+<p>The power operator (<code class="docutils literal notranslate"><span class="pre">**</span></code>) in Warp kernels only works on floating-point numbers (also see <a class="reference external" href="https://docs.python.org/3/builtins/functions.html#pow" title="(in Python v3.15)"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.pow()</span></code></a>).
 In Python, the power operator can also be used on integers.</p>
 </section>
 <section id="inverse-sine-and-cosine">
 <h3>Inverse Sine and Cosine<a class="headerlink" href="#inverse-sine-and-cosine" title="Link to this heading">#</a></h3>
 <p><a class="reference internal" href="../language_reference/_generated/warp.asin.html#warp._src.lang.asin" title="warp._src.lang.asin"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.asin()</span></code></a> and <a class="reference internal" href="../language_reference/_generated/warp.acos.html#warp._src.lang.acos" title="warp._src.lang.acos"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.acos()</span></code></a> automatically clamp the input to fall in the range [-1, 1].
-In Python, using <a class="reference external" href="https://docs.python.org/3/library/math.html#math.asin" title="(in Python v3.14)"><code class="xref py py-func docutils literal notranslate"><span class="pre">math.asin()</span></code></a> or <a class="reference external" href="https://docs.python.org/3/library/math.html#math.acos" title="(in Python v3.14)"><code class="xref py py-func docutils literal notranslate"><span class="pre">math.acos()</span></code></a>
+In Python, using <a class="reference external" href="https://docs.python.org/3/library/math.html#math.asin" title="(in Python v3.15)"><code class="xref py py-func docutils literal notranslate"><span class="pre">math.asin()</span></code></a> or <a class="reference external" href="https://docs.python.org/3/library/math.html#math.acos" title="(in Python v3.15)"><code class="xref py py-func docutils literal notranslate"><span class="pre">math.acos()</span></code></a>
 with an input outside [-1, 1] raises a <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> exception.</p>
 </section>
 <section id="rounding">
 <h3>Rounding<a class="headerlink" href="#rounding" title="Link to this heading">#</a></h3>
 <p><a class="reference internal" href="../language_reference/_generated/warp.round.html#warp._src.lang.round" title="warp._src.lang.round"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.round()</span></code></a> rounds halfway cases away from zero, but Python’s
-<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#round" title="(in Python v3.14)"><code class="xref py py-func docutils literal notranslate"><span class="pre">round()</span></code></a> rounds halfway cases to the nearest even
+<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#round" title="(in Python v3.15)"><code class="xref py py-func docutils literal notranslate"><span class="pre">round()</span></code></a> rounds halfway cases to the nearest even
 choice (Banker’s rounding). Use <a class="reference internal" href="../language_reference/_generated/warp.rint.html#warp._src.lang.rint" title="warp._src.lang.rint"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.rint()</span></code></a> when Banker’s rounding is
 desired. Unlike Python, the return type in Warp of both of these rounding
 functions is the same type as the input:</p>
@@ -712,6 +715,14 @@ functions is the same type as the input:</p>
 <span class="n">c</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="mf">1.5</span><span class="p">)</span> <span class="c1"># c is 2</span>
 </pre></div>
 </div>
+</section>
+<section id="bit-count">
+<h3>Bit Count<a class="headerlink" href="#bit-count" title="Link to this heading">#</a></h3>
+<p><a class="reference internal" href="../language_reference/_generated/warp.bit_count.html#warp._src.lang.bit_count" title="warp._src.lang.bit_count"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.bit_count()</span></code></a> counts set bits in an integer’s fixed-width binary
+representation, including the sign bit for signed inputs. In contrast, Python’s
+<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#int.bit_count" title="(in Python v3.15)"><code class="xref py py-meth docutils literal notranslate"><span class="pre">int.bit_count()</span></code></a> counts set bits in the absolute value.</p>
+<p>For example, <code class="docutils literal notranslate"><span class="pre">wp.bit_count(wp.int8(-1))</span></code> returns <code class="docutils literal notranslate"><span class="pre">8</span></code>, whereas Python’s <code class="docutils literal notranslate"><span class="pre">(-1).bit_count()</span></code> returns <code class="docutils literal notranslate"><span class="pre">1</span></code>.
+The difference applies both in Warp kernels and when calling <code class="docutils literal notranslate"><span class="pre">wp.bit_count()</span></code> from Python.</p>
 </section>
 </section>
 <section id="variable-scope">
@@ -881,6 +892,7 @@ kernel rather than relying on struct-value accumulation.</p>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#power-operator">Power Operator</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#inverse-sine-and-cosine">Inverse Sine and Cosine</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#rounding">Rounding</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#bit-count">Bit Count</a></li>
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#variable-scope">Variable Scope</a></li>
@@ -892,7 +904,7 @@ kernel rather than relying on struct-value accumulation.</p>
 
   
   <div class="tocsection editthispage">
-    <a href="https://github.com/NVIDIA/warp/edit/release-1.18/docs/user_guide/limitations.rst">
+    <a href="https://github.com/NVIDIA/warp/edit/release-1.19/docs/user_guide/limitations.rst">
       <i class="fa-solid fa-pencil"></i>
       
       

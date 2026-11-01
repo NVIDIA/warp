@@ -20,4 +20,12 @@
       :python: true
       :differentiable: true
 
-   Compute the dot product.
+   Return the dot product of the four components of ``a`` and ``b``.
+   
+   :param a: First quaternion.
+   :param b: Second quaternion.
+   
+   :returns: The scalar dot product. For unit quaternions, ``abs(dot(a, b))`` is the cosine of half the
+             angle of the rotation from ``a`` to ``b``, and a negative value means that ``-b`` is closer to
+             ``a`` than ``b`` is.
+   

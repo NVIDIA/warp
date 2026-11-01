@@ -10,4 +10,47 @@
       :python: false
       :differentiable: false
 
-   Add a square matrix and a diagonal matrix ``d`` represented as a 1D tile.
+   Return a square tile with the entries of a 1D tile added to its diagonal.
+   
+   Neither input is modified. Any tile dtype that supports addition is accepted, as long
+   as ``a`` and ``d`` match. For Warp struct elements, only fields whose underlying
+   scalar type supports addition are updated; Boolean, narrow-integer, array, and other
+   non-accumulating fields retain their value from ``a``.
+   
+   This is a cooperative operation, so every thread in the block must call it.
+   
+   :param a: A square tile with ``shape=(N, N)``.
+   :param d: A 1D tile with ``shape=(N,)`` holding the diagonal entries to add. Must have
+             the same dtype as ``a``.
+   
+   :returns: A new tile in shared memory with the same shape and dtype as ``a``, holding ``a``
+             with ``d[i]`` added to each diagonal entry ``a[i, i]``.
+   
+   .. rubric:: Example
+   
+   .. testsetup::
+   
+       __name__ = "warp_docs_tile_diag_add"
+   
+   .. testcode::
+   
+       @wp.kernel
+       def add_diagonal(a: wp.array2d[float], d: wp.array[float], out: wp.array2d[float]):
+           a_tile = wp.tile_load(a, shape=(3, 3))
+           d_tile = wp.tile_load(d, shape=3)
+           wp.tile_store(out, wp.tile_diag_add(a_tile, d_tile))
+   
+       a = wp.array(np.arange(9, dtype=np.float32).reshape(3, 3), dtype=float)
+       d = wp.array([10.0, 20.0, 30.0], dtype=float)
+       out = wp.zeros((3, 3), dtype=float)
+   
+       wp.launch_tiled(add_diagonal, dim=1, inputs=[a, d], outputs=[out], block_dim=8)
+   
+       print(out.numpy())
+   
+   .. testoutput::
+   
+       [[10.  1.  2.]
+        [ 3. 24.  5.]
+        [ 6.  7. 38.]]
+   

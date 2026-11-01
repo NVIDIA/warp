@@ -3,24 +3,26 @@
 
 .. currentmodule:: warp._src.lang
 
-.. function:: tile_lower_solve_inplace(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[int]]) -> None
+.. function:: tile_lower_solve_inplace(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[int, ...]]) -> None
 
    .. wp-function-tags::
       :kernel: true
       :python: false
       :differentiable: false
 
-   Solve for ``z`` in ``Lz = y``, where ``L`` is a lower triangular matrix by overwriting ``y`` with ``z``.
+   Solve ``L z = y`` in place for a lower-triangular ``L``, overwriting ``y`` with ``z``.
    
-   This performs general forward substitution for a lower triangular system inplace.
+   Behaves like :func:`~warp.tile_lower_solve` -- only the lower triangle of ``L`` is
+   read, the right-hand side may be 1D or 2D, and the same dtype and backend rules
+   apply -- except that the solution overwrites ``y`` instead of being returned.
    
-   Note: This inplace variant does not support automatic differentiation (adjoint computation),
-   but avoids allocating shared memory for the output ``z`` by reusing ``y``'s memory.
+   This is a cooperative operation, so every thread in the block must call it.
    
-   Supported datatypes are:
-       * float32
-       * float64
+   This in-place variant avoids allocating shared memory for a separate output, but is
+   not differentiable.
    
-   :param L: A square, non-singular, lower triangular matrix
-   :param y: A 1D or 2D tile with compatible shape that gets overwritten by ``z`` where ``Lz = y``.
+   :param L: A square, non-singular, lower-triangular tile with ``shape=(M, M)``.
+   :param y: The right-hand side, a tile with ``shape=(M,)`` or ``shape=(M, NRHS)``,
+             overwritten by the solution ``z``.
    
+   See :func:`~warp.tile_lower_solve` for a usage example.

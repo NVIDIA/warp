@@ -20,6 +20,7 @@ Scalar Math
    asin
    atan
    atan2
+   bit_count
    cbrt
    ceil
    clamp

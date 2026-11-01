@@ -10,23 +10,70 @@
       :python: false
       :differentiable: true
 
-   Compute the Cholesky factorization of a symmetric positive-definite matrix ``A``.
+   Compute the Cholesky factor of a symmetric positive-definite matrix ``A`` and return it in a new tile.
    
-   When ``fill_mode="lower"``, returns lower-triangular ``L`` such that ``LL^T = A``.
-   When ``fill_mode="upper"``, returns upper-triangular ``U`` such that ``U^T U = A``.
+   With ``fill_mode="lower"``, returns the lower-triangular ``L`` such that
+   ``L @ L^T = A``; with ``fill_mode="upper"``, returns the upper-triangular ``U`` such
+   that ``U^T @ U = A``. ``fill_mode`` must be a compile-time constant.
    
-   The ``fill_mode`` parameter must be a compile-time constant.
+   Only the triangle of ``A`` selected by ``fill_mode`` is read, so the opposite triangle
+   may hold anything. ``A`` itself is not modified; use
+   :func:`~warp.tile_cholesky_inplace` to factor ``A`` in place instead.
    
-   Backward propagation computes gradients with respect to the corresponding
-   triangular parameterization of ``A`` (lower triangle when ``fill_mode="lower"``,
-   upper triangle when ``fill_mode="upper"``).
+   ``A`` must be symmetric positive definite.
    
-   Supported datatypes are:
-       * float32
-       * float64
+   This is a cooperative operation, so every thread in the block must call it.
    
-   :param A: A square, symmetric positive-definite matrix.
+   Supported dtypes are ``float32`` and ``float64``.
+   
+   On CUDA devices, Warp uses cuSolverDx when it is built with libmathdx and
+   :attr:`warp.config.enable_mathdx_solver` (or the ``enable_mathdx_solver`` module
+   option) is ``True``. Otherwise, and on the CPU, it uses a cooperative fallback
+   implementation, which is slower than cuSolverDx on CUDA devices.
+   
+   Backward propagation computes gradients with respect to the corresponding triangular
+   parameterization of ``A`` (lower triangle when ``fill_mode="lower"``, upper triangle
+   when ``fill_mode="upper"``).
+   
+   :param A: A square, symmetric positive-definite tile with ``shape=(N, N)``.
    :param fill_mode: ``"lower"`` or ``"upper"``. Must be a compile-time constant.
    
-   :returns: A triangular matrix ``L`` or ``U``.
+   :returns: A new tile in shared memory with the same shape and dtype as ``A``, holding the
+             factor ``L`` or ``U``. The opposite triangle is zero, so the tile can be used
+             directly in a matrix product.
+   
+   .. rubric:: Example
+   
+   .. testsetup::
+   
+       __name__ = "warp_docs_tile_cholesky"
+   
+   .. testcode::
+   
+       @wp.kernel
+       def solve_spd(a: wp.array2d[float], b: wp.array[float], ell: wp.array2d[float], x: wp.array[float]):
+           a_tile = wp.tile_load(a, shape=(3, 3))
+           b_tile = wp.tile_load(b, shape=3)
+           l_tile = wp.tile_cholesky(a_tile)
+           x_tile = wp.tile_cholesky_solve(l_tile, b_tile)
+           wp.tile_store(ell, l_tile)
+           wp.tile_store(x, x_tile)
+   
+       a = wp.array(np.array([[4.0, 2.0, 0.0], [2.0, 5.0, 1.0], [0.0, 1.0, 3.0]], dtype=np.float32))
+       b = wp.array(np.array([8.0, 15.0, 11.0], dtype=np.float32))
+       ell = wp.zeros((3, 3), dtype=float)
+       x = wp.zeros(3, dtype=float)
+   
+       # one full warp cooperates on the factorization and solve
+       wp.launch_tiled(solve_spd, dim=1, inputs=[a, b], outputs=[ell, x], block_dim=32)
+   
+       print(np.round(ell.numpy(), 3))
+       print(np.round(x.numpy(), 3))
+   
+   .. testoutput::
+   
+       [[2.    0.    0.   ]
+        [1.    2.    0.   ]
+        [0.    0.5   1.658]]
+       [1. 2. 3.]
    

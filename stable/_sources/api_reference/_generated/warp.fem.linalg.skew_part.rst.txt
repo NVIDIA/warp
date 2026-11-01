@@ -9,7 +9,7 @@
       :kernel: true
       :python: unknown
       :differentiable: unknown
-      :source: https://github.com/NVIDIA/warp/blob/release-1.18/warp/_src/fem/linalg.py#L183-L186
+      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/fem/linalg.py#L183-L186
 
    Skew part of a 2x2 tensor as corresponding rotation angle.
 
@@ -20,6 +20,6 @@
       :kernel: true
       :python: unknown
       :differentiable: unknown
-      :source: https://github.com/NVIDIA/warp/blob/release-1.18/warp/_src/fem/linalg.py#L189-L195
+      :source: https://github.com/NVIDIA/warp/blob/release-1.19/warp/_src/fem/linalg.py#L189-L195
 
    Skew part of a 3x3 tensor as the corresponding rotation vector.

@@ -10,4 +10,14 @@
       :python: true
       :differentiable: true
 
-   Rotate a vector by the inverse of a quaternion.
+   Return ``vec`` rotated by the inverse of the rotation that ``quat`` represents.
+   
+   For example, if ``quat`` rotates vectors from a body's local frame into world space, this maps a
+   world-space vector into the body's local frame.
+   
+   :param quat: Rotation quaternion, with unit length. Gradient updates do not preserve its unit
+                length, so re-normalize it after each update.
+   :param vec: Vector to rotate.
+   
+   :returns: The rotated vector, equal to ``quat_rotate(quat_inverse(quat), vec)``.
+   

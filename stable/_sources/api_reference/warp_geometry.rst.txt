@@ -15,6 +15,7 @@ Python API
 
    IsoSurfaceBase
    IsoSurfaceMarchingCubes
+   IsoSurfaceNets
    SweptVolumeSignMode
    delaunay_edge_flip
    lipschitz_octree

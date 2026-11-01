@@ -10,4 +10,37 @@
       :python: true
       :differentiable: true
 
-   Construct a quaternion representing a combined roll (z), pitch (x), yaw rotations (y) in radians.
+   Return the rotation quaternion for the given roll, pitch, and yaw angles in radians.
+   
+   The rotations are applied in the order roll, pitch, yaw about the fixed axes (extrinsic x-y-z),
+   which is equivalent to applying yaw, pitch, and then roll about the rotating axes
+   (intrinsic z-y'-x'').
+   
+   :param roll: Rotation angle about the ``x`` axis, in radians.
+   :param pitch: Rotation angle about the ``y`` axis, in radians.
+   :param yaw: Rotation angle about the ``z`` axis, in radians.
+   
+   :returns: The unit quaternion ``qz * qy * qx``, where ``qx``, ``qy``, and ``qz`` are the rotations of
+             ``roll``, ``pitch``, and ``yaw`` about their axes.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def orient(points: wp.array[wp.vec3], out: wp.array[wp.vec3]):
+           i = wp.tid()
+           # quarter turn about x (roll), then a quarter turn about z (yaw)
+           q = wp.quat_rpy(wp.pi / 2.0, 0.0, wp.pi / 2.0)
+           out[i] = wp.quat_rotate(q, points[i])
+   
+       # roll maps (1, 2, 3) to (1, -3, 2), then yaw maps that to (3, 1, 2)
+       points = wp.array([wp.vec3(1.0, 2.0, 3.0)], dtype=wp.vec3)
+       out = wp.empty(1, dtype=wp.vec3)
+       wp.launch(orient, dim=1, inputs=[points], outputs=[out])
+       print(np.round(out.numpy(), 3))
+   
+   .. testoutput::
+   
+       [[3. 1. 2.]]
+   

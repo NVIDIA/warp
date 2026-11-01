@@ -13,6 +13,7 @@
       ~SquareNedelecFirstKindShapeFunctions.make_element_inner_weight
       ~SquareNedelecFirstKindShapeFunctions.make_element_inner_weight_gradient
       ~SquareNedelecFirstKindShapeFunctions.make_node_coords_in_element
+      ~SquareNedelecFirstKindShapeFunctions.make_node_dual_weight
       ~SquareNedelecFirstKindShapeFunctions.make_node_quadrature_weight
       ~SquareNedelecFirstKindShapeFunctions.make_trace_node_quadrature_weight
    

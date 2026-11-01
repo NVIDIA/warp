@@ -10,4 +10,11 @@
       :python: true
       :differentiable: true
 
-   Convert a quaternion to a 3x3 rotation matrix.
+   Return the 3x3 rotation matrix of the rotation that ``quat`` represents.
+   
+   :param quat: Rotation quaternion, with unit length. Gradient updates do not preserve its unit
+                length, so re-normalize it after each update.
+   
+   :returns: The rotation matrix ``m`` that rotates column vectors, such that ``m @ v`` equals
+             ``quat_rotate(quat, v)``.
+   

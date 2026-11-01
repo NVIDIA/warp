@@ -259,6 +259,7 @@ Runtime
 
    clear_kernel_cache
    clear_lto_cache
+   get_cpu_kernel_cache_key
    init
    is_cpu_available
    is_cubql_available
@@ -278,6 +279,7 @@ Kernel Programming
    WarpCodegenKeyError
    WarpCodegenTypeError
    WarpCodegenValueError
+   WarpDeterminismError
    address_of
    func
    func_grad
@@ -432,6 +434,7 @@ Graph Management
    capture_if
    capture_launch
    capture_load
+   capture_load_from_bytes
    capture_save
    capture_while
    is_conditional_graph_supported

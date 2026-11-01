@@ -10,4 +10,9 @@
       :python: true
       :differentiable: false
 
-   Construct an identity quaternion with zero imaginary part and real part of 1.0.
+   Construct the identity quaternion.
+   
+   :param dtype: Scalar type of the components. Defaults to ``float32``.
+   
+   :returns: The quaternion ``(0, 0, 0, 1)``.
+   
