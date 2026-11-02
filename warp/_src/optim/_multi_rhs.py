@@ -30,13 +30,19 @@
 
 import copy
 import functools
-import math
 from operator import index
 from typing import Any
 
 import warp as wp
 from warp._src import sparse as sp
 from warp._src.optim._multi_rhs_kernels import csr_block_product, csr_eight_rhs, transpose_axpby, transpose_rows
+from warp._src.optim._solve_action import (
+    ResidualMode,
+    _check_tolerances,
+    _positive_int,
+    _SolveAction,
+    _StreamOrder,
+)
 from warp._src.optim.linear import LinearOperator, aslinearoperator, cg
 from warp._src.types import type_scalar_type
 
@@ -126,16 +132,6 @@ def _combine(x: wp.array[Any], y: wp.array[Any], z: wp.array[Any], alpha: wp.flo
     z[i] = v
 
 
-@wp.kernel(enable_backward=False)
-def _statistics(iterations: wp.array[int], residual: wp.array[Any], tolerance: wp.array[Any], stats: wp.array[int]):
-    rhs = wp.tid()
-    wp.atomic_add(stats, 0, iterations[0])
-    wp.atomic_max(stats, 1, iterations[0])
-    failed = not wp.isfinite(residual[rhs]) or not wp.isfinite(tolerance[rhs]) or residual[rhs] > tolerance[rhs]
-    wp.atomic_add(stats, 2, int(failed))
-    wp.atomic_add(stats, 3, 1)
-
-
 @functools.lru_cache(None)
 def _cpu_product(block_type):
     scalar = type_scalar_type(block_type)
@@ -160,26 +156,6 @@ def _cpu_product(block_type):
         y[rhs, row] = value
 
     return product
-
-
-class _StreamOrder:
-    """Order eager uses of shared scratch issued from different CUDA streams."""
-
-    def __init__(self, device):
-        self.event = wp.Event(device=device) if device.is_cuda else None
-        # Seed with the constructing stream so first use elsewhere waits for setup.
-        self.last = device.stream if device.is_cuda else None
-
-    def acquire(self, device):
-        if self.event is None:
-            return
-        stream = device.stream
-        if stream.is_capturing or stream is self.last:
-            return
-        if self.last is not None and not self.last.is_capturing:
-            self.last.record_event(self.event)
-            stream.wait_event(self.event)
-        self.last = stream
 
 
 class MultiRHSOperator(LinearOperator):
@@ -351,38 +327,55 @@ class MultiRHSOperator(LinearOperator):
         )
 
 
-class CGSolve:
+class CGSolve(_SolveAction):
     """Prepared independent multiple-RHS CG solves sharing one sparse SPD matrix.
 
-    This wraps :func:`cg`; it is not a coupled block-CG recurrence. Inputs/outputs
-    use the source scalar dtype; inner arithmetic may explicitly use float32.
-    Every call starts at zero and refreshes any working-precision matrix copy on
-    device. Truncated or tolerance-stopped CG is not a fixed linear inverse.
-    Matrix topology and storage must stay fixed after preparation; a changed
-    storage address raises on eager calls. Factors remain caller-owned and updates
-    are explicit. Construction/warmup precede capture. No host convergence
-    readbacks or work-array allocations occur during replay. Eager calls from
-    different CUDA streams are ordered automatically; captured graphs sharing one
-    state or capacity family must not execute concurrently.
+    This wraps :func:`cg`; it is not a coupled block-CG recurrence. Inputs and
+    outputs use the source scalar dtype; inner arithmetic may use another working
+    dtype. Every call starts at zero and refreshes any working-precision matrix
+    copy on device. Truncated or tolerance-stopped CG is not a fixed linear
+    inverse. Matrix topology and storage must stay fixed after preparation; a
+    reallocated source raises on eager calls. Construction and warmup precede
+    capture. Replay performs no host convergence readbacks or work-array
+    allocations. Eager calls from different CUDA streams are ordered
+    automatically; captured graphs sharing one workspace must not execute
+    concurrently. Reverse-mode differentiation is not supported.
 
-    ``stats`` accumulates scheduled vector iterations, maximum batch iterations,
-    failed recurrence residual checks, and RHS calls. Masked converged vectors
-    still contribute scheduled iterations; these are not individual convergence
-    iteration counts. Recurrence diagnostics use working precision and do not
-    certify source-precision residuals for an approximate solve.
+    The RHSs iterate together, so every RHS reports the batch's scheduled
+    iteration count, including iterations after it individually converged.
 
     Args:
         A: Compressed square SPD scalar or 3x3 BSR matrix, float32 or float64.
         nrhs: Positive number of independent right-hand sides.
         M: Fixed SPD preconditioner, either a single-system linear operator or a
-            prepared multiple-RHS operator with equal length n partitions. The
-            latter retains optimized application, such as coalesced FSAI.
-            Preconditioner metadata/arithmetic must use ``working_dtype``.
+            prepared multiple-RHS operator with ``nrhs`` equal partitions of length
+            ``n``. The latter retains optimized application, such as coalesced
+            FSAI. Preconditioner arithmetic must use ``working_dtype``.
         tol: Nonnegative relative per-RHS tolerance.
-        atol: Nonnegative absolute per-RHS tolerance.
+        atol: Nonnegative absolute per-RHS tolerance. At least one tolerance must
+            be positive.
         maxiter: Positive CG iteration budget; truncation is allowed.
         working_dtype: float32 or float64; defaults to A's scalar type.
         layout: Sparse application layout, ``"columns"`` or ``"rows"``.
+        residual: Residual reported and used for acceptance. The default
+            :attr:`ResidualMode.RECURRENCE` adds no operator application.
+            :attr:`ResidualMode.FRESH` recomputes ``||A x - b||`` with the source
+            matrix and precision, which validates mixed-precision or truncated
+            solves at the cost of one batched product per call.
+
+    Attributes:
+        iterations: Device array of scheduled batch iterations per RHS from the
+            latest call.
+        absolute_residual: Device array of residual norms from the latest call.
+            Nonfinite norms are reported as infinity.
+        relative_residual: Device array of residual norms relative to ``||b||``.
+            A zero RHS gives zero for a zero residual and infinity otherwise.
+        tolerance: Device array of effective absolute tolerances from the latest call.
+        converged: Device array of per-RHS acceptance flags, one for success.
+        stats: Device array of cumulative iterations summed over RHSs, maximum
+            iterations, failed RHSs and solved RHSs since ``reset_stats()``.
+        residual_maxima: Device array of the maximum absolute and relative
+            residuals since the last ``reset_stats()``.
     """
 
     def __init__(
@@ -396,13 +389,10 @@ class CGSolve:
         maxiter: int = 1000,
         working_dtype: type | None = None,
         layout: str = "columns",
+        residual: ResidualMode = ResidualMode.RECURRENCE,
     ):
-        if isinstance(nrhs, bool) or isinstance(maxiter, bool):
-            raise TypeError("nrhs and maxiter must be integers, not bool")
-        if index(nrhs) < 1 or index(maxiter) < 1:
-            raise ValueError("nrhs and maxiter must be positive integers")
-        if not math.isfinite(tol) or tol < 0 or not math.isfinite(atol) or atol < 0 or max(tol, atol) == 0:
-            raise ValueError("Tolerances must be finite, nonnegative and not both zero")
+        maxiter = _positive_int("maxiter", maxiter)
+        _check_tolerances(tol, atol)
         if not isinstance(A, sp.BsrMatrix) or A.shape[0] != A.shape[1] or A.shape[0] < 1:
             raise ValueError("A must be a nonempty square Warp sparse matrix")
         if (
@@ -411,16 +401,27 @@ class CGSolve:
             or A.row_counts is not None
         ):
             raise ValueError("A must be compressed scalar or 3x3 BSR in float32 or float64")
-        self.source, self.n, self.nrhs, self.device, self.dtype = A, A.shape[0], index(nrhs), A.device, A.scalar_type
+        self._init_action(A.shape[0], nrhs, A.scalar_type, A.device, residual)
+        self.source = A
         self.working_dtype = A.scalar_type if working_dtype is None else working_dtype
         if self.working_dtype not in (wp.float32, wp.float64):
             raise ValueError("working_dtype must be float32 or float64")
-        self.tol, self.atol, self.maxiter, self.layout = tol, atol, index(maxiter), layout
+        self.tol, self.atol, self.maxiter, self.layout = tol, atol, maxiter, layout
         self.working_matrix = A if self.working_dtype == self.dtype else sp.bsr_copy(A, scalar_type=self.working_dtype)
         self._storage = self._storage_identity()
         self.operator = MultiRHSOperator(self.working_matrix, self.nrhs, layout=layout)
+        self.operator._stream_order = self._stream_order
         self._b = wp.zeros(self.n * self.nrhs, dtype=self.working_dtype, device=self.device)
         self._x = wp.zeros_like(self._b)
+        self._source_operator = self._x_source = self._ax = None
+        if residual == ResidualMode.FRESH:
+            if self.working_dtype == self.dtype:
+                self._source_operator, self._x_source = self.operator, self._x
+            else:
+                self._source_operator = MultiRHSOperator(A, self.nrhs, layout=layout)
+                self._source_operator._stream_order = self._stream_order
+                self._x_source = wp.empty(self.n * self.nrhs, dtype=self.dtype, device=self.device)
+            self._ax = wp.empty(self.n * self.nrhs, dtype=self.dtype, device=self.device)
         self._prepare_state(M)
 
     def _prepare_state(self, M):
@@ -450,83 +451,100 @@ class CGSolve:
             check_every=0,
             run=False,
         )
-        self.stats = wp.zeros(4, dtype=int, device=self.device)
-        """Cumulative scheduled iterations, maximum batch iterations, failures, RHSs."""
 
-    def with_nrhs(self, nrhs: int, *, M=None):
-        """Prepare a smaller solve sharing matrix and staging; use serially.
+    def with_nrhs(self, nrhs: int, *, M=None) -> "CGSolve":
+        """Prepare a smaller capacity sharing matrix storage and staging buffers.
 
-        Each capacity has independent Krylov workspaces/counters. Supply a matching
-        prepared M when the original preconditioner was itself multiple-RHS.
-        Otherwise the original single-system preconditioner is reused by default.
+        The returned action owns its Krylov workspace and diagnostics but shares
+        stream ordering, so it must not run concurrently with this action.
+
+        Args:
+            nrhs: Positive capacity no greater than this action's ``nrhs``.
+            M: Preconditioner for the smaller capacity. Required when the original
+                preconditioner was a prepared multiple-RHS operator; otherwise the
+                original single-system preconditioner is reused by default.
+
+        Returns:
+            A :class:`CGSolve` that solves ``nrhs`` right-hand sides.
         """
-        if isinstance(nrhs, bool):
-            raise TypeError("nrhs must be an integer, not bool")
-        if not 1 <= index(nrhs) <= self.nrhs:
-            raise ValueError("nrhs must be positive and no greater than the prepared capacity")
         if M is None:
             M = self._M
             if M is not None and aslinearoperator(M).batch_offsets is not None:
                 raise ValueError("Supply a matching prepared M for the smaller capacity")
-        child = copy.copy(self)
-        child.nrhs = index(nrhs)
+        child = self._child(nrhs)
+        count = self.n * child.nrhs
         child.operator = self.operator.with_nrhs(child.nrhs)
-        child._b = self._b[: self.n * child.nrhs]
-        child._x = self._x[: self.n * child.nrhs]
+        child._b = self._b[:count]
+        child._x = self._x[:count]
+        if self._source_operator is not None:
+            if self._source_operator is self.operator:
+                child._source_operator, child._x_source = child.operator, child._x
+            else:
+                child._source_operator = self._source_operator.with_nrhs(child.nrhs)
+                child._x_source = self._x_source[:count]
+            child._ax = self._ax[:count]
         child._prepare_state(M)
         return child
-
-    def reset_stats(self):
-        """Clear cumulative counters on device, including during capture."""
-        self.stats.zero_()
 
     def _storage_identity(self):
         a = self.source
         return (a.offsets.ptr, a.columns.ptr, a.values.ptr, a.values.size)
 
-    def solve(self, rhs: wp.array, out: wp.array):
-        """Solve from zero into matching contiguous ``(nrhs,n)`` arrays.
+    def update(self):
+        """Copy current source matrix values into the working-precision matrix.
 
-        In-place and partial aliases are safe because all RHSs are staged before
+        :meth:`solve` also does this on every call, so explicit calls are only
+        needed by solver-agnostic code. It is graph capturable.
+
+        Raises:
+            ValueError: If the source matrix storage was reallocated after preparation.
+        """
+        if self.working_dtype == self.dtype:
+            return
+        if self._storage_identity() != self._storage:
+            raise ValueError("A's sparse storage changed after preparation; prepare a new CGSolve")
+        source_flat = self.source.values.view(self.dtype).flatten()
+        target_flat = self.working_matrix.values.view(self.working_dtype).flatten()
+        # bsr_copy may size the copy to nnz while the source keeps extra capacity.
+        wp.launch(_cast, min(source_flat.size, target_flat.size), [source_flat, target_flat], device=self.device)
+
+    def solve(self, rhs: wp.array, out: wp.array):
+        """Solve from zero into caller-owned storage and refresh device diagnostics.
+
+        In-place and aliased arrays are safe because all RHSs are staged before
         any output is written.
 
         Args:
-            rhs: Contiguous right-hand sides of shape ``(nrhs, n)``, with the source
-                matrix dtype and device.
-            out: Contiguous output of the same shape, dtype and device.
-
-        Returns:
-            Device arrays ``(iterations, residual_sq, tolerance_sq)`` from the
-            underlying :func:`cg` state: the scheduled batch iteration count, each
-            RHS's squared working-precision recurrence residual norm, and each
-            RHS's squared effective absolute tolerance. They are overwritten by
-            the next call.
+            rhs: Contiguous array of shape ``(nrhs, n)``, or ``(n,)`` for one RHS,
+                with the source matrix dtype and device.
+            out: Matching output. Exact in-place aliasing is supported, but
+                shifted overlapping views are rejected before any output mutation.
 
         Raises:
-            ValueError: If array shapes, dtypes, devices or contiguity do not match,
-                or if the source matrix storage was reallocated after preparation.
+            ValueError: If arrays do not match, or if the source matrix storage
+                was reallocated after preparation.
         """
-        if rhs.shape != (self.nrhs, self.n) or out.shape != rhs.shape:
-            raise ValueError("Expected matching arrays of shape (nrhs,n)")
-        for a in (rhs, out):
-            if a.device != self.device or a.dtype != self.dtype or not a.is_contiguous:
-                raise ValueError("Expected contiguous arrays with the source matrix dtype and device")
-        if self.working_dtype != self.dtype and self._storage_identity() != self._storage:
-            raise ValueError("A's sparse storage changed after preparation; prepare a new CGSolve")
-        self.operator._stream_order.acquire(self.device)
+        rows, result = self._prepare_solve(rhs, out)
+        self.update()
         if self.working_dtype != self.dtype:
-            source, target = self.source.values, self.working_matrix.values
-            source_flat = source.view(self.dtype).flatten()
-            target_flat = target.view(self.working_dtype).flatten()
-            wp.launch(_cast, min(source_flat.size, target_flat.size), [source_flat, target_flat], device=self.device)
-            wp.launch(_cast, self._b.size, [rhs.flatten(), self._b], device=self.device)
+            wp.launch(_cast, self._b.size, [rows.flatten(), self._b], device=self.device)
         else:
-            wp.copy(self._b, rhs.flatten())
+            wp.copy(self._b, rows.flatten())
         self._x.zero_()
-        iterations, residual, tolerance = self.state()
-        if self.working_dtype != self.dtype:
-            wp.launch(_cast, self._x.size, [self._x, out.flatten()], device=self.device)
+        iterations, residual_sq, tolerance_sq = self.state()
+        solution = self._x
+        if self.residual == ResidualMode.FRESH:
+            if self._x_source is not self._x:
+                wp.launch(_cast, self._x.size, [self._x, self._x_source], device=self.device)
+            solution = self._x_source
+            # The caller's RHS is still intact because no output has been written yet.
+            self._source_operator.matvec(solution, self._ax, self._ax, 1.0, 0.0)
+            self._squared_norms(self._ax.reshape((self.nrhs, self.n)), rows, 0)
+            residual_sq = self._residual_sq
         else:
-            wp.copy(out.flatten(), self._x)
-        wp.launch(_statistics, self.nrhs, [iterations, residual, tolerance, self.stats], device=self.device)
-        return iterations, residual, tolerance
+            self._squared_norms(None, rows, 0)
+        self._record(iterations, residual_sq, tolerance_sq, 0, self.nrhs)
+        if solution.dtype != self.dtype:
+            wp.launch(_cast, solution.size, [solution, result.flatten()], device=self.device)
+        else:
+            wp.copy(result.flatten(), solution)

@@ -534,8 +534,10 @@ behavior is unchanged.
 CG solves with a shared matrix
 ------------------------------
 
-:class:`CGSolve` prepares repeated independent solves for a single SPD sparse
-matrix. The recurrence is the existing :func:`cg`, with per-RHS stopping tests::
+:class:`CGSolve` is a prepared solve action for repeated independent solves
+against one SPD sparse matrix. It runs the existing :func:`cg` recurrence with
+a separate stopping test for each RHS, and it is not a coupled block-CG
+method::
 
     from warp.optim.linear import CGSolve
 
@@ -543,29 +545,24 @@ matrix. The recurrence is the existing :func:`cg`, with per-RHS stopping tests::
                      tol=0.01, maxiter=25)
     action.solve(rhs, out)
 
-``rhs`` and ``out`` are contiguous ``(24, n)`` arrays in A's scalar dtype.
-The optional working dtype changes inner arithmetic; it does not promise
-source-precision accuracy. This deliberately short solve is useful as an
-approximate preconditioning action, not a fixed exact inverse. Every call
-starts from zero and refreshes converted matrix coefficients on device.
+``rhs`` and ``out`` use A's scalar dtype. ``working_dtype`` changes the inner
+arithmetic and does not promise source-precision accuracy. A short solve like
+this one is useful as an approximate preconditioning action, not as a fixed
+exact inverse. Every call refreshes the converted matrix coefficients on the
+device.
+
+``CGSolve`` reports recurrence residuals by default, which costs nothing
+extra. Pass ``residual=ResidualMode.FRESH`` to recompute ``||A x - b||`` with
+the source matrix and precision, which validates mixed-precision or truncated
+solves at the cost of one batched product per call. All RHSs iterate together,
+so each reports the batch's scheduled iteration count.
 
 Pass ``M=`` to use either a single-system SPD preconditioner or a prepared
-multiple-RHS :class:`LinearOperator`. The prepared form avoids a serial Python
-RHS loop inside the application. :class:`MultiRHSOperator` provides sparse block
-products, batch offsets and scratch sharing independently of CG. It does not
-copy the sparse matrix. In this initial API, sparse inputs are compressed CSR
-or 3x3 BSR in float32 or float64; compress padded rows before preparation.
-
-``action.with_nrhs(8)`` prepares a smaller capacity sharing matrix and staging
-but owning separate Krylov buffers. Supply ``M=`` again if the preconditioner is
-already partitioned. Eager calls from different CUDA streams are ordered
-automatically, but captured graphs sharing these capacities must not execute
-concurrently. Selection of active directions belongs to the caller.
-
-Prepare and warm up before CUDA capture. ``solve`` returns device arrays with
-iterations, squared recurrence residuals and squared effective tolerances.
-``action.stats`` counts scheduled vector iterations (including masked lanes),
-maximum batch iterations, failed recurrence checks and RHS calls, cumulatively
-until ``reset_stats()``. Validate original-equation residuals separately when
-using mixed precision or truncated solves. CPU eager execution is supported;
-reverse-mode derivatives through this action are not supplied.
+multiple-RHS :class:`LinearOperator`, such as one with independent RHS
+partitions. The prepared form avoids a serial Python RHS loop inside the
+application. :class:`MultiRHSOperator` provides the sparse block products,
+batch offsets and scratch sharing independently of CG without copying the
+sparse matrix. Sparse inputs are compressed CSR or 3x3 BSR in float32 or
+float64; compress padded rows before preparation. When the preconditioner is
+already partitioned, pass a matching ``M=`` to ``with_nrhs``. Selecting which
+directions are active is left to the caller.

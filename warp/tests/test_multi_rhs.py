@@ -9,7 +9,7 @@ import numpy as np
 
 import warp as wp
 import warp.sparse as sp
-from warp.optim.linear import CGSolve, MultiRHSOperator, aslinearoperator, preconditioner
+from warp.optim.linear import CGSolve, MultiRHSOperator, ResidualMode, aslinearoperator, preconditioner
 from warp.tests.unittest_utils import add_function_test, get_cuda_test_devices, get_test_devices
 
 
@@ -162,6 +162,39 @@ def test_multiple_rhs_failure_validation(test, device):
         MultiRHSOperator(a, True)
 
 
+def test_multiple_rhs_diagnostics(test, device):
+    """Check per-RHS diagnostics for recurrence and fresh residuals with mixed precision."""
+    n = 15
+    a = np.diag(np.linspace(3.0, 5.0, n)) + np.diag(np.full(n - 1, -0.5), 1) + np.diag(np.full(n - 1, -0.5), -1)
+    rhs = np.random.default_rng(5).normal(size=(3, n))
+    rhs[1] = 0
+    matrix = _matrix(a, device, wp.float64, 1)
+    for mode in (ResidualMode.RECURRENCE, ResidualMode.FRESH):
+        action = CGSolve(matrix, 3, working_dtype=wp.float32, tol=1e-5, maxiter=40, residual=mode)
+        test.assertIs(action.residual, mode)
+        b = wp.array(rhs, dtype=wp.float64, device=device)
+        action.update()
+        action.solve(b, b)
+        actual = b.numpy()
+        true_residual = np.linalg.norm(actual @ a.T - rhs, axis=1)
+        np.testing.assert_array_equal(action.converged.numpy(), [1, 1, 1])
+        iterations = action.iterations.numpy()
+        test.assertTrue(np.all(iterations == iterations[0]) and 0 < iterations[0] <= 40)
+        test.assertEqual(action.relative_residual.numpy()[1], 0.0)
+        test.assertEqual(action.stats.numpy()[3], 3)
+        if mode == ResidualMode.FRESH:
+            # Fresh residuals use the float64 source matrix and the returned float64 solution.
+            np.testing.assert_allclose(action.absolute_residual.numpy(), true_residual, rtol=1e-6, atol=1e-12)
+        test.assertTrue(np.all(action.absolute_residual.numpy() <= action.tolerance.numpy()))
+        small = action.with_nrhs(1)
+        single = wp.array(rhs[0], dtype=wp.float64, device=device)
+        small.solve(single, single)
+        np.testing.assert_allclose(single.numpy(), np.linalg.solve(a, rhs[0]), rtol=3e-5, atol=1e-7)
+        test.assertEqual(small.stats.numpy()[3], 1)
+    with test.assertRaises(TypeError):
+        CGSolve(matrix, 3, residual="fresh")
+
+
 def test_multiple_rhs_storage_change(test, device):
     """Check that reallocating a mixed-precision source matrix raises instead of using stale data."""
     a = np.diag(np.arange(1.0, 16.0))
@@ -231,6 +264,9 @@ for func in (test_multiple_rhs_capture, test_multiple_rhs_operator, test_multipl
 
 add_function_test(
     TestMultiRHS, "test_multiple_rhs_float32_source", test_multiple_rhs_float32_source, devices=get_test_devices()
+)
+add_function_test(
+    TestMultiRHS, "test_multiple_rhs_diagnostics", test_multiple_rhs_diagnostics, devices=get_test_devices()
 )
 add_function_test(
     TestMultiRHS, "test_multiple_rhs_storage_change", test_multiple_rhs_storage_change, devices=get_test_devices()
