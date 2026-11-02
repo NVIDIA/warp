@@ -115,6 +115,34 @@ def test_runlength_encode_error_unsupported_dtype(test, device):
         runlength_encode(values, run_values, run_lengths)
 
 
+def test_runlength_encode_error_value_count_exceeds_input(test, device):
+    values = wp.zeros(3, dtype=int, device=device)
+    run_values = wp.empty(8, dtype=int, device=device)
+    run_lengths = wp.empty(8, dtype=int, device=device)
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"Input array storage size \(3\) must be at least equal to value_count \(8\)$",
+    ):
+        runlength_encode(values, run_values, run_lengths, value_count=8)
+
+
+def test_runlength_encode_error_non_contiguous(test, device):
+    contiguous = wp.zeros(8, dtype=int, device=device)
+    strided = wp.zeros(16, dtype=int, device=device)[::2]
+
+    with test.assertRaisesRegex(RuntimeError, r"runlength_encode\(\) requires a contiguous values array$"):
+        runlength_encode(strided, contiguous, wp.empty_like(contiguous))
+
+    with test.assertRaisesRegex(RuntimeError, r"runlength_encode\(\) requires a contiguous run_values array$"):
+        runlength_encode(contiguous, strided, wp.empty_like(contiguous))
+
+    with test.assertRaisesRegex(RuntimeError, r"runlength_encode\(\) requires a contiguous run_lengths array$"):
+        runlength_encode(contiguous, wp.empty_like(contiguous), strided)
+
+    # Nothing is read or written when there are no values to encode.
+    test.assertEqual(runlength_encode(strided, strided, strided, value_count=0), 0)
+
+
 devices = get_test_devices()
 
 
@@ -201,6 +229,18 @@ add_function_test(
     TestRunlengthEncode,
     "test_runlength_encode_error_negative_value_count",
     test_runlength_encode_error_negative_value_count,
+    devices=devices,
+)
+add_function_test(
+    TestRunlengthEncode,
+    "test_runlength_encode_error_value_count_exceeds_input",
+    test_runlength_encode_error_value_count_exceeds_input,
+    devices=devices,
+)
+add_function_test(
+    TestRunlengthEncode,
+    "test_runlength_encode_error_non_contiguous",
+    test_runlength_encode_error_non_contiguous,
     devices=devices,
 )
 

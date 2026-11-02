@@ -492,19 +492,20 @@ def runlength_encode(
     host-return form cannot represent a replay-time result.
 
     Args:
-        values: Input array to encode. Must be of type ``int32``.
-        run_values: Output array to store unique values. Must be at least value_count in size.
-        run_lengths: Output array to store run lengths. Must be at least value_count in size.
+        values: Input array to encode. Must be contiguous and of type ``int32``.
+        run_values: Output array to store unique values. Must be contiguous and at least value_count in size.
+        run_lengths: Output array to store run lengths. Must be contiguous and at least value_count in size.
         run_count: Optional output array to store the number of runs.
           If ``None``, returns the count as an integer.
         value_count: Number of values to process. If ``None``, processes entire array.
+          Must not exceed the size of ``values``.
 
     Returns:
         Number of runs if ``run_count`` is ``None``, otherwise returns the ``run_count`` array.
 
     Raises:
-        RuntimeError: If array storage devices don't match, if storage size is insufficient, if data types are
-          unsupported, or if ``value_count`` is negative.
+        RuntimeError: If array storage devices don't match, if storage size is insufficient, if an array is not
+          contiguous, if data types are unsupported, or if ``value_count`` is negative.
         NotImplementedError: If ``run_count`` is ``None`` for a non-empty call
           during CPU graph capture or CUDA graph capture with ``apic=True``.
     """
@@ -515,6 +516,11 @@ def runlength_encode(
         value_count = values.size
     elif value_count < 0:
         raise RuntimeError(f"value_count must be non-negative, got {value_count}")
+
+    if values.size < value_count:
+        raise RuntimeError(
+            f"Input array storage size ({values.size}) must be at least equal to value_count ({value_count})"
+        )
 
     if run_values.size < value_count or run_lengths.size < value_count:
         raise RuntimeError(f"Output array storage sizes must be at least equal to value_count ({value_count})")
@@ -553,6 +559,16 @@ def runlength_encode(
             run_count.zero_()
             return run_count
         host_return = False
+
+    # The native implementations walk raw pointers and ignore strides.
+    if not values.is_contiguous:
+        raise RuntimeError("runlength_encode() requires a contiguous values array")
+
+    if not run_values.is_contiguous:
+        raise RuntimeError("runlength_encode() requires a contiguous run_values array")
+
+    if not run_lengths.is_contiguous:
+        raise RuntimeError("runlength_encode() requires a contiguous run_lengths array")
 
     # Both CPU (record-only) and CUDA (record-and-execute) APIC captures record an
     # APIC_OP_RUNLENGTH_ENCODE op. Track the base regions first so the recorded op
