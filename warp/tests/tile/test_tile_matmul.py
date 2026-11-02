@@ -169,7 +169,7 @@ def test_tile_matmul_mixed_precision(test, device):
 
     assert_np_equal(C_wp.numpy(), 0.5 * A @ B - 1.3 * C, tol=1e-2)
 
-    adj_C = np.ones_like(C)
+    adj_C = rng.standard_normal(C.shape)
 
     tape.backward(grads={C_wp: wp.array(adj_C, device=device)})
 
@@ -1406,6 +1406,7 @@ cpu_devices = get_cpu_test_devices()
 for name, func in (
     ("test_tile_gemm_fp32_cpu_blocks", test_tile_gemm(wp.float32)),
     ("test_tile_grouped_gemm_cpu_blocks", test_tile_grouped_gemm),
+    ("test_tile_matmul_mixed_precision_cpu_blocks", test_tile_matmul_mixed_precision),
     ("test_tile_transpose_matmul_cpu_blocks", test_tile_transpose_matmul),
     ("test_tile_matmul_return_form_cpu_blocks", test_tile_matmul_return_form),
 ):
