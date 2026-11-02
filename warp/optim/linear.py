@@ -23,3 +23,5 @@ from warp._src.optim.linear import cg as cg
 from warp._src.optim.linear import cr as cr
 from warp._src.optim.linear import gmres as gmres
 from warp._src.optim.linear import preconditioner as preconditioner
+
+from warp._src.optim._fsai_multi_rhs import FSAIMultiRHS as FSAIMultiRHS

@@ -17,6 +17,7 @@ API
    CG
    CR
    FSAI
+   FSAIMultiRHS
    GMRES
    LinearOperator
    LinearSolverState

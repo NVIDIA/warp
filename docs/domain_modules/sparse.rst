@@ -477,3 +477,36 @@ While primarily intended for sparse matrices, these solvers also work with dense
 Custom operators can be implemented using the :class:`warp.optim.linear.LinearOperator` interface.
 
 For a complete listing of all sparse matrix functions and their signatures, see the :doc:`../api_reference/warp_sparse` API reference.
+
+
+.. currentmodule:: warp.optim.linear
+
+Prepared FSAI application
+-------------------------
+
+For several vectors sharing the same factor, prepare the workspace once::
+
+    from warp.optim.linear import FSAI
+
+    factor = FSAI(A, factor_dtype=wp.float32)
+    operator = factor.as_multi_rhs(nrhs=24, dtype=wp.float32)
+    operator.matvec(x.flatten(), y.flatten(), y.flatten(), 1.0, 0.0)
+
+Here ``x`` and ``y`` have shape ``(24, n)`` and the selected working dtype.
+The returned :class:`FSAIMultiRHS` is a :class:`LinearOperator` with independent
+RHS partitions. It owns its workspace but borrows the factor. It can also be
+passed as the preconditioner for an equivalently partitioned iterative solve.
+``operator.with_nrhs(8)`` creates a smaller workspace view for serial execution.
+The source matrix and factors are never replicated across RHSs.
+
+``layout="columns"`` uses adjacent RHS values across both factor products on
+CUDA, including the required input/output transposes. ``layout="rows"`` retains
+a useful narrow-batch control. CPU uses the row path. There is no runtime timing
+or numerical host dispatch. Exact aliases are supported; shifted overlap and
+strided arrays are rejected. Changes to existing factor values are visible in
+captured replay. Do not replace storage or execute shared workspace concurrently.
+
+Construct and warm up before capture. Captured graphs do not add a per-replay
+synchronization. Complete first-use graph setup before changing inputs on stacks
+affected by GH-2096. Matrix construction remains caller-owned; procedural
+benchmarks use ``warp.fem`` outside the linear module.

@@ -19,6 +19,7 @@ import numpy as np
 
 import warp as wp
 from warp._src import sparse as sp
+from warp._src.optim._fsai_multi_rhs import FSAIMultiRHS
 from warp._src.optim.linear import LinearOperator
 from warp._src.utils import array_scan
 
@@ -525,6 +526,40 @@ class FSAI(LinearOperator):
         self._refit.update(self, A)
         self.source = A
         return self
+
+    def as_multi_rhs(self, nrhs: int, dtype: type | None = None, layout: str = "columns") -> FSAIMultiRHS:
+        """Prepare a shared-factor operator for independent right-hand sides.
+
+        The returned :class:`LinearOperator` acts on contiguous scalar arrays of
+        length ``nrhs * n``, representing ``(nrhs, n)`` rows. It supplies batch
+        offsets for independent Krylov reductions, without copying the matrix or
+        factors. ``matvec(x, y, z, alpha, beta)`` applies ``G.T @ G`` to each row.
+        Exact aliases among x, y and z are supported; partial output overlap and
+        strided arrays are rejected before launching work. Zero coefficients do
+        not read the corresponding input values.
+
+        Prepare outside capture and run once eagerly before capturing. All work
+        and stopping-independent application remain on device. Factor value
+        updates in the same buffers are visible on replay; changing topology or
+        buffer identities requires recapture. Each prepared operator owns its
+        workspaces. Its ``with_nrhs(nrhs)`` method prepares a smaller capacity
+        sharing that scratch, for mutually exclusive solves. Eager calls on changing streams are ordered with an event;
+        concurrent graph executions sharing this operator require caller ordering.
+
+        Args:
+            nrhs: Positive number of independent right-hand sides.
+            dtype: Scalar working precision, float32 or float64. Defaults to the
+                source matrix scalar type (float32 for a float16 source). Stored
+                factors are cast during products.
+            layout: ``"columns"`` retains adjacent RHS values across both factor
+                products on CUDA. ``"rows"`` uses one thread per row and RHS and
+                may be faster for narrow batches. CPU always uses the row path.
+
+        Returns:
+            A reusable :class:`LinearOperator` with preallocated scratch storage.
+        """
+        working_dtype = wp.float32 if self.scalar_type == wp.float16 else self.scalar_type
+        return FSAIMultiRHS(self, nrhs, working_dtype if dtype is None else dtype, layout)
 
     def _apply(self, x, y, z, alpha, beta):
         x, y, z = (self._flat(v) for v in (x, y, z))

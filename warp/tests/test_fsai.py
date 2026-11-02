@@ -922,6 +922,124 @@ def test_float16_capture_refit(test, device):
     np.testing.assert_array_equal(y.numpy(), before)
 
 
+def test_multi_rhs(test, device, dtype):
+    # Odd rows/widths exercise both transpose and RHS tile tails. References use
+    # the stored coefficients, so factor quantization is not application error.
+    rng = np.random.default_rng(37)
+    for factor_dtype in (wp.float16, wp.float32, wp.float64):
+        pre = FSAI(
+            _matrix(_path(41), device, wp.float16 if factor_dtype == wp.float16 else wp.float64),
+            max_row_size=8,
+            factor_dtype=factor_dtype,
+            reuse_pattern=True,
+        )
+        g = _dense(pre.G).astype(np.float64)
+        for nrhs in (1, 4, 7, 24, 33):
+            host = rng.normal(size=(nrhs, 41))
+            for layout in ("rows", "columns"):
+                action = pre.as_multi_rhs(33, dtype=dtype, layout=layout).with_nrhs(nrhs)
+                test.assertEqual(action.shape, (nrhs * 41, nrhs * 41))
+                np.testing.assert_array_equal(action.batch_offsets.numpy(), np.arange(nrhs + 1) * 41)
+                for alias in (False, True):
+                    x = wp.array(host.ravel(), dtype=dtype, device=device)
+                    out = x if alias else wp.empty_like(x)
+                    y = wp.array((host * 0.3).ravel(), dtype=dtype, device=device)
+                    action.matvec(x, y, out, 0.75, -0.25)
+                    expected = 0.75 * (host @ g.T @ g) - 0.25 * host * 0.3
+                    np.testing.assert_allclose(
+                        out.numpy().reshape(host.shape),
+                        expected,
+                        rtol=5e-5 if dtype == wp.float32 else 1e-12,
+                        atol=2e-6 if dtype == wp.float32 else 1e-13,
+                    )
+                x.fill_(float("nan"))
+                y.fill_(2)
+                action.matvec(x, y, out, 0, 0.5)
+                np.testing.assert_array_equal(out.numpy(), np.ones(out.size))
+                y.fill_(float("nan"))
+                action.matvec(x, y, out, 0, 0)
+                np.testing.assert_array_equal(out.numpy(), np.zeros(out.size))
+                x.fill_(1)
+                action.matvec(x, y, out, 1, 0)
+                np.testing.assert_allclose(
+                    out.numpy().reshape(host.shape), np.ones(host.shape) @ g.T @ g, rtol=5e-5, atol=2e-6
+                )
+
+
+def test_multi_rhs_capture(test, device):
+    pre = FSAI(_matrix(_path(41), device), max_row_size=8, factor_dtype=wp.float32, reuse_pattern=True)
+    # Deferred construction keeps padded factor rows, covering both formats.
+    for deferred in (False, True):
+        if deferred:
+            pre = FSAI(
+                _matrix(_path(41), device),
+                max_row_size=8,
+                factor_dtype=wp.float32,
+                reuse_pattern=True,
+                defer_pattern=True,
+            )
+        action = pre.as_multi_rhs(7, dtype=wp.float64)
+        x = wp.ones(7 * 41, dtype=wp.float64, device=device)
+        out = wp.empty_like(x)
+        action.matvec(x, out, out, 1, 0)
+        wp.synchronize_device(device)
+        with wp.ScopedCapture(device=device) as capture:
+            action.matvec(x, out, out, 1, 0)
+        for scale in (1.0, 2.0, 0.5):
+            # Complete first launch before changing inputs (GH-2096).
+            x.fill_(scale)
+            wp.capture_launch(capture.graph)
+            g = _dense(pre.G).astype(np.float64)
+            gt = _dense(pre.GT).astype(np.float64)
+            np.testing.assert_allclose(
+                out.numpy().reshape(7, 41), np.full((7, 41), scale) @ g.T @ gt.T, rtol=1e-12, atol=1e-13
+            )
+            pre.G.values.fill_(0.125)
+            pre.GT.values.fill_(0.25)
+
+
+def test_multi_rhs_validation(test, device):
+    pre = FSAI(_matrix(_path(5), device))
+    for kwargs in ({"nrhs": 0}, {"nrhs": True}, {"nrhs": 2, "dtype": wp.float16}, {"nrhs": 2, "layout": "invalid"}):
+        with test.assertRaises((ValueError, TypeError)):
+            pre.as_multi_rhs(**kwargs)
+    action = pre.as_multi_rhs(2)
+    x = wp.ones(10, dtype=wp.float64, device=device)
+    out = wp.full(10, 123.0, dtype=wp.float64, device=device)
+    for bad in (
+        wp.ones(9, dtype=wp.float64, device=device),
+        wp.ones(10, dtype=wp.float32, device=device),
+        wp.ones(20, dtype=wp.float64, device=device)[::2],
+    ):
+        with test.assertRaises(ValueError):
+            action.matvec(bad, out, out, 1, 0)
+        np.testing.assert_array_equal(out.numpy(), np.full(10, 123.0))
+    storage = wp.ones(11, dtype=wp.float64, device=device)
+    with test.assertRaises(ValueError):
+        action.matvec(storage[:10], x, storage[1:], 1, 0)
+
+
+def test_multi_rhs_streams(test, device):
+    pre = FSAI(_matrix(_path(41), device), max_row_size=8)
+    action = pre.as_multi_rhs(7)
+    smaller = action.with_nrhs(3)
+    x = wp.ones(7 * 41, dtype=wp.float64, device=device)
+    y = wp.full(3 * 41, 2.0, dtype=wp.float64, device=device)
+    a, b = wp.empty_like(x), wp.empty_like(y)
+    action.matvec(x, a, a, 1, 0)
+    smaller.matvec(y, b, b, 1, 0)
+    wp.synchronize_device(device)
+    first, second = wp.Stream(device), wp.Stream(device)
+    with wp.ScopedStream(first):
+        action.matvec(x, a, a, 1, 0)
+    with wp.ScopedStream(second):
+        smaller.matvec(y, b, b, 1, 0)
+    wp.synchronize_device(device)
+    g = _dense(pre.G)
+    np.testing.assert_allclose(a.numpy().reshape(7, 41), np.ones((7, 41)) @ g.T @ g, rtol=1e-12, atol=1e-13)
+    np.testing.assert_allclose(b.numpy().reshape(3, 41), np.full((3, 41), 2.0) @ g.T @ g, rtol=1e-12, atol=1e-13)
+
+
 class TestFSAI(unittest.TestCase):
     def test_invalid_arguments(self):
         """Check that invalid arguments and matrices raise specific errors."""
@@ -1029,6 +1147,13 @@ for func in (test_application, test_refit_and_rollback, test_block_selection_mat
 for func in (test_float16_factors, test_float16_pivot_guard):
     add_function_test(TestFSAI, func.__name__, func, devices=devices)
 add_function_test(TestFSAI, "test_float16_capture_refit", test_float16_capture_refit, devices=get_cuda_test_devices())
+
+for dtype in (wp.float32, wp.float64):
+    add_function_test(TestFSAI, f"test_multi_rhs_{dtype.__name__}", test_multi_rhs, devices=devices, dtype=dtype)
+add_function_test(TestFSAI, "test_multi_rhs_capture", test_multi_rhs_capture, devices=get_cuda_test_devices())
+add_function_test(TestFSAI, "test_multi_rhs_validation", test_multi_rhs_validation, devices=devices)
+
+add_function_test(TestFSAI, "test_multi_rhs_streams", test_multi_rhs_streams, devices=get_cuda_test_devices())
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
