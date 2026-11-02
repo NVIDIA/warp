@@ -105,8 +105,9 @@ class GMRESSolve:
     operators, CUDA replay has no allocations, host convergence checks or Python
     numerical callbacks. Coefficients in existing buffers may change on replay;
     topology/address changes require recapture and preconditioner updates remain
-    explicit. This state owns mutable scratch and must not be used concurrently,
-    including on different streams or in simultaneously executing graphs.
+    explicit. This state owns mutable scratch. Eager calls issued from different
+    CUDA streams are ordered with an event, but simultaneously executing graphs
+    that share this state require caller ordering.
     Reverse-mode differentiation through this action is not supported.
 
     Args:
@@ -123,7 +124,9 @@ class GMRESSolve:
         self, A, nrhs: int = 1, *, M=None, tol: float = 1e-12, atol: float = 0.0, maxiter: int = 1000, restart: int = 64
     ):
         for name, value in (("nrhs", nrhs), ("maxiter", maxiter), ("restart", restart)):
-            if isinstance(value, bool) or index(value) < 1:
+            if isinstance(value, bool):
+                raise TypeError(f"{name} must be an integer, not bool")
+            if index(value) < 1:
                 raise ValueError(f"{name} must be a positive integer")
         for name, value in (("tol", tol), ("atol", atol)):
             if not math.isfinite(value) or value < 0:
@@ -165,6 +168,9 @@ class GMRESSolve:
         """Effective absolute acceptance tolerances from the latest call."""
         self.converged = wp.zeros(self.nrhs, dtype=int, device=self.device)
         """Per-RHS acceptance flags (one for success, zero for failure)."""
+        self._event = wp.Event(device=self.device) if self.device.is_cuda else None
+        # Seed ordering with the constructing stream so first use elsewhere waits for setup.
+        self._last_stream = self.device.stream if self.device.is_cuda else None
         self.state = gmres(
             self.operator,
             self._b,
@@ -205,6 +211,13 @@ class GMRESSolve:
         if rhs.ptr != out.ptr and max(rhs.ptr, out.ptr) < min(rhs.ptr + size, out.ptr + size):
             raise ValueError("Partially overlapping RHS/output views are unsupported")
         rows, result = rhs.reshape((self.nrhs, self.n)), out.reshape((self.nrhs, self.n))
+        # Outside capture, order this call after the previous use of the shared scratch.
+        stream = self.device.stream if self.device.is_cuda else None
+        if stream is not None and not stream.is_capturing and stream is not self._last_stream:
+            if self._last_stream is not None and not self._last_stream.is_capturing:
+                self._last_stream.record_event(self._event)
+                stream.wait_event(self._event)
+            self._last_stream = stream
         for j in range(self.nrhs):
             wp.copy(self._b, rows[j])
             self._x.zero_()

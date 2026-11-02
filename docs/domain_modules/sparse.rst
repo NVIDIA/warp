@@ -517,6 +517,7 @@ This distinction prevents stale success flags from hiding a later failure.
 
 Construct and warm up outside CUDA capture. Prepared replay performs no host
 convergence checks or work-array allocations. Matrix coefficients in existing
-buffers may change; preconditioner updates are explicit. The state and its
-graphs must not execute concurrently. CPU eager execution is supported.
+buffers may change; preconditioner updates are explicit. Eager calls from
+different CUDA streams are ordered automatically, but captured graphs sharing
+one state must not execute concurrently. CPU eager execution is supported.
 Reverse-mode derivatives through the action are not supplied.

@@ -10,7 +10,7 @@ import numpy as np
 import warp as wp
 import warp.sparse as sp
 from warp.optim.linear import GMRESSolve, aslinearoperator
-from warp.tests.unittest_utils import add_function_test, get_test_devices
+from warp.tests.unittest_utils import add_function_test, get_cuda_test_devices, get_test_devices
 
 
 def _matrix(a, device, dtype, block):
@@ -26,6 +26,7 @@ def _matrix(a, device, dtype, block):
 
 
 def test_gmres_action(test, device, dtype):
+    """Check solutions, fresh diagnostics and graph replay for indefinite and nonsymmetric systems."""
     n = 24
     a = np.diag(np.linspace(-3.0, 3.0, n)) + np.diag(np.full(n - 1, 0.1), -1)
     rng = np.random.default_rng(730)
@@ -50,7 +51,7 @@ def test_gmres_action(test, device, dtype):
                     graph = None
                     if device.is_cuda:
                         wp.synchronize_device(device)
-                        with wp.ScopedCapture(device=device) as capture:
+                        with wp.ScopedCapture(device=device, force_module_load=False) as capture:
                             action.reset_stats()
                             action.solve(b, out)
                         graph = capture.graph
@@ -83,6 +84,7 @@ def test_gmres_action(test, device, dtype):
 
 
 def test_gmres_action_failures(test, device):
+    """Check that exhausted budgets and nonfinite inputs fail acceptance and reset semantics hold."""
     a = np.diag(np.arange(-16.0, 16.0) + 0.2)
     action = GMRESSolve(_matrix(a, device, wp.float64, 1), 2, restart=1, maxiter=1)
     b = wp.zeros((2, 32), dtype=wp.float64, device=device)
@@ -104,6 +106,7 @@ def test_gmres_action_failures(test, device):
 
 
 def test_gmres_action_validation(test, device):
+    """Check that invalid arguments and arrays are rejected before output mutation."""
     a = _matrix(np.eye(8), device, wp.float64, 1)
     for kwargs in (
         {"nrhs": 0},
@@ -134,6 +137,24 @@ def test_gmres_action_validation(test, device):
     np.testing.assert_allclose(out.numpy(), np.full(8, 7.0))
 
 
+def test_gmres_action_streams(test, device):
+    """Check that eager solves issued from different streams share scratch safely."""
+    n = 64
+    a = np.diag(np.linspace(-3.0, 3.0, n) + 0.05) + np.diag(np.full(n - 1, 0.1), 1)
+    action = GMRESSolve(_matrix(a, device, wp.float64, 1), 2, restart=n, maxiter=2 * n)
+    rhs = [np.random.default_rng(seed).normal(size=(2, n)) for seed in (5, 6)]
+    inputs = [wp.array(r, dtype=wp.float64, device=device) for r in rhs]
+    outputs = [wp.empty_like(b) for b in inputs]
+    streams = [wp.Stream(device), wp.Stream(device)]
+    for _ in range(4):
+        for stream, b, out in zip(streams, inputs, outputs, strict=True):
+            with wp.ScopedStream(stream, sync_enter=False, sync_exit=False):
+                action.solve(b, out)
+    wp.synchronize_device(device)
+    for r, out in zip(rhs, outputs, strict=True):
+        np.testing.assert_allclose(out.numpy(), np.linalg.solve(a, r.T).T, rtol=1e-9, atol=1e-9)
+
+
 class TestSolveAction(unittest.TestCase):
     pass
 
@@ -148,6 +169,9 @@ for dtype in (wp.float32, wp.float64):
     )
 for func in (test_gmres_action_failures, test_gmres_action_validation):
     add_function_test(TestSolveAction, func.__name__, func, devices=get_test_devices())
+add_function_test(
+    TestSolveAction, "test_gmres_action_streams", test_gmres_action_streams, devices=get_cuda_test_devices()
+)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
