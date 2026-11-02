@@ -97,6 +97,151 @@ def test_erf_math(test, device):
 
 
 @wp.kernel
+def erfcinv_kernel(x: wp.array[Any], out: wp.array[Any]):
+    """Compute ``wp.erfcinv()`` of each element of ``x``."""
+    i = wp.tid()
+    out[i] = wp.erfcinv(x[i])
+
+
+# Declare the overloads up front: adding one on first launch changes the module hash and recompiles the module.
+wp.overload(erfcinv_kernel, [wp.array[wp.float32], wp.array[wp.float32]])
+wp.overload(erfcinv_kernel, [wp.array[wp.float64], wp.array[wp.float64]])
+
+
+def eval_scalar_kernel(kernel, x, dtype, device):
+    """Launch ``kernel`` on a single ``x`` of type ``dtype`` and return its output as a Python float."""
+    x_arr = wp.array([x], dtype=dtype, device=device)
+    out = wp.empty(1, dtype=dtype, device=device)
+    wp.launch(kernel, dim=1, inputs=[x_arr], outputs=[out], device=device)
+    return float(out.numpy()[0])
+
+
+def test_erfcinv_extreme_args(test, device):
+    """Verify ``wp.erfcinv()`` values, special cases, and gradient for extreme arguments."""
+    # Expected values are erfinv(1 - x) evaluated with mpmath at 400 digits.
+    for dtype, rtol in ((wp.float32, 1e-6), (wp.float64, 1e-14)):
+        with test.subTest(dtype=dtype):
+            np.testing.assert_allclose(
+                eval_scalar_kernel(erfcinv_kernel, 2.0**-70, dtype, device), 6.7840095508807463302, rtol=rtol
+            )
+            # Smallest float32 subnormal.
+            np.testing.assert_allclose(
+                eval_scalar_kernel(erfcinv_kernel, 2.0**-149, dtype, device), 10.019834265884623368, rtol=rtol
+            )
+
+            test.assertEqual(eval_scalar_kernel(erfcinv_kernel, 0.0, dtype, device), np.inf)
+            test.assertEqual(eval_scalar_kernel(erfcinv_kernel, 2.0, dtype, device), -np.inf)
+            test.assertEqual(eval_scalar_kernel(erfcinv_kernel, 1.0, dtype, device), 0.0)
+            test.assertFalse(np.signbit(eval_scalar_kernel(erfcinv_kernel, 1.0, dtype, device)))
+
+            test.assertTrue(np.isnan(eval_scalar_kernel(erfcinv_kernel, -0.5, dtype, device)))
+            test.assertTrue(np.isnan(eval_scalar_kernel(erfcinv_kernel, 2.5, dtype, device)))
+            test.assertTrue(np.isnan(eval_scalar_kernel(erfcinv_kernel, np.nan, dtype, device)))
+
+    # Check float64 accuracy for small and boundary arguments.
+    np.testing.assert_allclose(
+        eval_scalar_kernel(erfcinv_kernel, 2.0**-34 * (1.0 + 2.0**-20), wp.float64, device),
+        4.6303255742992010406,
+        rtol=1e-14,
+    )
+    # Smallest normal.
+    np.testing.assert_allclose(
+        eval_scalar_kernel(erfcinv_kernel, 2.0**-1022, wp.float64, device), 26.543258454250981382, rtol=1e-14
+    )
+    # Smallest subnormal, where x / 2 underflows to zero.
+    np.testing.assert_allclose(
+        eval_scalar_kernel(erfcinv_kernel, 2.0**-1074, wp.float64, device), 27.213293210812948815, rtol=1e-14
+    )
+    np.testing.assert_allclose(
+        eval_scalar_kernel(erfcinv_kernel, 2.0 - 2.0**-40, wp.float64, device), -5.0512540852493899671, rtol=1e-14
+    )
+
+    # d/dx erfcinv(x) = -sqrt(pi)/2 * exp(erfcinv(x)^2)
+    x = wp.array([2.0**-70], dtype=wp.float64, requires_grad=True, device=device)
+    out = wp.empty(1, dtype=wp.float64, requires_grad=True, device=device)
+    with wp.Tape() as tape:
+        wp.launch(erfcinv_kernel, dim=1, inputs=[x], outputs=[out], device=device)
+    tape.backward(grads={out: wp.ones(1, dtype=wp.float64, device=device)})
+    np.testing.assert_allclose(x.grad.numpy()[0], -8.6096750946883536401e19, rtol=1e-12)
+
+
+@wp.kernel
+def erfinv_kernel(x: wp.array[Any], out: wp.array[Any]):
+    """Compute ``wp.erfinv()`` of each element of ``x``."""
+    i = wp.tid()
+    out[i] = wp.erfinv(x[i])
+
+
+# Declare the overloads up front: adding one on first launch changes the module hash and recompiles the module.
+wp.overload(erfinv_kernel, [wp.array[wp.float32], wp.array[wp.float32]])
+wp.overload(erfinv_kernel, [wp.array[wp.float64], wp.array[wp.float64]])
+
+
+def test_erfinv_extreme_args(test, device):
+    """Verify ``wp.erfinv()`` values, special cases, and gradient for extreme arguments."""
+    # Expected values are erfinv(z) evaluated with mpmath at 400 digits.
+    for dtype, rtol in ((wp.float32, 1e-6), (wp.float64, 1e-14)):
+        with test.subTest(dtype=dtype):
+            np.testing.assert_allclose(
+                eval_scalar_kernel(erfinv_kernel, 2.0**-70, dtype, device), 7.5066340460236673721e-22, rtol=rtol
+            )
+            np.testing.assert_allclose(
+                eval_scalar_kernel(erfinv_kernel, -(2.0**-70), dtype, device), -7.5066340460236673721e-22, rtol=rtol
+            )
+
+            test.assertEqual(eval_scalar_kernel(erfinv_kernel, -0.0, dtype, device), 0.0)
+            test.assertTrue(np.signbit(eval_scalar_kernel(erfinv_kernel, -0.0, dtype, device)))
+            test.assertEqual(eval_scalar_kernel(erfinv_kernel, 1.0, dtype, device), np.inf)
+            test.assertEqual(eval_scalar_kernel(erfinv_kernel, -1.0, dtype, device), -np.inf)
+
+            test.assertTrue(np.isnan(eval_scalar_kernel(erfinv_kernel, 1.5, dtype, device)))
+            test.assertTrue(np.isnan(eval_scalar_kernel(erfinv_kernel, np.nan, dtype, device)))
+
+    # Check float64 accuracy for small and boundary arguments.
+    np.testing.assert_allclose(
+        eval_scalar_kernel(erfinv_kernel, 2.0**-34 * (1.0 + 2.0**-20), wp.float64, device),
+        5.1585245564615780349e-11,
+        rtol=1e-14,
+    )
+    # Smallest subnormal; erfinv(z) = 4.3785e-324 rounds back to it.
+    test.assertEqual(eval_scalar_kernel(erfinv_kernel, 2.0**-1074, wp.float64, device), 2.0**-1074)
+    np.testing.assert_allclose(
+        eval_scalar_kernel(erfinv_kernel, 1.0 - 3.0 * 2.0**-53, wp.float64, device), 5.7704918535533328705, rtol=1e-14
+    )
+    np.testing.assert_allclose(
+        eval_scalar_kernel(erfinv_kernel, -(1.0 - 3.0 * 2.0**-53), wp.float64, device),
+        -5.7704918535533328705,
+        rtol=1e-14,
+    )
+
+    # d/dz erfinv(z) = sqrt(pi)/2 * exp(erfinv(z)^2)
+    x = wp.array([2.0**-70], dtype=wp.float64, requires_grad=True, device=device)
+    out = wp.empty(1, dtype=wp.float64, requires_grad=True, device=device)
+    with wp.Tape() as tape:
+        wp.launch(erfinv_kernel, dim=1, inputs=[x], outputs=[out], device=device)
+    tape.backward(grads={out: wp.ones(1, dtype=wp.float64, device=device)})
+    np.testing.assert_allclose(x.grad.numpy()[0], 0.88622692545275801365, rtol=1e-14)
+
+
+@wp.kernel
+def erfc_erfcinv_kernel(x: wp.array[wp.float64], out: wp.array[wp.float64]):
+    """Compute ``wp.erfc(wp.erfcinv(x))`` for each element of ``x``."""
+    i = wp.tid()
+    out[i] = wp.erfc(wp.erfcinv(x[i]))
+
+
+def test_erfcinv_erfc_roundtrip(test, device):
+    """Verify that ``wp.erfc()`` inverts ``wp.erfcinv()`` from tiny arguments up to nearly 2."""
+    x_np = np.concatenate((np.geomspace(1e-300, 1.0, 200), np.linspace(1.0, 2.0 - 1e-12, 50)))
+    x = wp.array(x_np, dtype=wp.float64, device=device)
+    out = wp.empty_like(x)
+    wp.launch(erfc_erfcinv_kernel, dim=len(x_np), inputs=[x], outputs=[out], device=device)
+
+    # erfc() amplifies a relative error in erfcinv(x) by about 2 * erfcinv(x)^2, at most ~1400 here.
+    np.testing.assert_allclose(out.numpy(), x_np, rtol=1e-12)
+
+
+@wp.kernel
 def test_vec_norm_kernel(vs: wp.array[Any], out: wp.array2d[float]):
     tid = wp.tid()
     out[tid, 0] = wp.norm_l1(vs[tid])
@@ -400,6 +545,18 @@ class TestMath(unittest.TestCase):
         np.testing.assert_allclose(out_f32.numpy(), expected)
         np.testing.assert_allclose(out_f64.numpy(), expected)
 
+    def test_erfcinv_extreme_args_python_scope(self):
+        """Verify ``wp.erfcinv()`` accuracy for a tiny argument at Python scope."""
+        # Expected values are erfinv(1 - x) evaluated with mpmath at 400 digits.
+        np.testing.assert_allclose(wp.erfcinv(2.0**-70), 6.7840095508807463302, rtol=1e-6)
+        np.testing.assert_allclose(float(wp.erfcinv(wp.float64(2.0**-70))), 6.7840095508807463302, rtol=1e-14)
+
+    def test_erfinv_extreme_args_python_scope(self):
+        """Verify ``wp.erfinv()`` accuracy for a tiny argument at Python scope."""
+        # Expected values are erfinv(z) evaluated with mpmath at 400 digits.
+        np.testing.assert_allclose(wp.erfinv(2.0**-70), 7.5066340460236673721e-22, rtol=1e-6)
+        np.testing.assert_allclose(float(wp.erfinv(wp.float64(2.0**-70))), 7.5066340460236673721e-22, rtol=1e-14)
+
     def test_vec_type(self):
         vec5 = wp.types.vector(length=5, dtype=float)
         v = vec5()
@@ -464,6 +621,9 @@ class TestMath(unittest.TestCase):
 
 add_function_test(TestMath, "test_scalar_math", test_scalar_math, devices=devices)
 add_function_test(TestMath, "test_erf_math", test_erf_math, devices=devices)
+add_function_test(TestMath, "test_erfcinv_extreme_args", test_erfcinv_extreme_args, devices=devices)
+add_function_test(TestMath, "test_erfcinv_erfc_roundtrip", test_erfcinv_erfc_roundtrip, devices=devices)
+add_function_test(TestMath, "test_erfinv_extreme_args", test_erfinv_extreme_args, devices=devices)
 add_function_test(TestMath, "test_vec_norm", test_vec_norm, devices=devices)
 add_function_test(TestMath, "test_smooth_normalize", test_smooth_normalize, devices=devices)
 add_function_test(TestMath, "test_quat_helpers", quat_helpers, devices=devices)
