@@ -33,6 +33,9 @@ from warp.fem.space.shape import (
 )
 from warp.tests.unittest_utils import *
 
+# These tests run without a device, so initialize Warp here rather than inside the first test, whose output is checked
+wp.init()
+
 
 @wp.func
 def _expect_near(a: Any, b: Any, tol: float):
