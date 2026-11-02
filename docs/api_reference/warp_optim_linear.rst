@@ -18,6 +18,7 @@ API
    CR
    FSAI
    GMRES
+   GMRESSolve
    LinearOperator
    LinearSolverState
    aslinearoperator

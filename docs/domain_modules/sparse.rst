@@ -477,3 +477,46 @@ While primarily intended for sparse matrices, these solvers also work with dense
 Custom operators can be implemented using the :class:`warp.optim.linear.LinearOperator` interface.
 
 For a complete listing of all sparse matrix functions and their signatures, see the :doc:`../api_reference/warp_sparse` API reference.
+
+
+.. currentmodule:: warp.optim.linear
+
+Reusable GMRES actions
+----------------------
+
+Use :class:`GMRESSolve` when a linear solve is passed to another algorithm and
+fresh original-equation acceptance is needed::
+
+    from warp.optim.linear import GMRESSolve
+
+    action = GMRESSolve(A, nrhs=1, M=fixed_right_preconditioner,
+                        restart=64, maxiter=512, tol=1.0e-12)
+    action.solve(rhs, out)
+
+For one RHS, arrays may have shape ``(n,)`` or ``(1, n)``. Multiple RHSs use
+``(nrhs, n)`` and are solved serially with the same workspace. Arrays are
+contiguous, use the operator scalar dtype/device, and may alias exactly.
+Shifted overlapping output views are rejected. The initial guess is always
+zero. Existing ``GMRES`` and ``gmres(..., run=False)`` behavior is unchanged.
+
+The matrix may be indefinite or nonsymmetric. ``M`` must be a fixed linear
+right preconditioner. For an indefinite shifted FEM stiffness matrix, an SPD
+auxiliary matrix can supply a preconditioner; do not apply SPD factorization
+to an indefinite matrix or use a variable inner CG action with ordinary GMRES.
+
+After each solve, device arrays ``absolute_residual``, ``relative_residual``,
+``tolerance``, ``converged`` and ``iterations`` describe each RHS. The residual
+is freshly computed with the current original operator, and acceptance uses
+the effective upstream tolerance, including its dtype safety floor. A nonfinite
+norm fails; a zero RHS uses relative residual zero only for a zero residual.
+Restart boundaries can exceed the requested budget by up to ``restart-1``.
+
+``stats`` and ``residual_maxima`` accumulate across calls; ``reset_stats()``
+clears those cumulative arrays without changing the latest per-RHS diagnostics.
+This distinction prevents stale success flags from hiding a later failure.
+
+Construct and warm up outside CUDA capture. Prepared replay performs no host
+convergence checks or work-array allocations. Matrix coefficients in existing
+buffers may change; preconditioner updates are explicit. The state and its
+graphs must not execute concurrently. CPU eager execution is supported.
+Reverse-mode derivatives through the action are not supplied.

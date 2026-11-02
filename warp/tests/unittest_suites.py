@@ -258,6 +258,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_sgd import TestSGD
     from warp.tests.test_smoothstep import TestSmoothstep
     from warp.tests.test_snippet import TestSnippets
+    from warp.tests.test_solve_action import TestSolveAction
     from warp.tests.test_sparse import TestSparse
     from warp.tests.test_spatial import TestSpatial
     from warp.tests.test_special_values import TestSpecialValues
@@ -415,6 +416,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestLaunch,
         TestLerp,
         TestLinearSolvers,
+        TestSolveAction,
         TestLogger,
         TestLValue,
         TestMarchingCubes,
