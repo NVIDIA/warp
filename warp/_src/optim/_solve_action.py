@@ -283,9 +283,9 @@ class GMRESSolve(_SolveAction):
         tolerance: Device array of effective absolute tolerances from the latest call.
         converged: Device array of per-RHS acceptance flags, one for success.
         stats: Device array of cumulative total iterations, maximum iterations,
-            failed RHSs and solved RHSs since the last :meth:`reset_stats`.
+            failed RHSs and solved RHSs since the last ``reset_stats()``.
         residual_maxima: Device array of the maximum absolute and relative
-            residuals since the last :meth:`reset_stats`.
+            residuals since the last ``reset_stats()``.
     """
 
     def __init__(

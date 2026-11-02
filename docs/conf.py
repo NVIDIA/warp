@@ -133,6 +133,8 @@ nitpick_ignore_regex = [
     (r"py:obj", r"warp\.(Texture\w+|fixedarray|indexedarray|indexedfabricarray|fabricarray|fem\.).*"),
     # Members inherited from IsoSurfaceBase, listed in member tables but documented on the base class
     (r"py:obj", r"warp\.geometry\.IsoSurface(MarchingCubes|Nets)\.(resize|surface|extract)"),
+    # Prepared solve actions inherit these methods from a private base; the user guide documents them.
+    (r"py:obj", r"warp\.optim\.linear\.GMRESSolve\.(reset_stats|update)"),
     # FSAI inherits these attributes; their documentation is on LinearOperator.
     (
         r"py:obj",
