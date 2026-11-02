@@ -495,7 +495,7 @@ def runlength_encode(
         values: Input array to encode. Must be contiguous and of type ``int32``.
         run_values: Output array to store unique values. Must be contiguous and at least value_count in size.
         run_lengths: Output array to store run lengths. Must be contiguous and at least value_count in size.
-        run_count: Optional output array to store the number of runs.
+        run_count: Optional output array to store the number of runs. Must contain at least one element.
           If ``None``, returns the count as an integer.
         value_count: Number of values to process. If ``None``, processes entire array.
           Must not exceed the size of ``values``.
@@ -558,6 +558,8 @@ def runlength_encode(
         if value_count == 0:
             run_count.zero_()
             return run_count
+        if run_count.size < 1:
+            raise RuntimeError("run_count array must contain at least one element")
         host_return = False
 
     # The native implementations walk raw pointers and ignore strides.

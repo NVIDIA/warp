@@ -143,6 +143,21 @@ def test_runlength_encode_error_non_contiguous(test, device):
     test.assertEqual(runlength_encode(strided, strided, strided, value_count=0), 0)
 
 
+def test_runlength_encode_error_empty_run_count(test, device):
+    values = wp.zeros(3, dtype=int, device=device)
+    run_values = wp.empty(3, dtype=int, device=device)
+    run_lengths = wp.empty(3, dtype=int, device=device)
+
+    with test.assertRaisesRegex(RuntimeError, r"run_count array must contain at least one element$"):
+        runlength_encode(values, run_values, run_lengths, run_count=wp.zeros(0, dtype=int, device=device))
+
+    # An empty view still points into its parent array, which must not be written.
+    parent = wp.full(4, 7, dtype=int, device=device)
+    with test.assertRaisesRegex(RuntimeError, r"run_count array must contain at least one element$"):
+        runlength_encode(values, run_values, run_lengths, run_count=parent[1:1])
+    assert_np_equal(parent.numpy(), np.full(4, 7))
+
+
 devices = get_test_devices()
 
 
@@ -241,6 +256,12 @@ add_function_test(
     TestRunlengthEncode,
     "test_runlength_encode_error_non_contiguous",
     test_runlength_encode_error_non_contiguous,
+    devices=devices,
+)
+add_function_test(
+    TestRunlengthEncode,
+    "test_runlength_encode_error_empty_run_count",
+    test_runlength_encode_error_empty_run_count,
     devices=devices,
 )
 
