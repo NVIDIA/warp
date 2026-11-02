@@ -1,0 +1,6 @@
+﻿warp.fem.make\_conforming\_basis\_space
+=======================================
+
+.. currentmodule:: warp.fem
+
+.. autofunction:: make_conforming_basis_space

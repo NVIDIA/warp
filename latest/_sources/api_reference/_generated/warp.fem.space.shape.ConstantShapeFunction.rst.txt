@@ -25,6 +25,7 @@
 
    .. autosummary::
    
+      ~ConstantShapeFunction.INTERPOLATORY
       ~ConstantShapeFunction.name
       ~ConstantShapeFunction.value
       ~ConstantShapeFunction.ORDER

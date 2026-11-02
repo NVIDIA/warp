@@ -30,6 +30,7 @@
       ~SquareBSplineShapeFunctions.EDGE_X
       ~SquareBSplineShapeFunctions.EDGE_Y
       ~SquareBSplineShapeFunctions.INTERIOR
+      ~SquareBSplineShapeFunctions.INTERPOLATORY
       ~SquareBSplineShapeFunctions.VERTEX
       ~SquareBSplineShapeFunctions.name
       ~SquareBSplineShapeFunctions.value

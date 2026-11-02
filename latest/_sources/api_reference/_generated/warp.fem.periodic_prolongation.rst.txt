@@ -1,0 +1,6 @@
+﻿warp.fem.periodic\_prolongation
+===============================
+
+.. currentmodule:: warp.fem
+
+.. autofunction:: periodic_prolongation

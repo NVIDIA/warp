@@ -27,6 +27,7 @@
       ~CubeRaviartThomasShapeFunctions.EDGE
       ~CubeRaviartThomasShapeFunctions.FACE
       ~CubeRaviartThomasShapeFunctions.INTERIOR
+      ~CubeRaviartThomasShapeFunctions.INTERPOLATORY
       ~CubeRaviartThomasShapeFunctions.VERTEX
       ~CubeRaviartThomasShapeFunctions.name
       ~CubeRaviartThomasShapeFunctions.value

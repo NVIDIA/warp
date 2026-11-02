@@ -28,6 +28,7 @@
       ~AdaptiveNanogrid.side_arg_value
       ~AdaptiveNanogrid.side_count
       ~AdaptiveNanogrid.side_deformation_gradient
+      ~AdaptiveNanogrid.side_facet_incidence
       ~AdaptiveNanogrid.side_index_arg_value
       ~AdaptiveNanogrid.side_normal
       ~AdaptiveNanogrid.stacked_edge_count

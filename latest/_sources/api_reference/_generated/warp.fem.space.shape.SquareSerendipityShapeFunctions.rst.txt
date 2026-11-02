@@ -29,6 +29,7 @@
       ~SquareSerendipityShapeFunctions.EDGE_X
       ~SquareSerendipityShapeFunctions.EDGE_Y
       ~SquareSerendipityShapeFunctions.INTERIOR
+      ~SquareSerendipityShapeFunctions.INTERPOLATORY
       ~SquareSerendipityShapeFunctions.VERTEX
       ~SquareSerendipityShapeFunctions.name
       ~SquareSerendipityShapeFunctions.value

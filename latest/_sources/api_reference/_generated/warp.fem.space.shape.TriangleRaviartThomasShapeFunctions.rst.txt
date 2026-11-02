@@ -27,6 +27,7 @@
    
       ~TriangleRaviartThomasShapeFunctions.EDGE
       ~TriangleRaviartThomasShapeFunctions.INTERIOR
+      ~TriangleRaviartThomasShapeFunctions.INTERPOLATORY
       ~TriangleRaviartThomasShapeFunctions.VERTEX
       ~TriangleRaviartThomasShapeFunctions.name
       ~TriangleRaviartThomasShapeFunctions.value

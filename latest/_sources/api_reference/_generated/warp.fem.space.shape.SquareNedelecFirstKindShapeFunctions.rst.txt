@@ -27,6 +27,7 @@
       ~SquareNedelecFirstKindShapeFunctions.EDGE_X
       ~SquareNedelecFirstKindShapeFunctions.EDGE_Y
       ~SquareNedelecFirstKindShapeFunctions.INTERIOR
+      ~SquareNedelecFirstKindShapeFunctions.INTERPOLATORY
       ~SquareNedelecFirstKindShapeFunctions.VERTEX
       ~SquareNedelecFirstKindShapeFunctions.name
       ~SquareNedelecFirstKindShapeFunctions.value

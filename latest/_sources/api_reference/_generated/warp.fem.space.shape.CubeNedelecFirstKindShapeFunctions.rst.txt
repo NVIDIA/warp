@@ -27,6 +27,7 @@
       ~CubeNedelecFirstKindShapeFunctions.EDGE
       ~CubeNedelecFirstKindShapeFunctions.FACE
       ~CubeNedelecFirstKindShapeFunctions.INTERIOR
+      ~CubeNedelecFirstKindShapeFunctions.INTERPOLATORY
       ~CubeNedelecFirstKindShapeFunctions.VERTEX
       ~CubeNedelecFirstKindShapeFunctions.name
       ~CubeNedelecFirstKindShapeFunctions.value

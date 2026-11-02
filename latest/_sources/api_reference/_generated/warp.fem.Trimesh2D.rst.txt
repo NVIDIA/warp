@@ -29,6 +29,7 @@
       ~Trimesh2D.reference_side
       ~Trimesh2D.side_arg_value
       ~Trimesh2D.side_count
+      ~Trimesh2D.side_facet_incidence
       ~Trimesh2D.side_index_arg_value
       ~Trimesh2D.side_inner_inverse_deformation_gradient
       ~Trimesh2D.side_measure

@@ -31,6 +31,7 @@
       ~Quadmesh2D.reference_side
       ~Quadmesh2D.side_arg_value
       ~Quadmesh2D.side_count
+      ~Quadmesh2D.side_facet_incidence
       ~Quadmesh2D.side_index_arg_value
       ~Quadmesh2D.side_inner_inverse_deformation_gradient
       ~Quadmesh2D.side_measure

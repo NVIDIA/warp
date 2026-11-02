@@ -581,13 +581,16 @@ will always lead to a discontinuous basis space. Moreover, for PicQuadrature, ev
 <tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.PointBasisSpace.make_node_quadrature_weight" title="warp.fem.PointBasisSpace.make_node_quadrature_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_node_quadrature_weight</span></code></a>()</p></td>
 <td><p>Create a device function returning node quadrature weights.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.PointBasisSpace.make_trace_node_quadrature_weight" title="warp.fem.PointBasisSpace.make_trace_node_quadrature_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_trace_node_quadrature_weight</span></code></a>(trace_basis)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_node_sample</span></code>()</p></td>
+<td><p>Create a device function locating an element node's physical anchor.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.PointBasisSpace.make_trace_node_quadrature_weight" title="warp.fem.PointBasisSpace.make_trace_node_quadrature_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_trace_node_quadrature_weight</span></code></a>(trace_basis)</p></td>
 <td><p>Create a device function returning trace node quadrature weights.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_positions</span></code>([out])</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">node_positions</span></code>([out])</p></td>
 <td><p>Return a temporary array containing the world position for each node.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">trace</span></code>()</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">trace</span></code>()</p></td>
 <td><p>Return a trace basis space on lower-dimensional elements.</p></td>
 </tr>
 </tbody>
@@ -605,19 +608,28 @@ will always lead to a discontinuous basis space. Moreover, for PicQuadrature, ev
 <tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.PointBasisSpace.kernel_values" title="warp.fem.PointBasisSpace.kernel_values"><code class="xref py py-obj docutils literal notranslate"><span class="pre">kernel_values</span></code></a></p></td>
 <td><p>Dictionary of additional values to be passed to the kernel function</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.PointBasisSpace.name" title="warp.fem.PointBasisSpace.name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">name</span></code></a></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">moves_node_samples</span></code></p></td>
+<td><p>Whether <code class="docutils literal notranslate"><span class="pre">make_node_sample()</span></code> may return another element than the one it is given.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.PointBasisSpace.name" title="warp.fem.PointBasisSpace.name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">name</span></code></a></p></td>
 <td><p>Unique name of the basis space.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">topology</span></code></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">supports_nodal_assembly</span></code></p></td>
+<td><p>Whether nodal assembly may assume a diagonal node coupling.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">supports_nodal_quadrature</span></code></p></td>
+<td><p>Whether this basis may supply nodal quadrature points and weights.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">topology</span></code></p></td>
 <td><p>Underlying topology of the basis space</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.PointBasisSpace.value" title="warp.fem.PointBasisSpace.value"><code class="xref py py-obj docutils literal notranslate"><span class="pre">value</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.PointBasisSpace.value" title="warp.fem.PointBasisSpace.value"><code class="xref py py-obj docutils literal notranslate"><span class="pre">value</span></code></a></p></td>
 <td><p>Value type of the basis space.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">weight_gradient_type</span></code></p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">weight_gradient_type</span></code></p></td>
 <td><p>Data type of node weight gradients returned by the basis.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">weight_type</span></code></p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">weight_type</span></code></p></td>
 <td><p>Data type of node weights returned by the basis.</p></td>
 </tr>
 </tbody>

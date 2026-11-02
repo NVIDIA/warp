@@ -24,6 +24,7 @@
 
    .. autosummary::
    
+      ~CubeNonConformingPolynomialShapeFunctions.INTERPOLATORY
       ~CubeNonConformingPolynomialShapeFunctions.name
       ~CubeNonConformingPolynomialShapeFunctions.value
       ~CubeNonConformingPolynomialShapeFunctions.ORDER

@@ -28,6 +28,7 @@
       ~TetrahedronRaviartThomasShapeFunctions.EDGE
       ~TetrahedronRaviartThomasShapeFunctions.FACE
       ~TetrahedronRaviartThomasShapeFunctions.INTERIOR
+      ~TetrahedronRaviartThomasShapeFunctions.INTERPOLATORY
       ~TetrahedronRaviartThomasShapeFunctions.VERTEX
       ~TetrahedronRaviartThomasShapeFunctions.edge_vidx
       ~TetrahedronRaviartThomasShapeFunctions.name

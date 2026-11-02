@@ -29,6 +29,7 @@
       ~Tetmesh.reference_side
       ~Tetmesh.side_arg_value
       ~Tetmesh.side_count
+      ~Tetmesh.side_facet_incidence
       ~Tetmesh.side_index_arg_value
       ~Tetmesh.side_inner_inverse_deformation_gradient
       ~Tetmesh.side_measure

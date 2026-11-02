@@ -27,6 +27,7 @@
    
       ~TriangleShapeFunction.EDGE
       ~TriangleShapeFunction.INTERIOR
+      ~TriangleShapeFunction.INTERPOLATORY
       ~TriangleShapeFunction.VERTEX
       ~TriangleShapeFunction.name
       ~TriangleShapeFunction.value

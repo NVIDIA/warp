@@ -781,56 +781,68 @@ linear systems.</p>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.borrow_temporary_like.html#warp.fem.borrow_temporary_like" title="warp.fem.borrow_temporary_like"><code class="xref py py-obj docutils literal notranslate"><span class="pre">borrow_temporary_like</span></code></a></p></td>
 <td><p>Borrow and return a temporary array with the same attributes as another array or temporary.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.integrand_decorator.html#warp.fem.integrand" title="warp.fem.integrand"><code class="xref py py-obj docutils literal notranslate"><span class="pre">integrand</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.hanging_node_prolongation.html#warp.fem.hanging_node_prolongation" title="warp.fem.hanging_node_prolongation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">hanging_node_prolongation</span></code></a></p></td>
+<td><p>Return the prolongation that eliminates the hanging nodes of a continuous Lagrange basis.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.integrand_decorator.html#warp.fem.integrand" title="warp.fem.integrand"><code class="xref py py-obj docutils literal notranslate"><span class="pre">integrand</span></code></a></p></td>
 <td><p>Decorator for functions to be integrated (or interpolated) using <code class="docutils literal notranslate"><span class="pre">warp.fem</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.integrate.html#warp.fem.integrate" title="warp.fem.integrate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">integrate</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.integrate.html#warp.fem.integrate" title="warp.fem.integrate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">integrate</span></code></a></p></td>
 <td><p>Integrates a constant, linear or bilinear form, and returns a scalar, array, or sparse matrix, respectively.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.interpolate.html#warp.fem.interpolate" title="warp.fem.interpolate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">interpolate</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.interpolate.html#warp.fem.interpolate" title="warp.fem.interpolate"><code class="xref py py-obj docutils literal notranslate"><span class="pre">interpolate</span></code></a></p></td>
 <td><p>Interpolates a function at a finite set of sample points and optionally assigns the result to a discrete field, raw warp array, or sparse matrix.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.make_collocated_function_space.html#warp.fem.make_collocated_function_space" title="warp.fem.make_collocated_function_space"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_collocated_function_space</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.make_collocated_function_space.html#warp.fem.make_collocated_function_space" title="warp.fem.make_collocated_function_space"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_collocated_function_space</span></code></a></p></td>
 <td><p>Constructs a function space from a scalar-valued basis space and a value type, such that all degrees of freedom of the value type are stored at each of the basis nodes.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.make_contravariant_function_space.html#warp.fem.make_contravariant_function_space" title="warp.fem.make_contravariant_function_space"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_contravariant_function_space</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.make_conforming_basis_space.html#warp.fem.make_conforming_basis_space" title="warp.fem.make_conforming_basis_space"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_conforming_basis_space</span></code></a></p></td>
+<td><p>Eliminate the hanging nodes of a continuous Lagrange basis, such as on an <a class="reference internal" href="_generated/warp.fem.AdaptiveNanogrid.html#warp.fem.AdaptiveNanogrid" title="warp.fem.AdaptiveNanogrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">AdaptiveNanogrid</span></code></a>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.make_constrained_basis_space.html#warp.fem.make_constrained_basis_space" title="warp.fem.make_constrained_basis_space"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_constrained_basis_space</span></code></a></p></td>
+<td><p>Build a basis whose nodes are linear combinations of the nodes of <code class="docutils literal notranslate"><span class="pre">base_basis</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.make_contravariant_function_space.html#warp.fem.make_contravariant_function_space" title="warp.fem.make_contravariant_function_space"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_contravariant_function_space</span></code></a></p></td>
 <td><p>Constructs a contravariant function space from a vector-valued basis space</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.make_covariant_function_space.html#warp.fem.make_covariant_function_space" title="warp.fem.make_covariant_function_space"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_covariant_function_space</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.make_covariant_function_space.html#warp.fem.make_covariant_function_space" title="warp.fem.make_covariant_function_space"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_covariant_function_space</span></code></a></p></td>
 <td><p>Constructs a covariant function space from a vector-valued basis space</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.make_discrete_field.html#warp.fem.make_discrete_field" title="warp.fem.make_discrete_field"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_discrete_field</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.make_discrete_field.html#warp.fem.make_discrete_field" title="warp.fem.make_discrete_field"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_discrete_field</span></code></a></p></td>
 <td><p>Constructs  a zero-initialized discrete field over a function space or partition</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.make_element_based_space_topology.html#warp.fem.make_element_based_space_topology" title="warp.fem.make_element_based_space_topology"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_element_based_space_topology</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.make_element_based_space_topology.html#warp.fem.make_element_based_space_topology" title="warp.fem.make_element_based_space_topology"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_element_based_space_topology</span></code></a></p></td>
 <td><p>Makes a space topology from a geometry and an element-based shape function.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.make_element_shape_function.html#warp.fem.make_element_shape_function" title="warp.fem.make_element_shape_function"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_element_shape_function</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.make_element_shape_function.html#warp.fem.make_element_shape_function" title="warp.fem.make_element_shape_function"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_element_shape_function</span></code></a></p></td>
 <td><p>Equip a reference element with a shape function basis.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.make_polynomial_basis_space.html#warp.fem.make_polynomial_basis_space" title="warp.fem.make_polynomial_basis_space"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_polynomial_basis_space</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.make_polynomial_basis_space.html#warp.fem.make_polynomial_basis_space" title="warp.fem.make_polynomial_basis_space"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_polynomial_basis_space</span></code></a></p></td>
 <td><p>Equips a geometry with a polynomial basis.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.make_polynomial_space.html#warp.fem.make_polynomial_space" title="warp.fem.make_polynomial_space"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_polynomial_space</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.make_polynomial_space.html#warp.fem.make_polynomial_space" title="warp.fem.make_polynomial_space"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_polynomial_space</span></code></a></p></td>
 <td><p>Equips a geometry with a collocated, polynomial function space.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.make_restriction.html#warp.fem.make_restriction" title="warp.fem.make_restriction"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_restriction</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.make_restriction.html#warp.fem.make_restriction" title="warp.fem.make_restriction"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_restriction</span></code></a></p></td>
 <td><p>Restricts a discrete field to a subset of elements.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.make_space_partition.html#warp.fem.make_space_partition" title="warp.fem.make_space_partition"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_space_partition</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.make_space_partition.html#warp.fem.make_space_partition" title="warp.fem.make_space_partition"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_space_partition</span></code></a></p></td>
 <td><p>Compute the subset of nodes from a function space topology that touch a geometry partition</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.make_space_restriction.html#warp.fem.make_space_restriction" title="warp.fem.make_space_restriction"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_space_restriction</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.make_space_restriction.html#warp.fem.make_space_restriction" title="warp.fem.make_space_restriction"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_space_restriction</span></code></a></p></td>
 <td><p>Restricts a function space partition to a Domain, i.e. a subset of its elements.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.make_test.html#warp.fem.make_test" title="warp.fem.make_test"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_test</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.make_test.html#warp.fem.make_test" title="warp.fem.make_test"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_test</span></code></a></p></td>
 <td><p>Constructs a test field over a function space or its restriction</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.make_trial.html#warp.fem.make_trial" title="warp.fem.make_trial"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_trial</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.make_trial.html#warp.fem.make_trial" title="warp.fem.make_trial"><code class="xref py py-obj docutils literal notranslate"><span class="pre">make_trial</span></code></a></p></td>
 <td><p>Constructs a trial field over a function space or partition</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.normalize_dirichlet_projector.html#warp.fem.normalize_dirichlet_projector" title="warp.fem.normalize_dirichlet_projector"><code class="xref py py-obj docutils literal notranslate"><span class="pre">normalize_dirichlet_projector</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.normalize_dirichlet_projector.html#warp.fem.normalize_dirichlet_projector" title="warp.fem.normalize_dirichlet_projector"><code class="xref py py-obj docutils literal notranslate"><span class="pre">normalize_dirichlet_projector</span></code></a></p></td>
 <td><p>Scale projector so that it becomes idempotent, and apply the same scaling to fixed_value if provided</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.fem.periodic_prolongation.html#warp.fem.periodic_prolongation" title="warp.fem.periodic_prolongation"><code class="xref py py-obj docutils literal notranslate"><span class="pre">periodic_prolongation</span></code></a></p></td>
+<td><p>Return a prolongation that ties the nodes of <code class="docutils literal notranslate"><span class="pre">basis</span></code> to their periodic copies.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.fem.project_linear_system.html#warp.fem.project_linear_system" title="warp.fem.project_linear_system"><code class="xref py py-obj docutils literal notranslate"><span class="pre">project_linear_system</span></code></a></p></td>
 <td><p>Projects both the left-hand-side and right-hand-side of a linear system to enforce Dirichlet boundary conditions</p></td>

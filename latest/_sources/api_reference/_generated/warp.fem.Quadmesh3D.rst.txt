@@ -31,6 +31,7 @@
       ~Quadmesh3D.reference_side
       ~Quadmesh3D.side_arg_value
       ~Quadmesh3D.side_count
+      ~Quadmesh3D.side_facet_incidence
       ~Quadmesh3D.side_index_arg_value
       ~Quadmesh3D.side_inner_inverse_deformation_gradient
       ~Quadmesh3D.side_measure

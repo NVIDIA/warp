@@ -19,6 +19,7 @@
       ~BasisSpace.make_node_coords_in_element
       ~BasisSpace.make_node_dual_weight
       ~BasisSpace.make_node_quadrature_weight
+      ~BasisSpace.make_node_sample
       ~BasisSpace.make_trace_node_quadrature_weight
       ~BasisSpace.node_positions
       ~BasisSpace.trace
@@ -32,6 +33,9 @@
    
       ~BasisSpace.BasisArg
       ~BasisSpace.geometry
+      ~BasisSpace.moves_node_samples
+      ~BasisSpace.supports_nodal_assembly
+      ~BasisSpace.supports_nodal_quadrature
       ~BasisSpace.topology
       ~BasisSpace.value
       ~BasisSpace.weight_gradient_type

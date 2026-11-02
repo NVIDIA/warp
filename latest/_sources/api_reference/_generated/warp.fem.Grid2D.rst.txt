@@ -26,6 +26,7 @@
       ~Grid2D.reference_side
       ~Grid2D.side_arg_value
       ~Grid2D.side_count
+      ~Grid2D.side_facet_incidence
       ~Grid2D.side_index_arg_value
       ~Grid2D.supports_cell_lookup
       ~Grid2D.update_bvh

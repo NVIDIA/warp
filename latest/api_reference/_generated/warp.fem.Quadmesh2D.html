@@ -601,34 +601,37 @@
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_count</span></code>()</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_index_arg_value</span></code>(device)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_facet_incidence</span></code>()</p></td>
+<td><p>Return the sides covering each cell-local facet.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_index_arg_value</span></code>(device)</p></td>
 <td><p></p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_inner_inverse_deformation_gradient</span></code>(...)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_inner_inverse_deformation_gradient</span></code>(...)</p></td>
 <td><p>Device function returning the matrix right-transforming a gradient w.r.t.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_measure</span></code>(args, s)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_measure</span></code>(args, s)</p></td>
 <td><p>Device function returning the measure determinant (e.g. volume, area) at a given point.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_measure_ratio</span></code>(args, s)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_measure_ratio</span></code>(args, s)</p></td>
 <td><p>Device function returning the ratio of the measure of a side to that of its neighbour cells</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_normal</span></code>(args, s)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_normal</span></code>(args, s)</p></td>
 <td><p>Device function returning the element normal at a sample point</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_outer_inverse_deformation_gradient</span></code>(...)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_outer_inverse_deformation_gradient</span></code>(...)</p></td>
 <td><p>Device function returning the matrix right-transforming a gradient w.r.t.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_to_cell_arg</span></code>(side_arg)</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">side_to_cell_arg</span></code>(side_arg)</p></td>
 <td><p>Device function converting a side-related argument value to a cell-related argument value, for promoting trace samples to the full space</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">supports_cell_lookup</span></code>(device)</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">supports_cell_lookup</span></code>(device)</p></td>
 <td><p>Return whether cell lookups are supported on the given device.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_bvh</span></code>([device])</p></td>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">update_bvh</span></code>([device])</p></td>
 <td><p>Refit the geometry's BVH if it exists on <code class="docutils literal notranslate"><span class="pre">device</span></code>, or build it from scratch otherwise.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">vertex_count</span></code>()</p></td>
+<tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">vertex_count</span></code>()</p></td>
 <td><p></p></td>
 </tr>
 </tbody>

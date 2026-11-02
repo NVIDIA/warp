@@ -28,6 +28,7 @@
       ~TetrahedronNedelecFirstKindShapeFunctions.EDGE
       ~TetrahedronNedelecFirstKindShapeFunctions.FACE
       ~TetrahedronNedelecFirstKindShapeFunctions.INTERIOR
+      ~TetrahedronNedelecFirstKindShapeFunctions.INTERPOLATORY
       ~TetrahedronNedelecFirstKindShapeFunctions.VERTEX
       ~TetrahedronNedelecFirstKindShapeFunctions.edge_vidx
       ~TetrahedronNedelecFirstKindShapeFunctions.name

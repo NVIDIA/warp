@@ -32,6 +32,7 @@
       ~Hexmesh.reference_side
       ~Hexmesh.side_arg_value
       ~Hexmesh.side_count
+      ~Hexmesh.side_facet_incidence
       ~Hexmesh.side_index_arg_value
       ~Hexmesh.side_inner_inverse_deformation_gradient
       ~Hexmesh.side_measure

@@ -509,7 +509,7 @@
 <h1>warp.fem.ShapeFunction<a class="headerlink" href="#warp-fem-shapefunction" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.fem.ShapeFunction">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">ShapeFunction</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/shape_function.py#L15-L113"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ShapeFunction" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">ShapeFunction</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/shape_function.py#L15-L116"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ShapeFunction" title="Link to this definition">#</a></dt>
 <dd><p>Interface class for defining scalar-valued shape functions over a single element.</p>
 <p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
@@ -538,16 +538,19 @@
 <p class="rubric">Attributes</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.ShapeFunction.name" title="warp.fem.ShapeFunction.name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">name</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.ShapeFunction.INTERPOLATORY" title="warp.fem.ShapeFunction.INTERPOLATORY"><code class="xref py py-obj docutils literal notranslate"><span class="pre">INTERPOLATORY</span></code></a></p></td>
+<td><p>Whether each shape function is one at its own node and zero at the other nodes (Lagrange property).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.ShapeFunction.name" title="warp.fem.ShapeFunction.name"><code class="xref py py-obj docutils literal notranslate"><span class="pre">name</span></code></a></p></td>
 <td><p>Unique name encoding all parameters defining the shape function</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.ShapeFunction.value" title="warp.fem.ShapeFunction.value"><code class="xref py py-obj docutils literal notranslate"><span class="pre">value</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.ShapeFunction.value" title="warp.fem.ShapeFunction.value"><code class="xref py py-obj docutils literal notranslate"><span class="pre">value</span></code></a></p></td>
 <td><p>Value type of the shape function.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.ShapeFunction.ORDER" title="warp.fem.ShapeFunction.ORDER"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ORDER</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.ShapeFunction.ORDER" title="warp.fem.ShapeFunction.ORDER"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ORDER</span></code></a></p></td>
 <td><p>Maximum degree of the polynomials used to define the shape function.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.ShapeFunction.NODES_PER_ELEMENT" title="warp.fem.ShapeFunction.NODES_PER_ELEMENT"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NODES_PER_ELEMENT</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.ShapeFunction.NODES_PER_ELEMENT" title="warp.fem.ShapeFunction.NODES_PER_ELEMENT"><code class="xref py py-obj docutils literal notranslate"><span class="pre">NODES_PER_ELEMENT</span></code></a></p></td>
 <td><p>Number of shape function nodes.</p></td>
 </tr>
 </tbody>
@@ -594,45 +597,51 @@
 <dd><p>Value type of the shape function.</p>
 </dd></dl>
 
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.fem.ShapeFunction.INTERPOLATORY">
+<span class="sig-name descname"><span class="pre">INTERPOLATORY</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></span><a class="headerlink" href="#warp.fem.ShapeFunction.INTERPOLATORY" title="Link to this definition">#</a></dt>
+<dd><p>Whether each shape function is one at its own node and zero at the other nodes (Lagrange property).</p>
+</dd></dl>
+
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.fem.ShapeFunction.name">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">name</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/shape_function.py#L40-L43"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ShapeFunction.name" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">name</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><span class="pre">str</span></a></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/shape_function.py#L43-L46"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ShapeFunction.name" title="Link to this definition">#</a></dt>
 <dd><p>Unique name encoding all parameters defining the shape function</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.ShapeFunction.make_node_coords_in_element">
-<span class="sig-name descname"><span class="pre">make_node_coords_in_element</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/shape_function.py#L45-L47"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ShapeFunction.make_node_coords_in_element" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">make_node_coords_in_element</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/shape_function.py#L48-L50"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ShapeFunction.make_node_coords_in_element" title="Link to this definition">#</a></dt>
 <dd><p>Create a device function returning the coordinates of each node.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.ShapeFunction.make_node_quadrature_weight">
-<span class="sig-name descname"><span class="pre">make_node_quadrature_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/shape_function.py#L49-L51"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ShapeFunction.make_node_quadrature_weight" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">make_node_quadrature_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/shape_function.py#L52-L54"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ShapeFunction.make_node_quadrature_weight" title="Link to this definition">#</a></dt>
 <dd><p>Create a device function returning the weight of each node when used as a quadrature point over the element.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.ShapeFunction.make_trace_node_quadrature_weight">
-<span class="sig-name descname"><span class="pre">make_trace_node_quadrature_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/shape_function.py#L53-L55"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ShapeFunction.make_trace_node_quadrature_weight" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">make_trace_node_quadrature_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/shape_function.py#L56-L58"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ShapeFunction.make_trace_node_quadrature_weight" title="Link to this definition">#</a></dt>
 <dd><p>Create a device function returning the weight of each node when used as a quadrature point over the element boundary.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.ShapeFunction.make_element_inner_weight">
-<span class="sig-name descname"><span class="pre">make_element_inner_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/shape_function.py#L57-L59"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ShapeFunction.make_element_inner_weight" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">make_element_inner_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/shape_function.py#L60-L62"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ShapeFunction.make_element_inner_weight" title="Link to this definition">#</a></dt>
 <dd><p>Create a device function returning the value of the shape function associated to a given node at given coordinates.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.ShapeFunction.make_element_inner_weight_gradient">
-<span class="sig-name descname"><span class="pre">make_element_inner_weight_gradient</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/shape_function.py#L61-L63"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ShapeFunction.make_element_inner_weight_gradient" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">make_element_inner_weight_gradient</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/shape_function.py#L64-L66"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ShapeFunction.make_element_inner_weight_gradient" title="Link to this definition">#</a></dt>
 <dd><p>Create a device function returning the gradient of the shape function associated to a given node at given coordinates.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.ShapeFunction.make_node_dual_weight">
-<span class="sig-name descname"><span class="pre">make_node_dual_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/shape_function.py#L65-L87"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ShapeFunction.make_node_dual_weight" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">make_node_dual_weight</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/space/shape/shape_function.py#L68-L90"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.ShapeFunction.make_node_dual_weight" title="Link to this definition">#</a></dt>
 <dd><p>Create a device function returning the reference-space dual weight of each node.</p>
 <p>The degree of freedom of node <code class="docutils literal notranslate"><span class="pre">i</span></code> reproducing a reference-space value <code class="docutils literal notranslate"><span class="pre">v</span></code> is <code class="docutils literal notranslate"><span class="pre">v</span> <span class="pre">*</span> <span class="pre">d_i</span></code> for scalar-valued
 shape functions, or <code class="docutils literal notranslate"><span class="pre">dot(v,</span> <span class="pre">d_i)</span></code> for vector-valued ones, with <code class="docutils literal notranslate"><span class="pre">d_i</span></code> the returned dual weight.
@@ -705,6 +714,7 @@ for vector-valued ones.</p>
 </ul>
 </li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.ShapeFunction.value"><code class="docutils literal notranslate"><span class="pre">value</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.ShapeFunction.INTERPOLATORY"><code class="docutils literal notranslate"><span class="pre">INTERPOLATORY</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.ShapeFunction.name"><code class="docutils literal notranslate"><span class="pre">name</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.ShapeFunction.make_node_coords_in_element"><code class="docutils literal notranslate"><span class="pre">make_node_coords_in_element()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.ShapeFunction.make_node_quadrature_weight"><code class="docutils literal notranslate"><span class="pre">make_node_quadrature_weight()</span></code></a></li>

@@ -27,6 +27,7 @@
       ~SquareShapeFunction.EDGE_X
       ~SquareShapeFunction.EDGE_Y
       ~SquareShapeFunction.INTERIOR
+      ~SquareShapeFunction.INTERPOLATORY
       ~SquareShapeFunction.VERTEX
       ~SquareShapeFunction.name
       ~SquareShapeFunction.value

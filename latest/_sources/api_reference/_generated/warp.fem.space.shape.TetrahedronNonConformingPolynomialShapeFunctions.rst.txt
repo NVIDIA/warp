@@ -24,6 +24,7 @@
 
    .. autosummary::
    
+      ~TetrahedronNonConformingPolynomialShapeFunctions.INTERPOLATORY
       ~TetrahedronNonConformingPolynomialShapeFunctions.name
       ~TetrahedronNonConformingPolynomialShapeFunctions.value
       ~TetrahedronNonConformingPolynomialShapeFunctions.ORDER

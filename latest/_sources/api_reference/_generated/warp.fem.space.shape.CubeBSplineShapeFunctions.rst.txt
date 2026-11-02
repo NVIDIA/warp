@@ -29,6 +29,7 @@
       ~CubeBSplineShapeFunctions.EDGE
       ~CubeBSplineShapeFunctions.FACE
       ~CubeBSplineShapeFunctions.INTERIOR
+      ~CubeBSplineShapeFunctions.INTERPOLATORY
       ~CubeBSplineShapeFunctions.VERTEX
       ~CubeBSplineShapeFunctions.name
       ~CubeBSplineShapeFunctions.value

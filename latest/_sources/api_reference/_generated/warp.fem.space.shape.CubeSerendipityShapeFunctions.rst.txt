@@ -29,6 +29,7 @@
       ~CubeSerendipityShapeFunctions.EDGE
       ~CubeSerendipityShapeFunctions.FACE
       ~CubeSerendipityShapeFunctions.INTERIOR
+      ~CubeSerendipityShapeFunctions.INTERPOLATORY
       ~CubeSerendipityShapeFunctions.VERTEX
       ~CubeSerendipityShapeFunctions.name
       ~CubeSerendipityShapeFunctions.value

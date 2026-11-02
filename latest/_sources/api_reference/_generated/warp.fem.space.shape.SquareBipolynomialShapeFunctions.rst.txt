@@ -29,6 +29,7 @@
       ~SquareBipolynomialShapeFunctions.EDGE_X
       ~SquareBipolynomialShapeFunctions.EDGE_Y
       ~SquareBipolynomialShapeFunctions.INTERIOR
+      ~SquareBipolynomialShapeFunctions.INTERPOLATORY
       ~SquareBipolynomialShapeFunctions.VERTEX
       ~SquareBipolynomialShapeFunctions.name
       ~SquareBipolynomialShapeFunctions.value

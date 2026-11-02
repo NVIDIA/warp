@@ -101,10 +101,13 @@ Python API
    adaptive_nanogrid_from_hierarchy
    borrow_temporary
    borrow_temporary_like
+   hanging_node_prolongation
    integrand
    integrate
    interpolate
    make_collocated_function_space
+   make_conforming_basis_space
+   make_constrained_basis_space
    make_contravariant_function_space
    make_covariant_function_space
    make_discrete_field
@@ -118,6 +121,7 @@ Python API
    make_test
    make_trial
    normalize_dirichlet_projector
+   periodic_prolongation
    project_linear_system
    project_system_matrix
    project_system_rhs

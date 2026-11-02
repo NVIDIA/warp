@@ -27,6 +27,7 @@
       ~Grid3D.reference_side
       ~Grid3D.side_arg_value
       ~Grid3D.side_count
+      ~Grid3D.side_facet_incidence
       ~Grid3D.side_index_arg_value
       ~Grid3D.supports_cell_lookup
       ~Grid3D.update_bvh

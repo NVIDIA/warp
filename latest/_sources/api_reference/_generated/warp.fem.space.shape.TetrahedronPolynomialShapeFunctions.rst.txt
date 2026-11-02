@@ -30,6 +30,7 @@
       ~TetrahedronPolynomialShapeFunctions.EDGE
       ~TetrahedronPolynomialShapeFunctions.FACE
       ~TetrahedronPolynomialShapeFunctions.INTERIOR
+      ~TetrahedronPolynomialShapeFunctions.INTERPOLATORY
       ~TetrahedronPolynomialShapeFunctions.VERTEX
       ~TetrahedronPolynomialShapeFunctions.edge_vidx
       ~TetrahedronPolynomialShapeFunctions.name

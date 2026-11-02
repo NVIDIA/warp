@@ -29,6 +29,7 @@
    
       ~TrianglePolynomialShapeFunctions.EDGE
       ~TrianglePolynomialShapeFunctions.INTERIOR
+      ~TrianglePolynomialShapeFunctions.INTERPOLATORY
       ~TrianglePolynomialShapeFunctions.VERTEX
       ~TrianglePolynomialShapeFunctions.name
       ~TrianglePolynomialShapeFunctions.value

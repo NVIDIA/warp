@@ -27,6 +27,7 @@
       ~SquareRaviartThomasShapeFunctions.EDGE_X
       ~SquareRaviartThomasShapeFunctions.EDGE_Y
       ~SquareRaviartThomasShapeFunctions.INTERIOR
+      ~SquareRaviartThomasShapeFunctions.INTERPOLATORY
       ~SquareRaviartThomasShapeFunctions.VERTEX
       ~SquareRaviartThomasShapeFunctions.name
       ~SquareRaviartThomasShapeFunctions.value

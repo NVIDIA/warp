@@ -27,6 +27,7 @@
       ~CubeShapeFunction.EDGE
       ~CubeShapeFunction.FACE
       ~CubeShapeFunction.INTERIOR
+      ~CubeShapeFunction.INTERPOLATORY
       ~CubeShapeFunction.VERTEX
       ~CubeShapeFunction.name
       ~CubeShapeFunction.value

@@ -31,6 +31,7 @@
       ~Nanogrid.side_arg_value
       ~Nanogrid.side_count
       ~Nanogrid.side_deformation_gradient
+      ~Nanogrid.side_facet_incidence
       ~Nanogrid.side_index_arg_value
       ~Nanogrid.side_normal
       ~Nanogrid.supports_cell_lookup

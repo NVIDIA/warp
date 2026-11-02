@@ -27,6 +27,7 @@
    
       ~TriangleNedelecFirstKindShapeFunctions.EDGE
       ~TriangleNedelecFirstKindShapeFunctions.INTERIOR
+      ~TriangleNedelecFirstKindShapeFunctions.INTERPOLATORY
       ~TriangleNedelecFirstKindShapeFunctions.VERTEX
       ~TriangleNedelecFirstKindShapeFunctions.name
       ~TriangleNedelecFirstKindShapeFunctions.value

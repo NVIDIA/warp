@@ -24,6 +24,7 @@
 
    .. autosummary::
    
+      ~TriangleNonConformingPolynomialShapeFunctions.INTERPOLATORY
       ~TriangleNonConformingPolynomialShapeFunctions.name
       ~TriangleNonConformingPolynomialShapeFunctions.value
       ~TriangleNonConformingPolynomialShapeFunctions.ORDER

@@ -30,6 +30,7 @@
       ~CubeTripolynomialShapeFunctions.EDGE
       ~CubeTripolynomialShapeFunctions.FACE
       ~CubeTripolynomialShapeFunctions.INTERIOR
+      ~CubeTripolynomialShapeFunctions.INTERPOLATORY
       ~CubeTripolynomialShapeFunctions.VERTEX
       ~CubeTripolynomialShapeFunctions.name
       ~CubeTripolynomialShapeFunctions.value

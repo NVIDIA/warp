@@ -33,6 +33,7 @@
       ~DeformedGeometry.side_arg_value
       ~DeformedGeometry.side_count
       ~DeformedGeometry.side_deformation_gradient
+      ~DeformedGeometry.side_facet_incidence
       ~DeformedGeometry.side_from_cell_coords
       ~DeformedGeometry.side_index_arg_value
       ~DeformedGeometry.side_inner_cell_coords

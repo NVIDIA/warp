@@ -698,6 +698,7 @@ This strategy is demonstrated in the <code class="docutils literal notranslate">
 <li><p><code class="docutils literal notranslate"><span class="pre">example_taylor_green.py</span></code>: 2D Taylor-Green vortex using mixed Taylor-Hood elements with semi-Lagrangian advection and BDF2 time integration</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">example_kelvin_helmholtz.py</span></code>: 2D Kelvin-Helmholtz instability using Discontinuous Galerkin for compressible Euler equations with Rusanov flux and positivity limiter</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">example_shallow_water.py</span></code>: 2D shallow water equations using Discontinuous Galerkin with Rusanov flux and positivity limiter</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">example_periodic_homogenization.py</span></code>: Effective conductivity of a periodic composite from periodic correctors on grids, triangle meshes, triangle meshes deformed to fit the inclusion, or conforming adaptive grids</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">example_apic_fluid_multi_env.py</span></code>: Colocated multi-environment Affine
 Particle-In-Cell (APIC) fluid simulation using environment-aware particle
 quadrature and batched pressure solves</p></li>
@@ -807,11 +808,102 @@ i.e, without reindexing; this is illustrated in the <code class="docutils litera
 with power-of-two voxel scales. Helpers for building such geometries from hierarchy of grids or a refinement oracle are also provided, see
 <a class="reference internal" href="../api_reference/_generated/warp.fem.adaptive_nanogrid_from_field.html#warp.fem.adaptive_nanogrid_from_field" title="warp.fem.adaptive_nanogrid_from_field"><code class="xref py py-func docutils literal notranslate"><span class="pre">adaptive_nanogrid_from_field()</span></code></a> and <a class="reference internal" href="../api_reference/_generated/warp.fem.adaptive_nanogrid_from_hierarchy.html#warp.fem.adaptive_nanogrid_from_hierarchy" title="warp.fem.adaptive_nanogrid_from_hierarchy"><code class="xref py py-func docutils literal notranslate"><span class="pre">adaptive_nanogrid_from_hierarchy()</span></code></a>.
 An example is provided in <code class="docutils literal notranslate"><span class="pre">warp/examples/fem/example_adaptive_grid.py</span></code>.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>The existence of “T-junctions” at resolution boundaries mean that usual tri-polynomial shape functions will no longer be globally
-continuous. Discontinuous–Galerkin or similar techniques may be used to take into account the “jump” at multi-resolution faces.</p>
+<p>A facet is the full face of one cell. A side is an integration element that
+covers part or all of one or two adjacent cell facets. At a refinement
+interface, one coarse facet may be covered by several sides, while a side
+sample still identifies one integration element and its adjacent cell traces.
+<code class="docutils literal notranslate"><span class="pre">AdaptiveNanogrid.side_facet_incidence()</span></code> gives the side-to-facet and
+facet-to-side mappings; construction of these arrays stays on the geometry
+device. This incidence is all that hanging-node elimination needs from the
+geometry, so other geometries that implement
+<a class="reference internal" href="../api_reference/_generated/warp.fem.Geometry.html#warp.fem.Geometry.side_facet_incidence" title="warp.fem.Geometry.side_facet_incidence"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Geometry.side_facet_incidence()</span></code></a> are supported as well.</p>
+<p>Continuous Lagrange spaces of any degree on a static <a class="reference internal" href="../api_reference/_generated/warp.fem.AdaptiveNanogrid.html#warp.fem.AdaptiveNanogrid" title="warp.fem.AdaptiveNanogrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">AdaptiveNanogrid</span></code></a>
+can eliminate hanging nodes at coarse-to-fine interfaces: each node of a fine
+cell lying on a coarser cell’s facet takes the value of the coarse cell’s
+interpolant there:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">raw_basis</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">make_polynomial_basis_space</span><span class="p">(</span><span class="n">geo</span><span class="p">,</span> <span class="n">degree</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">basis</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">make_conforming_basis_space</span><span class="p">(</span><span class="n">raw_basis</span><span class="p">)</span>
+<span class="n">space</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">make_collocated_function_space</span><span class="p">(</span><span class="n">basis</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">)</span>
+</pre></div>
 </div>
+<p>The resulting space numbers only independent nodes. Its cell and side bases
+are built when <code class="docutils literal notranslate"><span class="pre">make_conforming_basis_space()</span></code> is called; side traces list
+each independent node of the two adjacent cells once. Use <code class="docutils literal notranslate"><span class="pre">raw_basis</span></code> when a boundary operation
+needs the original nodal points or <code class="docutils literal notranslate"><span class="pre">assembly=&quot;nodal&quot;</span></code>. Generic and dispatch
+assembly on <code class="docutils literal notranslate"><span class="pre">space</span></code> operate directly on the independent degrees of freedom.
+The constrained space must be reconstructed after changing the geometry.</p>
+<p><code class="docutils literal notranslate"><span class="pre">basis.prolongation_matrix(dof_dtype)</span></code> returns the sparse matrix <code class="docutils literal notranslate"><span class="pre">P</span></code> that
+maps independent degrees of freedom to raw ones, <code class="docutils literal notranslate"><span class="pre">u_raw</span> <span class="pre">=</span> <span class="pre">P</span> <span class="pre">&#64;</span> <span class="pre">u</span></code>. Its
+transpose reduces raw vectors and matrices, for instance <code class="docutils literal notranslate"><span class="pre">P.T</span> <span class="pre">&#64;</span> <span class="pre">K_raw</span> <span class="pre">&#64;</span> <span class="pre">P</span></code>;
+<a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_transposed.html#warp.sparse.bsr_transposed" title="warp.sparse.bsr_transposed"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.sparse.bsr_transposed()</span></code></a> builds it explicitly.</p>
+<p>Nodal assembly is not available on the constrained space: hanging nodes are
+not nodes of that space, so a nodal pass over it could not see a Dirichlet
+condition that touches one. For strong Dirichlet conditions, assemble the
+projector and prescribed values with <code class="docutils literal notranslate"><span class="pre">assembly=&quot;nodal&quot;</span></code> on a space built from
+<code class="docutils literal notranslate"><span class="pre">raw_basis</span></code>, then restrict them to the independent nodes:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">raw_space</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">make_collocated_function_space</span><span class="p">(</span><span class="n">raw_basis</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">)</span>
+<span class="n">raw_test</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">make_test</span><span class="p">(</span><span class="n">raw_space</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="n">boundary</span><span class="p">)</span>
+<span class="n">raw_trial</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">make_trial</span><span class="p">(</span><span class="n">raw_space</span><span class="p">,</span> <span class="n">domain</span><span class="o">=</span><span class="n">boundary</span><span class="p">)</span>
+<span class="n">raw_projector</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">integrate</span><span class="p">(</span><span class="n">projector_form</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s2">"u"</span><span class="p">:</span> <span class="n">raw_trial</span><span class="p">,</span> <span class="s2">"v"</span><span class="p">:</span> <span class="n">raw_test</span><span class="p">},</span> <span class="n">assembly</span><span class="o">=</span><span class="s2">"nodal"</span><span class="p">)</span>
+<span class="n">raw_values</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">integrate</span><span class="p">(</span><span class="n">value_form</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s2">"v"</span><span class="p">:</span> <span class="n">raw_test</span><span class="p">},</span> <span class="n">assembly</span><span class="o">=</span><span class="s2">"nodal"</span><span class="p">,</span> <span class="n">output_dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">)</span>
+<span class="n">projector</span> <span class="o">=</span> <span class="n">basis</span><span class="o">.</span><span class="n">reduce_dirichlet_projector</span><span class="p">(</span><span class="n">raw_projector</span><span class="p">)</span>
+<span class="n">values</span> <span class="o">=</span> <span class="n">basis</span><span class="o">.</span><span class="n">gather_independent_values</span><span class="p">(</span><span class="n">raw_values</span><span class="p">)</span>
+<span class="n">fem</span><span class="o">.</span><span class="n">project_linear_system</span><span class="p">(</span><span class="n">matrix</span><span class="p">,</span> <span class="n">rhs</span><span class="p">,</span> <span class="n">projector</span><span class="p">,</span> <span class="n">values</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The raw space shares <code class="docutils literal notranslate"><span class="pre">raw_basis</span></code> with the constrained one, so it adds little
+memory. A hanging node takes its value from its master nodes, so its own
+projector block is dropped: a Dirichlet region should contain the masters of the
+hanging nodes it constrains. <code class="docutils literal notranslate"><span class="pre">gather_independent_values()</span></code> picks the entry of each
+independent node from any raw nodal array and drops hanging-node entries. The
+prescribed values must be scaled like the projector, so assemble them with the
+same nodal form rather than interpolating them. The projector is not
+normalized: <a class="reference internal" href="../api_reference/_generated/warp.fem.project_linear_system.html#warp.fem.project_linear_system" title="warp.fem.project_linear_system"><code class="xref py py-func docutils literal notranslate"><span class="pre">project_linear_system()</span></code></a> normalizes it by default, or call
+<a class="reference internal" href="../api_reference/_generated/warp.fem.normalize_dirichlet_projector.html#warp.fem.normalize_dirichlet_projector" title="warp.fem.normalize_dirichlet_projector"><code class="xref py py-func docutils literal notranslate"><span class="pre">normalize_dirichlet_projector()</span></code></a> explicitly.</p>
+<p>The hanging-node prolongation is also available on its own as
+<a class="reference internal" href="../api_reference/_generated/warp.fem.hanging_node_prolongation.html#warp.fem.hanging_node_prolongation" title="warp.fem.hanging_node_prolongation"><code class="xref py py-func docutils literal notranslate"><span class="pre">hanging_node_prolongation()</span></code></a>. More generally,
+<a class="reference internal" href="../api_reference/_generated/warp.fem.make_constrained_basis_space.html#warp.fem.make_constrained_basis_space" title="warp.fem.make_constrained_basis_space"><code class="xref py py-func docutils literal notranslate"><span class="pre">make_constrained_basis_space()</span></code></a> builds a constrained basis from any
+scalar polynomial basis and a user-supplied sparse prolongation <code class="docutils literal notranslate"><span class="pre">P</span></code> with
+scalar blocks, one row per raw node and one column per independent degree of
+freedom. Each column must have an anchor: a raw node whose row is the unit
+vector of that column, which gives the node’s position. Passing a constrained
+basis composes <code class="docutils literal notranslate"><span class="pre">P</span></code> with its prolongation, so constraints can be layered
+without nesting spaces.</p>
+<p>On constrained spaces, <a class="reference internal" href="../api_reference/_generated/warp.fem.at_node.html#warp.fem.at_node" title="warp.fem.at_node"><code class="xref py py-obj docutils literal notranslate"><span class="pre">at_node</span></code></a> samples a node in the current cell or
+side when it holds the node’s anchor or a periodic copy of it. Otherwise, as
+for the coarse masters of a hanging node seen from a fine cell, the sample is
+taken at the anchor in another element. Positions and discrete fields can be
+read there as usual, for instance <code class="docutils literal notranslate"><span class="pre">domain(fem.at_node(v,</span> <span class="pre">s))</span></code>. The other test
+or trial function, however, does not follow the sample to another element: it
+evaluates to zero there. Forms such as <code class="docutils literal notranslate"><span class="pre">u(fem.at_node(v,</span> <span class="pre">s))</span> <span class="pre">*</span> <span class="pre">v(s)</span></code> are
+therefore only meaningful while the sample stays in its original element, as on
+periodic spaces; on adaptive grids, the contributions of moved samples are lost.</p>
+</section>
+<section id="periodic-boundary-conditions">
+<h3>Periodic boundary conditions<a class="headerlink" href="#periodic-boundary-conditions" title="Link to this heading">#</a></h3>
+<p><a class="reference internal" href="../api_reference/_generated/warp.fem.periodic_prolongation.html#warp.fem.periodic_prolongation" title="warp.fem.periodic_prolongation"><code class="xref py py-func docutils literal notranslate"><span class="pre">periodic_prolongation()</span></code></a> ties each node that has a copy shifted by one of
+the given translations to that copy, for one to three translations; edge and
+corner nodes resolve to a single node. The translations need not be
+perpendicular to the faces: the edge vectors of a parallelogram cell work as
+well as those of a box. It matches nodes by position, so it works on grids,
+simplex, quad and hex meshes, and nanogrids, at any polynomial degree:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">raw_basis</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">make_polynomial_basis_space</span><span class="p">(</span><span class="n">geo</span><span class="p">,</span> <span class="n">degree</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">P</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">periodic_prolongation</span><span class="p">(</span><span class="n">raw_basis</span><span class="p">,</span> <span class="n">translations</span><span class="o">=</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec2</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">),</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec2</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)])</span>
+<span class="n">basis</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">make_constrained_basis_space</span><span class="p">(</span><span class="n">raw_basis</span><span class="p">,</span> <span class="n">P</span><span class="p">)</span>
+<span class="n">space</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">make_collocated_function_space</span><span class="p">(</span><span class="n">basis</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>On an <a class="reference internal" href="../api_reference/_generated/warp.fem.AdaptiveNanogrid.html#warp.fem.AdaptiveNanogrid" title="warp.fem.AdaptiveNanogrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">AdaptiveNanogrid</span></code></a>, pass the basis returned by
+<a class="reference internal" href="../api_reference/_generated/warp.fem.make_conforming_basis_space.html#warp.fem.make_conforming_basis_space" title="warp.fem.make_conforming_basis_space"><code class="xref py py-func docutils literal notranslate"><span class="pre">make_conforming_basis_space()</span></code></a> to combine periodicity with hanging-node
+elimination; refinement must then match on paired faces. Only nodes with a
+partner at <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">-</span> <span class="pre">T</span></code> are tied: <a class="reference internal" href="../api_reference/_generated/warp.fem.periodic_prolongation.html#warp.fem.periodic_prolongation" title="warp.fem.periodic_prolongation"><code class="xref py py-func docutils literal notranslate"><span class="pre">periodic_prolongation()</span></code></a> does not check
+that paired faces match, and nodes without a partner stay independent.</p>
+<p>The geometry is unchanged: paired faces remain boundary sides. Continuous
+Galerkin forms need no boundary term there, since contributions from paired
+faces cancel, but jumps and discontinuous Galerkin terms do not cross the seam
+and positions are not wrapped. With only periodic and natural conditions,
+scalar diffusion leaves a constant null space; pin one independent node with a
+diagonal projector, as in <code class="docutils literal notranslate"><span class="pre">example_periodic_homogenization.py</span></code>.</p>
 </section>
 <section id="memory-management">
 <h3>Memory management<a class="headerlink" href="#memory-management" title="Link to this heading">#</a></h3>
@@ -1011,6 +1103,7 @@ This can be used to visualize discrete fields in VTK-aware viewers such as <code
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#nonconforming-fields">Nonconforming fields</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#partitioning">Partitioning</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#adaptivity">Adaptivity</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#periodic-boundary-conditions">Periodic boundary conditions</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#memory-management">Memory management</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#double-precision-fp64-mode">Double-precision (fp64) mode</a></li>
 </ul>

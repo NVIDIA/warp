@@ -33,6 +33,7 @@
       ~Geometry.side_arg_value
       ~Geometry.side_count
       ~Geometry.side_deformation_gradient
+      ~Geometry.side_facet_incidence
       ~Geometry.side_from_cell_coords
       ~Geometry.side_index_arg_value
       ~Geometry.side_inner_cell_coords
