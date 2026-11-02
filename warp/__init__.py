@@ -81,6 +81,8 @@ _register_module_source("warp.fem.quadrature.pic_quadrature", "warp._src.fem.qua
 _register_module_source("warp.fem.quadrature.quadrature", "warp._src.fem.quadrature.quadrature")
 _register_module_source("warp.fem.space.basis_function_space", "warp._src.fem.space.basis_function_space")
 _register_module_source("warp.fem.space.basis_space", "warp._src.fem.space.basis_space")
+_register_module_source("warp.fem.space.constrained_basis_space", "warp._src.fem.space.constrained_basis_space")
+_register_module_source("warp.fem.space.constraints", "warp._src.fem.space.constraints")
 _register_module_source("warp.fem.space.dof_mapper", "warp._src.fem.space.dof_mapper")
 _register_module_source("warp.fem.space.function_space", "warp._src.fem.space.function_space")
 _register_module_source("warp.fem.space.grid_2d_function_space", "warp._src.fem.space.grid_2d_function_space")

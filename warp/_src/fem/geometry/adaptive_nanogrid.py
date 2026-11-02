@@ -10,7 +10,7 @@ from warp._src.fem.cache import cached_vec_type
 from warp._src.fem.types import OUTSIDE, ElementIndex, make_coords, make_free_sample
 from warp._src.logger import log_warning
 
-from .geometry import Geometry
+from .geometry import Geometry, SideFacetIncidence
 from .nanogrid import (
     NanogridBase,
     _environment_offsets_from_bounds,
@@ -226,6 +226,7 @@ class AdaptiveNanogrid(NanogridBase):
         self._stacked_edge_count = 0
         self._stacked_face_grid = None
         self._stacked_face_count = 0
+        self._side_facet_incidence = None
 
         self.CellArg = _make_adaptive_cell_arg(scalar_type)
         self.SideArg = _make_adaptive_side_arg(self.CellArg, scalar_type)
@@ -249,6 +250,63 @@ class AdaptiveNanogrid(NanogridBase):
     def stacked_edge_count(self):
         self._ensure_stacked_edge_grid()
         return self._stacked_edge_count
+
+    def side_facet_incidence(self) -> SideFacetIncidence:
+        """Return the sides covering each cell facet, built on the geometry device.
+
+        Facet IDs are ``2 * axis`` for a cell's lower facet and
+        ``2 * axis + 1`` for its upper facet. Several sides may cover one
+        facet; each side has one or two neighboring cells.
+        """
+        if self._side_facet_incidence is not None:
+            return self._side_facet_incidence
+
+        self._ensure_face_grid()
+        device = self._cell_grid.device
+        side_count = self.side_count()
+        facet_count = 6 * self.cell_count()
+        inner_cell = wp.empty(side_count, dtype=int, device=device)
+        outer_cell = wp.empty(side_count, dtype=int, device=device)
+        inner_facet = wp.empty(side_count, dtype=int, device=device)
+        outer_facet = wp.empty(side_count, dtype=int, device=device)
+        side_facets = cache.borrow_temporary(None, shape=(side_count, 2), dtype=int, device=device)
+
+        wp.launch(
+            _build_side_facet_incidence,
+            dim=side_count,
+            inputs=[
+                self._face_ijk,
+                self._face_flags,
+                self._face_cell_indices,
+                self._cell_ijk,
+                inner_cell,
+                outer_cell,
+                inner_facet,
+                outer_facet,
+                side_facets,
+            ],
+            device=device,
+        )
+        offsets_tmp, sides_tmp = utils.compress_node_indices(facet_count, side_facets)
+        facet_side_offsets = wp.empty(facet_count + 1, dtype=int, device=device)
+        incidence_count = 2 * side_count - self.boundary_side_count()
+        facet_side_indices = wp.empty(incidence_count, dtype=int, device=device)
+        wp.copy(facet_side_offsets, offsets_tmp, count=facet_count + 1)
+        wp.copy(facet_side_indices, sides_tmp, count=incidence_count)
+        offsets_tmp.release()
+        sides_tmp.release()
+        side_facets.release()
+
+        self._side_facet_incidence = SideFacetIncidence(
+            facets_per_cell=6,
+            inner_cell=inner_cell,
+            outer_cell=outer_cell,
+            inner_facet=inner_facet,
+            outer_facet=outer_facet,
+            facet_side_offsets=facet_side_offsets,
+            facet_side_indices=facet_side_indices,
+        )
+        return self._side_facet_incidence
 
     def fill_cell_arg(self, arg, device):
         arg.cell_grid = self._cell_grid.id
@@ -523,8 +581,8 @@ class AdaptiveNanogrid(NanogridBase):
 
         cell_face_grid = _build_cell_face_grid(self._cell_ijk, self._cell_level, self._cell_grid, temporary_store)
 
-        self._face_grid = _build_completed_face_grid(
-            cell_face_grid, self._cell_grid, self.level_count, self._cell_level, temporary_store
+        self._face_grid, face_levels = _build_completed_face_grid(
+            cell_face_grid, self._cell_grid, self.level_count, self._cell_ijk, self._cell_level, temporary_store
         )
 
         face_count = self._face_grid.get_voxel_count()
@@ -546,6 +604,7 @@ class AdaptiveNanogrid(NanogridBase):
                 self._cell_level,
                 self._cell_env,
                 self._face_ijk,
+                face_levels,
                 self._face_cell_indices,
                 self._face_env,
                 self._face_flags,
@@ -554,6 +613,7 @@ class AdaptiveNanogrid(NanogridBase):
         )
         boundary_face_indices, _ = utils.masked_indices(boundary_face_mask)
         boundary_face_mask.release()
+        face_levels.release()
         self._boundary_face_indices = boundary_face_indices.detach()
 
     def _ensure_stacked_edge_grid(self):
@@ -1098,6 +1158,7 @@ def _build_completed_face_grid(
     cell_face_grid: wp.Volume,
     cell_grid: wp.Volume,
     level_count: int,
+    cell_ijk: wp.array,
     cell_level: wp.array,
     temporary_store: cache.TemporaryStore,
 ):
@@ -1117,22 +1178,178 @@ def _build_completed_face_grid(
 
     cat_face_count = cell_face_count + int(additional_face_count.numpy()[0])
     cat_face_ijk = cache.borrow_temporary(temporary_store, shape=(cat_face_count,), dtype=wp.vec3i, device=device)
+    candidate_levels = cache.borrow_temporary(temporary_store, shape=(cat_face_count,), dtype=int, device=device)
     wp.copy(src=cell_face_ijk, dest=cat_face_ijk, dest_offset=cat_face_count - cell_face_count)
+    wp.launch(
+        _set_cell_face_candidate_levels,
+        dim=cell_face_count,
+        device=device,
+        inputs=[
+            cell_grid.id,
+            level_count,
+            cell_level,
+            cell_face_ijk,
+            cat_face_count - cell_face_count,
+            candidate_levels,
+        ],
+    )
 
     wp.launch(
         _fill_multires_faces,
         dim=cell_face_count,
         device=device,
-        inputs=[cell_grid.id, level_count, cell_level, cell_face_ijk, additional_face_count, cat_face_ijk],
+        inputs=[
+            cell_grid.id,
+            level_count,
+            cell_level,
+            cell_face_ijk,
+            additional_face_count,
+            cat_face_ijk,
+            candidate_levels,
+        ],
     )
     cell_face_ijk.release()
     additional_face_count.release()
 
-    face_grid = wp.Volume.allocate_by_voxels(
-        cat_face_ijk.flatten(), voxel_size=cell_face_grid.get_voxel_size(), device=device
+    valid_faces = cache.borrow_temporary(temporary_store, shape=(cat_face_count,), dtype=int, device=device)
+    wp.launch(
+        _mark_valid_completed_faces,
+        dim=cat_face_count,
+        device=device,
+        inputs=[cell_grid.id, level_count, cell_ijk, cell_level, cat_face_ijk, candidate_levels, valid_faces],
     )
+    face_grid = wp.Volume.allocate_by_voxels(
+        cat_face_ijk.flatten(),
+        voxel_size=cell_face_grid.get_voxel_size(),
+        device=device,
+        point_mask=valid_faces,
+    )
+    face_levels = cache.borrow_temporary(
+        temporary_store, shape=(face_grid.get_voxel_count(),), dtype=int, device=device
+    )
+    face_levels.fill_(level_count)
+    wp.launch(
+        _scatter_completed_face_levels,
+        dim=cat_face_count,
+        device=device,
+        inputs=[face_grid.id, cat_face_ijk, candidate_levels, valid_faces, face_levels],
+    )
+    valid_faces.release()
+    candidate_levels.release()
     cat_face_ijk.release()
-    return face_grid
+    return face_grid, face_levels
+
+
+@wp.kernel
+def _set_cell_face_candidate_levels(
+    cell_grid: wp.uint64,
+    level_count: int,
+    cell_level: wp.array(dtype=wp.uint8),
+    face_ijk: wp.array(dtype=wp.vec3i),
+    offset: int,
+    candidate_levels: wp.array(dtype=int),
+):
+    face = wp.tid()
+    axis, ijk = NanogridBase._extract_axis_flag(face_ijk[face])
+    plus, minus = _find_face_neighbours(cell_grid, ijk, axis, level_count, cell_level)
+    level = level_count
+    if plus >= 0:
+        level = int(cell_level[plus])
+    if minus >= 0:
+        level = wp.min(level, int(cell_level[minus]))
+    candidate_levels[offset + face] = level
+
+
+@wp.kernel
+def _mark_valid_completed_faces(
+    cell_grid: wp.uint64,
+    level_count: int,
+    cell_ijk: wp.array(dtype=wp.vec3i),
+    cell_level: wp.array(dtype=wp.uint8),
+    face_ijk: wp.array(dtype=wp.vec3i),
+    candidate_levels: wp.array(dtype=int),
+    valid_faces: wp.array(dtype=int),
+):
+    face = wp.tid()
+    axis, ijk = NanogridBase._extract_axis_flag(face_ijk[face])
+    plus, minus = _find_face_neighbours(cell_grid, ijk, axis, level_count, cell_level)
+    valid = plus >= 0 or minus >= 0
+
+    face_level = candidate_levels[face]
+    if plus >= 0:
+        if ijk[axis] != cell_ijk[plus][axis]:
+            valid = False
+    if minus >= 0:
+        if ijk[axis] != cell_ijk[minus][axis] + (1 << int(cell_level[minus])):
+            valid = False
+
+    patch_size = 1 << face_level
+    for tangent in range(3):
+        if tangent != axis:
+            if plus >= 0:
+                origin = cell_ijk[plus][tangent]
+                extent = 1 << int(cell_level[plus])
+                if ijk[tangent] < origin or ijk[tangent] + patch_size > origin + extent:
+                    valid = False
+            if minus >= 0:
+                origin = cell_ijk[minus][tangent]
+                extent = 1 << int(cell_level[minus])
+                if ijk[tangent] < origin or ijk[tangent] + patch_size > origin + extent:
+                    valid = False
+
+    valid_faces[face] = int(valid)
+
+
+@wp.kernel
+def _scatter_completed_face_levels(
+    face_grid: wp.uint64,
+    candidate_ijk: wp.array(dtype=wp.vec3i),
+    candidate_levels: wp.array(dtype=int),
+    valid_faces: wp.array(dtype=int),
+    face_levels: wp.array(dtype=int),
+):
+    candidate = wp.tid()
+    if valid_faces[candidate] == 0:
+        return
+    ijk = candidate_ijk[candidate]
+    face = wp.volume_lookup_index(face_grid, ijk[0], ijk[1], ijk[2])
+    if face >= 0:
+        wp.atomic_min(face_levels, face, candidate_levels[candidate])
+
+
+@wp.kernel
+def _build_side_facet_incidence(
+    face_ijk: wp.array(dtype=wp.vec3i),
+    face_flags: wp.array(dtype=wp.uint8),
+    face_cells: wp.array(dtype=wp.vec2i),
+    cell_ijk: wp.array(dtype=wp.vec3i),
+    inner_cells: wp.array(dtype=int),
+    outer_cells: wp.array(dtype=int),
+    inner_facets: wp.array(dtype=int),
+    outer_facets: wp.array(dtype=int),
+    side_facets: wp.array2d(dtype=int),
+):
+    side = wp.tid()
+    axis = NanogridBase._get_face_axis(face_flags[side])
+    origin = face_ijk[side]
+    neighbors = face_cells[side]
+    inner = neighbors[0]
+    outer = neighbors[1]
+
+    inner_facet = 2 * axis + int(origin[axis] != cell_ijk[inner][axis])
+    inner_cells[side] = inner
+    inner_facets[side] = inner_facet
+    side_facets[side, 0] = 6 * inner + inner_facet
+
+    if outer == inner:
+        outer_cells[side] = -1
+        outer_facets[side] = -1
+        side_facets[side, 1] = -1
+    else:
+        outer_facet = 2 * axis + int(origin[axis] != cell_ijk[outer][axis])
+        outer_cells[side] = outer
+        outer_facets[side] = outer_facet
+        side_facets[side, 1] = 6 * outer + outer_facet
 
 
 def _build_stacked_face_grid(cell_ijk, cell_level, grid: wp.Volume, temporary_store: cache.TemporaryStore):
@@ -1205,6 +1422,7 @@ def _fill_multires_faces(
     face_ijk: wp.array(dtype=wp.vec3i),
     count: wp.array(dtype=int),
     added_ijk: wp.array(dtype=wp.vec3i),
+    candidate_levels: wp.array(dtype=int),
 ):
     face = wp.tid()
     axis, ijk = NanogridBase._extract_axis_flag(face_ijk[face])
@@ -1227,6 +1445,7 @@ def _fill_multires_faces(
             f_ijk[(axis + 1) % 3] |= (f & side_mask) << fine_level
             f_ijk[(axis + 2) % 3] |= (f >> level_diff) << fine_level
             added_ijk[offset + f] = NanogridBase._add_axis_flag(f_ijk, axis)
+            candidate_levels[offset + f] = fine_level
 
 
 @wp.kernel
@@ -1236,6 +1455,7 @@ def _build_face_indices_and_flags(
     cell_level: wp.array(dtype=wp.uint8),
     cell_env: wp.array(dtype=int),
     face_ijk: wp.array(dtype=wp.vec3i),
+    face_levels: wp.array(dtype=int),
     face_cell_indices: wp.array(dtype=wp.vec2i),
     face_env: wp.array(dtype=int),
     face_flags: wp.array(dtype=wp.uint8),
@@ -1246,7 +1466,7 @@ def _build_face_indices_and_flags(
     plus_cell_index, minus_cell_index = _find_face_neighbours(cell_grid, ijk, axis, level_count, cell_level)
     inner_cell = wp.where(minus_cell_index == -1, plus_cell_index, minus_cell_index)
     outer_cell = wp.where(plus_cell_index == -1, minus_cell_index, plus_cell_index)
-    face_level = wp.min(cell_level[inner_cell], cell_level[outer_cell])
+    face_level = wp.uint8(face_levels[face])
     face_ijk[face] = ijk
     flags = NanogridBase._make_face_flags(axis, plus_cell_index, minus_cell_index) | (face_level << _FACE_LEVEL_BIT)
     face_flags[face] = flags

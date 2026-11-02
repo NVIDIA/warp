@@ -14,6 +14,8 @@ from .function_space import FunctionSpace
 from .basis_function_space import CollocatedFunctionSpace, ContravariantFunctionSpace, CovariantFunctionSpace
 from .topology import SpaceTopology, RegularDiscontinuousSpaceTopology
 from .basis_space import BasisSpace, ShapeBasisSpace
+from .constrained_basis_space import make_conforming_basis_space, make_constrained_basis_space
+from .constraints import hanging_node_prolongation, periodic_prolongation
 from .point_basis_space import PointBasisSpace, UnstructuredPointTopology
 from .shape import ElementBasis, make_element_shape_function, ShapeFunction
 

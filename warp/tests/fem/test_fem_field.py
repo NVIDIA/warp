@@ -899,6 +899,30 @@ def test_traced_cells_field_lookup_is_correct(test, device):
         )
 
 
+@fem.integrand(kernel_options={"enable_backward": False})
+def _check_default_at_node(s: fem.Sample, domain: fem.Domain, U: fem.Field, positions: wp.array[wp.vec2]):
+    for k in range(fem.node_count(U, s)):
+        node_sample = fem.at_node(U, s, k)
+        node_index = fem.node_index(U, s, k)
+        wp.expect_eq(node_sample.element_index, s.element_index)
+        wp.expect_eq(node_sample.qp_index, s.qp_index)
+        wp.expect_near(domain(node_sample), positions[node_index], 1.0e-5)
+    return 0.0
+
+
+def test_default_at_node_sample(test, device):
+    with wp.ScopedDevice(device):
+        geo = fem.Grid2D(res=wp.vec2i(2, 2))
+        space = fem.make_polynomial_space(geo, degree=1)
+        field = space.make_field()
+        fem.integrate(
+            _check_default_at_node,
+            domain=fem.Cells(geo),
+            fields={"U": field},
+            values={"positions": space.node_positions()},
+        )
+
+
 devices = get_test_devices()
 
 
@@ -914,6 +938,7 @@ class TestFemField(unittest.TestCase):
 add_function_test(TestFemField, "test_vector_spaces", test_vector_spaces, devices=devices)
 add_function_test(TestFemField, "test_vector_space_interpolation", test_vector_space_interpolation, devices=devices)
 add_function_test(TestFemField, "test_bspline_space_interpolation", test_bspline_space_interpolation, devices=devices)
+add_function_test(TestFemField, "test_default_at_node_sample", test_default_at_node_sample, devices=devices)
 add_function_test(TestFemField, "test_dof_mapper", test_dof_mapper)
 add_function_test(
     TestFemField, "test_implicit_field_function_identity", test_implicit_field_function_identity, devices=devices

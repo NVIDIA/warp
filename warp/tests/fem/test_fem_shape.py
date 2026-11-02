@@ -68,6 +68,16 @@ def test_shape_function_weight(
     if node_unity:
         wp.launch(node_unity_test, dim=NODE_COUNT, inputs=[])
 
+    # Interpolatory shape functions also vanish at the other nodes
+    @dynamic_kernel(suffix=shape.name, kernel_options={"enable_backward": False})
+    def interpolation_test():
+        n, m = wp.tid()
+        node_w = weight_fn(node_coords_fn(n), m)
+        wp.expect_near(node_w, wp.where(n == m, 1.0, 0.0), 1e-5)
+
+    if shape.INTERPOLATORY:
+        wp.launch(interpolation_test, dim=(NODE_COUNT, NODE_COUNT), inputs=[])
+
     # Sum of node quadrature weights should be one (order 0)
     # Sum of weighted quadrature coords should be element center (order 1)
     node_quadrature_weight_fn = shape.make_node_quadrature_weight()

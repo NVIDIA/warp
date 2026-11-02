@@ -455,6 +455,9 @@ class NodalQuadrature(_QuadratureWithRegularEvaluationPoints):
                 raise ValueError("One of space, basis_space or space_partition must be provided")
             basis_space = space.basis
 
+        if not basis_space.supports_nodal_quadrature:
+            raise ValueError("Nodal quadrature is not supported for a constrained basis; use the raw basis")
+
         if space_partition is None:
             space_partition = WholeSpacePartition(basis_space.topology)
 

@@ -4,6 +4,7 @@
 import math
 import platform
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 
@@ -811,6 +812,31 @@ def test_adaptive_nanogrid(test, device):
     test.assertEqual(geo.stacked_face_count(), geo.side_count() + 2)
     test.assertEqual(geo.stacked_edge_count(), 6 * 4 + 9 + (3 * 2 * (2 + 1) ** 2 - 12) + 7)
 
+    incidence = geo.side_facet_incidence()
+    test.assertIs(incidence, geo.side_facet_incidence())
+    test.assertEqual(incidence.facets_per_cell, 6)
+    offsets = incidence.facet_side_offsets.numpy()
+    facet_sides = incidence.facet_side_indices.numpy()
+    inner_cells = incidence.inner_cell.numpy()
+    outer_cells = incidence.outer_cell.numpy()
+    inner_facets = incidence.inner_facet.numpy()
+    outer_facets = incidence.outer_facet.numpy()
+    test.assertEqual(len(offsets), 6 * geo.cell_count() + 1)
+    test.assertTrue(np.any(np.diff(offsets) > 1))  # A coarse facet has several sides.
+    test.assertEqual(np.count_nonzero(outer_cells < 0), geo.boundary_side_count())
+    for cell_facet in range(6 * geo.cell_count()):
+        test.assertGreater(offsets[cell_facet + 1], offsets[cell_facet])
+        cell, local_facet = divmod(cell_facet, 6)
+        for side in facet_sides[offsets[cell_facet] : offsets[cell_facet + 1]]:
+            test.assertTrue(
+                (inner_cells[side] == cell and inner_facets[side] == local_facet)
+                or (outer_cells[side] == cell and outer_facets[side] == local_facet)
+            )
+    np.testing.assert_array_equal(
+        np.bincount(facet_sides, minlength=geo.side_count()),
+        np.where(outer_cells < 0, 1, 2),
+    )
+
     side_measures, cell_measures = _launch_test_geometry_kernel(geo, device)
 
     test.assertAlmostEqual(np.sum(cell_measures.numpy()), 4.0, places=4)
@@ -820,10 +846,142 @@ def test_adaptive_nanogrid(test, device):
     ref_field = fem.ImplicitField(fem.Cells(geo), func=_refinement_field)
     non_graded_geo = fem.adaptive_nanogrid_from_field(grid1, level_count=3, refinement_field=ref_field)
     _launch_test_geometry_kernel(non_graded_geo, device)
+    _assert_adaptive_side_facet_coverage(test, non_graded_geo, non_graded_geo.side_facet_incidence())
 
     # Test automatic grading
     graded_geo = fem.adaptive_nanogrid_from_field(grid1, level_count=3, refinement_field=ref_field, grading="face")
     test.assertEqual(non_graded_geo.cell_count() + 7, graded_geo.cell_count())
+    _assert_adaptive_side_facet_coverage(test, graded_geo, graded_geo.side_facet_incidence())
+
+
+def _assert_adaptive_side_facet_coverage(test, geometry, incidence):
+    side_origins = geometry._face_ijk.numpy()
+    side_flags = geometry._face_flags.numpy()
+    cell_origins = geometry._cell_ijk.numpy()
+    cell_levels = geometry._cell_level.numpy()
+    offsets = incidence.facet_side_offsets.numpy()
+    facet_sides = incidence.facet_side_indices.numpy()
+
+    for cell in range(geometry.cell_count()):
+        cell_size = 1 << int(cell_levels[cell])
+        for facet in range(6):
+            axis = facet // 2
+            covered = np.zeros((cell_size, cell_size), dtype=int)
+            tangents = [a for a in range(3) if a != axis]
+            for side in facet_sides[offsets[6 * cell + facet] : offsets[6 * cell + facet + 1]]:
+                side_origin = side_origins[side]
+                side_size = 1 << (int(side_flags[side]) >> 4)
+                test.assertEqual(side_origin[axis], cell_origins[cell, axis] + (facet % 2) * cell_size)
+                start = [int(side_origin[a] - cell_origins[cell, a]) for a in tangents]
+                test.assertTrue(all(0 <= s and s + side_size <= cell_size for s in start))
+                covered[start[0] : start[0] + side_size, start[1] : start[1] + side_size] += 1
+            np.testing.assert_array_equal(covered, np.ones_like(covered))
+
+
+def test_adaptive_nanogrid_sparse_side_facets(test, device):
+    geometry = fem.AdaptiveNanogrid.from_environment_voxels(
+        points=wp.array([[0, 0, 0], [2, 0, 0]], dtype=wp.vec3i, device=device),
+        cell_levels=wp.array([1, 0], dtype=wp.uint8, device=device),
+        point_envs=wp.zeros(2, dtype=wp.int32, device=device),
+        env_count=1,
+        level_count=2,
+        device=device,
+    )
+    geometry.side_count()
+    with patch.object(wp.array, "numpy", side_effect=AssertionError("side-facet construction read back an array")):
+        incidence = geometry.side_facet_incidence()
+    _assert_adaptive_side_facet_coverage(test, geometry, incidence)
+
+
+def test_adaptive_nanogrid_three_level_side_facets(test, device):
+    base = [(4 * i, 4 * j, 4 * k) for i, j, k in np.ndindex(2, 2, 2) if (i, j, k) != (1, 0, 0)]
+    middle = [(4 + 2 * i, 2 * j, 2 * k) for i, j, k in np.ndindex(2, 2, 2) if (i, j, k) != (0, 1, 0)]
+    fine = [(4 + i, 2 + j, k) for i, j, k in np.ndindex(2, 2, 2)]
+    points = wp.array(base + middle + fine, dtype=wp.vec3i, device=device)
+    levels = wp.array([2] * len(base) + [1] * len(middle) + [0] * len(fine), dtype=wp.uint8, device=device)
+    geometry = fem.AdaptiveNanogrid.from_environment_voxels(
+        points=points,
+        cell_levels=levels,
+        point_envs=wp.zeros(len(base) + len(middle) + len(fine), dtype=wp.int32, device=device),
+        env_count=1,
+        level_count=3,
+        device=device,
+    )
+    _assert_adaptive_side_facet_coverage(test, geometry, geometry.side_facet_incidence())
+
+
+@integrand
+def _unit_integrand(s: Sample):
+    return 1.0
+
+
+@integrand
+def _cell_volume_form(s: Sample, v: fem.Field):
+    return v(s)
+
+
+@integrand
+def _outward_normal_component(s: Sample, domain: Domain, axis: int):
+    return fem.normal(domain, s)[axis]
+
+
+@wp.func
+def _shell_refinement(x: wp.vec3):
+    return wp.abs(wp.length(x - wp.vec3(4.0)) - 2.5) / 4.0
+
+
+def _assert_adaptive_side_areas(test, geometry):
+    """Sides tile every cell facet exactly once and the boundary is closed."""
+    side_area = float(fem.integrate(_unit_integrand, domain=fem.Sides(geometry), output_dtype=float))
+    boundary = fem.BoundarySides(geometry)
+    boundary_area = float(fem.integrate(_unit_integrand, domain=boundary, output_dtype=float))
+    normal_sum = [
+        float(fem.integrate(_outward_normal_component, domain=boundary, values={"axis": axis}, output_dtype=float))
+        for axis in range(3)
+    ]
+    np.testing.assert_allclose(normal_sum, 0.0, atol=1.0e-4 * boundary_area)
+
+    # Interior sides are covered by a facet of each of their two cells, boundary sides by one
+    cells = fem.Cells(geometry)
+    volumes = fem.integrate(
+        _cell_volume_form, fields={"v": fem.make_test(fem.make_polynomial_space(geometry, degree=0), domain=cells)}
+    ).numpy()
+    facet_area = 6.0 * float(np.sum(volumes ** (2.0 / 3.0)))
+    np.testing.assert_allclose(side_area, 0.5 * (facet_area + boundary_area), rtol=1.0e-5)
+    return side_area, boundary_area
+
+
+def test_adaptive_nanogrid_side_areas(test, device):
+    with wp.ScopedDevice(device):
+        # A coarse cell next to a single fine cell: the shared side is the fine facet
+        geometry = fem.AdaptiveNanogrid.from_environment_voxels(
+            points=wp.array([[0, 0, 0], [2, 0, 0]], dtype=wp.vec3i),
+            cell_levels=wp.array([1, 0], dtype=wp.uint8),
+            point_envs=wp.zeros(2, dtype=wp.int32),
+            env_count=1,
+            level_count=2,
+        )
+        side_area, boundary_area = _assert_adaptive_side_areas(test, geometry)
+        test.assertAlmostEqual(boundary_area, 24.0 - 1.0 + 6.0 - 1.0, places=4)
+        test.assertAlmostEqual(side_area, boundary_area + 1.0, places=4)
+
+        # Three levels with missing cells, and a grid refined without grading
+        base = [(4 * i, 4 * j, 4 * k) for i, j, k in np.ndindex(2, 2, 2) if (i, j, k) != (1, 0, 0)]
+        middle = [(4 + 2 * i, 2 * j, 2 * k) for i, j, k in np.ndindex(2, 2, 2) if (i, j, k) != (0, 1, 0)]
+        fine = [(4 + i, 2 + j, k) for i, j, k in np.ndindex(2, 2, 2)]
+        geometry = fem.AdaptiveNanogrid.from_environment_voxels(
+            points=wp.array(base + middle + fine, dtype=wp.vec3i),
+            cell_levels=wp.array([2] * len(base) + [1] * len(middle) + [0] * len(fine), dtype=wp.uint8),
+            point_envs=wp.zeros(len(base) + len(middle) + len(fine), dtype=wp.int32),
+            env_count=1,
+            level_count=3,
+        )
+        _assert_adaptive_side_areas(test, geometry)
+
+        volume = wp.Volume.allocate(min=[0, 0, 0], max=[7, 7, 7], voxel_size=1.0, bg_value=None)
+        refinement = fem.ImplicitField(fem.Cells(fem.Nanogrid(volume)), func=_shell_refinement)
+        geometry = fem.adaptive_nanogrid_from_field(volume, level_count=3, refinement_field=refinement)
+        _assert_adaptive_side_areas(test, geometry)
 
 
 @integrand
@@ -1165,6 +1323,21 @@ add_function_test(
     devices=cuda_devices,
 )
 add_function_test(TestFemGeometry, "test_adaptive_nanogrid", test_adaptive_nanogrid, devices=devices)
+add_function_test(
+    TestFemGeometry,
+    "test_adaptive_nanogrid_sparse_side_facets",
+    test_adaptive_nanogrid_sparse_side_facets,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestFemGeometry,
+    "test_adaptive_nanogrid_three_level_side_facets",
+    test_adaptive_nanogrid_three_level_side_facets,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestFemGeometry, "test_adaptive_nanogrid_side_areas", test_adaptive_nanogrid_side_areas, devices=cuda_devices
+)
 add_function_test(TestFemGeometry, "test_deformed_geometry", test_deformed_geometry, devices=devices)
 add_function_test(TestFemGeometry, "test_deformed_geometry_2d", test_deformed_geometry_2d, devices=devices)
 add_function_test(

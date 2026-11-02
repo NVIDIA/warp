@@ -35,8 +35,18 @@ class BasisSpace:
     See also: :func:`make_polynomial_basis_space`, :func:`make_collocated_function_space`
     """
 
+    supports_nodal_assembly = True
+    """Whether nodal assembly may assume a diagonal node coupling."""
+
+    supports_nodal_quadrature = True
+    """Whether this basis may supply nodal quadrature points and weights."""
+
+    moves_node_samples = False
+    """Whether ``make_node_sample()`` may return another element than the one it is given."""
+
     _dynamic_attribute_constructors: ClassVar = {
         "node_coords_in_element": lambda obj: obj.make_node_coords_in_element(),
+        "node_sample": lambda obj: obj.make_node_sample(),
         "node_quadrature_weight": lambda obj: obj.make_node_quadrature_weight(),
         "element_inner_weight": lambda obj: obj.make_element_inner_weight(),
         "element_inner_weight_gradient": lambda obj: obj.make_element_inner_weight_gradient(),
@@ -139,6 +149,28 @@ class BasisSpace:
     def make_node_coords_in_element(self):
         """Create a device function returning node coordinates within an element."""
         raise NotImplementedError()
+
+    def make_node_sample(self):
+        """Create a device function locating an element node's physical anchor.
+
+        The result is an element index, in-element coordinates, and the same
+        node's local slot on that element. Constrained spaces may return a
+        different element containing the independent master node.
+        """
+        node_coords_in_element = self.node_coords_in_element
+
+        @cache.dynamic_func(suffix=self.name)
+        def node_sample(
+            elt_arg: self.topology.ElementArg,
+            topo_arg: self.topology.TopologyArg,
+            basis_arg: self.BasisArg,
+            element_index: ElementIndex,
+            node_index_in_elt: int,
+        ):
+            coords = node_coords_in_element(elt_arg, topo_arg, basis_arg, element_index, node_index_in_elt)
+            return element_index, coords, node_index_in_elt
+
+        return node_sample
 
     def make_node_quadrature_weight(self):
         """Create a device function returning node quadrature weights."""

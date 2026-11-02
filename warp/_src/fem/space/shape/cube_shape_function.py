@@ -53,6 +53,8 @@ class CubeShapeFunction(ShapeFunction):
 class CubeTripolynomialShapeFunctions(CubeShapeFunction):
     """Tripolynomial (tensor-product Lagrange) shape functions on hexahedral elements."""
 
+    INTERPOLATORY = True
+
     def __init__(self, degree: int, family: Polynomial, scalar_type: type = wp.float32):
         self.family = family
         self.scalar_type = scalar_type
@@ -507,6 +509,8 @@ class CubeSerendipityShapeFunctions(CubeShapeFunction):
     Corner shape functions are trilinear shape functions times a function of (x^{d-1} + y^{d-1} + z^{d-1}).
     """
 
+    INTERPOLATORY = True
+
     def __init__(self, degree: int, family: Polynomial, scalar_type: type = wp.float32):
         if not is_closed(family):
             raise ValueError("A closed polynomial family is required to define serendipity elements")
@@ -821,6 +825,8 @@ class CubeSerendipityShapeFunctions(CubeShapeFunction):
 
 class CubeNonConformingPolynomialShapeFunctions(ShapeFunction):
     """Non-conforming polynomial shape functions on hexahedral elements using embedded tetrahedra."""
+
+    INTERPOLATORY = True
 
     # embeds the largest regular tet centered at (0.5, 0.5, 0.5) into the reference cube
 
