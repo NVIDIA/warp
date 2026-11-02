@@ -14370,6 +14370,12 @@ def capture_launch(graph: Graph, stream: Stream | None = None):
 
     # ---- CPU graph path (live capture) ----
     if graph.device.is_cpu and graph.apic_state is not None:
+        parent_capture = _get_apic_capture_for_device(graph.device)
+        if parent_capture is not None and graph._apic_capture is not None:
+            # Replaying into a parent re-records native refits without calling
+            # Mesh.refit(), so transfer ownership before the child can be released.
+            for mesh in graph._apic_capture._live_meshes.values():
+                parent_capture.retain_mesh(mesh)
         if not runtime.core.wp_apic_cpu_replay_state(graph.apic_state):
             raise RuntimeError(f"CPU graph replay failed: {runtime.get_error_string() or 'no operations recorded'}")
         return

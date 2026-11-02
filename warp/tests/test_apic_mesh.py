@@ -1084,6 +1084,51 @@ class TestCpuGraphGeometry(unittest.TestCase):
         for name, ref in refs.items():
             self.assertIsNone(ref(), f"Captured {name} leaked after graph destruction")
 
+    def test_nested_graph_retains_mesh_and_refit_buffers(self):
+        """Retain nested refit meshes after child graphs and caller references disappear."""
+        wp.load_module(device="cpu")
+
+        def wrap(graph, apic):
+            with wp.ScopedCapture(device="cpu", apic=apic) as capture:
+                wp.capture_launch(graph)
+            return capture.graph
+
+        def record(depth, apic):
+            mesh = self.make_mesh()
+            refs = [weakref.ref(value) for value in (mesh, mesh.points, mesh.velocities, mesh.indices)]
+            with wp.ScopedCapture(device="cpu", apic=apic) as capture:
+                mesh.refit()
+            graph = capture.graph
+            child_ref = weakref.ref(graph)
+            del capture
+            for _ in range(depth):
+                graph = wrap(graph, apic)
+            return graph, refs, child_ref
+
+        hits = wp.zeros(1, dtype=int, device="cpu")
+        for apic in (False, True):
+            for depth in (1, 2):
+                with self.subTest(apic=apic, depth=depth):
+                    graph, refs, child_ref = record(depth, apic)
+                    gc.collect()
+                    self.assertIsNone(child_ref(), "The parent should not need to retain the child graph")
+                    for ref in refs:
+                        self.assertIsNotNone(ref(), "A nested refit lost its mesh or backing arrays")
+                    for x, expected in ((10.0, 1), (30.0, 0), (10.0, 1)):
+                        refs[1]().assign(self.triangle(x))
+                        wp.capture_launch(graph)
+                        hits.zero_()
+                        wp.launch(cpu_graph_mesh_hits, dim=1, inputs=[refs[0]().id, hits], device="cpu")
+                        np.testing.assert_array_equal(hits.numpy(), [expected])
+                    if apic:
+                        with tempfile.TemporaryDirectory() as tmpdir:
+                            with self.assertRaisesRegex(RuntimeError, r"wp\.Mesh\.refit\(\)"):
+                                wp.capture_save(graph, os.path.join(tmpdir, "nested_refit"))
+                    del graph
+                    gc.collect()
+                    for ref in refs:
+                        self.assertIsNone(ref(), "A nested refit leaked its mesh or backing arrays")
+
     def test_mesh_refit_rejects_serialization(self):
         """Reject process-local mesh refit records instead of saving dangling IDs."""
         mesh = self.make_mesh()
