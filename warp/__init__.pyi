@@ -10329,23 +10329,80 @@ def atomic_add(
 
 @over
 def atomic_sub(arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, value: Any) -> Any:
-    """Atomically subtracts ``value`` onto ``arr[i]`` and returns the original value of ``arr[i]``.
+    """Atomically subtract a value from an array element in place.
 
-        This function is automatically invoked when using the syntax ``arr[i] -= value``."""
+        For composite dtypes (vectors, matrices, quaternions, and transforms),
+        the update is atomic only per component. Another thread can observe
+        ``arr[i]`` with only some of its components updated.
+
+        On GPU, concurrent floating-point updates to the same element are
+        applied in an unspecified order, so rounding can make the result differ
+        between runs. Enable deterministic mode for reproducible results; see
+        :ref:`determinism`. In deterministic mode, compiling a kernel that uses
+        the returned value raises :class:`~warp.WarpDeterminismError`.
+
+        This function does not support ``float16`` or ``bfloat16`` on GPUs
+        with compute capability below 7.0, or ``float64`` below 6.0. Kernels
+        compiled for those GPUs skip these updates without raising an error.
+        Use ``float32`` on those GPUs instead.
+
+        Currently, the backward pass does not recompute the returned value,
+        so gradients that depend on it are incorrect. If the backward pass
+        needs the returned value, for example as an index, save it to an
+        array in the forward pass and return it from a custom replay
+        function; see :ref:`custom-replay-function`. Even with a custom
+        replay function, autodiff treats the returned value as a constant,
+        so ``arr`` receives no gradient from expressions that use it.
+
+        Args:
+            arr: Array containing the element to update. Its scalar type must be
+                ``int32``, ``uint32``, ``int64``, ``uint64``, ``float16``,
+                ``bfloat16``, ``float32``, or ``float64``.
+            i: Index of the element to update.
+            value: Amount to subtract. ``value`` must have the same dtype as
+                ``arr``.
+
+        Returns:
+            The value of ``arr[i]`` before this update. For composite dtypes, the
+            result may not equal any value that ``arr[i]`` held at a single
+            point in time."""
     ...
 
 @over
 def atomic_sub(arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, j: Int, value: Any) -> Any:
-    """Atomically subtracts ``value`` onto ``arr[i,j]`` and returns the original value of ``arr[i,j]``.
+    """Atomically subtract a value from an array element in place.
 
-        This function is automatically invoked when using the syntax ``arr[i,j] -= value``."""
+        See the ``wp.atomic_sub(arr, i, value)`` overload for dtype, atomicity,
+        determinism, and autodiff details.
+
+        Args:
+            arr: Array containing the element to update.
+            i: First index of the element.
+            j: Second index of the element.
+            value: Amount to subtract. ``value`` must have the same dtype as
+                ``arr``.
+
+        Returns:
+            The value of ``arr[i,j]`` before this update."""
     ...
 
 @over
 def atomic_sub(arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, j: Int, k: Int, value: Any) -> Any:
-    """Atomically subtracts ``value`` onto ``arr[i,j,k]`` and returns the original value of ``arr[i,j,k]``.
+    """Atomically subtract a value from an array element in place.
 
-        This function is automatically invoked when using the syntax ``arr[i,j,k] -= value``."""
+        See the ``wp.atomic_sub(arr, i, value)`` overload for dtype, atomicity,
+        determinism, and autodiff details.
+
+        Args:
+            arr: Array containing the element to update.
+            i: First index of the element.
+            j: Second index of the element.
+            k: Third index of the element.
+            value: Amount to subtract. ``value`` must have the same dtype as
+                ``arr``.
+
+        Returns:
+            The value of ``arr[i,j,k]`` before this update."""
     ...
 
 @over
@@ -10357,9 +10414,22 @@ def atomic_sub(
     l: Int,
     value: Any,
 ) -> Any:
-    """Atomically subtracts ``value`` onto ``arr[i,j,k,l]`` and returns the original value of ``arr[i,j,k,l]``.
+    """Atomically subtract a value from an array element in place.
 
-        This function is automatically invoked when using the syntax ``arr[i,j,k,l] -= value``."""
+        See the ``wp.atomic_sub(arr, i, value)`` overload for dtype, atomicity,
+        determinism, and autodiff details.
+
+        Args:
+            arr: Array containing the element to update.
+            i: First index of the element.
+            j: Second index of the element.
+            k: Third index of the element.
+            l: Fourth index of the element.
+            value: Amount to subtract. ``value`` must have the same dtype as
+                ``arr``.
+
+        Returns:
+            The value of ``arr[i,j,k,l]`` before this update."""
     ...
 
 @over
