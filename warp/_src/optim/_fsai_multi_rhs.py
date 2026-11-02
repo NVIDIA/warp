@@ -170,12 +170,14 @@ class FSAIMultiRHS(LinearOperator):
                 z.ptr + z.size * wp.types.type_size_in_bytes(z.dtype),
             ):
                 raise ValueError("Partially overlapping output views are unsupported")
-        stream = self.device.stream if self.device.is_cuda and not self.device.stream.is_capturing else None
-        if stream is not None and stream is not self._owner._last_stream:
-            if self._owner._last_stream is not None and not self._owner._last_stream.is_capturing:
-                self._owner._last_stream.record_event(self._event)
-                stream.wait_event(self._event)
-            self._owner._last_stream = stream
+        if self.device.is_cuda:
+            stream, last = self.device.stream, self._owner._last_stream
+            # Same-stream calls, the common case, skip the native capture query.
+            if stream is not last and not stream.is_capturing:
+                if last is not None and not last.is_capturing:
+                    last.record_event(self._event)
+                    stream.wait_event(self._event)
+                self._owner._last_stream = stream
         if alpha == 0:
             wp.launch(_combine, z.size, [x, y, z, wp.float64(0), wp.float64(beta)], device=self.device)
             return
