@@ -1318,13 +1318,31 @@ def apply_defaults(
     bound_args.arguments = dict(new_arguments)
 
 
+def _plain_parameter_count(signature: inspect.Signature) -> int | None:
+    """Return the number of parameters if all are positional-or-keyword without a default, else ``None``."""
+    params = signature.parameters.values()
+    if all(p.kind is p.POSITIONAL_OR_KEYWORD and p.default is p.empty for p in params):
+        return len(params)
+    return None
+
+
 def func_match_args(func, arg_types, kwarg_types, allow_erasure=False):
+    signature = func.signature
+    if type(arg_types) is tuple and kwarg_types == {} and func.defaults == {}:
+        # binding positional arguments to such parameters succeeds exactly when the counts are equal,
+        # so skip Signature.bind(), which is costly on this hot path
+        count = func.__dict__.get("_plain_parameter_count")
+        if count is None or count[0] is not signature:
+            count = func._plain_parameter_count = (signature, _plain_parameter_count(signature))
+        if count[1] is not None:
+            return len(arg_types) == count[1] and _match_bound_arg_types(func, arg_types, allow_erasure)
+
     try:
         # Try to bind the given arguments to the function's signature.
         # This is not checking whether the argument types are matching,
         # rather it's just assigning each argument to the corresponding
         # function parameter.
-        bound_arg_types = func.signature.bind(*arg_types, **kwarg_types)
+        bound_arg_types = signature.bind(*arg_types, **kwarg_types)
     except TypeError:
         return False
 
@@ -1335,8 +1353,10 @@ def func_match_args(func, arg_types, kwarg_types, allow_erasure=False):
         if k not in bound_arg_types.arguments
     }
     apply_defaults(bound_arg_types, default_arg_types)
-    bound_arg_types = tuple(bound_arg_types.arguments.values())
+    return _match_bound_arg_types(func, tuple(bound_arg_types.arguments.values()), allow_erasure)
 
+
+def _match_bound_arg_types(func, bound_arg_types, allow_erasure):
     # Check the given argument types against the ones defined on the function.
     for bound_arg_type, func_arg_type in zip(bound_arg_types, func.input_types.values(), strict=True):
         # Let the `value_func` callback infer the type.
@@ -1812,6 +1832,12 @@ def specialize_callable_func(func, callable_arg_values):
 def get_arg_type(arg: Var | Any) -> type:
     arg = strip_reference(arg)
 
+    if isinstance(arg, Var):
+        if get_origin(arg.type) is tuple:
+            return get_args(arg.type)
+
+        return get_arg_type(arg.type)
+
     if isinstance(arg, str):
         return str
 
@@ -1833,12 +1859,6 @@ def get_arg_type(arg: Var | Any) -> type:
         ),
     ):
         return arg
-
-    if isinstance(arg, Var):
-        if get_origin(arg.type) is tuple:
-            return get_args(arg.type)
-
-        return get_arg_type(arg.type)
 
     if isinstance(arg, Sequence):
         return tuple(get_arg_type(x) for x in arg)

@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import ast
+import copy
 import functools
 import gc
 import importlib
@@ -2829,6 +2830,51 @@ class TestCodeGen(unittest.TestCase):
         dead_id = make_dead_entry()
         gc.collect()
         self.assertNotIn(dead_id, codegen._shared_function_sources)
+
+    def test_overload_matching_positional_arguments(self):
+        """Accept and reject positional argument types for every builtin overload as Python's call binding does."""
+
+        def outcome(func, arg_types, allow_erasure):
+            try:
+                return codegen.func_match_args(func, arg_types, {}, allow_erasure=allow_erasure)
+            except Exception as e:
+                return type(e), str(e)
+
+        overloads = [
+            f for func in wp._src.context.builtin_functions.values() for f in getattr(func, "overloads", (func,))
+        ]
+        for i, func in enumerate(overloads):
+            own = tuple(func.input_types.values())
+            other = tuple(overloads[i - 1].input_types.values())
+            for arg_types in {*(own[:n] for n in range(len(own) + 1)), (*own, float), other}:
+                for allow_erasure in (False, True):
+                    with self.subTest(func=func.key, arg_types=arg_types, allow_erasure=allow_erasure):
+                        # a list takes the Signature.bind() path
+                        self.assertEqual(
+                            outcome(func, arg_types, allow_erasure), outcome(func, list(arg_types), allow_erasure)
+                        )
+
+    def test_overload_matching_rejects_argument_given_twice(self):
+        """Reject a call that passes the same parameter positionally and by keyword."""
+
+        @wp.func
+        def plain(a: float):
+            return a
+
+        self.assertTrue(codegen.func_match_args(plain, (float,), {}))
+        self.assertFalse(codegen.func_match_args(plain, (float,), {"a": float}))
+
+    def test_overload_matching_follows_replaced_signature(self):
+        """Match against a function's signature after it has been replaced, not the one matched first."""
+
+        @wp.func
+        def plain(a: float):
+            return a
+
+        self.assertTrue(codegen.func_match_args(plain, (float,), {}))
+        plain = copy.copy(plain)
+        plain.signature = inspect.Signature([inspect.Parameter("a", inspect.Parameter.KEYWORD_ONLY, annotation=float)])
+        self.assertFalse(codegen.func_match_args(plain, (float,), {}))
 
 
 devices = get_test_devices()
