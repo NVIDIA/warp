@@ -21,6 +21,7 @@ API
    GMRESSolve
    LinearOperator
    LinearSolverState
+   ResidualMode
    aslinearoperator
    bicgstab
    cg

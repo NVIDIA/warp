@@ -25,3 +25,4 @@ from warp._src.optim.linear import gmres as gmres
 from warp._src.optim.linear import preconditioner as preconditioner
 
 from warp._src.optim._solve_action import GMRESSolve as GMRESSolve
+from warp._src.optim._solve_action import ResidualMode as ResidualMode

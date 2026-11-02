@@ -481,43 +481,52 @@ For a complete listing of all sparse matrix functions and their signatures, see 
 
 .. currentmodule:: warp.optim.linear
 
-Reusable GMRES actions
+Prepared solve actions
 ----------------------
 
-Use :class:`GMRESSolve` when a linear solve is passed to another algorithm and
-fresh original-equation acceptance is needed::
+Prepared solve actions allocate their workspace once and then solve many
+right-hand sides (RHSs) against the same system. They are suited to solves
+nested inside another algorithm and to CUDA graph replay. Each action follows
+the same usage contract, so calling code can switch between implementations:
+
+* ``solve(rhs, out)`` takes contiguous ``(nrhs, n)`` arrays, or ``(n,)`` when
+  ``nrhs == 1``, in the system's scalar dtype and device. Every solve starts
+  from zero. Exact in-place aliasing is supported; partially overlapping views
+  are rejected before any output is written.
+* ``update()`` makes in-place value changes to the system visible. Actions that
+  already read current values on every solve treat it as a no-op.
+* ``with_nrhs(k)`` prepares a smaller capacity that shares the workspace. The
+  two must not run concurrently.
+* The device arrays ``iterations``, ``absolute_residual``,
+  ``relative_residual``, ``tolerance`` and ``converged`` describe each RHS of
+  the latest call. ``stats`` (total iterations, maximum iterations, failed
+  RHSs, solved RHSs) and ``residual_maxima`` accumulate until
+  ``reset_stats()``, which leaves the latest per-RHS diagnostics untouched.
+  Nonfinite norms fail acceptance. A zero RHS has relative residual zero only
+  for a zero residual.
+* ``residual`` selects the residual that is reported and used for acceptance:
+  :attr:`ResidualMode.FRESH` recomputes ``||A x - b||`` with the original
+  operator and precision at the cost of one extra operator application, and
+  :attr:`ResidualMode.RECURRENCE` reports the solver's own estimate.
+
+Construct and warm up actions outside CUDA graph capture. Prepared replay
+performs no host convergence checks or work-array allocations. Eager calls
+from different CUDA streams are ordered automatically, but captured graphs
+that share one workspace must not execute concurrently. CPU eager execution is
+supported. Reverse-mode derivatives through solve actions are not supplied.
+
+:class:`GMRESSolve` handles indefinite or nonsymmetric systems and defaults to
+fresh residuals::
 
     from warp.optim.linear import GMRESSolve
 
     action = GMRESSolve(A, nrhs=1, M=fixed_right_preconditioner,
                         restart=64, maxiter=512, tol=1.0e-12)
     action.solve(rhs, out)
+    # action.converged, action.absolute_residual, ... stay on device.
 
-For one RHS, arrays may have shape ``(n,)`` or ``(1, n)``. Multiple RHSs use
-``(nrhs, n)`` and are solved serially with the same workspace. Arrays are
-contiguous, use the operator scalar dtype/device, and may alias exactly.
-Shifted overlapping output views are rejected. The initial guess is always
-zero. Existing ``GMRES`` and ``gmres(..., run=False)`` behavior is unchanged.
-
-The matrix may be indefinite or nonsymmetric. ``M`` must be a fixed linear
-right preconditioner. For an indefinite shifted FEM stiffness matrix, an SPD
-auxiliary matrix can supply a preconditioner; do not apply SPD factorization
-to an indefinite matrix or use a variable inner CG action with ordinary GMRES.
-
-After each solve, device arrays ``absolute_residual``, ``relative_residual``,
-``tolerance``, ``converged`` and ``iterations`` describe each RHS. The residual
-is freshly computed with the current original operator, and acceptance uses
-the effective upstream tolerance, including its dtype safety floor. A nonfinite
-norm fails; a zero RHS uses relative residual zero only for a zero residual.
-Restart boundaries can exceed the requested budget by up to ``restart-1``.
-
-``stats`` and ``residual_maxima`` accumulate across calls; ``reset_stats()``
-clears those cumulative arrays without changing the latest per-RHS diagnostics.
-This distinction prevents stale success flags from hiding a later failure.
-
-Construct and warm up outside CUDA capture. Prepared replay performs no host
-convergence checks or work-array allocations. Matrix coefficients in existing
-buffers may change; preconditioner updates are explicit. Eager calls from
-different CUDA streams are ordered automatically, but captured graphs sharing
-one state must not execute concurrently. CPU eager execution is supported.
-Reverse-mode derivatives through the action are not supplied.
+Multiple RHSs are solved one after another with the same workspace. ``M`` must
+be a fixed linear right preconditioner; do not use a variable inner iterative
+action with ordinary GMRES. Restart boundaries can exceed ``maxiter`` by up to
+``restart - 1`` iterations. Existing ``GMRES`` and ``gmres(..., run=False)``
+behavior is unchanged.

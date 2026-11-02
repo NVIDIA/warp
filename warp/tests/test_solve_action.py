@@ -9,7 +9,7 @@ import numpy as np
 
 import warp as wp
 import warp.sparse as sp
-from warp.optim.linear import GMRESSolve, aslinearoperator
+from warp.optim.linear import GMRESSolve, ResidualMode, aslinearoperator
 from warp.tests.unittest_utils import add_function_test, get_cuda_test_devices, get_test_devices
 
 
@@ -135,6 +135,40 @@ def test_gmres_action_validation(test, device):
         action.solve(buffer[:8], buffer[1:])
     action.solve(out, out)
     np.testing.assert_allclose(out.numpy(), np.full(8, 7.0))
+    with test.assertRaises(TypeError):
+        GMRESSolve(a, residual="fresh")
+    for capacity in (0, 2, True):
+        with test.assertRaises((ValueError, TypeError)):
+            action.with_nrhs(capacity)
+
+
+def test_gmres_action_capacities_and_modes(test, device):
+    """Check smaller capacities, update(), and recurrence versus fresh residual reporting."""
+    n = 24
+    a = np.diag(np.linspace(-3.0, 3.0, n) + 0.05) + np.diag(np.full(n - 1, 0.1), 1)
+    matrix = _matrix(a, device, wp.float64, 1)
+    rhs = np.random.default_rng(11).normal(size=(3, n))
+    for mode in (ResidualMode.FRESH, ResidualMode.RECURRENCE):
+        action = GMRESSolve(matrix, 3, restart=n, maxiter=2 * n, residual=mode)
+        test.assertIs(action.residual, mode)
+        small = action.with_nrhs(2)
+        b = wp.array(rhs[:2], dtype=wp.float64, device=device)
+        out = wp.empty_like(b)
+        small.update()
+        small.solve(b, out)
+        np.testing.assert_allclose(out.numpy(), np.linalg.solve(a, rhs[:2].T).T, rtol=1e-9, atol=1e-9)
+        true_residual = np.linalg.norm(out.numpy() @ a.T - rhs[:2], axis=1)
+        np.testing.assert_array_equal(small.converged.numpy(), [1, 1])
+        np.testing.assert_allclose(
+            small.relative_residual.numpy(),
+            small.absolute_residual.numpy() / np.linalg.norm(rhs[:2], axis=1),
+            rtol=1e-12,
+        )
+        if mode == ResidualMode.FRESH:
+            np.testing.assert_allclose(small.absolute_residual.numpy(), true_residual, rtol=1e-6, atol=1e-13)
+        # The parent's diagnostics are separate from the smaller capacity's.
+        test.assertEqual(small.stats.numpy()[3], 2)
+        test.assertEqual(action.stats.numpy()[3], 0)
 
 
 def test_gmres_action_streams(test, device):
@@ -167,7 +201,7 @@ for dtype in (wp.float32, wp.float64):
         devices=get_test_devices(),
         dtype=dtype,
     )
-for func in (test_gmres_action_failures, test_gmres_action_validation):
+for func in (test_gmres_action_failures, test_gmres_action_validation, test_gmres_action_capacities_and_modes):
     add_function_test(TestSolveAction, func.__name__, func, devices=get_test_devices())
 add_function_test(
     TestSolveAction, "test_gmres_action_streams", test_gmres_action_streams, devices=get_cuda_test_devices()
