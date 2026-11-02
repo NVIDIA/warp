@@ -841,6 +841,18 @@ void apic_record_bvh_rebuild(APICState* state, uint64_t bvh_id, int32_t construc
     apic_record_bvh_op(state, APIC_OP_BVH_REBUILD, bvh_id, constructor_type);
 }
 
+void apic_record_mesh_refit(APICState* state, uint64_t mesh_id)
+{
+    if (!state)
+        return;
+    APICMeshRefitRecord rec = {};
+    rec.header.op_type = APIC_OP_MESH_REFIT;
+    rec.header.total_size = sizeof(rec);
+    rec.mesh_id = mesh_id;
+    state->append_bytes(&rec, sizeof(rec));
+    state->operation_count++;
+}
+
 void apic_record_hash_grid_update(
     APICState* state,
     uint64_t grid_id,
@@ -2134,6 +2146,18 @@ bool apic_validate_operation_stream(
                 return false;
             }
             break;
+        case APIC_OP_MESH_REFIT: {
+            if (header->total_size != sizeof(APICMeshRefitRecord)) {
+                fprintf(stderr, "Warp APIC error: invalid mesh refit record size at operation %u\n", i);
+                return false;
+            }
+            const auto* rec = reinterpret_cast<const APICMeshRefitRecord*>(ptr);
+            if (rec->mesh_id == 0) {
+                fprintf(stderr, "Warp APIC error: invalid mesh handle at operation %u\n", i);
+                return false;
+            }
+            break;
+        }
         case APIC_OP_HASH_GRID_UPDATE: {
             if (header->total_size != sizeof(APICHashGridUpdateRecord)) {
                 fprintf(stderr, "Warp APIC error: invalid HashGrid update record size at operation %u\n", i);
@@ -2268,8 +2292,8 @@ static const char* apic_bvh_op_name(uint32_t op_type)
 }
 
 // Returns the op_type of the first operation in `data` whose replay depends on a
-// process-local handle -- BVH refit/rebuild (a live BVH pointer) or a HashGrid
-// update (a live grid_id) -- or 0 if the stream is fully serializable. Recurses
+// process-local handle -- BVH or mesh updates, or a HashGrid update -- or 0 if
+// the stream is fully serializable. Recurses
 // into capture_if / capture_while branch bodies. Deriving non-serializability
 // from the finalized stream, rather than from a flag set eagerly when an op is
 // recorded, means an op that a branch body discards when it unwinds no longer
@@ -2283,6 +2307,7 @@ static uint32_t apic_stream_first_nonserializable_op(const uint8_t* data, uint32
         switch (header->op_type) {
         case APIC_OP_BVH_REFIT:
         case APIC_OP_BVH_REBUILD:
+        case APIC_OP_MESH_REFIT:
         case APIC_OP_HASH_GRID_UPDATE:
             return header->op_type;
         case APIC_OP_IF:
@@ -2964,6 +2989,22 @@ static bool apic_cpu_replay_stream(
             break;
         }
 
+        case APIC_OP_MESH_REFIT: {
+            const auto* rec = reinterpret_cast<const APICMeshRefitRecord*>(ptr);
+            const uint64_t mesh_id = remap_handle(rec->mesh_id);
+            // Validate the live handle before the host refit dereferences it.
+            wp::Mesh mesh;
+            if (!wp::mesh_get_descriptor_host(mesh_id, mesh)) {
+                wp::set_error_string("Warp APIC error: mesh refit handle is no longer valid at operation %u", i);
+                return false;
+            }
+            // Refit all mesh-derived data, including triangle bounds, average
+            // edge length, and winding-number properties, in stream order.
+            // Recording has ended during replay, so the host entry point executes.
+            wp_mesh_refit_host(mesh_id);
+            break;
+        }
+
         case APIC_OP_HASH_GRID_UPDATE: {
             const auto* rec = reinterpret_cast<const APICHashGridUpdateRecord*>(ptr);
             uint64_t point_element_size;
@@ -3220,7 +3261,7 @@ bool wp_apic_state_save(APICState* state, const char* path, int target_arch, voi
     }
 
     // Refuse to serialize a stream whose replay depends on a process-local
-    // handle (a live BVH pointer or HashGrid grid_id). Such a handle would
+    // handle (a live BVH/mesh pointer or HashGrid grid_id). Such a handle would
     // dangle when the graph is loaded in another process, so fail with an
     // actionable error instead of writing a .wrp that crashes at replay. The
     // check scans the finalized stream, so ops discarded by branch-capture
@@ -3238,6 +3279,13 @@ bool wp_apic_state_save(APICState* state, const char* path, int target_arch, voi
     }
     if (nonserializable_op == APIC_OP_HASH_GRID_UPDATE) {
         wp::set_error_string("Warp APIC error: HashGrid serialization is not yet supported in APIC graphs");
+        return false;
+    }
+    if (nonserializable_op == APIC_OP_MESH_REFIT) {
+        wp::set_error_string(
+            "Warp APIC error: Cannot serialize a captured graph that records wp.Mesh.refit(): the mesh handle is "
+            "process-local. Replay the captured graph in-process instead of saving it."
+        );
         return false;
     }
 
@@ -3719,6 +3767,13 @@ static APICGraph* apic_load_graph_from_image(
         }
         if (nonserializable_op == APIC_OP_HASH_GRID_UPDATE) {
             wp::set_error_string("Warp APIC error: HashGrid serialization is not yet supported in APIC graphs");
+            return nullptr;
+        }
+        if (nonserializable_op == APIC_OP_MESH_REFIT) {
+            wp::set_error_string(
+                "Warp APIC error: Cannot load a captured graph that records wp.Mesh.refit(): the mesh handle is "
+                "process-local and cannot be reconstructed from a .wrp."
+            );
             return nullptr;
         }
     }

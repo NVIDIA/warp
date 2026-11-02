@@ -8,11 +8,13 @@ deserialized through APIC, with handle fixup ensuring mesh queries work
 correctly after loading.
 """
 
+import gc
 import os
 import struct
 import tempfile
 import textwrap
 import unittest
+import weakref
 
 import numpy as np
 
@@ -925,6 +927,173 @@ class TestApicMesh(unittest.TestCase):
                 # kernel or serializer can dereference it.
                 with self.assertRaisesRegex(RuntimeError, "invalid or expired mesh ID"):
                     wp.capture_save(capture.graph, os.path.join(tmpdir, "invalid_mesh"))
+
+
+@wp.kernel
+def cpu_graph_mesh_hits(mesh: wp.handle, hits: wp.array[int]):
+    query = wp.mesh_query_aabb(mesh, wp.vec3(9.5, -0.5, -0.5), wp.vec3(11.5, 1.5, 0.5))
+    index = int(0)
+    while wp.mesh_query_aabb_next(query, index):
+        wp.atomic_add(hits, 0, 1)
+
+
+@wp.kernel
+def cpu_graph_mesh_attributes(mesh: wp.handle, values: wp.array[wp.vec3], offset: int):
+    values[offset] = wp.mesh_eval_position(mesh, 0, 1.0, 0.0)
+    values[offset + 1] = wp.mesh_eval_velocity(mesh, 0, 1.0, 0.0)
+
+
+class TestCpuGraphGeometry(unittest.TestCase):
+    @staticmethod
+    def triangle(x):
+        return np.array([(x, 0.0, 0.0), (x + 1.0, 0.0, 0.0), (x, 1.0, 0.0)], dtype=np.float32)
+
+    def make_mesh(self, support_winding_number=False):
+        return wp.Mesh(
+            points=wp.array(self.triangle(0.0), dtype=wp.vec3, device="cpu"),
+            indices=wp.array([0, 1, 2], dtype=int, device="cpu"),
+            velocities=wp.zeros(3, dtype=wp.vec3, device="cpu"),
+            support_winding_number=support_winding_number,
+        )
+
+    def test_refit_matches_eager_and_replays_current_points(self):
+        """Refit moved geometry in sequence on every CPU graph launch."""
+        wp.load_module(device="cpu")
+        for winding in (False, True):
+            with self.subTest(support_winding_number=winding):
+                mesh = self.make_mesh(winding)
+                source = wp.array(self.triangle(10.0), dtype=wp.vec3, device="cpu")
+                hits = wp.zeros(1, dtype=int, device="cpu")
+
+                def work(mesh, source, hits):
+                    hits.zero_()
+                    wp.copy(mesh.points, source)
+                    mesh.refit()
+                    wp.launch(cpu_graph_mesh_hits, dim=1, inputs=[mesh.id, hits], device="cpu")
+
+                work(mesh, source, hits)
+                np.testing.assert_array_equal(hits.numpy(), [1])
+                mesh.points.assign(self.triangle(0.0))
+                mesh.refit()
+                hits.zero_()
+                with wp.ScopedCapture(device="cpu") as capture:
+                    work(mesh, source, hits)
+
+                # CPU capture records operations without executing them.
+                np.testing.assert_array_equal(mesh.points.numpy(), self.triangle(0.0))
+                np.testing.assert_array_equal(hits.numpy(), [0])
+                for x, expected in ((10.0, 1), (30.0, 0), (10.0, 1)):
+                    source.assign(self.triangle(x))
+                    wp.capture_launch(capture.graph)
+                    np.testing.assert_array_equal(hits.numpy(), [expected])
+
+    def test_in_place_attribute_updates_preserve_refit_order(self):
+        """Replay point and velocity copies before each refit and geometry query."""
+        mesh = self.make_mesh()
+        points_a = wp.array(self.triangle(10.0), dtype=wp.vec3, device="cpu")
+        points_b = wp.array(self.triangle(20.0), dtype=wp.vec3, device="cpu")
+        velocities_a = wp.full(3, value=wp.vec3(1.0), dtype=wp.vec3, device="cpu")
+        velocities_b = wp.full(3, value=wp.vec3(2.0), dtype=wp.vec3, device="cpu")
+        values = wp.zeros(4, dtype=wp.vec3, device="cpu")
+        hits_a = wp.zeros(1, dtype=int, device="cpu")
+        hits_b = wp.zeros(1, dtype=int, device="cpu")
+        wp.load_module(device="cpu")
+        with wp.ScopedCapture(device="cpu") as capture:
+            wp.copy(mesh.points, points_a)
+            wp.copy(mesh.velocities, velocities_a)
+            mesh.refit()
+            wp.launch(cpu_graph_mesh_attributes, dim=1, inputs=[mesh.id, values, 0], device="cpu")
+            hits_a.zero_()
+            wp.launch(cpu_graph_mesh_hits, dim=1, inputs=[mesh.id, hits_a], device="cpu")
+            wp.copy(mesh.points, points_b)
+            wp.copy(mesh.velocities, velocities_b)
+            mesh.refit()
+            wp.launch(cpu_graph_mesh_attributes, dim=1, inputs=[mesh.id, values, 2], device="cpu")
+            hits_b.zero_()
+            wp.launch(cpu_graph_mesh_hits, dim=1, inputs=[mesh.id, hits_b], device="cpu")
+
+        for x_a, x_b, v_a, v_b, expected_hits in ((10.0, 20.0, 1.0, 2.0, 1), (30.0, 40.0, 3.0, 4.0, 0)):
+            points_a.assign(self.triangle(x_a))
+            points_b.assign(self.triangle(x_b))
+            velocities_a.fill_(wp.vec3(v_a))
+            velocities_b.fill_(wp.vec3(v_b))
+            wp.capture_launch(capture.graph)
+            np.testing.assert_allclose(values.numpy(), [[x_a, 0, 0], [v_a] * 3, [x_b, 0, 0], [v_b] * 3])
+            np.testing.assert_array_equal(hits_a.numpy(), [expected_hits])
+            np.testing.assert_array_equal(hits_b.numpy(), [0])
+
+    def test_attribute_replacement_rejects_capture_before_mutation(self):
+        """Reject pointer replacement without changing Python or native mesh state."""
+        wp.load_module(device="cpu")
+        for apic in (False, True):
+            for attribute in ("points", "velocities"):
+                with self.subTest(apic=apic, attribute=attribute):
+                    mesh = self.make_mesh()
+                    original = getattr(mesh, attribute)
+                    replacement = wp.full(3, value=wp.vec3(10.0), dtype=wp.vec3, device="cpu")
+                    values = wp.zeros(2, dtype=wp.vec3, device="cpu")
+                    # A rejected operation may be caught while capture continues.
+                    with wp.ScopedCapture(device="cpu", apic=apic) as capture:
+                        with self.assertRaisesRegex(NotImplementedError, "CPU graph capture"):
+                            setattr(mesh, attribute, replacement)
+                        self.assertIs(getattr(mesh, attribute), original)
+                        wp.launch(cpu_graph_mesh_attributes, dim=1, inputs=[mesh.id, values, 0], device="cpu")
+                    wp.capture_launch(capture.graph)
+                    np.testing.assert_allclose(values.numpy(), [[0, 0, 0], [0, 0, 0]])
+                    # Eager replacement must remain supported after capture ends.
+                    setattr(mesh, attribute, replacement)
+                    wp.launch(cpu_graph_mesh_attributes, dim=1, inputs=[mesh.id, values, 0], device="cpu")
+                    expected = [[10, 10, 10], [0, 0, 0]] if attribute == "points" else [[0, 0, 0], [10, 10, 10]]
+                    np.testing.assert_allclose(values.numpy(), expected)
+
+    def test_graph_retains_mesh_and_refit_buffers(self):
+        """Keep the mesh and its native refit buffers alive until graph destruction."""
+        wp.load_module(device="cpu")
+
+        def record():
+            mesh = self.make_mesh()
+            source = wp.array(self.triangle(10.0), dtype=wp.vec3, device="cpu")
+            hits = wp.zeros(1, dtype=int, device="cpu")
+            refs = {
+                name: weakref.ref(value)
+                for name, value in (
+                    ("mesh", mesh),
+                    ("points", mesh.points),
+                    ("velocities", mesh.velocities),
+                    ("indices", mesh.indices),
+                    ("source", source),
+                    ("hits", hits),
+                )
+            }
+            with wp.ScopedCapture(device="cpu") as capture:
+                hits.zero_()
+                wp.copy(mesh.points, source)
+                mesh.refit()
+                wp.launch(cpu_graph_mesh_hits, dim=1, inputs=[mesh.id, hits], device="cpu")
+            return capture.graph, refs
+
+        graph, refs = record()
+        gc.collect()
+        for name, ref in refs.items():
+            self.assertIsNotNone(ref(), f"Captured {name} was released before graph replay")
+        for _ in range(2):
+            wp.capture_launch(graph)
+            np.testing.assert_array_equal(refs["hits"]().numpy(), [1])
+        del graph
+        gc.collect()
+        for name, ref in refs.items():
+            self.assertIsNone(ref(), f"Captured {name} leaked after graph destruction")
+
+    def test_mesh_refit_rejects_serialization(self):
+        """Reject process-local mesh refit records instead of saving dangling IDs."""
+        mesh = self.make_mesh()
+        with wp.ScopedCapture(device="cpu", apic=True) as capture:
+            mesh.refit()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "mesh_update")
+            with self.assertRaisesRegex(RuntimeError, r"wp\.Mesh\.refit\(\)"):
+                wp.capture_save(capture.graph, path)
+            self.assertFalse(os.path.exists(path + ".wrp"))
 
 
 # Register the replay tests on CPU and CUDA devices.

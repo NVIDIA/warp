@@ -36,6 +36,7 @@ from warp.sparse import (
     bsr_assign,
     bsr_axpy,
     bsr_axpy_work_arrays,
+    bsr_compress,
     bsr_copy,
     bsr_from_triplets,
     bsr_mm,
@@ -102,6 +103,96 @@ def apic_mathdx_matmul_kernel(a: wp.array2d[float], b: wp.array2d[float], c: wp.
 
 
 class TestApic(unittest.TestCase):
+    def test_cpu_capture_rejects_geometry_construction(self):
+        points = wp.array([(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0)], dtype=wp.vec3, device="cpu")
+        indices = wp.array([0, 1, 2], dtype=wp.int32, device="cpu")
+        for apic in (False, True):
+            for constructor, args in ((wp.Mesh, (points, indices)), (wp.Bvh, (points, points))):
+                with self.subTest(apic=apic, constructor=constructor.__name__):
+                    with self.assertRaisesRegex(NotImplementedError, constructor.__name__ + r"\(\).*CPU graph capture"):
+                        with wp.ScopedCapture(device="cpu", apic=apic):
+                            constructor(*args)
+                    self.assertFalse(wp.get_device("cpu").is_capturing)
+                    self.assertTrue(constructor(*args).id)
+
+    def test_cpu_capture_rejects_volume_allocation(self):
+        points = wp.array([(0, 0, 0)], dtype=wp.vec3i, device="cpu")
+        volume = wp.Volume.allocate_by_voxels(points, voxel_size=1.0, device="cpu")
+        data = volume.array()
+        for apic in (False, True):
+            for copy in (False, True):
+                with self.subTest(apic=apic, copy=copy):
+                    with self.assertRaisesRegex(NotImplementedError, r"Volume\(\).*CPU graph capture"):
+                        with wp.ScopedCapture(device="cpu", apic=apic):
+                            wp.Volume(data, copy=copy)
+                    self.assertFalse(wp.get_device("cpu").is_capturing)
+            for method, capacity in (
+                (wp.Volume.allocate_by_tiles, {"max_tiles": 1}),
+                (wp.Volume.allocate_by_voxels, {"max_active_voxels": 1}),
+            ):
+                for options in ({}, {"rebuildable": True}, capacity):
+                    with self.subTest(apic=apic, method=method.__name__, options=options):
+                        with self.assertRaisesRegex(NotImplementedError, method.__name__ + r"\(\).*CPU graph capture"):
+                            with wp.ScopedCapture(device="cpu", apic=apic):
+                                method(points, voxel_size=1.0, device="cpu", **options)
+                        self.assertFalse(wp.get_device("cpu").is_capturing)
+
+    def test_cpu_capture_rejects_volume_updates_before_mutation(self):
+        points = wp.array([(0, 0, 0)], dtype=wp.vec3i, device="cpu")
+        moved = wp.array([(16, 0, 0)], dtype=wp.vec3i, device="cpu")
+        for allocate in (wp.Volume.allocate_by_tiles, wp.Volume.allocate_by_voxels):
+            volume = allocate(points, voxel_size=1.0, device="cpu", rebuildable=True)
+            original_tiles = volume.get_tiles().numpy().copy()
+            original_voxels = volume.get_voxels().numpy().copy()
+            status = wp.array([123], dtype=wp.uint32, device="cpu")
+            tile_out = wp.full(volume.get_tile_count(), -1, dtype=wp.vec3i, device="cpu")
+            voxel_out = wp.full(volume.get_voxel_count(), -1, dtype=wp.vec3i, device="cpu")
+            for apic in (False, True):
+                for method, kwargs in (
+                    (volume.rebuild, {"points": moved, "status": status}),
+                    (volume.get_tiles, {}),
+                    (volume.get_tiles, {"out": tile_out}),
+                    (volume.get_voxels, {}),
+                    (volume.get_voxels, {"out": voxel_out}),
+                ):
+                    with self.subTest(
+                        allocate=allocate.__name__, apic=apic, method=method.__name__, out="out" in kwargs
+                    ):
+                        with self.assertRaisesRegex(NotImplementedError, method.__name__ + r"\(\).*CPU graph capture"):
+                            with wp.ScopedCapture(device="cpu", apic=apic):
+                                method(**kwargs)
+                        self.assertFalse(wp.get_device("cpu").is_capturing)
+                        np.testing.assert_array_equal(volume.get_tiles().numpy(), original_tiles)
+                        np.testing.assert_array_equal(volume.get_voxels().numpy(), original_voxels)
+                        np.testing.assert_array_equal(status.numpy(), [123])
+                        np.testing.assert_array_equal(tile_out.numpy(), -np.ones((tile_out.size, 3)))
+                        np.testing.assert_array_equal(voxel_out.numpy(), -np.ones((voxel_out.size, 3)))
+            volume.rebuild(moved, status=status)
+            self.assertEqual(int(status.numpy()[0]), wp.Volume.REBUILD_SUCCESS)
+            self.assertEqual(int(volume.get_tiles().numpy()[0, 0]), 16)
+
+    def test_cpu_capture_rejects_bsr_compress_before_mutation(self):
+        matrix = bsr_zeros(1, 2, wp.float32, device="cpu")
+        matrix.nnz = 3
+        matrix.offsets = wp.array([0, 3], dtype=wp.int32, device="cpu")
+        matrix.row_counts = wp.array([3], dtype=wp.int32, device="cpu")
+        matrix.columns = wp.array([1, 0, 1], dtype=wp.int32, device="cpu")
+        matrix.values = wp.array([2.0, 3.0, 4.0], dtype=wp.float32, device="cpu")
+        arrays = (matrix.offsets, matrix.row_counts, matrix.columns, matrix.values)
+        originals = [array.numpy().copy() for array in arrays]
+        for apic in (False, True):
+            for topology in ("compact", "padded"):
+                for options in ({}, {"inplace": True}, {"structure_only": True}):
+                    with self.subTest(apic=apic, topology=topology, options=options):
+                        with self.assertRaisesRegex(NotImplementedError, r"bsr_compress\(\).*CPU graph capture"):
+                            with wp.ScopedCapture(device="cpu", apic=apic):
+                                bsr_compress(matrix, topology=topology, **options)
+                        self.assertFalse(wp.get_device("cpu").is_capturing)
+                        self.assertEqual(matrix.nnz, 3)
+                        self.assertIs(matrix.row_counts, arrays[1])
+                        for array, original in zip(arrays, originals, strict=True):
+                            np.testing.assert_array_equal(array.numpy(), original)
+
     def test_capture_load_initializes_warp(self):
         """Call wp.capture_load() in a fresh process before Warp is initialized."""
         script = textwrap.dedent(

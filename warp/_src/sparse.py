@@ -1883,6 +1883,13 @@ def bsr_compress(
     if not isinstance(src, BsrMatrix):
         raise ValueError("bsr_compress() requires a concrete BsrMatrix")
 
+    from warp._src.context import _get_apic_capture_for_device  # noqa: PLC0415
+
+    if src.device.is_cpu and _get_apic_capture_for_device(src.device) is not None:
+        raise NotImplementedError(
+            "bsr_compress() cannot be called during CPU graph capture; compress the matrix outside capture"
+        )
+
     if topology is None:
         topology = "compact"
     elif topology not in ("compact", "padded"):
