@@ -1,11 +1,15 @@
 # SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-from statistics import median
-
 import warp as wp
 
-from ..benchmarks_utils import clear_kernel_cache
+from ..benchmarks_utils import (
+    LAUNCHES_PER_SAMPLE,
+    CudaEventTimer,
+    capture_launches,
+    clear_kernel_cache,
+    setup_once,
+)
 
 
 @wp.kernel
@@ -40,6 +44,11 @@ class CompileModule:
 
 
 class RunForwardKernel:
+    timer = CudaEventTimer()
+    repeat = 10
+    number = 1
+
+    @setup_once
     def setup(self):
         wp.init()
         wp.load_module(device="cuda:0")
@@ -47,20 +56,23 @@ class RunForwardKernel:
         N = (1024, 1024)
         self.a = wp.zeros(N, dtype=wp.mat22, device="cuda:0")
         self.b = wp.ones(N, dtype=wp.mat22, device="cuda:0")
-
+        self.graph = capture_launches(
+            lambda: wp.launch(matrix_augassign_kernel, self.a.shape, inputs=[self.a, self.b], device="cuda:0"),
+            LAUNCHES_PER_SAMPLE,
+        )
+        wp.capture_launch(self.graph)
         wp.synchronize_device("cuda:0")
 
-    def track_cuda(self):
-        with wp.ScopedTimer("benchmark", print=False, cuda_filter=wp.TIMING_KERNEL, synchronize=True) as timer:
-            for _ in range(1000):
-                wp.launch(matrix_augassign_kernel, self.a.shape, inputs=[self.a, self.b], device="cuda:0")
-
-        return median(result.elapsed for result in timer.timing_results) * 1e-3
-
-    track_cuda.unit = "seconds"
+    def time_cuda(self):
+        wp.capture_launch(self.graph)
 
 
 class RunBackwardKernel:
+    timer = CudaEventTimer()
+    repeat = 10
+    number = 1
+
+    @setup_once
     def setup(self):
         wp.init()
         wp.load_module(device="cuda:0")
@@ -68,22 +80,20 @@ class RunBackwardKernel:
         N = (1024, 1024)
         self.a = wp.zeros(N, dtype=wp.mat22, device="cuda:0", requires_grad=True)
         self.b = wp.ones(N, dtype=wp.mat22, device="cuda:0", requires_grad=True)
-
+        self.graph = capture_launches(
+            lambda: wp.launch(
+                matrix_augassign_kernel,
+                self.a.shape,
+                inputs=[self.a, self.b],
+                adj_inputs=[self.a.grad, self.b.grad],
+                adj_outputs=[],
+                adjoint=True,
+                device="cuda:0",
+            ),
+            LAUNCHES_PER_SAMPLE,
+        )
+        wp.capture_launch(self.graph)
         wp.synchronize_device("cuda:0")
 
-    def track_cuda(self):
-        with wp.ScopedTimer("benchmark", print=False, cuda_filter=wp.TIMING_KERNEL, synchronize=True) as timer:
-            for _ in range(1000):
-                wp.launch(
-                    matrix_augassign_kernel,
-                    self.a.shape,
-                    inputs=[self.a, self.b],
-                    adj_inputs=[self.a.grad, self.b.grad],
-                    adj_outputs=[],
-                    adjoint=True,
-                    device="cuda:0",
-                )
-
-        return median(result.elapsed for result in timer.timing_results) * 1e-3
-
-    track_cuda.unit = "seconds"
+    def time_cuda(self):
+        wp.capture_launch(self.graph)

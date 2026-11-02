@@ -185,6 +185,19 @@
       else
         echo "GPU persistence mode: ${persistence:-unknown}"
       fi
+    # GPU Boost picks the core clock from moment to moment, so short GPU work
+    # can run at different clocks in the baseline's and the candidate's
+    # processes. Pools that set ASV_GPU_CLOCK_MHZ lock the core clock to that
+    # value; after_script removes the lock. Best effort, like the governor.
+    - |
+      if [ -n "${ASV_GPU_CLOCK_MHZ:-}" ]; then
+        if sudo -n nvidia-smi -lgc "$ASV_GPU_CLOCK_MHZ,$ASV_GPU_CLOCK_MHZ" > /dev/null 2>&1; then
+          touch /tmp/warp-asv-reset-gpu-clocks
+          echo "GPU core clock locked to $ASV_GPU_CLOCK_MHZ MHz; now $(nvidia-smi --query-gpu=clocks.gr --format=csv,noheader -i 0)"
+        else
+          echo "WARNING: failed to lock the GPU core clock to $ASV_GPU_CLOCK_MHZ MHz"
+        fi
+      fi
     - curl -LsSf https://astral.sh/uv/install.sh | sh
     - export PATH="$HOME/.local/bin:$PATH"
     - uv python install $UV_PYTHON
@@ -331,6 +344,15 @@
         echo "CPU governor restored to $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor)"
         rm -f /tmp/warp-asv-prev-governor
       fi
+      if [ -e /tmp/warp-asv-reset-gpu-clocks ]; then
+        echo "GPU core clock before reset: $(nvidia-smi --query-gpu=clocks.gr --format=csv,noheader -i 0)"
+        if sudo -n nvidia-smi -rgc > /dev/null 2>&1; then
+          echo "GPU core clock lock removed"
+        else
+          echo "WARNING: failed to remove the GPU core clock lock"
+        fi
+        rm -f /tmp/warp-asv-reset-gpu-clocks
+      fi
       if [ -e /tmp/warp-asv-restore-persistence ]; then
         sudo -n nvidia-smi -pm 0 > /dev/null 2>&1 || true
         echo "GPU persistence mode restored to $(nvidia-smi --query-gpu=persistence_mode --format=csv,noheader -i 0)"
@@ -363,6 +385,9 @@
     MACHINE_OS: ubuntu22-04-5
     MACHINE_KIND: "EPYC_9124_1XRTXPRO6000_BW_SV"
     MACHINE_DRIVER: "NVIDIA-Linux-x86_64-595.58.03"
+    # The base clock, which the GPU sustains within its power limit. Unlocked,
+    # short GPU work on this pool runs at one of two speeds in each process.
+    ASV_GPU_CLOCK_MHZ: "1590"
 
 # One booking holds a whole 8-GPU DGX B200. The benchmarks only use cuda:0,
 # and asv starts a fresh process for every sample, so exposing only GPU 0

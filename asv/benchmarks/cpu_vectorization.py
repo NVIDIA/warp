@@ -17,6 +17,9 @@ VEC4_ELEMENTS = 1 << 16
 LOOP_ROWS = 128
 LOOP_COLUMNS = 1 << 8
 LOOP_REPEATS = 16
+# The three loop arrays share one page-aligned allocation. Each array is a
+# multiple of 4 KiB, so this gap puts them 1 KiB and 2 KiB apart modulo 4 KiB.
+LOOP_ARRAY_GAP_BYTES = 1024
 # Larger counts stop LLVM from fully unrolling this loop, which leaves the
 # column loop non-innermost and prevents its vectorization.
 ARITHMETIC_ITERATIONS = 16
@@ -75,9 +78,21 @@ class CpuVectorization:
         element_count = LOOP_ROWS * LOOP_COLUMNS
         loop_values = np.linspace(-1.0, 1.0, element_count, dtype=np.float32)
         loop_factors = np.linspace(0.25, 1.75, element_count, dtype=np.float32)
-        self.loop_a = wp.array(loop_values, dtype=float, device=device)
-        self.loop_b = wp.array(loop_factors, dtype=float, device=device)
-        self.loop_output = wp.empty_like(self.loop_a)
+        # Separately allocated arrays land at offsets modulo 4 KiB that differ
+        # between processes. At some relative offsets, loads from `a` and `b`
+        # alias earlier stores to `output`, which slows each process by a
+        # different amount. Slicing the arrays from one page-aligned
+        # allocation fixes their placement.
+        float_size = np.dtype(np.float32).itemsize
+        page_elements = 4096 // float_size
+        stride = element_count + LOOP_ARRAY_GAP_BYTES // float_size
+        self.loop_storage = wp.empty(3 * stride + page_elements, dtype=float, device=device)
+        start = (-self.loop_storage.ptr % 4096) // float_size
+        self.loop_a, self.loop_b, self.loop_output = (
+            self.loop_storage[start + k * stride : start + k * stride + element_count] for k in range(3)
+        )
+        self.loop_a.assign(loop_values)
+        self.loop_b.assign(loop_factors)
         self.loop_command = wp.launch(
             linear_array_loop_kernel,
             dim=LOOP_ROWS,

@@ -5,15 +5,20 @@
 
 Compares the normal atomic path against the deterministic scatter-sort-reduce
 (accumulation) and two-pass counter (allocator) paths using CUDA graph replay.
+Each timed call replays the graph enough times to process ``ELEMENTS_PER_SAMPLE``
+elements, and the timer reads the duration from the GPU timeline, so launch and
+synchronization latency stay small next to the device work at every size.
 """
 
 import numpy as np
 
 import warp as wp
 
-from .benchmarks_utils import setup_once
+from .benchmarks_utils import CudaEventTimer, setup_once
 
 DETERMINISTIC_BENCHMARK_SIZES = [64 * 1024, 256 * 1024, 1024 * 1024]
+# Elements processed per timed call; smaller sizes replay the graph more often.
+ELEMENTS_PER_SAMPLE = 1 << 24
 DETERMINISM_SUPPORTED = hasattr(wp.config, "deterministic")
 DETERMINISTIC_BENCHMARK_MODES = ("normal", "deterministic")
 DETERMINISTIC_KERNEL_OPTIONS = {"enable_backward": False}
@@ -97,8 +102,9 @@ class AtomicAddDeterminismOverhead:
     params = (DETERMINISTIC_BENCHMARK_MODES, (1, 65536), tuple(DETERMINISTIC_BENCHMARK_SIZES))
     param_names = ("mode", "num_outputs", "num_elements")
 
+    timer = CudaEventTimer()
     repeat = 10
-    number = 5
+    number = 1
 
     def setup_cache(self):
         rng = np.random.default_rng(123)
@@ -157,13 +163,14 @@ class AtomicAddDeterminismOverhead:
 
         self.graph = capture.graph
 
+        self.replays = max(1, ELEMENTS_PER_SAMPLE // num_elements)
         for _ in range(5):
             wp.capture_launch(self.graph)
         wp.synchronize_device(self.device)
 
     def time_cuda(self, cache, mode, num_outputs, num_elements):
-        wp.capture_launch(self.graph)
-        wp.synchronize_device(self.device)
+        for _ in range(self.replays):
+            wp.capture_launch(self.graph)
 
 
 class AtomicCounterDeterminismOverhead:
@@ -176,8 +183,9 @@ class AtomicCounterDeterminismOverhead:
     params = (DETERMINISTIC_BENCHMARK_MODES, tuple(DETERMINISTIC_BENCHMARK_SIZES))
     param_names = ("mode", "num_elements")
 
+    timer = CudaEventTimer()
     repeat = 10
-    number = 5
+    number = 1
 
     def setup_cache(self):
         rng = np.random.default_rng(321)
@@ -240,10 +248,11 @@ class AtomicCounterDeterminismOverhead:
 
         self.graph = capture.graph
 
+        self.replays = max(1, ELEMENTS_PER_SAMPLE // num_elements)
         for _ in range(5):
             wp.capture_launch(self.graph)
         wp.synchronize_device(self.device)
 
     def time_cuda(self, vals_np, mode, num_elements):
-        wp.capture_launch(self.graph)
-        wp.synchronize_device(self.device)
+        for _ in range(self.replays):
+            wp.capture_launch(self.graph)

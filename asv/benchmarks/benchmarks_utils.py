@@ -36,6 +36,51 @@ def setup_once(setup):
     return wrapped
 
 
+class CudaEventTimer:
+    """Clock for a benchmark's ``timer`` attribute that reads the GPU timeline.
+
+    ``asv_runner`` reads the clock just before and just after each timed call,
+    and the difference becomes the sample. Each reading records an event on
+    the device's current stream and waits for it, so a sample covers the GPU
+    work that the timed call enqueued, without the host's wait for the GPU to
+    finish. It also covers the time the host takes to enqueue the first piece
+    of that work, which stays small next to a graph replay of many launches.
+
+    Readings accumulate the elapsed time between consecutive events. CUDA
+    reports elapsed time in single precision, which loses resolution over
+    the long interval since the first reading.
+    """
+
+    def __init__(self, device="cuda:0"):
+        self.device = device
+        self._last_event = None
+        self._seconds = 0.0
+
+    def __call__(self):
+        event = wp.Event(self.device, enable_timing=True)
+        wp.get_stream(self.device).record_event(event)
+        wp.synchronize_event(event)
+        if self._last_event is not None:
+            self._seconds += wp.get_event_elapsed_time(self._last_event, event) * 1.0e-3
+        self._last_event = event
+        return self._seconds
+
+
+# Kernel launches per timed graph replay in benchmarks that time single
+# kernels with CudaEventTimer. Each sample also covers the host's time to
+# start the replay, so the replay needs enough GPU work to keep that share
+# small for the shortest kernels.
+LAUNCHES_PER_SAMPLE = 256
+
+
+def capture_launches(launch, count, device="cuda:0"):
+    """Capture ``count`` calls of ``launch`` into one CUDA graph and return the graph."""
+    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+        for _ in range(count):
+            launch()
+    return capture.graph
+
+
 def get_asset_directory():
     return str(Path(__file__).resolve().parents[2] / "warp" / "examples" / "assets")
 

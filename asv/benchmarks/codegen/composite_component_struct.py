@@ -5,14 +5,13 @@
 all four fields per element. Tracks the slot-level codegen fast-path
 introduced for in-place composite-component writes.
 
-10 000 iterations: per-launch cost is 9-100 µs, so a large inner loop
-is needed to push the total runtime well above that variance floor and
-stabilise the median reported by ASV.
+Each sample replays a CUDA graph of back-to-back launches and reads its
+duration from the GPU timeline.
 """
 
-from statistics import median
-
 import warp as wp
+
+from ..benchmarks_utils import LAUNCHES_PER_SAMPLE, CudaEventTimer, capture_launches, setup_once
 
 
 @wp.struct
@@ -39,6 +38,11 @@ def state_multi_field(
 
 
 class RunKernel:
+    timer = CudaEventTimer()
+    repeat = 10
+    number = 1
+
+    @setup_once
     def setup(self):
         wp.init()
         wp.load_module(device="cuda:0")
@@ -48,35 +52,32 @@ class RunKernel:
         self.v = wp.ones(self.n, dtype=wp.vec3, device="cuda:0", requires_grad=True)
         self.q = wp.ones(self.n, dtype=wp.quatf, device="cuda:0", requires_grad=True)
         self.m = wp.ones(self.n, dtype=wp.float32, device="cuda:0", requires_grad=True)
-        self.cmd_fwd = wp.launch(
+        cmd_fwd = wp.launch(
             state_multi_field,
             self.n,
             inputs=[self.dst, self.p, self.v, self.q, self.m],
             device="cuda:0",
             record_cmd=True,
         )
+        self.forward_graph = capture_launches(cmd_fwd.launch, LAUNCHES_PER_SAMPLE)
+        self.backward_graph = capture_launches(
+            lambda: wp.launch(
+                state_multi_field,
+                self.n,
+                inputs=[self.dst, self.p, self.v, self.q, self.m],
+                adj_inputs=[self.dst.grad, self.p.grad, self.v.grad, self.q.grad, self.m.grad],
+                adj_outputs=[],
+                adjoint=True,
+                device="cuda:0",
+            ),
+            LAUNCHES_PER_SAMPLE,
+        )
+        wp.capture_launch(self.forward_graph)
+        wp.capture_launch(self.backward_graph)
         wp.synchronize_device("cuda:0")
 
-    def track_forward_cuda(self):
-        with wp.ScopedTimer("bench", print=False, cuda_filter=wp.TIMING_KERNEL, synchronize=True) as timer:
-            for _ in range(10000):
-                self.cmd_fwd.launch()
-        return median(r.elapsed for r in timer.timing_results) * 1e-3
+    def time_forward_cuda(self):
+        wp.capture_launch(self.forward_graph)
 
-    track_forward_cuda.unit = "seconds"
-
-    def track_backward_cuda(self):
-        with wp.ScopedTimer("bench", print=False, cuda_filter=wp.TIMING_KERNEL, synchronize=True) as timer:
-            for _ in range(10000):
-                wp.launch(
-                    state_multi_field,
-                    self.n,
-                    inputs=[self.dst, self.p, self.v, self.q, self.m],
-                    adj_inputs=[self.dst.grad, self.p.grad, self.v.grad, self.q.grad, self.m.grad],
-                    adj_outputs=[],
-                    adjoint=True,
-                    device="cuda:0",
-                )
-        return median(r.elapsed for r in timer.timing_results) * 1e-3
-
-    track_backward_cuda.unit = "seconds"
+    def time_backward_cuda(self):
+        wp.capture_launch(self.backward_graph)
