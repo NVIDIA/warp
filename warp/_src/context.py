@@ -6828,6 +6828,7 @@ class Runtime:
                 ctypes.POINTER(ctypes.c_char_p),  # cuda_include_dirs
                 ctypes.c_char_p,  # output_file
                 ctypes.c_bool,  # debug
+                ctypes.c_int,  # arch
             ]
             self.llvm.wp_compile_cuda.restype = ctypes.c_int
 
