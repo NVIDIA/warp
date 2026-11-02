@@ -615,7 +615,7 @@ class Nanogrid(NanogridBase):
             transform: Linear transform between packed index and world spaces.
             temporary_store: Shared pool from which to allocate temporary arrays.
             scalar_type: Scalar type for grid coordinates (``wp.float32`` or ``wp.float64``).
-            device: CUDA device on which to build the packed volume.
+            device: Device on which to build the packed volume.
             rebuildable: Whether to allocate persistent capacity for rebuilds.
             max_active_voxels: Maximum number of active voxels for rebuilds. Defaults to the packed cell count.
             max_leaf_nodes: Maximum number of NanoVDB leaf nodes for rebuilds. Defaults to ``max_active_voxels``.
@@ -1234,9 +1234,6 @@ def _normalize_environment_voxels(points: wp.array, point_envs: wp.array, env_co
         device = points.device
     else:
         device = wp.get_device(device)
-
-    if not device.is_cuda:
-        raise RuntimeError("NanoVDB environment volumes can only be built on CUDA devices")
 
     points = _nanogrid_rebuild_points_array(points, device)
     point_envs = _nanogrid_optional_int_array(point_envs, points.shape[0], device, "point_envs")
