@@ -94,18 +94,23 @@ class FSAIMultiRHS(LinearOperator):
     Args:
         factor: Existing :class:`FSAI` whose buffers remain valid during use.
         nrhs: Positive RHS count.
-        dtype: Working scalar dtype, float32 or float64.
+        dtype: Working scalar dtype, float32 or float64. Defaults to the factor's
+            scalar type, or float32 for float16 factors.
         layout: ``"columns"`` for coalesced CUDA products or ``"rows"`` for
             row-oriented products. CPU always uses the latter.
     """
 
-    def __init__(self, factor, nrhs, dtype=wp.float64, layout="columns"):
+    def __init__(self, factor, nrhs: int, dtype: type | None = None, layout: str = "columns"):
         from warp._src.optim.fsai import FSAI  # noqa: PLC0415
 
         if not isinstance(factor, FSAI):
             raise TypeError("factor must be an FSAI preconditioner")
-        if isinstance(nrhs, bool) or index(nrhs) < 1:
+        if isinstance(nrhs, bool):
+            raise TypeError("nrhs must be an integer, not bool")
+        if index(nrhs) < 1:
             raise ValueError("nrhs must be a positive integer")
+        if dtype is None:
+            dtype = wp.float32 if factor.scalar_type == wp.float16 else factor.scalar_type
         if dtype not in (wp.float32, wp.float64):
             raise ValueError("Working dtype must be float32 or float64")
         if layout not in ("rows", "columns"):
@@ -118,7 +123,8 @@ class FSAIMultiRHS(LinearOperator):
         offsets = wp.empty(self.nrhs + 1, dtype=int, device=factor.device)
         wp.launch(_offsets, self.nrhs + 1, [offsets, self.n], device=factor.device)
         self._owner = self
-        self._last_stream = None
+        # Seed with the constructing stream so first use elsewhere waits for setup.
+        self._last_stream = factor.device.stream if factor.device.is_cuda else None
         self._event = wp.Event(device=factor.device) if factor.device.is_cuda else None
         super().__init__(
             (self.nrhs * self.n, self.nrhs * self.n),
@@ -133,9 +139,12 @@ class FSAIMultiRHS(LinearOperator):
         """Return a smaller prepared capacity sharing this operator's scratch.
 
         No factor or work array is copied. The operators must execute serially,
-        including graph launches. Construct views outside graph capture.
+        including concurrently executing graphs; eager calls from different
+        streams are ordered automatically. Construct views outside graph capture.
         """
-        if isinstance(nrhs, bool) or index(nrhs) < 1 or index(nrhs) > self.nrhs:
+        if isinstance(nrhs, bool):
+            raise TypeError("nrhs must be an integer, not bool")
+        if index(nrhs) < 1 or index(nrhs) > self.nrhs:
             raise ValueError("nrhs must be positive and no greater than the prepared capacity")
         result = copy.copy(self)
         result.nrhs = index(nrhs)

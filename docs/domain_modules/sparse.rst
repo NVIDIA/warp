@@ -500,13 +500,12 @@ passed as the preconditioner for an equivalently partitioned iterative solve.
 The source matrix and factors are never replicated across RHSs.
 
 ``layout="columns"`` uses adjacent RHS values across both factor products on
-CUDA, including the required input/output transposes. ``layout="rows"`` retains
-a useful narrow-batch control. CPU uses the row path. There is no runtime timing
-or numerical host dispatch. Exact aliases are supported; shifted overlap and
-strided arrays are rejected. Changes to existing factor values are visible in
-captured replay. Do not replace storage or execute shared workspace concurrently.
+CUDA, including the required input/output transposes. ``layout="rows"`` can be
+faster for narrow batches. CPU uses the row path. Exact aliases are supported;
+shifted overlap and strided arrays are rejected. Changes to existing factor
+values are visible in captured replay. Do not replace factor storage after
+capture. Eager calls from different CUDA streams are ordered automatically, but
+captured graphs sharing one workspace must not execute concurrently.
 
 Construct and warm up before capture. Captured graphs do not add a per-replay
-synchronization. Complete first-use graph setup before changing inputs on stacks
-affected by GH-2096. Matrix construction remains caller-owned; procedural
-benchmarks use ``warp.fem`` outside the linear module.
+synchronization. Launch a captured graph once before changing its inputs.

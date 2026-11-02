@@ -543,8 +543,9 @@ class FSAI(LinearOperator):
         updates in the same buffers are visible on replay; changing topology or
         buffer identities requires recapture. Each prepared operator owns its
         workspaces. Its ``with_nrhs(nrhs)`` method prepares a smaller capacity
-        sharing that scratch, for mutually exclusive solves. Eager calls on changing streams are ordered with an event;
-        concurrent graph executions sharing this operator require caller ordering.
+        sharing that scratch, for mutually exclusive solves. Eager calls on
+        changing streams are ordered with an event; concurrent graph executions
+        sharing this operator require caller ordering.
 
         Args:
             nrhs: Positive number of independent right-hand sides.
@@ -558,8 +559,7 @@ class FSAI(LinearOperator):
         Returns:
             A reusable :class:`LinearOperator` with preallocated scratch storage.
         """
-        working_dtype = wp.float32 if self.scalar_type == wp.float16 else self.scalar_type
-        return FSAIMultiRHS(self, nrhs, working_dtype if dtype is None else dtype, layout)
+        return FSAIMultiRHS(self, nrhs, dtype, layout)
 
     def _apply(self, x, y, z, alpha, beta):
         x, y, z = (self._flat(v) for v in (x, y, z))

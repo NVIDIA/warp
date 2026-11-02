@@ -10,7 +10,7 @@ import numpy as np
 import warp as wp
 import warp.sparse as sp
 from warp._src.optim import fsai as fsai_module
-from warp.optim.linear import FSAI, cg, cr, preconditioner
+from warp.optim.linear import FSAI, FSAIMultiRHS, cg, cr, preconditioner
 from warp.tests.unittest_utils import add_function_test, get_cuda_test_devices, get_test_devices
 
 
@@ -923,6 +923,7 @@ def test_float16_capture_refit(test, device):
 
 
 def test_multi_rhs(test, device, dtype):
+    """Check multiple-RHS application across factor types, widths, layouts and aliases."""
     # Odd rows/widths exercise both transpose and RHS tile tails. References use
     # the stored coefficients, so factor quantization is not application error.
     rng = np.random.default_rng(37)
@@ -967,6 +968,7 @@ def test_multi_rhs(test, device, dtype):
 
 
 def test_multi_rhs_capture(test, device):
+    """Check captured replay observes factor value updates for compact and padded factors."""
     pre = FSAI(_matrix(_path(41), device), max_row_size=8, factor_dtype=wp.float32, reuse_pattern=True)
     # Deferred construction keeps padded factor rows, covering both formats.
     for deferred in (False, True):
@@ -983,10 +985,10 @@ def test_multi_rhs_capture(test, device):
         out = wp.empty_like(x)
         action.matvec(x, out, out, 1, 0)
         wp.synchronize_device(device)
-        with wp.ScopedCapture(device=device) as capture:
+        with wp.ScopedCapture(device=device, force_module_load=False) as capture:
             action.matvec(x, out, out, 1, 0)
         for scale in (1.0, 2.0, 0.5):
-            # Complete first launch before changing inputs (GH-2096).
+            # Complete the first launch before changing inputs.
             x.fill_(scale)
             wp.capture_launch(capture.graph)
             g = _dense(pre.G).astype(np.float64)
@@ -999,10 +1001,15 @@ def test_multi_rhs_capture(test, device):
 
 
 def test_multi_rhs_validation(test, device):
+    """Check that invalid arguments and arrays are rejected before output mutation."""
     pre = FSAI(_matrix(_path(5), device))
-    for kwargs in ({"nrhs": 0}, {"nrhs": True}, {"nrhs": 2, "dtype": wp.float16}, {"nrhs": 2, "layout": "invalid"}):
-        with test.assertRaises((ValueError, TypeError)):
+    for kwargs in ({"nrhs": 0}, {"nrhs": 2, "dtype": wp.float16}, {"nrhs": 2, "layout": "invalid"}):
+        with test.assertRaises(ValueError):
             pre.as_multi_rhs(**kwargs)
+    with test.assertRaises(TypeError):
+        pre.as_multi_rhs(True)
+    # Direct construction and the factory resolve the same default working dtype.
+    test.assertEqual(FSAIMultiRHS(pre, 2).dtype, pre.as_multi_rhs(2).dtype)
     action = pre.as_multi_rhs(2)
     x = wp.ones(10, dtype=wp.float64, device=device)
     out = wp.full(10, 123.0, dtype=wp.float64, device=device)
@@ -1020,6 +1027,7 @@ def test_multi_rhs_validation(test, device):
 
 
 def test_multi_rhs_streams(test, device):
+    """Check that eager application from different streams shares scratch safely."""
     pre = FSAI(_matrix(_path(41), device), max_row_size=8)
     action = pre.as_multi_rhs(7)
     smaller = action.with_nrhs(3)

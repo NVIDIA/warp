@@ -26,7 +26,7 @@ class FSAIMultiRHS:
             wp.synchronize_device(self.device)
             self.graph = None
             if self.device.is_cuda:
-                with wp.ScopedCapture() as capture:
+                with wp.ScopedCapture(force_module_load=False) as capture:
                     self._run()
                 self.graph = capture.graph
                 wp.capture_launch(self.graph)
