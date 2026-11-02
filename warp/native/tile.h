@@ -773,7 +773,7 @@ template <typename T, typename Shape_, bool BoundsCheck = true, bool Aligned = f
     array_t<T> data;
     Coord offset;
 
-    tile_global_t(array_t<T>& a, const Coord& c)
+    inline CUDA_CALLABLE tile_global_t(array_t<T>& a, const Coord& c)
         : data(a)
         , offset(c)
     {
@@ -1091,7 +1091,7 @@ template <typename T, typename L> struct tile_register_t {
 
     // apply a lambda to all valid entries in the tile
     // Op should be a functor that takes a register index and tile_coord_t as input
-    template <typename Op> void apply(Op op)
+    template <typename Op> inline CUDA_CALLABLE void apply(Op op)
     {
         WP_PRAGMA_UNROLL
         for (int i = 0; i < Layout::NumRegs; ++i) {
@@ -1520,7 +1520,7 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
     struct Storage {
         T* ptr;
 
-        Storage(T* p)
+        inline CUDA_CALLABLE Storage(T* p)
             : ptr(p)
         {
         }
