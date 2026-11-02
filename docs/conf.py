@@ -134,7 +134,12 @@ nitpick_ignore_regex = [
     # Members inherited from IsoSurfaceBase, listed in member tables but documented on the base class
     (r"py:obj", r"warp\.geometry\.IsoSurface(MarchingCubes|Nets)\.(resize|surface|extract)"),
     # Prepared solve actions inherit these methods from a private base; the user guide documents them.
-    (r"py:obj", r"warp\.optim\.linear\.GMRESSolve\.(reset_stats|update)"),
+    (r"py:obj", r"warp\.optim\.linear\.(CGSolve\.reset_stats|GMRESSolve\.(reset_stats|update))"),
+    # MultiRHSOperator inherits these documented LinearOperator attributes.
+    (
+        "py:obj",
+        r"warp\.optim\.linear\.MultiRHSOperator\.(batch_count|batch_offsets|device|dtype|matvec|max_batch_length|scalar_type|shape)",
+    ),
     # FSAI inherits these attributes; their documentation is on LinearOperator.
     (
         r"py:obj",

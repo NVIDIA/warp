@@ -26,3 +26,5 @@ from warp._src.optim.linear import preconditioner as preconditioner
 
 from warp._src.optim._solve_action import GMRESSolve as GMRESSolve
 from warp._src.optim._solve_action import ResidualMode as ResidualMode
+from warp._src.optim._multi_rhs import CGSolve as CGSolve
+from warp._src.optim._multi_rhs import MultiRHSOperator as MultiRHSOperator

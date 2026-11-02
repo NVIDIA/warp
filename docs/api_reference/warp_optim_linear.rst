@@ -15,12 +15,14 @@ API
 
    BiCGSTAB
    CG
+   CGSolve
    CR
    FSAI
    GMRES
    GMRESSolve
    LinearOperator
    LinearSolverState
+   MultiRHSOperator
    ResidualMode
    aslinearoperator
    bicgstab

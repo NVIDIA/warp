@@ -530,3 +530,42 @@ be a fixed linear right preconditioner; do not use a variable inner iterative
 action with ordinary GMRES. Restart boundaries can exceed ``maxiter`` by up to
 ``restart - 1`` iterations. Existing ``GMRES`` and ``gmres(..., run=False)``
 behavior is unchanged.
+
+CG solves with a shared matrix
+------------------------------
+
+:class:`CGSolve` prepares repeated independent solves for a single SPD sparse
+matrix. The recurrence is the existing :func:`cg`, with per-RHS stopping tests::
+
+    from warp.optim.linear import CGSolve
+
+    action = CGSolve(A, nrhs=24, working_dtype=wp.float32,
+                     tol=0.01, maxiter=25)
+    action.solve(rhs, out)
+
+``rhs`` and ``out`` are contiguous ``(24, n)`` arrays in A's scalar dtype.
+The optional working dtype changes inner arithmetic; it does not promise
+source-precision accuracy. This deliberately short solve is useful as an
+approximate preconditioning action, not a fixed exact inverse. Every call
+starts from zero and refreshes converted matrix coefficients on device.
+
+Pass ``M=`` to use either a single-system SPD preconditioner or a prepared
+multiple-RHS :class:`LinearOperator`. The prepared form avoids a serial Python
+RHS loop inside the application. :class:`MultiRHSOperator` provides sparse block
+products, batch offsets and scratch sharing independently of CG. It does not
+copy the sparse matrix. In this initial API, sparse inputs are compressed CSR
+or 3x3 BSR in float32 or float64; compress padded rows before preparation.
+
+``action.with_nrhs(8)`` prepares a smaller capacity sharing matrix and staging
+but owning separate Krylov buffers. Supply ``M=`` again if the preconditioner is
+already partitioned. These capacities must execute serially, including across
+streams and graphs. Selection of active directions belongs to the caller;
+there are no eigen-residual or Ritz-vector concepts in this interface.
+
+Prepare and warm up before CUDA capture. ``solve`` returns device arrays with
+iterations, squared recurrence residuals and squared effective tolerances.
+``action.stats`` counts scheduled vector iterations (including masked lanes),
+maximum batch iterations, failed recurrence checks and RHS calls, cumulatively
+until ``reset_stats()``. Validate original-equation residuals separately when
+using mixed precision or truncated solves. CPU eager execution is supported;
+reverse-mode derivatives through this action are not supplied.

@@ -241,6 +241,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     )
     from warp.tests.test_module_variants import TestModuleVariants
     from warp.tests.test_modules_lite import TestModuleLite
+    from warp.tests.test_multi_rhs import TestMultiRHS
     from warp.tests.test_noise import TestNoise
     from warp.tests.test_operators import TestOperators
     from warp.tests.test_options import TestCpuKernelCacheKey, TestOptions
@@ -417,6 +418,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestLerp,
         TestLinearSolvers,
         TestSolveAction,
+        TestMultiRHS,
         TestLogger,
         TestLValue,
         TestMarchingCubes,
