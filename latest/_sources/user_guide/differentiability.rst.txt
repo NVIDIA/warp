@@ -527,7 +527,6 @@ In the following, we increment an array index in each thread via :func:`wp.atomi
 the square root of an input array at the incremented index:
 
 .. testcode::
-    :skipif: wp.get_cuda_device_count() == 0
 
     @wp.kernel
     def test_add(counter: wp.array[int], input: wp.array[float], output: wp.array[float]):
@@ -559,19 +558,18 @@ the square root of an input array at the incremented index:
 The output of the above code is:
 
 .. testoutput::
-    :skipif: wp.get_cuda_device_count() == 0
+    :options: +ELLIPSIS
 
     counter:     [8]
     thread_ids:  [0 0 0 0 0 0 0 0]
     input:       [1. 2. 3. 4. 5. 6. 7. 8.]
     output:      [1.        1.4142135 1.7320508 2.        2.236068  2.4494898 2.6457512
      2.828427 ]
-    input.grad:  [4. 0. 0. 0. 0. 0. 0. 0.]
+    input.grad:  [...]
 
-The gradient of the input is incorrect because the backward pass involving the atomic operation :func:`wp.atomic_add() <warp._src.lang.atomic_add>` does not know which thread ID corresponds
-to which input value.
-The index returned by the adjoint of :func:`wp.atomic_add() <warp._src.lang.atomic_add>` is always zero so that the gradient is the first entry of the input array,
-i.e. :math:`\frac{1}{2\sqrt{1}} = 0.5`, is accumulated ``dim`` times (hence ``input.grad[0] == 4.0`` and all other entries zero).
+The gradient of the input is incorrect because the backward pass does not run :func:`wp.atomic_add() <warp._src.lang.atomic_add>` again.
+As a result, ``idx`` in the backward pass does not hold the index that each thread received in the forward pass.
+Its value is undefined, so the incorrect values in ``input.grad`` can differ between devices and runs.
 
 To fix this, we define a new Warp function ``reversible_increment()`` with a custom *replay* definition that stores the thread ID in a separate array:
 

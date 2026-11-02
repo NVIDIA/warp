@@ -556,22 +556,88 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="warp._src.lang.atomic_sub">
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">atomic_sub</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Array</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">i</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.Int.html#warp.Int" title="warp.Int"><span class="pre">Int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="headerlink" href="#warp._src.lang.atomic_sub" title="Link to this definition">#</a></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code>.</p>
-<p>This function is automatically invoked when using the syntax <code class="docutils literal notranslate"><span class="pre">arr[i]</span> <span class="pre">-=</span> <span class="pre">value</span></code>.</p>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtract a value from an array element in place.</p>
+<p>For composite dtypes (vectors, matrices, quaternions, and transforms),
+the update is atomic only per component. Another thread can observe
+<code class="docutils literal notranslate"><span class="pre">arr[i]</span></code> with only some of its components updated.</p>
+<p>On GPU, concurrent floating-point updates to the same element are
+applied in an unspecified order, so rounding can make the result differ
+between runs. Enable deterministic mode for reproducible results; see
+<a class="reference internal" href="../../user_guide/execution_and_performance/deterministic_execution.html#determinism"><span class="std std-ref">Deterministic Execution</span></a>. In deterministic mode, compiling a kernel that uses
+the returned value raises <a class="reference internal" href="../../api_reference/_generated/warp.WarpDeterminismError.html#warp.WarpDeterminismError" title="warp.WarpDeterminismError"><code class="xref py py-class docutils literal notranslate"><span class="pre">WarpDeterminismError</span></code></a>.</p>
+<p>This function does not support <code class="docutils literal notranslate"><span class="pre">float16</span></code> or <code class="docutils literal notranslate"><span class="pre">bfloat16</span></code> on GPUs
+with compute capability below 7.0, or <code class="docutils literal notranslate"><span class="pre">float64</span></code> below 6.0. Kernels
+compiled for those GPUs skip these updates without raising an error.
+Use <code class="docutils literal notranslate"><span class="pre">float32</span></code> on those GPUs instead.</p>
+<p>Currently, the backward pass does not recompute the returned value,
+so gradients that depend on it are incorrect. If the backward pass
+needs the returned value, for example as an index, save it to an
+array in the forward pass and return it from a custom replay
+function; see <a class="reference internal" href="../../user_guide/differentiability.html#custom-replay-function"><span class="std std-ref">Example 2: Custom Replay Function</span></a>. Even with a custom
+replay function, autodiff treats the returned value as a constant,
+so <code class="docutils literal notranslate"><span class="pre">arr</span></code> receives no gradient from expressions that use it.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>arr</strong> – Array containing the element to update. Its scalar type must be
+<code class="docutils literal notranslate"><span class="pre">int32</span></code>, <code class="docutils literal notranslate"><span class="pre">uint32</span></code>, <code class="docutils literal notranslate"><span class="pre">int64</span></code>, <code class="docutils literal notranslate"><span class="pre">uint64</span></code>, <code class="docutils literal notranslate"><span class="pre">float16</span></code>,
+<code class="docutils literal notranslate"><span class="pre">bfloat16</span></code>, <code class="docutils literal notranslate"><span class="pre">float32</span></code>, or <code class="docutils literal notranslate"><span class="pre">float64</span></code>.</p></li>
+<li><p><strong>i</strong> – Index of the element to update.</p></li>
+<li><p><strong>value</strong> – Amount to subtract. <code class="docutils literal notranslate"><span class="pre">value</span></code> must have the same dtype as
+<code class="docutils literal notranslate"><span class="pre">arr</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The value of <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code> before this update. For composite dtypes, the
+result may not equal any value that <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code> held at a single
+point in time.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py">
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">atomic_sub</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Array</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">i</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.Int.html#warp.Int" title="warp.Int"><span class="pre">Int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">j</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.Int.html#warp.Int" title="warp.Int"><span class="pre">Int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i,j]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i,j]</span></code>.</p>
-<p>This function is automatically invoked when using the syntax <code class="docutils literal notranslate"><span class="pre">arr[i,j]</span> <span class="pre">-=</span> <span class="pre">value</span></code>.</p>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtract a value from an array element in place.</p>
+<p>See the <code class="docutils literal notranslate"><span class="pre">wp.atomic_sub(arr,</span> <span class="pre">i,</span> <span class="pre">value)</span></code> overload for dtype, atomicity,
+determinism, and autodiff details.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>arr</strong> – Array containing the element to update.</p></li>
+<li><p><strong>i</strong> – First index of the element.</p></li>
+<li><p><strong>j</strong> – Second index of the element.</p></li>
+<li><p><strong>value</strong> – Amount to subtract. <code class="docutils literal notranslate"><span class="pre">value</span></code> must have the same dtype as
+<code class="docutils literal notranslate"><span class="pre">arr</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The value of <code class="docutils literal notranslate"><span class="pre">arr[i,j]</span></code> before this update.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py">
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">atomic_sub</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Array</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">i</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.Int.html#warp.Int" title="warp.Int"><span class="pre">Int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">j</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.Int.html#warp.Int" title="warp.Int"><span class="pre">Int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.Int.html#warp.Int" title="warp.Int"><span class="pre">Int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i,j,k]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i,j,k]</span></code>.</p>
-<p>This function is automatically invoked when using the syntax <code class="docutils literal notranslate"><span class="pre">arr[i,j,k]</span> <span class="pre">-=</span> <span class="pre">value</span></code>.</p>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtract a value from an array element in place.</p>
+<p>See the <code class="docutils literal notranslate"><span class="pre">wp.atomic_sub(arr,</span> <span class="pre">i,</span> <span class="pre">value)</span></code> overload for dtype, atomicity,
+determinism, and autodiff details.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>arr</strong> – Array containing the element to update.</p></li>
+<li><p><strong>i</strong> – First index of the element.</p></li>
+<li><p><strong>j</strong> – Second index of the element.</p></li>
+<li><p><strong>k</strong> – Third index of the element.</p></li>
+<li><p><strong>value</strong> – Amount to subtract. <code class="docutils literal notranslate"><span class="pre">value</span></code> must have the same dtype as
+<code class="docutils literal notranslate"><span class="pre">arr</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The value of <code class="docutils literal notranslate"><span class="pre">arr[i,j,k]</span></code> before this update.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -588,22 +654,89 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i,j,k,l]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i,j,k,l]</span></code>.</p>
-<p>This function is automatically invoked when using the syntax <code class="docutils literal notranslate"><span class="pre">arr[i,j,k,l]</span> <span class="pre">-=</span> <span class="pre">value</span></code>.</p>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtract a value from an array element in place.</p>
+<p>See the <code class="docutils literal notranslate"><span class="pre">wp.atomic_sub(arr,</span> <span class="pre">i,</span> <span class="pre">value)</span></code> overload for dtype, atomicity,
+determinism, and autodiff details.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>arr</strong> – Array containing the element to update.</p></li>
+<li><p><strong>i</strong> – First index of the element.</p></li>
+<li><p><strong>j</strong> – Second index of the element.</p></li>
+<li><p><strong>k</strong> – Third index of the element.</p></li>
+<li><p><strong>l</strong> – Fourth index of the element.</p></li>
+<li><p><strong>value</strong> – Amount to subtract. <code class="docutils literal notranslate"><span class="pre">value</span></code> must have the same dtype as
+<code class="docutils literal notranslate"><span class="pre">arr</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The value of <code class="docutils literal notranslate"><span class="pre">arr[i,j,k,l]</span></code> before this update.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py">
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">atomic_sub</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">FabricArray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">i</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.Int.html#warp.Int" title="warp.Int"><span class="pre">Int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code>.</p>
-<p>This function is automatically invoked when using the syntax <code class="docutils literal notranslate"><span class="pre">arr[i]</span> <span class="pre">-=</span> <span class="pre">value</span></code>.</p>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtract a value from an array element in place.</p>
+<p>For composite dtypes (vectors, matrices, quaternions, and transforms),
+the update is atomic only per component. Another thread can observe
+<code class="docutils literal notranslate"><span class="pre">arr[i]</span></code> with only some of its components updated.</p>
+<p>On GPU, concurrent floating-point updates to the same element are
+applied in an unspecified order, so rounding can make the result differ
+between runs. Enable deterministic mode for reproducible results; see
+<a class="reference internal" href="../../user_guide/execution_and_performance/deterministic_execution.html#determinism"><span class="std std-ref">Deterministic Execution</span></a>. In deterministic mode, compiling a kernel that uses
+the returned value raises <a class="reference internal" href="../../api_reference/_generated/warp.WarpDeterminismError.html#warp.WarpDeterminismError" title="warp.WarpDeterminismError"><code class="xref py py-class docutils literal notranslate"><span class="pre">WarpDeterminismError</span></code></a>.</p>
+<p>This function does not support <code class="docutils literal notranslate"><span class="pre">float16</span></code> or <code class="docutils literal notranslate"><span class="pre">bfloat16</span></code> on GPUs
+with compute capability below 7.0, or <code class="docutils literal notranslate"><span class="pre">float64</span></code> below 6.0. Kernels
+compiled for those GPUs skip these updates without raising an error.
+Use <code class="docutils literal notranslate"><span class="pre">float32</span></code> on those GPUs instead.</p>
+<p>Currently, the backward pass does not recompute the returned value,
+so gradients that depend on it are incorrect. If the backward pass
+needs the returned value, for example as an index, save it to an
+array in the forward pass and return it from a custom replay
+function; see <a class="reference internal" href="../../user_guide/differentiability.html#custom-replay-function"><span class="std std-ref">Example 2: Custom Replay Function</span></a>. Even with a custom
+replay function, autodiff treats the returned value as a constant,
+so <code class="docutils literal notranslate"><span class="pre">arr</span></code> receives no gradient from expressions that use it.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>arr</strong> – Array containing the element to update. Its scalar type must be
+<code class="docutils literal notranslate"><span class="pre">int32</span></code>, <code class="docutils literal notranslate"><span class="pre">uint32</span></code>, <code class="docutils literal notranslate"><span class="pre">int64</span></code>, <code class="docutils literal notranslate"><span class="pre">uint64</span></code>, <code class="docutils literal notranslate"><span class="pre">float16</span></code>,
+<code class="docutils literal notranslate"><span class="pre">bfloat16</span></code>, <code class="docutils literal notranslate"><span class="pre">float32</span></code>, or <code class="docutils literal notranslate"><span class="pre">float64</span></code>.</p></li>
+<li><p><strong>i</strong> – Index of the element to update.</p></li>
+<li><p><strong>value</strong> – Amount to subtract. <code class="docutils literal notranslate"><span class="pre">value</span></code> must have the same dtype as
+<code class="docutils literal notranslate"><span class="pre">arr</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The value of <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code> before this update. For composite dtypes, the
+result may not equal any value that <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code> held at a single
+point in time.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py">
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">atomic_sub</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">FabricArray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">i</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.Int.html#warp.Int" title="warp.Int"><span class="pre">Int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">j</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.Int.html#warp.Int" title="warp.Int"><span class="pre">Int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i,j]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i,j]</span></code>.</p>
-<p>This function is automatically invoked when using the syntax <code class="docutils literal notranslate"><span class="pre">arr[i,j]</span> <span class="pre">-=</span> <span class="pre">value</span></code>.</p>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtract a value from an array element in place.</p>
+<p>See the <code class="docutils literal notranslate"><span class="pre">wp.atomic_sub(arr,</span> <span class="pre">i,</span> <span class="pre">value)</span></code> overload for dtype, atomicity,
+determinism, and autodiff details.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>arr</strong> – Array containing the element to update.</p></li>
+<li><p><strong>i</strong> – First index of the element.</p></li>
+<li><p><strong>j</strong> – Second index of the element.</p></li>
+<li><p><strong>value</strong> – Amount to subtract. <code class="docutils literal notranslate"><span class="pre">value</span></code> must have the same dtype as
+<code class="docutils literal notranslate"><span class="pre">arr</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The value of <code class="docutils literal notranslate"><span class="pre">arr[i,j]</span></code> before this update.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -619,8 +752,24 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i,j,k]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i,j,k]</span></code>.</p>
-<p>This function is automatically invoked when using the syntax <code class="docutils literal notranslate"><span class="pre">arr[i,j,k]</span> <span class="pre">-=</span> <span class="pre">value</span></code>.</p>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtract a value from an array element in place.</p>
+<p>See the <code class="docutils literal notranslate"><span class="pre">wp.atomic_sub(arr,</span> <span class="pre">i,</span> <span class="pre">value)</span></code> overload for dtype, atomicity,
+determinism, and autodiff details.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>arr</strong> – Array containing the element to update.</p></li>
+<li><p><strong>i</strong> – First index of the element.</p></li>
+<li><p><strong>j</strong> – Second index of the element.</p></li>
+<li><p><strong>k</strong> – Third index of the element.</p></li>
+<li><p><strong>value</strong> – Amount to subtract. <code class="docutils literal notranslate"><span class="pre">value</span></code> must have the same dtype as
+<code class="docutils literal notranslate"><span class="pre">arr</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The value of <code class="docutils literal notranslate"><span class="pre">arr[i,j,k]</span></code> before this update.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -637,15 +786,67 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i,j,k,l]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i,j,k,l]</span></code>.</p>
-<p>This function is automatically invoked when using the syntax <code class="docutils literal notranslate"><span class="pre">arr[i,j,k,l]</span> <span class="pre">-=</span> <span class="pre">value</span></code>.</p>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtract a value from an array element in place.</p>
+<p>See the <code class="docutils literal notranslate"><span class="pre">wp.atomic_sub(arr,</span> <span class="pre">i,</span> <span class="pre">value)</span></code> overload for dtype, atomicity,
+determinism, and autodiff details.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>arr</strong> – Array containing the element to update.</p></li>
+<li><p><strong>i</strong> – First index of the element.</p></li>
+<li><p><strong>j</strong> – Second index of the element.</p></li>
+<li><p><strong>k</strong> – Third index of the element.</p></li>
+<li><p><strong>l</strong> – Fourth index of the element.</p></li>
+<li><p><strong>value</strong> – Amount to subtract. <code class="docutils literal notranslate"><span class="pre">value</span></code> must have the same dtype as
+<code class="docutils literal notranslate"><span class="pre">arr</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The value of <code class="docutils literal notranslate"><span class="pre">arr[i,j,k,l]</span></code> before this update.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py">
 <span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">atomic_sub</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">IndexedFabricArray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">i</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../api_reference/_generated/warp.Int.html#warp.Int" title="warp.Int"><span class="pre">Int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code>.</p>
-<p>This function is automatically invoked when using the syntax <code class="docutils literal notranslate"><span class="pre">arr[i]</span> <span class="pre">-=</span> <span class="pre">value</span></code>.</p>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtract a value from an array element in place.</p>
+<p>For composite dtypes (vectors, matrices, quaternions, and transforms),
+the update is atomic only per component. Another thread can observe
+<code class="docutils literal notranslate"><span class="pre">arr[i]</span></code> with only some of its components updated.</p>
+<p>On GPU, concurrent floating-point updates to the same element are
+applied in an unspecified order, so rounding can make the result differ
+between runs. Enable deterministic mode for reproducible results; see
+<a class="reference internal" href="../../user_guide/execution_and_performance/deterministic_execution.html#determinism"><span class="std std-ref">Deterministic Execution</span></a>. In deterministic mode, compiling a kernel that uses
+the returned value raises <a class="reference internal" href="../../api_reference/_generated/warp.WarpDeterminismError.html#warp.WarpDeterminismError" title="warp.WarpDeterminismError"><code class="xref py py-class docutils literal notranslate"><span class="pre">WarpDeterminismError</span></code></a>.</p>
+<p>This function does not support <code class="docutils literal notranslate"><span class="pre">float16</span></code> or <code class="docutils literal notranslate"><span class="pre">bfloat16</span></code> on GPUs
+with compute capability below 7.0, or <code class="docutils literal notranslate"><span class="pre">float64</span></code> below 6.0. Kernels
+compiled for those GPUs skip these updates without raising an error.
+Use <code class="docutils literal notranslate"><span class="pre">float32</span></code> on those GPUs instead.</p>
+<p>Currently, the backward pass does not recompute the returned value,
+so gradients that depend on it are incorrect. If the backward pass
+needs the returned value, for example as an index, save it to an
+array in the forward pass and return it from a custom replay
+function; see <a class="reference internal" href="../../user_guide/differentiability.html#custom-replay-function"><span class="std std-ref">Example 2: Custom Replay Function</span></a>. Even with a custom
+replay function, autodiff treats the returned value as a constant,
+so <code class="docutils literal notranslate"><span class="pre">arr</span></code> receives no gradient from expressions that use it.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>arr</strong> – Array containing the element to update. Its scalar type must be
+<code class="docutils literal notranslate"><span class="pre">int32</span></code>, <code class="docutils literal notranslate"><span class="pre">uint32</span></code>, <code class="docutils literal notranslate"><span class="pre">int64</span></code>, <code class="docutils literal notranslate"><span class="pre">uint64</span></code>, <code class="docutils literal notranslate"><span class="pre">float16</span></code>,
+<code class="docutils literal notranslate"><span class="pre">bfloat16</span></code>, <code class="docutils literal notranslate"><span class="pre">float32</span></code>, or <code class="docutils literal notranslate"><span class="pre">float64</span></code>.</p></li>
+<li><p><strong>i</strong> – Index of the element to update.</p></li>
+<li><p><strong>value</strong> – Amount to subtract. <code class="docutils literal notranslate"><span class="pre">value</span></code> must have the same dtype as
+<code class="docutils literal notranslate"><span class="pre">arr</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The value of <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code> before this update. For composite dtypes, the
+result may not equal any value that <code class="docutils literal notranslate"><span class="pre">arr[i]</span></code> held at a single
+point in time.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -660,8 +861,23 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i,j]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i,j]</span></code>.</p>
-<p>This function is automatically invoked when using the syntax <code class="docutils literal notranslate"><span class="pre">arr[i,j]</span> <span class="pre">-=</span> <span class="pre">value</span></code>.</p>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtract a value from an array element in place.</p>
+<p>See the <code class="docutils literal notranslate"><span class="pre">wp.atomic_sub(arr,</span> <span class="pre">i,</span> <span class="pre">value)</span></code> overload for dtype, atomicity,
+determinism, and autodiff details.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>arr</strong> – Array containing the element to update.</p></li>
+<li><p><strong>i</strong> – First index of the element.</p></li>
+<li><p><strong>j</strong> – Second index of the element.</p></li>
+<li><p><strong>value</strong> – Amount to subtract. <code class="docutils literal notranslate"><span class="pre">value</span></code> must have the same dtype as
+<code class="docutils literal notranslate"><span class="pre">arr</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The value of <code class="docutils literal notranslate"><span class="pre">arr[i,j]</span></code> before this update.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -677,8 +893,24 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i,j,k]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i,j,k]</span></code>.</p>
-<p>This function is automatically invoked when using the syntax <code class="docutils literal notranslate"><span class="pre">arr[i,j,k]</span> <span class="pre">-=</span> <span class="pre">value</span></code>.</p>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtract a value from an array element in place.</p>
+<p>See the <code class="docutils literal notranslate"><span class="pre">wp.atomic_sub(arr,</span> <span class="pre">i,</span> <span class="pre">value)</span></code> overload for dtype, atomicity,
+determinism, and autodiff details.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>arr</strong> – Array containing the element to update.</p></li>
+<li><p><strong>i</strong> – First index of the element.</p></li>
+<li><p><strong>j</strong> – Second index of the element.</p></li>
+<li><p><strong>k</strong> – Third index of the element.</p></li>
+<li><p><strong>value</strong> – Amount to subtract. <code class="docutils literal notranslate"><span class="pre">value</span></code> must have the same dtype as
+<code class="docutils literal notranslate"><span class="pre">arr</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The value of <code class="docutils literal notranslate"><span class="pre">arr[i,j,k]</span></code> before this update.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py function">
@@ -695,8 +927,25 @@
 </dl>
 
 <span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span></dt>
-<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtracts <code class="docutils literal notranslate"><span class="pre">value</span></code> onto <code class="docutils literal notranslate"><span class="pre">arr[i,j,k,l]</span></code> and returns the original value of <code class="docutils literal notranslate"><span class="pre">arr[i,j,k,l]</span></code>.</p>
-<p>This function is automatically invoked when using the syntax <code class="docutils literal notranslate"><span class="pre">arr[i,j,k,l]</span> <span class="pre">-=</span> <span class="pre">value</span></code>.</p>
+<dd><ul class="wp-function-tags"><li class="wp-function-tag" data-wp-tag="kernel" data-wp-value="true"><span class="wp-function-tag-name">Kernel</span><span class="wp-function-tag-value visually-hidden">: true</span></li><li class="wp-function-tag visually-hidden" data-wp-tag="python" data-wp-value="false"><span class="wp-function-tag-name">Python</span><span class="wp-function-tag-value visually-hidden">: false</span></li><li class="wp-function-tag" data-wp-tag="differentiable" data-wp-value="true"><span class="wp-function-tag-name">Differentiable</span><span class="wp-function-tag-value visually-hidden">: true</span></li></ul><p>Atomically subtract a value from an array element in place.</p>
+<p>See the <code class="docutils literal notranslate"><span class="pre">wp.atomic_sub(arr,</span> <span class="pre">i,</span> <span class="pre">value)</span></code> overload for dtype, atomicity,
+determinism, and autodiff details.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>arr</strong> – Array containing the element to update.</p></li>
+<li><p><strong>i</strong> – First index of the element.</p></li>
+<li><p><strong>j</strong> – Second index of the element.</p></li>
+<li><p><strong>k</strong> – Third index of the element.</p></li>
+<li><p><strong>l</strong> – Fourth index of the element.</p></li>
+<li><p><strong>value</strong> – Amount to subtract. <code class="docutils literal notranslate"><span class="pre">value</span></code> must have the same dtype as
+<code class="docutils literal notranslate"><span class="pre">arr</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The value of <code class="docutils literal notranslate"><span class="pre">arr[i,j,k,l]</span></code> before this update.</p>
+</dd>
+</dl>
 </dd></dl>
 
 </section>
