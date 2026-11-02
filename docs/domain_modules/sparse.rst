@@ -558,9 +558,9 @@ or 3x3 BSR in float32 or float64; compress padded rows before preparation.
 
 ``action.with_nrhs(8)`` prepares a smaller capacity sharing matrix and staging
 but owning separate Krylov buffers. Supply ``M=`` again if the preconditioner is
-already partitioned. These capacities must execute serially, including across
-streams and graphs. Selection of active directions belongs to the caller;
-there are no eigen-residual or Ritz-vector concepts in this interface.
+already partitioned. Eager calls from different CUDA streams are ordered
+automatically, but captured graphs sharing these capacities must not execute
+concurrently. Selection of active directions belongs to the caller.
 
 Prepare and warm up before CUDA capture. ``solve`` returns device arrays with
 iterations, squared recurrence residuals and squared effective tolerances.

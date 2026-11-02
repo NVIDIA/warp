@@ -10,7 +10,7 @@ import numpy as np
 import warp as wp
 import warp.sparse as sp
 from warp.optim.linear import CGSolve, MultiRHSOperator, aslinearoperator, preconditioner
-from warp.tests.unittest_utils import add_function_test, get_test_devices
+from warp.tests.unittest_utils import add_function_test, get_cuda_test_devices, get_test_devices
 
 
 def _matrix(a, device, dtype, block):
@@ -26,6 +26,7 @@ def _matrix(a, device, dtype, block):
 
 
 def test_multiple_rhs(test, device, working_dtype):
+    """Check solutions across layouts, widths, coefficient changes, aliases and smaller capacities."""
     n = 15
     a = np.diag(np.linspace(3.0, 5.0, n)) + np.diag(np.full(n - 1, -0.5), 1) + np.diag(np.full(n - 1, -0.5), -1)
     rng = np.random.default_rng(423)
@@ -69,6 +70,7 @@ def test_multiple_rhs(test, device, working_dtype):
 
 
 def test_multiple_rhs_capture(test, device):
+    """Check captured replay with prepared preconditioners and changing values."""
     n = 24
     a = np.diag(np.linspace(3.0, 5.0, n)) + np.diag(np.full(n - 1, -0.7), 1) + np.diag(np.full(n - 1, -0.7), -1)
     for block in (1, 3):
@@ -84,7 +86,7 @@ def test_multiple_rhs_capture(test, device):
             graph = None
             if device.is_cuda:
                 wp.synchronize_device(device)
-                with wp.ScopedCapture(device=device) as capture:
+                with wp.ScopedCapture(device=device, force_module_load=False) as capture:
                     action.reset_stats()
                     action.solve(b, out)
                 graph = capture.graph
@@ -108,10 +110,13 @@ def test_multiple_rhs_capture(test, device):
 
 
 def test_multiple_rhs_operator(test, device):
+    """Check aliased matvec semantics and that zero coefficients ignore nonfinite inputs."""
     a = np.diag(np.arange(1.0, 16.0)) + np.diag(np.full(14, 0.2), 1)
     for block in (1, 3):
         for layout in ("rows", "columns"):
             op = MultiRHSOperator(_matrix(a, device, wp.float64, block), 7, layout=layout)
+            # The coalesced path must actually be selected on CUDA; CPU always uses rows.
+            test.assertEqual(op.layout, layout if device.is_cuda else "rows")
             host = np.random.default_rng(17).normal(size=(7, 15))
             x = wp.array(host.ravel(), dtype=wp.float64, device=device)
             y = wp.array((0.3 * host).ravel(), dtype=wp.float64, device=device)
@@ -126,6 +131,7 @@ def test_multiple_rhs_operator(test, device):
 
 
 def test_multiple_rhs_failure_validation(test, device):
+    """Check argument validation and failure counting for exhausted or nonfinite solves."""
     a = _matrix(np.diag(np.arange(1.0, 16.0)), device, wp.float64, 1)
     for kwargs in (
         {"nrhs": 0},
@@ -150,9 +156,46 @@ def test_multiple_rhs_failure_validation(test, device):
     solver.reset_stats()
     solver.solve(b, out)
     test.assertEqual(solver.stats.numpy()[2], 2)
+    with test.assertRaises(TypeError):
+        solver.with_nrhs(True)
+    with test.assertRaises(TypeError):
+        MultiRHSOperator(a, True)
+
+
+def test_multiple_rhs_storage_change(test, device):
+    """Check that reallocating a mixed-precision source matrix raises instead of using stale data."""
+    a = np.diag(np.arange(1.0, 16.0))
+    matrix = _matrix(a, device, wp.float64, 1)
+    solver = CGSolve(matrix, 2, working_dtype=wp.float32, tol=1e-5, maxiter=20)
+    b = wp.ones((2, 15), dtype=wp.float64, device=device)
+    out = wp.empty_like(b)
+    solver.solve(b, out)
+    matrix.values = wp.clone(matrix.values)
+    with test.assertRaisesRegex(ValueError, "storage changed"):
+        solver.solve(b, out)
+
+
+def test_multiple_rhs_streams(test, device):
+    """Check that eager solves from different streams share scratch and capacities safely."""
+    n = 64
+    a = np.diag(np.linspace(3.0, 5.0, n)) + np.diag(np.full(n - 1, -0.5), 1) + np.diag(np.full(n - 1, -0.5), -1)
+    solver = CGSolve(_matrix(a, device, wp.float64, 1), 4, tol=1e-12, maxiter=200)
+    smaller = solver.with_nrhs(2)
+    rhs = [np.random.default_rng(seed).normal(size=(width, n)) for seed, width in ((3, 4), (4, 2))]
+    inputs = [wp.array(r, dtype=wp.float64, device=device) for r in rhs]
+    outputs = [wp.empty_like(b) for b in inputs]
+    streams = [wp.Stream(device), wp.Stream(device)]
+    for _ in range(4):
+        for stream, action, b, out in zip(streams, (solver, smaller), inputs, outputs, strict=True):
+            with wp.ScopedStream(stream, sync_enter=False, sync_exit=False):
+                action.solve(b, out)
+    wp.synchronize_device(device)
+    for r, out in zip(rhs, outputs, strict=True):
+        np.testing.assert_allclose(out.numpy(), np.linalg.solve(a, r.T).T, rtol=1e-9, atol=1e-9)
 
 
 def test_multiple_rhs_float32_source(test, device):
+    """Check float32 sources with float32 and float64 working precision and block Jacobi."""
     n = 15
     a = np.diag(np.linspace(3.0, 5.0, n)) + np.diag(np.full(n - 1, -0.5), 1) + np.diag(np.full(n - 1, -0.5), -1)
     rhs = np.random.default_rng(73).normal(size=(4, n)).astype(np.float32)
@@ -189,6 +232,10 @@ for func in (test_multiple_rhs_capture, test_multiple_rhs_operator, test_multipl
 add_function_test(
     TestMultiRHS, "test_multiple_rhs_float32_source", test_multiple_rhs_float32_source, devices=get_test_devices()
 )
+add_function_test(
+    TestMultiRHS, "test_multiple_rhs_storage_change", test_multiple_rhs_storage_change, devices=get_test_devices()
+)
+add_function_test(TestMultiRHS, "test_multiple_rhs_streams", test_multiple_rhs_streams, devices=get_cuda_test_devices())
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

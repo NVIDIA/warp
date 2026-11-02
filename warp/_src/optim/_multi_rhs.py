@@ -162,6 +162,26 @@ def _cpu_product(block_type):
     return product
 
 
+class _StreamOrder:
+    """Order eager uses of shared scratch issued from different CUDA streams."""
+
+    def __init__(self, device):
+        self.event = wp.Event(device=device) if device.is_cuda else None
+        # Seed with the constructing stream so first use elsewhere waits for setup.
+        self.last = device.stream if device.is_cuda else None
+
+    def acquire(self, device):
+        if self.event is None:
+            return
+        stream = device.stream
+        if stream.is_capturing or stream is self.last:
+            return
+        if self.last is not None and not self.last.is_capturing:
+            self.last.record_event(self.event)
+            stream.wait_event(self.event)
+        self.last = stream
+
+
 class MultiRHSOperator(LinearOperator):
     """Repeat one sparse matrix or linear operator over independent RHS rows.
 
@@ -172,21 +192,23 @@ class MultiRHSOperator(LinearOperator):
     shifted output overlap and strided storage are rejected before launching.
 
     Each object owns its scratch. ``with_nrhs`` creates smaller capacities sharing
-    it. All uses of shared scratch must be serialized, including across streams
-    and captured graphs. Value updates in existing buffers are observed on replay;
+    it. Eager applications issued from different CUDA streams are ordered with an
+    event; simultaneously executing graphs that share scratch require caller
+    ordering. Value updates in existing buffers are observed on replay;
     topology/address changes require recapture. No adjoint is supplied.
 
     Args:
         A: Square sparse matrix or a single-system :class:`LinearOperator`.
         nrhs: Positive RHS count.
         layout: ``"columns"`` enables coalesced sparse CUDA products. ``"rows"``
-            retains RHS-row storage; compare both for narrow batches.
-        dtype: Scalar arithmetic type for a custom operator; defaults to A's
-            scalar type. Sparse matrices must already have this scalar type.
+            retains RHS-row storage; compare both for narrow batches. CPU and
+            non-sparse operators always use ``"rows"``.
     """
 
-    def __init__(self, A, nrhs: int, *, layout: str = "columns", dtype: type | None = None):
-        if isinstance(nrhs, bool) or index(nrhs) < 1:
+    def __init__(self, A, nrhs: int, *, layout: str = "columns"):
+        if isinstance(nrhs, bool):
+            raise TypeError("nrhs must be an integer, not bool")
+        if index(nrhs) < 1:
             raise ValueError("nrhs must be a positive integer")
         self.source = A
         self.single = aslinearoperator(A)
@@ -199,20 +221,19 @@ class MultiRHSOperator(LinearOperator):
             raise ValueError("Expected one nonempty square system")
         if layout not in ("rows", "columns"):
             raise ValueError("layout must be 'rows' or 'columns'")
-        dtype = self.single.scalar_type if dtype is None else dtype
+        dtype = self.single.scalar_type
         if dtype not in (wp.float32, wp.float64):
-            raise ValueError("Working dtype must be float32 or float64")
+            raise ValueError("A must have float32 or float64 scalar type")
         self.sparse = isinstance(A, sp.BsrMatrix)
-        if self.sparse and (
-            A.row_counts is not None or A.scalar_type != dtype or A.block_shape not in ((1, 1), (3, 3))
-        ):
-            raise ValueError("Sparse inputs must be compressed scalar or 3x3 BSR in the working dtype")
+        if self.sparse and (A.row_counts is not None or A.block_shape not in ((1, 1), (3, 3))):
+            raise ValueError("Sparse inputs must be compressed scalar or 3x3 BSR matrices")
         self.layout = layout if self.single.device.is_cuda and self.sparse else "rows"
         shape = (self.n, self.nrhs) if self.layout == "columns" else (self.nrhs, self.n)
         self._first = wp.empty(shape, dtype=dtype, device=self.single.device)
         self._second = wp.empty_like(self._first) if self.layout == "columns" else None
         offsets = wp.empty(self.nrhs + 1, dtype=int, device=self.single.device)
         wp.launch(_offsets, self.nrhs + 1, [offsets, self.n], device=self.single.device)
+        self._stream_order = _StreamOrder(self.single.device)
         super().__init__(
             (self.n * self.nrhs, self.n * self.nrhs),
             dtype,
@@ -223,8 +244,10 @@ class MultiRHSOperator(LinearOperator):
         )
 
     def with_nrhs(self, nrhs: int):
-        """Prepare a smaller capacity sharing scratch; execution must be serialized."""
-        if isinstance(nrhs, bool) or not 1 <= index(nrhs) <= self.nrhs:
+        """Prepare a smaller capacity sharing scratch and its stream ordering."""
+        if isinstance(nrhs, bool):
+            raise TypeError("nrhs must be an integer, not bool")
+        if not 1 <= index(nrhs) <= self.nrhs:
             raise ValueError("nrhs must be positive and at most the prepared capacity")
         result = copy.copy(self)
         result.nrhs = index(nrhs)
@@ -251,6 +274,7 @@ class MultiRHSOperator(LinearOperator):
         for a in (x, y):
             if a.ptr != z.ptr and max(a.ptr, z.ptr) < min(a.ptr + size, z.ptr + size):
                 raise ValueError("Partially overlapping output views are unsupported")
+        self._stream_order.acquire(self.device)
         if alpha == 0:
             wp.launch(_combine, z.size, [x, y, z, wp.float64(0), wp.float64(beta)], device=self.device)
             return
@@ -334,9 +358,12 @@ class CGSolve:
     use the source scalar dtype; inner arithmetic may explicitly use float32.
     Every call starts at zero and refreshes any working-precision matrix copy on
     device. Truncated or tolerance-stopped CG is not a fixed linear inverse.
-    Matrix topology and addresses must stay fixed during replay; factors remain
-    caller-owned and updates are explicit. Construction/warmup precede capture.
-    No host convergence readbacks or work-array allocations occur during replay.
+    Matrix topology and storage must stay fixed after preparation; a changed
+    storage address raises on eager calls. Factors remain caller-owned and updates
+    are explicit. Construction/warmup precede capture. No host convergence
+    readbacks or work-array allocations occur during replay. Eager calls from
+    different CUDA streams are ordered automatically; captured graphs sharing one
+    state or capacity family must not execute concurrently.
 
     ``stats`` accumulates scheduled vector iterations, maximum batch iterations,
     failed recurrence residual checks, and RHS calls. Masked converged vectors
@@ -370,7 +397,9 @@ class CGSolve:
         working_dtype: type | None = None,
         layout: str = "columns",
     ):
-        if isinstance(nrhs, bool) or index(nrhs) < 1 or isinstance(maxiter, bool) or index(maxiter) < 1:
+        if isinstance(nrhs, bool) or isinstance(maxiter, bool):
+            raise TypeError("nrhs and maxiter must be integers, not bool")
+        if index(nrhs) < 1 or index(maxiter) < 1:
             raise ValueError("nrhs and maxiter must be positive integers")
         if not math.isfinite(tol) or tol < 0 or not math.isfinite(atol) or atol < 0 or max(tol, atol) == 0:
             raise ValueError("Tolerances must be finite, nonnegative and not both zero")
@@ -388,6 +417,7 @@ class CGSolve:
             raise ValueError("working_dtype must be float32 or float64")
         self.tol, self.atol, self.maxiter, self.layout = tol, atol, index(maxiter), layout
         self.working_matrix = A if self.working_dtype == self.dtype else sp.bsr_copy(A, scalar_type=self.working_dtype)
+        self._storage = self._storage_identity()
         self.operator = MultiRHSOperator(self.working_matrix, self.nrhs, layout=layout)
         self._b = wp.zeros(self.n * self.nrhs, dtype=self.working_dtype, device=self.device)
         self._x = wp.zeros_like(self._b)
@@ -404,7 +434,7 @@ class CGSolve:
                     raise ValueError("Single-system M must use the working dtype; supply a prepared operator otherwise")
                 if M.shape not in ((self.n,), (self.n, self.n)):
                     raise ValueError("Single-system M must match the matrix dimension")
-                M = MultiRHSOperator(M, self.nrhs, dtype=self.working_dtype)
+                M = MultiRHSOperator(M, self.nrhs)
             elif M.shape != self.operator.shape or M.batch_count != self.nrhs or M.max_batch_length != self.n:
                 raise ValueError("Prepared M must have nrhs equal partitions matching A")
             if M.scalar_type != self.working_dtype:
@@ -430,7 +460,9 @@ class CGSolve:
         prepared M when the original preconditioner was itself multiple-RHS.
         Otherwise the original single-system preconditioner is reused by default.
         """
-        if isinstance(nrhs, bool) or not 1 <= index(nrhs) <= self.nrhs:
+        if isinstance(nrhs, bool):
+            raise TypeError("nrhs must be an integer, not bool")
+        if not 1 <= index(nrhs) <= self.nrhs:
             raise ValueError("nrhs must be positive and no greater than the prepared capacity")
         if M is None:
             M = self._M
@@ -448,18 +480,40 @@ class CGSolve:
         """Clear cumulative counters on device, including during capture."""
         self.stats.zero_()
 
+    def _storage_identity(self):
+        a = self.source
+        return (a.offsets.ptr, a.columns.ptr, a.values.ptr, a.values.size)
+
     def solve(self, rhs: wp.array, out: wp.array):
         """Solve from zero into matching contiguous ``(nrhs,n)`` arrays.
 
-        Input and output use the source matrix dtype/device. In-place and partial
-        aliases are safe because all RHSs are staged before any output is written.
-        The state and shared capacities must not execute concurrently.
+        In-place and partial aliases are safe because all RHSs are staged before
+        any output is written.
+
+        Args:
+            rhs: Contiguous right-hand sides of shape ``(nrhs, n)``, with the source
+                matrix dtype and device.
+            out: Contiguous output of the same shape, dtype and device.
+
+        Returns:
+            Device arrays ``(iterations, residual_sq, tolerance_sq)`` from the
+            underlying :func:`cg` state: the scheduled batch iteration count, each
+            RHS's squared working-precision recurrence residual norm, and each
+            RHS's squared effective absolute tolerance. They are overwritten by
+            the next call.
+
+        Raises:
+            ValueError: If array shapes, dtypes, devices or contiguity do not match,
+                or if the source matrix storage was reallocated after preparation.
         """
         if rhs.shape != (self.nrhs, self.n) or out.shape != rhs.shape:
             raise ValueError("Expected matching arrays of shape (nrhs,n)")
         for a in (rhs, out):
             if a.device != self.device or a.dtype != self.dtype or not a.is_contiguous:
                 raise ValueError("Expected contiguous arrays with the source matrix dtype and device")
+        if self.working_dtype != self.dtype and self._storage_identity() != self._storage:
+            raise ValueError("A's sparse storage changed after preparation; prepare a new CGSolve")
+        self.operator._stream_order.acquire(self.device)
         if self.working_dtype != self.dtype:
             source, target = self.source.values, self.working_matrix.values
             source_flat = source.view(self.dtype).flatten()
