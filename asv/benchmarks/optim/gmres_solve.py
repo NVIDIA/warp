@@ -9,35 +9,28 @@ from ._rhs_problem import problem
 
 
 class GMRESSolve:
-    params = [(4, 8, 24, 33), ("cpu", "cuda:0")]
-    param_names = ["nrhs", "device"]
-    number = 3
-    repeat = 3
-    rounds = 1
+    params = [4, 8, 24, 33]
+    param_names = ["nrhs"]
+    number = 1
+    repeat = 10
+    rounds = 2
 
     @setup_once
-    def setup(self, nrhs, device):
-        self.device = wp.get_device(device)
+    def setup(self, nrhs):
+        self.device = wp.get_device("cuda:0")
         with wp.ScopedDevice(self.device):
-            a, self.b = problem(nrhs)
+            # The captured graph addresses these arrays, so they must stay alive.
+            self.a, self.b = problem(nrhs)
             self.out = wp.empty_like(self.b)
-            self.action = linear.GMRESSolve(a, nrhs, tol=1e-10, maxiter=256, restart=32)
-            self._run()
+            self.action = linear.GMRESSolve(self.a, nrhs, tol=1e-10, maxiter=256, restart=32)
+            self.action.solve(self.b, self.out)
             wp.synchronize_device(self.device)
-            self.graph = None
-            if self.device.is_cuda:
-                with wp.ScopedCapture(force_module_load=False) as capture:
-                    self._run()
-                self.graph = capture.graph
-                wp.capture_launch(self.graph)
-                wp.synchronize_device(self.device)
-
-    def _run(self):
-        self.action.solve(self.b, self.out)
-
-    def time_prepared(self, nrhs, device):
-        if self.graph:
+            with wp.ScopedCapture(force_module_load=False) as capture:
+                self.action.solve(self.b, self.out)
+            self.graph = capture.graph
             wp.capture_launch(self.graph)
-        else:
-            self._run()
+            wp.synchronize_device(self.device)
+
+    def time_prepared(self, nrhs):
+        wp.capture_launch(self.graph)
         wp.synchronize_device(self.device)

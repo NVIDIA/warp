@@ -117,6 +117,7 @@ def test_gmres_action_validation(test, device):
         {"tol": float("nan")},
         {"atol": float("inf")},
         {"tol": 0.0, "atol": 0.0},
+        {"tol": 0.0},
     ):
         with test.assertRaises((ValueError, TypeError)):
             GMRESSolve(a, **kwargs)
@@ -189,6 +190,46 @@ def test_gmres_action_streams(test, device):
         np.testing.assert_allclose(out.numpy(), np.linalg.solve(a, r.T).T, rtol=1e-9, atol=1e-9)
 
 
+def test_gmres_action_default_tolerance(test, device):
+    """Check that default tolerances follow the scalar type so float32 solves converge."""
+    n = 24
+    a = np.diag(np.linspace(1.0, 4.0, n)) + np.diag(np.full(n - 1, 0.3), 1)
+    rhs = np.random.default_rng(3).normal(size=(2, n))
+    for dtype, rtol in ((wp.float32, 1e-4), (wp.float64, 1e-10)):
+        action = GMRESSolve(_matrix(a, device, dtype, 1), 2, restart=n)
+        b = wp.array(rhs, dtype=dtype, device=device)
+        out = wp.empty_like(b)
+        action.solve(b, out)
+        np.testing.assert_array_equal(action.converged.numpy(), [1, 1])
+        np.testing.assert_allclose(out.numpy(), np.linalg.solve(a, rhs.T).T, rtol=rtol, atol=rtol)
+
+
+def test_gmres_action_stream_ordering(test, device):
+    """Check that resets and smaller capacities join the stream ordering used by solves."""
+    n = 32
+    a = np.diag(np.linspace(1.0, 4.0, n)) + np.diag(np.full(n - 1, 0.3), 1)
+    action = GMRESSolve(_matrix(a, device, wp.float64, 1), 2, restart=n)
+    rhs = np.random.default_rng(4).normal(size=(2, n))
+    b = wp.array(rhs, dtype=wp.float64, device=device)
+    out = wp.empty_like(b)
+    first, second, third = wp.Stream(device), wp.Stream(device), wp.Stream(device)
+    with wp.ScopedStream(first, sync_enter=False, sync_exit=False):
+        action.solve(b, out)
+    with wp.ScopedStream(second, sync_enter=False, sync_exit=False):
+        action.reset_stats()
+    # A later solve on the first stream must wait for the reset.
+    test.assertIs(action._stream_order.last, second)
+    with wp.ScopedStream(third, sync_enter=False, sync_exit=False):
+        small = action.with_nrhs(1)
+    test.assertIs(small._stream_order.last, third)
+    with wp.ScopedStream(first, sync_enter=False, sync_exit=False):
+        small.solve(b[:1], out[:1])
+    wp.synchronize_device(device)
+    np.testing.assert_array_equal(action.stats.numpy(), [0, 0, 0, 0])
+    test.assertEqual(small.stats.numpy()[2:].tolist(), [0, 1])
+    np.testing.assert_allclose(out.numpy()[0], np.linalg.solve(a, rhs[0]), rtol=1e-9)
+
+
 class TestSolveAction(unittest.TestCase):
     pass
 
@@ -201,11 +242,15 @@ for dtype in (wp.float32, wp.float64):
         devices=get_test_devices(),
         dtype=dtype,
     )
-for func in (test_gmres_action_failures, test_gmres_action_validation, test_gmres_action_capacities_and_modes):
+for func in (
+    test_gmres_action_failures,
+    test_gmres_action_validation,
+    test_gmres_action_capacities_and_modes,
+    test_gmres_action_default_tolerance,
+):
     add_function_test(TestSolveAction, func.__name__, func, devices=get_test_devices())
-add_function_test(
-    TestSolveAction, "test_gmres_action_streams", test_gmres_action_streams, devices=get_cuda_test_devices()
-)
+for func in (test_gmres_action_streams, test_gmres_action_stream_ordering):
+    add_function_test(TestSolveAction, func.__name__, func, devices=get_cuda_test_devices())
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

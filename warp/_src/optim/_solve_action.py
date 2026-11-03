@@ -1,31 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-# Portions adapted from warpack; the original MIT notice is retained below.
-
-# MIT License
-#
-# Copyright (c) 2026 warpack contributors
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-#
-
 """Prepared linear solve actions sharing one usage and diagnostics contract."""
 
 import copy
@@ -35,7 +10,7 @@ from operator import index
 from typing import Any
 
 import warp as wp
-from warp._src.optim.linear import aslinearoperator, gmres
+from warp._src.optim.linear import _get_dtype_epsilon, aslinearoperator, gmres
 
 
 class ResidualMode(enum.IntEnum):
@@ -138,12 +113,17 @@ def _positive_int(name, value):
     return index(value)
 
 
-def _check_tolerances(tol, atol):
+def _resolve_tolerances(tol, atol, dtype):
+    """Validate tolerances and give an omitted relative tolerance a ``dtype`` default."""
     for name, value in (("tol", tol), ("atol", atol)):
-        if not math.isfinite(value) or value < 0:
+        if value is not None and (not math.isfinite(value) or value < 0):
             raise ValueError(f"{name} must be finite and nonnegative")
+    if tol is None:
+        # The iterative solvers' default; reachable in the working precision.
+        tol = _get_dtype_epsilon(dtype) ** 0.75
     if max(tol, atol) == 0:
         raise ValueError("At least one tolerance must be positive")
+    return tol, atol
 
 
 class _SolveAction:
@@ -175,6 +155,8 @@ class _SolveAction:
             raise ValueError("nrhs must not exceed the prepared capacity")
         child = copy.copy(self)
         child.nrhs = nrhs
+        # The child shares stream ordering, so its zeroed diagnostics follow earlier work.
+        self._stream_order.acquire(self.device)
         child._allocate_diagnostics()
         return child
 
@@ -191,6 +173,7 @@ class _SolveAction:
 
         The latest per-RHS diagnostics are kept. Can be captured in a graph.
         """
+        self._stream_order.acquire(self.device)
         self.stats.zero_()
         self.residual_maxima.zero_()
 
@@ -267,7 +250,8 @@ class GMRESSolve(_SolveAction):
         A: Square real sparse matrix or :class:`LinearOperator`, float32 or float64.
         nrhs: Positive number of RHSs prepared for :meth:`solve`.
         M: Optional fixed linear right preconditioner, with matching size/device.
-        tol: Nonnegative relative tolerance.
+        tol: Nonnegative relative tolerance. Defaults to ``eps ** 0.75`` for the
+            operator's scalar type: 1e-6 for float32 and 1e-12 for float64.
         atol: Nonnegative absolute tolerance. At least one tolerance must be positive.
         maxiter: Positive iteration budget.
         restart: Positive Krylov restart dimension, clipped to the matrix size.
@@ -294,14 +278,13 @@ class GMRESSolve(_SolveAction):
         nrhs: int = 1,
         *,
         M=None,
-        tol: float = 1e-12,
+        tol: float | None = None,
         atol: float = 0.0,
         maxiter: int = 1000,
         restart: int = 64,
         residual: ResidualMode = ResidualMode.FRESH,
     ):
         maxiter, restart = _positive_int("maxiter", maxiter), _positive_int("restart", restart)
-        _check_tolerances(tol, atol)
         self.operator = aslinearoperator(A)
         n = self.operator.shape[0]
         if self.operator.shape not in ((n,), (n, n)) or n < 1:
@@ -310,6 +293,7 @@ class GMRESSolve(_SolveAction):
             raise ValueError("A must describe one shared system, not partitioned systems")
         if self.operator.scalar_type not in (wp.float32, wp.float64):
             raise ValueError("A must have float32 or float64 scalar type")
+        tol, atol = _resolve_tolerances(tol, atol, self.operator.scalar_type)
         self._init_action(n, nrhs, self.operator.scalar_type, self.operator.device, residual)
         M = aslinearoperator(M)
         if M is not None and (
