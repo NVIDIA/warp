@@ -244,6 +244,46 @@ def test_fp64_diffusion_matrix(test, device):
                     )
 
 
+def test_fp64_bspline_grid3d(test, device):
+    """Check double-precision B-spline values, gradients, and linear reproduction."""
+
+    @fem.integrand
+    def linear_field(s: fem.Sample, domain: fem.Domain):
+        x = domain(s)
+        return x[0] + wp.float64(2.0) * x[1] + wp.float64(3.0) * x[2]
+
+    with wp.ScopedDevice(device):
+        geo = fem.Grid3D(
+            res=wp.vec3i(2, 2, 2),
+            bounds_lo=vec3d(OFFSET, 0.0, 0.0),
+            bounds_hi=vec3d(OFFSET + 1.0, 1.0, 1.0),
+            scalar_type=wp.float64,
+        )
+        for degree in (1, 2, 3):
+            with test.subTest(degree=degree):
+                space = fem.make_polynomial_space(geo, degree=degree, element_basis=fem.ElementBasis.BSPLINE)
+                domain = fem.Cells(geo)
+                trial = fem.make_trial(space, domain=domain)
+                test_f = fem.make_test(space, domain=domain)
+                mass = fem.integrate(mass_form, fields={"u": trial, "v": test_f})
+                stiffness = fem.integrate(diffusion_form, fields={"u": trial, "v": test_f})
+                test.assertEqual(mass.scalar_type, wp.float64)
+                test.assertEqual(stiffness.scalar_type, wp.float64)
+                np.testing.assert_allclose(np.sum(mass.values.numpy()[: mass.nnz_sync()]), 1.0, rtol=1e-12)
+
+                ones = wp.ones(space.node_count(), dtype=wp.float64)
+                row_sums = wp.zeros_like(ones)
+                bsr_mv(stiffness, ones, row_sums)
+                np.testing.assert_allclose(row_sums.numpy(), 0.0, atol=1e-12)
+
+                field = space.make_field()
+                fem.interpolate(linear_field, dest=field)
+                product = wp.zeros_like(field.dof_values)
+                bsr_mv(stiffness, field.dof_values, product)
+                energy = np.dot(field.dof_values.numpy(), product.numpy())
+                np.testing.assert_allclose(energy, 14.0, rtol=1e-12)
+
+
 def test_fp64_boundary_integral(test, device):
     """Test boundary side integration at fp64 for geometries with sides."""
     with wp.ScopedDevice(device):
@@ -340,6 +380,7 @@ add_function_test(TestFemFp64, "test_fp64_volume_integral", test_fp64_volume_int
 add_function_test(TestFemFp64, "test_fp64_position_integral", test_fp64_position_integral, devices=devices)
 add_function_test(TestFemFp64, "test_fp64_mass_matrix", test_fp64_mass_matrix, devices=devices)
 add_function_test(TestFemFp64, "test_fp64_diffusion_matrix", test_fp64_diffusion_matrix, devices=devices)
+add_function_test(TestFemFp64, "test_fp64_bspline_grid3d", test_fp64_bspline_grid3d, devices=devices)
 add_function_test(TestFemFp64, "test_fp64_boundary_integral", test_fp64_boundary_integral, devices=devices)
 add_function_test(TestFemFp64, "test_fp64_interpolation", test_fp64_interpolation, devices=devices)
 add_function_test(TestFemFp64, "test_fp64_scalar_type_operator", test_fp64_scalar_type_operator, devices=devices)
