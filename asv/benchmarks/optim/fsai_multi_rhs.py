@@ -11,17 +11,18 @@ from ._rhs_problem import problem
 class FSAIMultiRHS:
     params = [(4, 8, 24, 33), ("cpu", "cuda:0")]
     param_names = ["nrhs", "device"]
-    number = 3
-    repeat = 3
-    rounds = 1
+    number = 1
+    repeat = 10
+    rounds = 2
 
     @setup_once
     def setup(self, nrhs, device):
         self.device = wp.get_device(device)
         with wp.ScopedDevice(self.device):
-            a, self.b = problem(nrhs)
+            # A captured graph addresses these arrays, so they must stay alive.
+            self.a, self.b = problem(nrhs)
             self.out = wp.empty_like(self.b)
-            self.action = linear.FSAI(a, max_row_size=16, factor_dtype=wp.float32).as_multi_rhs(nrhs)
+            self.action = linear.FSAI(self.a, max_row_size=16, factor_dtype=wp.float32).as_multi_rhs(nrhs)
             self._run()
             wp.synchronize_device(self.device)
             self.graph = None
