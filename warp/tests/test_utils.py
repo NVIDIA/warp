@@ -1233,6 +1233,27 @@ def test_array_cast_multidim(test, device):
     assert_np_equal(result.numpy(), np.array((1, 2), dtype=np.int32))
 
 
+def test_array_cast_flattened_views(test, device):
+    # Casts between arrays with different dimensions or element shapes go through
+    # flattened scalar views, which must keep the source alive and respect its strides.
+
+    # The source is a temporary that is only referenced by the array_cast() call.
+    result = wp.zeros(3, dtype=wp.float64, device=device)
+    wp.utils.array_cast(wp.array(((1.5, 2.5, 3.5),), dtype=wp.vec3, device=device), result)
+    assert_np_equal(result.numpy(), np.array((1.5, 2.5, 3.5)))
+
+    expected = np.arange(6, dtype=np.float32)
+    result = wp.zeros(6, dtype=wp.float64, device=device)
+    wp.utils.array_cast(wp.array(expected.reshape(2, 3), device=device), result)
+    assert_np_equal(result.numpy(), expected.astype(np.float64))
+
+    # Strided one-dimensional source.
+    values = wp.array(expected, device=device)[::2]
+    result = wp.zeros((1, 3), dtype=wp.float64, device=device)
+    wp.utils.array_cast(values, result)
+    assert_np_equal(result.numpy(), expected[::2].astype(np.float64).reshape(1, 3))
+
+
 def test_array_cast_error_shape_mismatch(test, device):
     values = wp.zeros((2, 3), dtype=wp.float32, device=device)
     result = wp.zeros((3, 2), dtype=wp.float64, device=device)
@@ -1737,6 +1758,7 @@ add_function_test(
 )
 add_function_test(TestUtils, "test_array_cast", test_array_cast, devices=devices)
 add_function_test(TestUtils, "test_array_cast_multidim", test_array_cast_multidim, devices=devices)
+add_function_test(TestUtils, "test_array_cast_flattened_views", test_array_cast_flattened_views, devices=devices)
 add_function_test(
     TestUtils, "test_array_cast_error_shape_mismatch", test_array_cast_error_shape_mismatch, devices=devices
 )

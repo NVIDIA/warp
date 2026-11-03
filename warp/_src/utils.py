@@ -1052,32 +1052,12 @@ def array_cast(in_array: warp.array, out_array: warp.array, count: int | None = 
 
     if in_array.ndim != out_array.ndim or in_array_data_shape != out_array_data_shape:
         # Number of dimensions or data type shape do not match.
-        # Flatten arrays and do cast at the scalar level
-        in_array = in_array.flatten()
-        out_array = out_array.flatten()
-
+        # Flatten arrays and do cast at the scalar level.
+        # Use views so that the flattened arrays keep the original arrays alive.
         in_array_data_length = warp._src.types.type_size(in_array.dtype)
-        out_array_data_length = warp._src.types.type_size(out_array.dtype)
-        in_array_scalar_type = wp._src.types.type_scalar_type(in_array.dtype)
-        out_array_scalar_type = wp._src.types.type_scalar_type(out_array.dtype)
 
-        in_array = wp.array(
-            data=None,
-            ptr=in_array.ptr,
-            capacity=in_array.capacity,
-            device=in_array.device,
-            dtype=in_array_scalar_type,
-            shape=in_array.shape[0] * in_array_data_length,
-        )
-
-        out_array = wp.array(
-            data=None,
-            ptr=out_array.ptr,
-            capacity=out_array.capacity,
-            device=out_array.device,
-            dtype=out_array_scalar_type,
-            shape=out_array.shape[0] * out_array_data_length,
-        )
+        in_array = in_array.view(wp._src.types.type_scalar_type(in_array.dtype)).flatten()
+        out_array = out_array.view(wp._src.types.type_scalar_type(out_array.dtype)).flatten()
 
         if count is not None:
             count *= in_array_data_length
