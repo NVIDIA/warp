@@ -196,16 +196,63 @@ def test_multiple_rhs_diagnostics(test, device):
 
 
 def test_multiple_rhs_storage_change(test, device):
-    """Check that reallocating a mixed-precision source matrix raises instead of using stale data."""
+    """Check that reallocating the source matrix raises for every working precision."""
     a = np.diag(np.arange(1.0, 16.0))
-    matrix = _matrix(a, device, wp.float64, 1)
-    solver = CGSolve(matrix, 2, working_dtype=wp.float32, tol=1e-5, maxiter=20)
-    b = wp.ones((2, 15), dtype=wp.float64, device=device)
-    out = wp.empty_like(b)
-    solver.solve(b, out)
-    matrix.values = wp.clone(matrix.values)
-    with test.assertRaisesRegex(ValueError, "storage changed"):
+    for working_dtype in (wp.float32, wp.float64):
+        matrix = _matrix(a, device, wp.float64, 1)
+        solver = CGSolve(matrix, 2, working_dtype=working_dtype, tol=1e-5, maxiter=20)
+        b = wp.ones((2, 15), dtype=wp.float64, device=device)
+        out = wp.empty_like(b)
         solver.solve(b, out)
+        matrix.values = wp.clone(matrix.values)
+        with test.assertRaisesRegex(ValueError, "storage changed"):
+            solver.update()
+        with test.assertRaisesRegex(ValueError, "storage changed"):
+            solver.solve(b, out)
+
+
+def test_multiple_rhs_default_tolerance(test, device):
+    """Check that default tolerances follow the working precision so float32 solves converge."""
+    n = 15
+    a = np.diag(np.linspace(3.0, 5.0, n)) + np.diag(np.full(n - 1, -0.5), 1) + np.diag(np.full(n - 1, -0.5), -1)
+    rhs = np.random.default_rng(8).normal(size=(2, n))
+    for dtype, rtol in ((wp.float32, 1e-4), (wp.float64, 1e-10)):
+        # Fresh residuals expose the accuracy float32 actually attains.
+        action = CGSolve(_matrix(a, device, dtype, 1), 2, residual=ResidualMode.FRESH)
+        b = wp.array(rhs, dtype=dtype, device=device)
+        out = wp.empty_like(b)
+        action.solve(b, out)
+        np.testing.assert_array_equal(action.converged.numpy(), [1, 1])
+        np.testing.assert_allclose(out.numpy(), np.linalg.solve(a, rhs.T).T, rtol=rtol, atol=rtol)
+
+
+def test_multiple_rhs_stream_ordering(test, device):
+    """Check that explicit updates, resets and smaller capacities join the solve stream ordering."""
+    n = 15
+    a = np.diag(np.linspace(3.0, 5.0, n)) + np.diag(np.full(n - 1, -0.5), 1) + np.diag(np.full(n - 1, -0.5), -1)
+    rhs = np.random.default_rng(9).normal(size=(2, n))
+    action = CGSolve(_matrix(a, device, wp.float64, 1), 2, working_dtype=wp.float32, tol=1e-5, maxiter=40)
+    b = wp.array(rhs, dtype=wp.float64, device=device)
+    out = wp.empty_like(b)
+    first, second, third, fourth = (wp.Stream(device) for _ in range(4))
+    with wp.ScopedStream(first, sync_enter=False, sync_exit=False):
+        action.solve(b, out)
+    # Each later call must wait for earlier work on the stream it was issued from.
+    with wp.ScopedStream(second, sync_enter=False, sync_exit=False):
+        action.update()
+    test.assertIs(action._stream_order.last, second)
+    with wp.ScopedStream(third, sync_enter=False, sync_exit=False):
+        action.reset_stats()
+    test.assertIs(action._stream_order.last, third)
+    with wp.ScopedStream(fourth, sync_enter=False, sync_exit=False):
+        small = action.with_nrhs(1)
+    test.assertIs(small._stream_order.last, fourth)
+    with wp.ScopedStream(first, sync_enter=False, sync_exit=False):
+        small.solve(b[:1], out[:1])
+    wp.synchronize_device(device)
+    np.testing.assert_array_equal(action.stats.numpy(), [0, 0, 0, 0])
+    test.assertEqual(small.stats.numpy()[2:].tolist(), [0, 1])
+    np.testing.assert_allclose(out.numpy()[0], np.linalg.solve(a, rhs[0]), rtol=3e-5, atol=1e-7)
 
 
 def test_multiple_rhs_streams(test, device):
@@ -271,7 +318,11 @@ add_function_test(
 add_function_test(
     TestMultiRHS, "test_multiple_rhs_storage_change", test_multiple_rhs_storage_change, devices=get_test_devices()
 )
-add_function_test(TestMultiRHS, "test_multiple_rhs_streams", test_multiple_rhs_streams, devices=get_cuda_test_devices())
+add_function_test(
+    TestMultiRHS, "test_multiple_rhs_default_tolerance", test_multiple_rhs_default_tolerance, devices=get_test_devices()
+)
+for func in (test_multiple_rhs_streams, test_multiple_rhs_stream_ordering):
+    add_function_test(TestMultiRHS, func.__name__, func, devices=get_cuda_test_devices())
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

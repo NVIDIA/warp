@@ -1,31 +1,6 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-# Portions adapted from warpack; the original MIT notice is retained below.
-
-# MIT License
-#
-# Copyright (c) 2026 warpack contributors
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-# SOFTWARE.
-#
-
 """Shared-operator multiple-RHS actions using upstream CG."""
 
 import copy
@@ -38,8 +13,8 @@ from warp._src import sparse as sp
 from warp._src.optim._multi_rhs_kernels import csr_block_product, csr_eight_rhs, transpose_axpby, transpose_rows
 from warp._src.optim._solve_action import (
     ResidualMode,
-    _check_tolerances,
     _positive_int,
+    _resolve_tolerances,
     _SolveAction,
     _StreamOrder,
 )
@@ -351,7 +326,8 @@ class CGSolve(_SolveAction):
             prepared multiple-RHS operator with ``nrhs`` equal partitions of length
             ``n``. The latter retains optimized application, such as coalesced
             FSAI. Preconditioner arithmetic must use ``working_dtype``.
-        tol: Nonnegative relative per-RHS tolerance.
+        tol: Nonnegative relative per-RHS tolerance. Defaults to ``eps ** 0.75``
+            for ``working_dtype``: 1e-6 for float32 and 1e-12 for float64.
         atol: Nonnegative absolute per-RHS tolerance. At least one tolerance must
             be positive.
         maxiter: Positive CG iteration budget; truncation is allowed.
@@ -384,7 +360,7 @@ class CGSolve(_SolveAction):
         nrhs: int,
         *,
         M=None,
-        tol: float = 1e-12,
+        tol: float | None = None,
         atol: float = 0.0,
         maxiter: int = 1000,
         working_dtype: type | None = None,
@@ -392,7 +368,6 @@ class CGSolve(_SolveAction):
         residual: ResidualMode = ResidualMode.RECURRENCE,
     ):
         maxiter = _positive_int("maxiter", maxiter)
-        _check_tolerances(tol, atol)
         if not isinstance(A, sp.BsrMatrix) or A.shape[0] != A.shape[1] or A.shape[0] < 1:
             raise ValueError("A must be a nonempty square Warp sparse matrix")
         if (
@@ -401,11 +376,13 @@ class CGSolve(_SolveAction):
             or A.row_counts is not None
         ):
             raise ValueError("A must be compressed scalar or 3x3 BSR in float32 or float64")
+        working_dtype = A.scalar_type if working_dtype is None else working_dtype
+        if working_dtype not in (wp.float32, wp.float64):
+            raise ValueError("working_dtype must be float32 or float64")
+        tol, atol = _resolve_tolerances(tol, atol, working_dtype)
         self._init_action(A.shape[0], nrhs, A.scalar_type, A.device, residual)
         self.source = A
-        self.working_dtype = A.scalar_type if working_dtype is None else working_dtype
-        if self.working_dtype not in (wp.float32, wp.float64):
-            raise ValueError("working_dtype must be float32 or float64")
+        self.working_dtype = working_dtype
         self.tol, self.atol, self.maxiter, self.layout = tol, atol, maxiter, layout
         self.working_matrix = A if self.working_dtype == self.dtype else sp.bsr_copy(A, scalar_type=self.working_dtype)
         self._storage = self._storage_identity()
@@ -499,10 +476,11 @@ class CGSolve(_SolveAction):
         Raises:
             ValueError: If the source matrix storage was reallocated after preparation.
         """
-        if self.working_dtype == self.dtype:
-            return
         if self._storage_identity() != self._storage:
             raise ValueError("A's sparse storage changed after preparation; prepare a new CGSolve")
+        if self.working_dtype == self.dtype:
+            return
+        self._stream_order.acquire(self.device)
         source_flat = self.source.values.view(self.dtype).flatten()
         target_flat = self.working_matrix.values.view(self.working_dtype).flatten()
         # bsr_copy may size the copy to nnz while the source keeps extra capacity.
