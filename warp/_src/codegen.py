@@ -3456,8 +3456,13 @@ class Adjoint:
         adj.add_reverse(f"if ({cond.emit()}) {{")
 
     def begin_else(adj, cond):
-        cond = adj.load(cond)
-        adj.add_forward(f"if (!{cond.emit()}) {{")
+        # Reference guards can emit loads between branches; keep them as paired ifs.
+        if is_reference(cond.type):
+            cond = adj.load(cond)
+            adj.add_forward(f"if (!{cond.emit()}) {{")
+        else:
+            # A real else avoids excess reconvergence and register copies in CUDA loops.
+            adj.add_forward("else {")
         adj.add_reverse("}")
 
         adj.indent()
@@ -3681,6 +3686,12 @@ class Adjoint:
                 for stmt in node.orelse:
                     adj.eval(stmt)
             return None
+
+        if not is_reference(cond.type) and any(var is cond for var in adj.symbols.values()):
+            # A dynamic loop can overwrite a named value guard. Snapshot it so branch
+            # execution, merging, and reverse guards share the same decision. Unnamed
+            # guards cannot be overwritten, and extra copies can slow CUDA compilation.
+            cond = adj.add_builtin_call("copy", [cond])
 
         # save the symbol map from before the conditional
         symbols_prev = adj.symbols.copy()
