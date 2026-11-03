@@ -905,7 +905,6 @@ inline CUDA_CALLABLE void adj_floordiv(T a, T b, T& adj_a, T& adj_b, T adj_ret) 
 { \
     /* MISSINGADJOINT: gradient is zero almost everywhere (subgradient at integer points) */ \
 } \
-inline CUDA_CALLABLE void adj_mod(T a, T b, T& adj_a, T& adj_b, T adj_ret){ adj_a += adj_ret; }\
 inline CUDA_CALLABLE void adj_sign(T x, T adj_x, T& adj_ret) \
 { \
     /* MISSINGADJOINT: gradient is zero almost everywhere (subgradient at x = 0) */ \
@@ -1887,6 +1886,12 @@ inline CUDA_CALLABLE void adj_ceil(T x, T& adj_x, T adj_ret) \
 inline CUDA_CALLABLE void adj_frac(T x, T& adj_x, T adj_ret) \
 { \
     /* MISSINGADJOINT: gradient is 1 between integers (subgradient at integer points) */ \
+}\
+inline CUDA_CALLABLE void adj_mod(T a, T b, T& adj_a, T& adj_b, T adj_ret) \
+{ \
+    /* mod(a, b) = a - b * trunc(a / b), and trunc(a / b) is constant between discontinuities */ \
+    adj_a += adj_ret; \
+    adj_b -= trunc(a / b) * adj_ret; \
 }
 
 DECLARE_ADJOINTS(float16)

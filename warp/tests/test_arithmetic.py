@@ -426,9 +426,9 @@ def test_binary_ops(test, device, dtype, register_kernels=False):
             assert_np_equal(tape.gradients[in2].numpy(), expected, tol=tol)
             tape.zero()
 
-            # modulus. unless at discontinuities,
-            # d/dx1( x1 % x2 ) == 1
-            # d/dx2( x1 % x2 ) == 0
+            # modulus. mod(x1, x2) = x1 - x2 * trunc(x1 / x2), so unless at discontinuities,
+            # d/dx1( mod(x1, x2) ) == 1
+            # d/dx2( mod(x1, x2) ) == -trunc(x1 / x2)
             tape = wp.Tape()
             with tape:
                 wp.launch(kernel, dim=1, inputs=[in1, in2], outputs=[outputs], device=device)
@@ -438,7 +438,7 @@ def test_binary_ops(test, device, dtype, register_kernels=False):
             expected = np.zeros_like(in1.numpy())
             expected[4, i] = 2.0
             assert_np_equal(tape.gradients[in1].numpy(), expected, tol=tol)
-            expected[4, i] = 0.0
+            expected[4, i] = -2.0 * np.trunc(in1.numpy()[4, i] / in2.numpy()[4, i])
             assert_np_equal(tape.gradients[in2].numpy(), expected, tol=tol)
             tape.zero()
 
