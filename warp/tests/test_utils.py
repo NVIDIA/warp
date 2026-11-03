@@ -1253,6 +1253,31 @@ def test_array_cast_flattened_views(test, device):
     wp.utils.array_cast(values, result)
     assert_np_equal(result.numpy(), expected[::2].astype(np.float64).reshape(1, 3))
 
+    # Four-dimensional vector and three-dimensional matrix arrays, as input and output.
+    result = wp.zeros(3, dtype=wp.float64, device=device)
+    wp.utils.array_cast(wp.array((((((1.5, 2.5, 3.5),),),),), dtype=wp.vec3, device=device), result)
+    assert_np_equal(result.numpy(), np.array((1.5, 2.5, 3.5)))
+
+    result = wp.zeros((1, 1, 1, 1), dtype=wp.vec3d, device=device)
+    wp.utils.array_cast(wp.array((1.5, 2.5, 3.5), dtype=wp.float32, device=device), result)
+    assert_np_equal(result.numpy().ravel(), np.array((1.5, 2.5, 3.5)))
+
+    result = wp.zeros(8, dtype=wp.float64, device=device)
+    wp.utils.array_cast(
+        wp.array(expected[:4].reshape(1, 1, 1, 2, 2).repeat(2, axis=2), dtype=wp.mat22, device=device), result
+    )
+    assert_np_equal(result.numpy(), np.tile(expected[:4], 2).astype(np.float64))
+
+    # Boolean vectors.
+    result = wp.zeros(3, dtype=wp.int32, device=device)
+    wp.utils.array_cast(wp.array(((True, False, True),), dtype=wp.types.vector(3, wp.bool), device=device), result)
+    assert_np_equal(result.numpy(), np.array((1, 0, 1), dtype=np.int32))
+
+    # A strided vector source cannot be viewed as scalars.
+    values = wp.array(expected.reshape(2, 3), dtype=wp.vec3, device=device)[1::2]
+    with test.assertRaisesRegex(RuntimeError, "non-contiguous"):
+        wp.utils.array_cast(values, wp.zeros(3, dtype=wp.float64, device=device))
+
 
 def test_array_cast_error_shape_mismatch(test, device):
     values = wp.zeros((2, 3), dtype=wp.float32, device=device)
