@@ -385,12 +385,29 @@ class DeterministicMeta:
 
     determinism_mode: DeterministicMode = DeterministicMode.NOT_GUARANTEED
     max_records: int = 0
+    # Kernel arguments for which the author asserts that pre-atomic direct
+    # reads do not depend on the deferred accumulation updates in this launch.
+    deferred_atomic_arg_names: frozenset[str] = field(default_factory=frozenset)
+    # ``@wp.func`` bodies do not know the kernel argument to which their array
+    # parameters will be mapped. Defer a pre-atomic read conflict until it is
+    # remapped into the calling kernel.
+    allow_unresolved_deferred_atomic_reads: bool = False
     scatter_targets: list[ScatterTarget] = field(default_factory=list)
     counter_targets: list[CounterTarget] = field(default_factory=list)
     scatter_records_per_thread: dict[ScatterTarget, int] = field(default_factory=dict)
     counter_records_per_thread: dict[CounterTarget, int] = field(default_factory=dict)
     counter_replay_targets: set[CounterTarget] = field(default_factory=set)
     load_targets_seen: set[ArrayLoadTarget] = field(default_factory=set)
+    # Source-order direct reads and forward deterministic scatters. This lets
+    # callers preserve a helper's access order after its parameters are mapped
+    # to kernel arguments that may alias.
+    deferred_atomic_accesses: list[ArrayLoadTarget | ScatterTarget] = field(default_factory=list)
+    # Dynamic loop scopes that contain a direct load or deterministic scatter.
+    # A pre-atomic load and a scatter in one scope would run in that order on
+    # every iteration, so later iterations could observe updates that Warp
+    # defers until after the kernel.
+    load_target_loop_scopes: dict[ArrayLoadTarget, set[object]] = field(default_factory=dict)
+    scatter_target_loop_scopes: dict[ScatterTarget, set[object]] = field(default_factory=dict)
     store_targets_seen: set[ArrayStoreTarget] = field(default_factory=set)
     # Stores from custom adjoints run only in backward launches. They order
     # backward reductions but cannot conflict with deferred forward updates.
@@ -431,6 +448,11 @@ class DeterministicMeta:
         for target, count in other.counter_records_per_thread.items():
             self.add_counter_target(target, records_per_thread=count)
         self.load_targets_seen |= other.load_targets_seen
+        self.deferred_atomic_accesses.extend(other.deferred_atomic_accesses)
+        for target, loop_scopes in other.load_target_loop_scopes.items():
+            self.load_target_loop_scopes.setdefault(target, set()).update(loop_scopes)
+        for target, loop_scopes in other.scatter_target_loop_scopes.items():
+            self.scatter_target_loop_scopes.setdefault(target, set()).update(loop_scopes)
         self.store_targets_seen |= other.store_targets_seen
         self.backward_store_targets_seen |= other.backward_store_targets_seen
         self.side_effect_atomic_targets |= other.side_effect_atomic_targets
@@ -504,13 +526,15 @@ class DeterministicCodegen:
     def enabled(self) -> bool:
         return self.adj.det_meta is not None
 
-    def begin_build(self, builder_options) -> None:
+    def begin_build(self, builder_options, *, deterministic_deferred_atomics=()) -> None:
         """Initialize deterministic metadata for one ``Adjoint.build()`` pass."""
         deterministic_mode = builder_options.get("deterministic")
         if deterministic_mode != DeterministicMode.NOT_GUARANTEED:
             self.adj.det_meta = DeterministicMeta(
                 determinism_mode=deterministic_mode,
                 max_records=builder_options.get("deterministic_max_records", 0),
+                deferred_atomic_arg_names=frozenset(deterministic_deferred_atomics),
+                allow_unresolved_deferred_atomic_reads=self.adj.is_user_function,
                 has_consumed_atomic=_deterministic_has_consumed_atomic_impl(self.adj.tree, self.adj, seen=None),
                 has_side_effect_store=self.adj.is_user_function
                 and _deterministic_has_propagating_side_effect(self.adj.tree),
@@ -529,7 +553,11 @@ class DeterministicCodegen:
         if func_det_meta is not None:
             try:
                 _include_deterministic_call_meta(
-                    self.adj, func_det_meta, bound_args, include_replay_targets=func.custom_replay_func is None
+                    self.adj,
+                    func_det_meta,
+                    bound_args,
+                    include_replay_targets=func.custom_replay_func is None,
+                    function_call_scope=object(),
                 )
             except ValueError as e:
                 raise WarpDeterminismError(str(e)) from e
@@ -547,7 +575,13 @@ class DeterministicCodegen:
         if getattr(custom_grad_det_meta, "has_unsupported_consumed_counter_backward", False):
             raise unsupported_consumed_counter_backward_error()
         try:
-            _include_deterministic_call_meta(self.adj, custom_grad_det_meta, bound_args, backward_only=True)
+            _include_deterministic_call_meta(
+                self.adj,
+                custom_grad_det_meta,
+                bound_args,
+                backward_only=True,
+                function_call_scope=object(),
+            )
         except ValueError as e:
             raise WarpDeterminismError(str(e)) from e
 
@@ -619,6 +653,8 @@ class DeterministicCodegen:
                 adjoint=getattr(target, "adjoint", False),
             )
             if mapped_target is None and self.adj.det_registry is not None:
+                loop_scopes = set(meta.scatter_target_loop_scopes.get(target, ()))
+                loop_scopes.update(_active_dynamic_loop_scopes(self.adj))
                 mapped_target = get_or_create_scatter_target(
                     self.adj.det_registry,
                     self.adj.det_meta,
@@ -631,6 +667,7 @@ class DeterministicCodegen:
                     adjoint=getattr(target, "adjoint", False),
                     use_forward=getattr(target, "use_forward", True),
                     use_backward=getattr(target, "use_backward", False),
+                    loop_scopes=loop_scopes,
                 )
                 self.adj.det_meta.scatter_records_per_thread[mapped_target] += (
                     meta.scatter_records_per_thread.get(target, 1) - 1
@@ -682,6 +719,10 @@ class DeterministicCodegen:
         load_target = ArrayLoadTarget(target_root_label, tuple(target_attr_path), bool(target_is_adjoint))
         _reject_deterministic_target_access(self.adj.det_meta, load_target, "read directly")
         self.adj.det_meta.load_targets_seen.add(load_target)
+        self.adj.det_meta.deferred_atomic_accesses.append(load_target)
+        loop_scopes = _active_dynamic_loop_scopes(self.adj)
+        if loop_scopes:
+            self.adj.det_meta.load_target_loop_scopes.setdefault(load_target, set()).update(loop_scopes)
 
     def mark_side_effect_atomic(self, array_var) -> None:
         """Track an atomic that executes directly instead of through a deferred helper."""
@@ -726,7 +767,25 @@ class DeterministicCodegen:
     def end_build(self) -> None:
         """Reject side-effect return values that a kernel's counting pass cannot reproduce."""
         meta = self.adj.det_meta
-        if meta is None or self.adj.is_user_function or not meta.has_counter or not meta.consumed_side_effect_return:
+        if meta is None or self.adj.is_user_function:
+            return
+
+        declared_targets = {
+            target.array_var_label
+            for target in meta.scatter_targets
+            if target.use_forward and not target.attr_path and not target.adjoint
+        }
+        unused_declarations = sorted(meta.deferred_atomic_arg_names - declared_targets)
+        if unused_declarations:
+            raise WarpDeterminismError(
+                "Deterministic mode cannot compile this kernel. Cause: "
+                "deterministic_deferred_atomics declares argument(s) without deterministic accumulation atomics: "
+                f"{', '.join(repr(arg_name) for arg_name in unused_declarations)}. Fix: remove the declaration, "
+                "or use it only for an array that receives wp.atomic_add(), wp.atomic_sub(), wp.atomic_min(), or "
+                "wp.atomic_max() updates.",
+            )
+
+        if not meta.has_counter or not meta.consumed_side_effect_return:
             return
         if meta.consumed_side_effect_lineno is not None:
             # Report the statement that uses the return value, not the last statement parsed.
@@ -1141,6 +1200,7 @@ def get_or_create_scatter_target(
     use_forward=True,
     use_backward=False,
     has_component_slot_scatter=False,
+    loop_scopes=(),
 ):
     """Get or create a stable scatter target and attach it to ``meta``.
 
@@ -1155,7 +1215,15 @@ def get_or_create_scatter_target(
     label = target_label(array_var_label, attr_path)
     helper_label = f"adj_{label}" if adjoint else label
     if use_forward:
-        _reject_seen_direct_access(meta, array_var_label, attr_path, adjoint, helper_label)
+        _reject_seen_direct_access(
+            meta,
+            array_var_label,
+            attr_path,
+            adjoint,
+            helper_label,
+            allow_declared_pre_atomic_read=True,
+            loop_scopes=loop_scopes,
+        )
         if SideEffectAtomicTarget(array_var_label, attr_path, bool(adjoint)) in meta.side_effect_atomic_targets:
             raise _direct_access_error(helper_label, "updated by another atomic operation")
     if key in registry._counter_targets_by_array:
@@ -1209,6 +1277,8 @@ def get_or_create_scatter_target(
         registry._scatter_targets_by_array[key] = target
 
     meta.add_scatter_target(target)
+    if use_forward and loop_scopes:
+        meta.scatter_target_loop_scopes.setdefault(target, set()).update(loop_scopes)
     return target
 
 
@@ -1690,6 +1760,7 @@ def emit_deterministic_atomic(adj, func, bound_args, return_type, output, output
         return output
 
     # Return value unused: record the update and reduce it after the kernel.
+    use_forward = not adj.custom_reverse_mode and not target_is_adjoint
     try:
         target = get_or_create_scatter_target(
             adj.det_registry,
@@ -1701,12 +1772,15 @@ def emit_deterministic_atomic(adj, func, bound_args, return_type, output, output
             reduce_op,
             attr_path=target_attr_path,
             adjoint=target_is_adjoint,
-            use_forward=not adj.custom_reverse_mode and not target_is_adjoint,
+            use_forward=use_forward,
             use_backward=adj.custom_reverse_mode or target_is_adjoint,
+            loop_scopes=_active_dynamic_loop_scopes(adj),
         )
     except ValueError as e:
         raise WarpDeterminismError(str(e)) from e
     helper_name = target.helper_name
+    if use_forward:
+        adj.det_meta.deferred_atomic_accesses.append(target)
 
     val_loaded = loaded_args[-1]
     loaded_prefix = [adj.load(var) for var in view_prefix_vars]
@@ -1946,10 +2020,55 @@ def _reject_deterministic_target_access(meta, access_target, operation):
         raise _direct_access_error(access_target.target_label, operation)
 
 
-def _reject_seen_direct_access(meta, array_var_label, attr_path, adjoint, helper_label):
+def _is_declared_deferred_atomic_argument(array_var_label, attr_path, adjoint, declared_arg_names):
+    """Return whether a target is a declared top-level deferred accumulation argument."""
+    return not adjoint and not attr_path and array_var_label in declared_arg_names
+
+
+def _active_dynamic_loop_scopes(adj) -> frozenset[object]:
+    """Return the dynamic loops enclosing the current codegen location."""
+    return frozenset((id(adj), block.label) for block in adj.loop_blocks)
+
+
+def _allows_declared_pre_atomic_read(meta, array_var_label, attr_path, adjoint):
+    """Return whether a kernel explicitly permits a pre-atomic direct read."""
+    return _is_declared_deferred_atomic_argument(
+        array_var_label,
+        attr_path,
+        adjoint,
+        meta.deferred_atomic_arg_names,
+    )
+
+
+def _reject_seen_direct_access(
+    meta,
+    array_var_label,
+    attr_path,
+    adjoint,
+    helper_label,
+    *,
+    allow_declared_pre_atomic_read=False,
+    loop_scopes=(),
+):
     """Reject a new deferred forward target that was already accessed directly."""
-    if ArrayLoadTarget(array_var_label, attr_path, bool(adjoint)) in meta.load_targets_seen:
-        raise _direct_access_error(helper_label, "read directly")
+    load_target = ArrayLoadTarget(array_var_label, attr_path, bool(adjoint))
+    if load_target in meta.load_targets_seen:
+        repeated_loop_scopes = meta.load_target_loop_scopes.get(load_target, set()).intersection(loop_scopes)
+        if repeated_loop_scopes:
+            raise WarpDeterminismError(
+                f"Deterministic mode cannot compile this kernel. Cause: array {helper_label!r} is read directly "
+                "and receives deterministic atomic updates in the same dynamic loop. Later loop iterations could "
+                "observe updates that deterministic mode applies after the kernel. Fix: move either the read or "
+                "the atomic update outside the dynamic loop, or use separate arrays."
+            )
+        if not (
+            allow_declared_pre_atomic_read
+            and (
+                _allows_declared_pre_atomic_read(meta, array_var_label, attr_path, adjoint)
+                or meta.allow_unresolved_deferred_atomic_reads
+            )
+        ):
+            raise _direct_access_error(helper_label, "read directly")
     if ArrayStoreTarget(array_var_label, attr_path, bool(adjoint)) in meta.store_targets_seen:
         raise _direct_access_error(helper_label, "written directly")
 
@@ -1963,7 +2082,15 @@ def _reject_side_effect_atomic_target(meta, target):
     _reject_deterministic_target_access(meta, target, "updated by another atomic operation")
 
 
-def _include_deterministic_call_meta(adj, meta, bound_args, *, include_replay_targets=True, backward_only=False):
+def _include_deterministic_call_meta(
+    adj,
+    meta,
+    bound_args,
+    *,
+    include_replay_targets=True,
+    backward_only=False,
+    function_call_scope,
+):
     """Merge deterministic requirements from a called ``@wp.func`` into ``adj``.
 
     ``backward_only`` marks custom-adjoint metadata, whose accesses never run in
@@ -1985,25 +2112,27 @@ def _include_deterministic_call_meta(adj, meta, bound_args, *, include_replay_ta
         mapped_label, mapped_attr_path = _deterministic_map_target(target, bound_args)
         return target_type(mapped_label, tuple(mapped_attr_path), bool(getattr(target, "adjoint", False)))
 
-    if not backward_only:
-        if meta.consumed_side_effect_return and adj.det_meta.consumed_side_effect_return is None:
-            adj.det_meta.consumed_side_effect_return = meta.consumed_side_effect_return
-            adj.det_meta.consumed_side_effect_lineno = adj.lineno  # The helper call site.
-        for target in meta.load_targets_seen:
-            mapped_target = map_access(ArrayLoadTarget, target)
-            _reject_deterministic_target_access(adj.det_meta, mapped_target, "read directly")
-            adj.det_meta.load_targets_seen.add(mapped_target)
+    def map_loop_scopes(loop_scopes):
+        # Loops defined inside a helper must be distinct for each call site.
+        # Enclosing caller loops remain shared so a helper called repeatedly
+        # from one of those loops still detects the read-after-update hazard.
+        mapped = {(function_call_scope, scope) for scope in loop_scopes}
+        mapped.update(_active_dynamic_loop_scopes(adj))
+        return mapped
 
-        for target in meta.store_targets_seen:
-            mapped_target = map_access(ArrayStoreTarget, target)
-            _reject_deterministic_target_access(adj.det_meta, mapped_target, "written directly")
-            adj.det_meta.store_targets_seen.add(mapped_target)
+    def include_load_target(target, *, record_access=False):
+        mapped_target = map_access(ArrayLoadTarget, target)
+        _reject_deterministic_target_access(adj.det_meta, mapped_target, "read directly")
+        adj.det_meta.load_targets_seen.add(mapped_target)
+        loop_scopes = map_loop_scopes(meta.load_target_loop_scopes.get(target, ()))
+        if loop_scopes:
+            adj.det_meta.load_target_loop_scopes.setdefault(mapped_target, set()).update(loop_scopes)
+        if record_access:
+            adj.det_meta.deferred_atomic_accesses.append(mapped_target)
 
-    backward_stores = meta.backward_store_targets if backward_only else meta.backward_store_targets_seen
-    adj.det_meta.backward_store_targets_seen.update(map_access(ArrayStoreTarget, target) for target in backward_stores)
-
-    for target, count in meta.scatter_records_per_thread.items():
+    def include_scatter_target(target, records_per_thread, *, record_access=False):
         mapped_label, mapped_attr_path = _deterministic_map_target(target, bound_args)
+        loop_scopes = map_loop_scopes(meta.scatter_target_loop_scopes.get(target, ()))
         mapped_target = get_or_create_scatter_target(
             adj.det_registry,
             adj.det_meta,
@@ -2017,8 +2146,45 @@ def _include_deterministic_call_meta(adj, meta, bound_args, *, include_replay_ta
             use_forward=getattr(target, "use_forward", True),
             use_backward=getattr(target, "use_backward", False),
             has_component_slot_scatter=getattr(target, "has_component_slot_scatter", False),
+            loop_scopes=loop_scopes,
         )
-        adj.det_meta.scatter_records_per_thread[mapped_target] += count - 1
+        adj.det_meta.scatter_records_per_thread[mapped_target] += records_per_thread - 1
+        if record_access:
+            adj.det_meta.deferred_atomic_accesses.append(mapped_target)
+
+    imported_scatter_targets = set()
+
+    if not backward_only:
+        if meta.consumed_side_effect_return and adj.det_meta.consumed_side_effect_return is None:
+            adj.det_meta.consumed_side_effect_return = meta.consumed_side_effect_return
+            adj.det_meta.consumed_side_effect_lineno = adj.lineno  # The helper call site.
+        imported_load_targets = set()
+        for access in meta.deferred_atomic_accesses:
+            if isinstance(access, ArrayLoadTarget):
+                include_load_target(access, record_access=True)
+                imported_load_targets.add(access)
+            else:
+                include_scatter_target(access, records_per_thread=1, record_access=True)
+                imported_scatter_targets.add(access)
+
+        # All source accesses are recorded above. Keep this fallback for
+        # metadata assembled by non-source lowering paths, such as backward
+        # gradient accumulation.
+        for target in meta.load_targets_seen - imported_load_targets:
+            include_load_target(target)
+
+        for target in meta.store_targets_seen:
+            mapped_target = map_access(ArrayStoreTarget, target)
+            _reject_deterministic_target_access(adj.det_meta, mapped_target, "written directly")
+            adj.det_meta.store_targets_seen.add(mapped_target)
+
+    backward_stores = meta.backward_store_targets if backward_only else meta.backward_store_targets_seen
+    adj.det_meta.backward_store_targets_seen.update(map_access(ArrayStoreTarget, target) for target in backward_stores)
+
+    for target, count in meta.scatter_records_per_thread.items():
+        if not backward_only and target in imported_scatter_targets:
+            continue
+        include_scatter_target(target, records_per_thread=count)
 
     for target, count in meta.counter_records_per_thread.items():
         mapped_label, mapped_attr_path = _deterministic_map_target(target, bound_args)
@@ -2563,11 +2729,29 @@ def _validate_nonoverlapping_deterministic_targets(kernel_key, target_arrays):
                 )
 
 
-def _validate_deterministic_target_access_aliases(kernel_key, target_arrays, access_arrays):
+def _validate_deterministic_target_access_aliases(
+    kernel_key, target_arrays, access_arrays, deferred_atomic_arg_names=frozenset()
+):
     """Reject an atomic target aliased through a directly accessed argument."""
     for atomic_target, atomic_array in target_arrays:
         for access_target, access_array, operation in access_arrays:
             if not _deterministic_arrays_overlap(atomic_array, access_array):
+                continue
+
+            # A declared accumulation target may alias an input argument at
+            # launch. The declaration asserts that reads through that alias do
+            # not depend on updates deferred until after the kernel finishes.
+            # Stores and non-scatter targets retain the normal safety check.
+            if (
+                operation == "read directly"
+                and isinstance(atomic_target, ScatterTarget)
+                and _is_declared_deferred_atomic_argument(
+                    atomic_target.array_var_label,
+                    atomic_target.attr_path,
+                    atomic_target.adjoint,
+                    deferred_atomic_arg_names,
+                )
+            ):
                 continue
 
             raise WarpDeterminismError(
@@ -2803,7 +2987,12 @@ def launch_deterministic(
                 access_array = None if access_target.adjoint else resolve_det_target_array(access_target)
                 if access_array is not None:
                     access_arrays.append((access_target, access_array, operation))
-        _validate_deterministic_target_access_aliases(kernel.key, target_arrays, access_arrays)
+        _validate_deterministic_target_access_aliases(
+            kernel.key,
+            target_arrays,
+            access_arrays,
+            det_meta.deferred_atomic_arg_names,
+        )
 
     # Allocate buffers. During graph capture, allocations are redirected to a
     # dedicated non-capturing stream (see det_buffer_allocation_scope) so the

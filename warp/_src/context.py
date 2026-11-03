@@ -66,7 +66,7 @@ import warp.config
 from warp._src.codegen import WarpCodegenError, WarpCodegenTypeError, _codegen_lock, synchronized
 from warp._src.logger import get_logger, log_debug, log_error, log_info, log_warning
 from warp._src.texture import Texture1D, Texture2D, Texture3D, texture1d_t, texture2d_t, texture3d_t
-from warp._src.types import LAUNCH_MAX_DIMS, Array, LaunchBounds, array_t, launch_bounds_t, type_repr
+from warp._src.types import LAUNCH_MAX_DIMS, Array, LaunchBounds, array_t, is_array, launch_bounds_t, type_repr
 
 _KERNEL_RETURN_ERROR = (
     "Warp kernels cannot return values. Write results to output arguments, "
@@ -1341,6 +1341,22 @@ class Kernel:
         if self.return_annotation is types.NoneType:
             self.return_annotation = None
 
+        deferred_atomic_args = self.options.get("deterministic_deferred_atomics", ())
+        if deferred_atomic_args:
+            argument_types = {arg.label: arg.type for arg in self.adj.args}
+            unknown_args = sorted(set(deferred_atomic_args) - set(argument_types))
+            if unknown_args:
+                raise ValueError(
+                    f"@wp.kernel for '{func.__name__}': deterministic_deferred_atomics contains unknown argument(s): "
+                    f"{', '.join(repr(arg_name) for arg_name in unknown_args)}."
+                )
+            non_array_args = [arg_name for arg_name in deferred_atomic_args if not is_array(argument_types[arg_name])]
+            if non_array_args:
+                raise TypeError(
+                    f"@wp.kernel for '{func.__name__}': deterministic_deferred_atomics requires array argument(s), got: "
+                    f"{', '.join(repr(arg_name) for arg_name in non_array_args)}."
+                )
+
         # check if generic
         self.is_generic = False
         for arg_type in self.adj.arg_types.values():
@@ -1974,6 +1990,7 @@ def kernel(
     cluster_dim: int | None = None,
     module: Module | Literal["unique"] | str | None = None,
     module_options: dict[str, Any] | None = None,
+    deterministic_deferred_atomics: tuple[str, ...] = (),
     entry_point_abi: Literal["warp", "external_constant_params"] | None = None,
     grid_stride: bool | None = None,
 ):
@@ -2082,6 +2099,12 @@ def kernel(
             For shared modules, use :func:`warp.set_module_options`
             instead. See :func:`warp.set_module_options` for the full
             list of supported options.
+        deterministic_deferred_atomics: Array argument names for which direct
+            reads before a deterministic accumulation atomic are permitted.
+            This is an explicit assertion that those reads do not depend on
+            updates made by the current launch. Direct writes and reads after
+            an atomic update through the declared argument remain unsupported.
+            Only applies to deterministic accumulation atomics.
         entry_point_abi: Experimental entry-point ABI. ``"warp"`` (the
             default) is supported by CPU and CUDA and emits the regular
             :func:`warp.launch`-compatible kernel signature.
@@ -2103,6 +2126,15 @@ def kernel(
 
     def wrapper(f, *args, **kwargs):
         kernel_options = {}
+
+        if not isinstance(deterministic_deferred_atomics, tuple) or not all(
+            isinstance(arg_name, str) for arg_name in deterministic_deferred_atomics
+        ):
+            raise TypeError("deterministic_deferred_atomics must be a tuple of argument names")
+        if len(set(deterministic_deferred_atomics)) != len(deterministic_deferred_atomics):
+            raise ValueError("deterministic_deferred_atomics cannot contain duplicate argument names")
+        if deterministic_deferred_atomics:
+            kernel_options["deterministic_deferred_atomics"] = deterministic_deferred_atomics
 
         if name is None:
             key = warp._src.codegen.make_full_qualified_name(f)
@@ -3609,7 +3641,10 @@ class ModuleBuilder:
         if self._kernel_has_invalid_return_annotation(kernel) or self._kernel_has_value_return(kernel):
             raise WarpCodegenTypeError(f"'{kernel.key}': {_KERNEL_RETURN_ERROR}")
 
-        kernel.adj.build(self)
+        kernel.adj.build(
+            self,
+            deterministic_deferred_atomics=kernel.options.get("deterministic_deferred_atomics", ()),
+        )
         for var in (*kernel.adj.args, *kernel.adj.variables):
             self._collect_native_types(var.type)
         self.module._cache_kernel_tid_extent_limit(kernel, self.options["block_dim"])
@@ -4633,7 +4668,11 @@ class Module:
 
         if cache_key not in self._tid_extent_limits:
             builder_options = self.resolved_options[block_dim] | {"output_arch": None}
-            kernel.adj.build(None, builder_options)
+            kernel.adj.build(
+                None,
+                builder_options,
+                deterministic_deferred_atomics=kernel.options.get("deterministic_deferred_atomics", ()),
+            )
             self._cache_kernel_tid_extent_limit(kernel, block_dim)
 
         return self._tid_extent_limits[cache_key]
@@ -4658,7 +4697,11 @@ class Module:
         with _codegen_lock:
             for kernel_hash, kernel in hasher.unique_kernels.items():
                 if rebuild:
-                    kernel.adj.build(None, builder_options)
+                    kernel.adj.build(
+                        None,
+                        builder_options,
+                        deterministic_deferred_atomics=kernel.options.get("deterministic_deferred_atomics", ()),
+                    )
                 snapshot[kernel.get_mangled_name(kernel_hash=kernel_hash)] = kernel.adj.det_meta
         return snapshot
 
