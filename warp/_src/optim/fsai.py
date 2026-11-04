@@ -553,8 +553,9 @@ class FSAI(LinearOperator):
                 source matrix scalar type (float32 for a float16 source). Stored
                 factors are cast during products.
             layout: ``"columns"`` retains adjacent RHS values across both factor
-                products on CUDA. ``"rows"`` uses one thread per row and RHS and
-                may be faster for narrow batches. CPU always uses the row path.
+                products on CUDA. ``"rows"`` reads each factor row once for up to
+                four RHSs on CUDA and may be faster for narrow batches. CPU always
+                uses one thread per row and RHS.
 
         Returns:
             A reusable :class:`LinearOperator` with preallocated scratch storage.

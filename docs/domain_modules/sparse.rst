@@ -486,6 +486,7 @@ Prepared FSAI application
 
 For several vectors sharing the same factor, prepare the workspace once::
 
+    import warp as wp
     from warp.optim.linear import FSAI
 
     factor = FSAI(A, factor_dtype=wp.float32)

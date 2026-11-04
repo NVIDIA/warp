@@ -97,6 +97,11 @@ class FSAIMultiRHS(LinearOperator):
         self._second = wp.empty_like(self._first)
         offsets = wp.empty(self.nrhs + 1, dtype=int, device=factor.device)
         wp.launch(_offsets, self.nrhs + 1, [offsets, self.n], device=factor.device)
+        stream = factor.device.stream if factor.device.is_cuda else None
+        if stream is not None and not stream.is_capturing:
+            # Solver setup reads batch offsets before any matvec waits on the event below,
+            # so finish writing them before another stream can use this operator.
+            wp.synchronize_stream(stream)
         self._owner = self
         # Seed with the constructing stream so first use elsewhere waits for setup.
         self._last_stream = factor.device.stream if factor.device.is_cuda else None
