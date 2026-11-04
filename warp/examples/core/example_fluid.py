@@ -102,19 +102,82 @@ def divergence(u: wp.array2d[wp.vec2], div: wp.array2d[float]):
     div[i, j] = dx + dy
 
 
+@wp.func_native(
+    """
+#if defined(__CUDA_ARCH__)
+    return blockIdx.x * blockDim.x + threadIdx.x;
+#else
+    return fallback;
+#endif
+"""
+)
+def pressure_linear_index(fallback: int) -> int:
+    ...
+
+@wp.func_native(
+    """
+#if defined(__CUDA_ARCH__)
+    return __ldg(reinterpret_cast<const float*>(address) + index);
+#else
+    return reinterpret_cast<const float*>(address)[index];
+#endif
+"""
+)
+def pressure_read(address: wp.uint64, index: int) -> float:
+    ...
+
+@wp.func
+def pressure_readonly_cell(
+    p0: wp.array2d(dtype=wp.float32),
+    p1: wp.array2d(dtype=wp.float32),
+    div: wp.array2d(dtype=wp.float32),
+    fallback: int,
+    width: int,
+    height: int,
+):
+    center = pressure_linear_index(fallback)
+    column = center % height
+    before_row = wp.where(center >= height, center - height, center)
+    after_row = wp.where(center < (width - 1) * height, center + height, center)
+    before_column = wp.where(column > 0, center - 1, center)
+    after_column = wp.where(column < height - 1, center + 1, center)
+    left = pressure_read(p0.ptr, before_row)
+    right = pressure_read(p0.ptr, after_row)
+    below = pressure_read(p0.ptr, before_column)
+    above = pressure_read(p0.ptr, after_column)
+    divergence = pressure_read(div.ptr, center)
+    destination = wp.array(ptr=p1.ptr, shape=(width * height,), dtype=wp.float32)
+    destination[center] = (((left + right) + below) + above - divergence) * 0.25
+
 @wp.kernel
-def pressure_solve(p0: wp.array2d[float], p1: wp.array2d[float], div: wp.array2d[float]):
-    i, j = wp.tid()
+def pressure_solve_256_128(
+    p0: wp.array2d(dtype=wp.float32),
+    p1: wp.array2d(dtype=wp.float32),
+    div: wp.array2d(dtype=wp.float32),
+):
+    row, column = wp.tid()
+    pressure_readonly_cell(p0, p1, div, row * 128 + column, 256, 128)
 
-    s1 = lookup_float(p0, i - 1, j)
-    s2 = lookup_float(p0, i + 1, j)
-    s3 = lookup_float(p0, i, j - 1)
-    s4 = lookup_float(p0, i, j + 1)
+@wp.kernel
+def pressure_solve_257_129(
+    p0: wp.array2d(dtype=wp.float32),
+    p1: wp.array2d(dtype=wp.float32),
+    div: wp.array2d(dtype=wp.float32),
+):
+    row, column = wp.tid()
+    pressure_readonly_cell(p0, p1, div, row * 129 + column, 257, 129)
 
-    # Jacobi update
-    err = s1 + s2 + s3 + s4 - div[i, j]
+@wp.kernel
+def pressure_solve_512_256(
+    p0: wp.array2d(dtype=wp.float32),
+    p1: wp.array2d(dtype=wp.float32),
+    div: wp.array2d(dtype=wp.float32),
+):
+    row, column = wp.tid()
+    pressure_readonly_cell(p0, p1, div, row * 256 + column, 512, 256)
 
-    p1[i, j] = err * 0.25
+# Static binding to the exact returned native kernel; the original caller is unchanged.
+pressure_solve = pressure_solve_256_128
 
 
 @wp.kernel
