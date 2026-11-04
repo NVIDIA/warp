@@ -9,7 +9,7 @@ import numpy as np
 
 import warp as wp
 import warp.sparse as sp
-from warp.optim.linear import GMRESSolve, ResidualMode, aslinearoperator
+from warp.optim.linear import GMRESSolve, ResidualMode, aslinearoperator, preconditioner
 from warp.tests.unittest_utils import add_function_test, get_cuda_test_devices, get_test_devices
 
 
@@ -121,6 +121,8 @@ def test_gmres_action_validation(test, device):
     ):
         with test.assertRaises((ValueError, TypeError)):
             GMRESSolve(a, **kwargs)
+    with test.assertRaisesRegex(TypeError, "atol"):
+        GMRESSolve(a, atol=None)
     action = GMRESSolve(a)
     out = wp.full(8, 7.0, dtype=wp.float64, device=device)
     for bad in (
@@ -204,6 +206,34 @@ def test_gmres_action_default_tolerance(test, device):
         np.testing.assert_allclose(out.numpy(), np.linalg.solve(a, rhs.T).T, rtol=rtol, atol=rtol)
 
 
+def test_gmres_action_block_diagonals(test, device):
+    """Check that vector-valued diagonals of block systems count every scalar entry."""
+    blocks = 5
+    n = 3 * blocks
+    a = np.diag(np.linspace(1.0, 4.0, n)) + np.diag(np.full(n - 1, 0.3), 1)
+    rhs = np.random.default_rng(5).normal(size=(2, n))
+    expected = np.linalg.solve(a, rhs.T).T
+    matrix = _matrix(a, device, wp.float64, 3)
+    for kind in ("diag", "diag_abs"):
+        M = preconditioner(matrix, kind)
+        test.assertEqual(M.shape, (blocks,))
+        action = GMRESSolve(matrix, 2, M=M, restart=n, tol=1e-12)
+        b = wp.array(rhs, dtype=wp.float64, device=device)
+        out = wp.empty_like(b)
+        action.solve(b, out)
+        np.testing.assert_array_equal(action.converged.numpy(), [1, 1])
+        np.testing.assert_allclose(out.numpy(), expected, rtol=1e-9, atol=1e-9)
+    diagonal = np.linspace(1.0, 4.0, n)
+    action = GMRESSolve(wp.array(diagonal.reshape(blocks, 3), dtype=wp.vec3d, device=device), 2, tol=1e-12)
+    b = wp.array(rhs, dtype=wp.float64, device=device)
+    out = wp.empty_like(b)
+    action.solve(b, out)
+    np.testing.assert_array_equal(action.converged.numpy(), [1, 1])
+    np.testing.assert_allclose(out.numpy(), rhs / diagonal, rtol=1e-12)
+    with test.assertRaises(ValueError):
+        GMRESSolve(matrix, M=wp.ones(blocks, dtype=wp.vec2d, device=device))
+
+
 def test_gmres_action_stream_ordering(test, device):
     """Check that resets and smaller capacities join the stream ordering used by solves."""
     n = 32
@@ -247,6 +277,7 @@ for func in (
     test_gmres_action_validation,
     test_gmres_action_capacities_and_modes,
     test_gmres_action_default_tolerance,
+    test_gmres_action_block_diagonals,
 ):
     add_function_test(TestSolveAction, func.__name__, func, devices=get_test_devices())
 for func in (test_gmres_action_streams, test_gmres_action_stream_ordering):

@@ -10,7 +10,9 @@ from operator import index
 from typing import Any
 
 import warp as wp
+from warp._src.context import is_conditional_graph_supported
 from warp._src.optim.linear import _get_dtype_epsilon, aslinearoperator, gmres
+from warp._src.types import type_length
 
 
 class ResidualMode(enum.IntEnum):
@@ -54,9 +56,10 @@ def _squared_norms(
     rhs_sq: wp.array[Any],
 ):
     rhs, block = wp.tid()
-    bv = wp.tile_load(b[rhs], shape=256, offset=block * 256)
+    # Square in the accumulator dtype so small entries of a narrower input cannot underflow.
+    bv = wp.tile_astype(wp.tile_load(b[rhs], shape=256, offset=block * 256), rhs_sq.dtype)
     if with_residual != 0:
-        r = wp.tile_load(ax[rhs], shape=256, offset=block * 256) - bv
+        r = wp.tile_astype(wp.tile_load(ax[rhs], shape=256, offset=block * 256), rhs_sq.dtype) - bv
         wp.tile_atomic_add(residual_sq, wp.tile_sum(wp.tile_map(wp.mul, r, r)), offset=first + rhs)
     wp.tile_atomic_add(rhs_sq, wp.tile_sum(wp.tile_map(wp.mul, bv, bv)), offset=first + rhs)
 
@@ -78,31 +81,33 @@ def _record(
 ):
     k = wp.tid()
     row = first + k
-    r_sq = absolute.dtype(residual_sq[k])
-    b_sq = absolute.dtype(rhs_sq[k])
-    t_sq = absolute.dtype(tolerance_sq[wp.min(k, tolerance_sq.shape[0] - 1)])
+    # Compare and take roots in double precision; squares can underflow in the reported dtype.
+    r_sq = wp.float64(residual_sq[k])
+    b_sq = wp.float64(rhs_sq[k])
+    t_sq = wp.float64(tolerance_sq[wp.min(k, tolerance_sq.shape[0] - 1)])
+    zero = wp.float64(0.0)
     a = wp.sqrt(r_sq)
-    r = absolute.dtype(0)
-    if b_sq > absolute.dtype(0):
+    r = zero
+    if b_sq > zero:
         r = a / wp.sqrt(b_sq)
-    elif a > absolute.dtype(0):
-        r = absolute.dtype(wp.inf)
+    elif a > zero:
+        r = wp.float64(wp.inf)
     valid = wp.isfinite(r_sq) and wp.isfinite(b_sq) and wp.isfinite(t_sq)
     success = valid and r_sq <= t_sq
     if not valid:
-        a = absolute.dtype(wp.inf)
-        r = absolute.dtype(wp.inf)
+        a = wp.float64(wp.inf)
+        r = wp.float64(wp.inf)
     counts[row] = iterations[0]
-    absolute[row] = a
-    relative[row] = r
-    tolerance[row] = wp.sqrt(t_sq)
+    absolute[row] = absolute.dtype(a)
+    relative[row] = absolute.dtype(r)
+    tolerance[row] = absolute.dtype(wp.sqrt(t_sq))
     converged[row] = int(success)
     wp.atomic_add(stats, 0, iterations[0])
     wp.atomic_max(stats, 1, iterations[0])
     wp.atomic_add(stats, 2, int(not success))
     wp.atomic_add(stats, 3, 1)
-    wp.atomic_max(maxima, 0, a)
-    wp.atomic_max(maxima, 1, r)
+    wp.atomic_max(maxima, 0, absolute.dtype(a))
+    wp.atomic_max(maxima, 1, absolute.dtype(r))
 
 
 def _positive_int(name, value):
@@ -113,8 +118,18 @@ def _positive_int(name, value):
     return index(value)
 
 
+def _scalar_shape(operator):
+    """Return an operator's shape in scalar entries; vector-valued diagonals count every component."""
+    if len(operator.shape) == 1:
+        return (operator.shape[0] * type_length(operator.dtype),)
+    return operator.shape
+
+
 def _resolve_tolerances(tol, atol, dtype):
     """Validate tolerances and give an omitted relative tolerance a ``dtype`` default."""
+    if atol is None:
+        # Upstream solvers read None as "same as tol"; require an explicit value instead of guessing.
+        raise TypeError("atol must be a nonnegative number; use 0.0 for no absolute tolerance")
     for name, value in (("tol", tol), ("atol", atol)):
         if value is not None and (not math.isfinite(value) or value < 0):
             raise ValueError(f"{name} must be finite and nonnegative")
@@ -129,10 +144,12 @@ def _resolve_tolerances(tol, atol, dtype):
 class _SolveAction:
     """Shared validation, stream ordering and device diagnostics for prepared solves."""
 
-    def _init_action(self, n, nrhs, dtype, device, residual):
+    def _init_action(self, n, nrhs, dtype, device, residual, norm_dtype=None):
         if not isinstance(residual, ResidualMode):
             raise TypeError("residual must be a ResidualMode")
         self.n, self.nrhs, self.dtype, self.device = n, _positive_int("nrhs", nrhs), dtype, device
+        # Squared norms accumulate in the wider of the reported and working dtypes.
+        self._norm_dtype = dtype if norm_dtype is None else norm_dtype
         self.residual = residual
         self._stream_order = _StreamOrder(device)
         self._allocate_diagnostics()
@@ -145,8 +162,8 @@ class _SolveAction:
         self.relative_residual = wp.zeros_like(self.absolute_residual)
         self.tolerance = wp.zeros_like(self.absolute_residual)
         self.converged = wp.zeros(self.nrhs, dtype=int, device=self.device)
-        self._residual_sq = wp.zeros_like(self.absolute_residual)
-        self._rhs_sq = wp.zeros_like(self.absolute_residual)
+        self._residual_sq = wp.zeros(self.nrhs, dtype=self._norm_dtype, device=self.device)
+        self._rhs_sq = wp.zeros_like(self._residual_sq)
 
     def _child(self, nrhs):
         """Copy this action for a smaller capacity with its own diagnostics."""
@@ -244,10 +261,13 @@ class GMRESSolve(_SolveAction):
     recapture and preconditioner updates remain explicit. Eager calls issued
     from different CUDA streams are ordered with an event, but simultaneously
     executing graphs that share this state or its smaller capacities require
-    caller ordering. Reverse-mode differentiation is not supported.
+    caller ordering. Without conditional graph nodes (CUDA Toolkit and driver
+    12.4+), CUDA solves run whole restart cycles up to ``maxiter`` and
+    ``iterations`` counts them. Reverse-mode differentiation is not supported.
 
     Args:
         A: Square real sparse matrix or :class:`LinearOperator`, float32 or float64.
+            A one-dimensional vector-valued diagonal counts every component.
         nrhs: Positive number of RHSs prepared for :meth:`solve`.
         M: Optional fixed linear right preconditioner, with matching size/device.
         tol: Nonnegative relative tolerance. Defaults to ``eps ** 0.75`` for the
@@ -286,8 +306,8 @@ class GMRESSolve(_SolveAction):
     ):
         maxiter, restart = _positive_int("maxiter", maxiter), _positive_int("restart", restart)
         self.operator = aslinearoperator(A)
-        n = self.operator.shape[0]
-        if self.operator.shape not in ((n,), (n, n)) or n < 1:
+        n = _scalar_shape(self.operator)[0]
+        if _scalar_shape(self.operator) not in ((n,), (n, n)) or n < 1:
             raise ValueError("A must be nonempty and square")
         if self.operator.batch_offsets is not None:
             raise ValueError("A must describe one shared system, not partitioned systems")
@@ -297,7 +317,7 @@ class GMRESSolve(_SolveAction):
         self._init_action(n, nrhs, self.operator.scalar_type, self.operator.device, residual)
         M = aslinearoperator(M)
         if M is not None and (
-            M.shape not in ((n,), (n, n))
+            _scalar_shape(M) not in ((n,), (n, n))
             or M.device != self.device
             or M.scalar_type != self.dtype
             or M.batch_offsets is not None
@@ -316,6 +336,7 @@ class GMRESSolve(_SolveAction):
             restart=min(restart, n),
             maxiter=maxiter,
             check_every=0,
+            use_cuda_graph=is_conditional_graph_supported(),
             run=False,
         )
 
