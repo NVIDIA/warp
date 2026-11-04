@@ -294,6 +294,47 @@ def test_multiple_rhs_float32_source(test, device):
             test.assertEqual(action.stats.numpy()[2], 0)
 
 
+def test_multiple_rhs_tiny_rhs(test, device):
+    """Check that float64 working precision judges tiny float32 RHSs without underflow."""
+    n = 16
+    a = np.diag(np.linspace(3.0, 5.0, n)) + np.diag(np.full(n - 1, -1.0), 1) + np.diag(np.full(n - 1, -1.0), -1)
+    rhs = (np.random.default_rng(81).normal(size=(2, n)) * 1e-24).astype(np.float32)
+    matrix = _matrix(a, device, wp.float32, 1)
+    for residual in (ResidualMode.RECURRENCE, ResidualMode.FRESH):
+        b = wp.array(rhs, dtype=wp.float32, device=device)
+        out = wp.empty_like(b)
+        unfinished = CGSolve(matrix, 2, working_dtype=wp.float64, tol=1e-6, maxiter=1, residual=residual)
+        unfinished.solve(b, out)
+        np.testing.assert_array_equal(unfinished.converged.numpy(), [0, 0])
+        test.assertTrue(np.all(unfinished.relative_residual.numpy() > 1e-3))
+        action = CGSolve(matrix, 2, working_dtype=wp.float64, tol=1e-6, maxiter=100, residual=residual)
+        action.solve(b, out)
+        np.testing.assert_array_equal(action.converged.numpy(), [1, 1])
+        np.testing.assert_allclose(out.numpy(), np.linalg.solve(a, rhs.T.astype(np.float64)).T, rtol=1e-4)
+
+
+def test_multiple_rhs_block_diagonal(test, device):
+    """Check that vector-valued diagonal preconditioners count every scalar of a block system."""
+    n = 15
+    a = np.diag(np.linspace(3.0, 5.0, n)) + np.diag(np.full(n - 1, -0.5), 1) + np.diag(np.full(n - 1, -0.5), -1)
+    rhs = np.random.default_rng(83).normal(size=(2, n))
+    matrix = _matrix(a, device, wp.float64, 3)
+    M = preconditioner(matrix, ptype="diag")
+    test.assertEqual(M.shape, (n // 3,))
+    operator = MultiRHSOperator(M, 2)
+    test.assertEqual(operator.shape, (2 * n, 2 * n))
+    x = wp.ones(2 * n, dtype=wp.float64, device=device)
+    y = wp.empty_like(x)
+    operator.matvec(x, y, y, 1.0, 0.0)
+    np.testing.assert_allclose(y.numpy(), np.tile(1.0 / np.diag(a), 2), rtol=1e-12)
+    action = CGSolve(matrix, 2, M=M, tol=1e-10)
+    b = wp.array(rhs, dtype=wp.float64, device=device)
+    out = wp.empty_like(b)
+    action.solve(b, out)
+    np.testing.assert_array_equal(action.converged.numpy(), [1, 1])
+    np.testing.assert_allclose(out.numpy(), np.linalg.solve(a, rhs.T).T, rtol=1e-8, atol=1e-8)
+
+
 class TestMultiRHS(unittest.TestCase):
     pass
 
@@ -306,7 +347,13 @@ for dtype in (wp.float32, wp.float64):
         devices=get_test_devices(),
         working_dtype=dtype,
     )
-for func in (test_multiple_rhs_capture, test_multiple_rhs_operator, test_multiple_rhs_failure_validation):
+for func in (
+    test_multiple_rhs_capture,
+    test_multiple_rhs_operator,
+    test_multiple_rhs_failure_validation,
+    test_multiple_rhs_tiny_rhs,
+    test_multiple_rhs_block_diagonal,
+):
     add_function_test(TestMultiRHS, func.__name__, func, devices=get_test_devices())
 
 add_function_test(

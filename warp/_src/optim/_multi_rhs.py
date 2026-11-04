@@ -10,11 +10,13 @@ from typing import Any
 
 import warp as wp
 from warp._src import sparse as sp
+from warp._src.context import is_conditional_graph_supported
 from warp._src.optim._multi_rhs_kernels import csr_block_product, csr_eight_rhs, transpose_axpby, transpose_rows
 from warp._src.optim._solve_action import (
     ResidualMode,
     _positive_int,
     _resolve_tolerances,
+    _scalar_shape,
     _SolveAction,
     _StreamOrder,
 )
@@ -163,10 +165,10 @@ class MultiRHSOperator(LinearOperator):
             raise ValueError("nrhs must be a positive integer")
         self.source = A
         self.single = aslinearoperator(A)
-        self.n, self.nrhs = self.single.shape[0], index(nrhs)
+        self.n, self.nrhs = _scalar_shape(self.single)[0], index(nrhs)
         if (
             self.n < 1
-            or self.single.shape not in ((self.n,), (self.n, self.n))
+            or _scalar_shape(self.single) not in ((self.n,), (self.n, self.n))
             or self.single.batch_offsets is not None
         ):
             raise ValueError("Expected one nonempty square system")
@@ -184,6 +186,11 @@ class MultiRHSOperator(LinearOperator):
         self._second = wp.empty_like(self._first) if self.layout == "columns" else None
         offsets = wp.empty(self.nrhs + 1, dtype=int, device=self.single.device)
         wp.launch(_offsets, self.nrhs + 1, [offsets, self.n], device=self.single.device)
+        stream = self.single.device.stream if self.single.device.is_cuda else None
+        if stream is not None and not stream.is_capturing:
+            # Solver setup reads batch offsets before any matvec joins the stream ordering,
+            # so finish writing them before another stream can use this operator.
+            wp.synchronize_stream(stream)
         self._stream_order = _StreamOrder(self.single.device)
         super().__init__(
             (self.n * self.nrhs, self.n * self.nrhs),
@@ -380,7 +387,8 @@ class CGSolve(_SolveAction):
         if working_dtype not in (wp.float32, wp.float64):
             raise ValueError("working_dtype must be float32 or float64")
         tol, atol = _resolve_tolerances(tol, atol, working_dtype)
-        self._init_action(A.shape[0], nrhs, A.scalar_type, A.device, residual)
+        norm_dtype = wp.float64 if wp.float64 in (A.scalar_type, working_dtype) else wp.float32
+        self._init_action(A.shape[0], nrhs, A.scalar_type, A.device, residual, norm_dtype)
         self.source = A
         self.working_dtype = working_dtype
         self.tol, self.atol, self.maxiter, self.layout = tol, atol, maxiter, layout
@@ -410,7 +418,7 @@ class CGSolve(_SolveAction):
             if M.batch_offsets is None:
                 if M.scalar_type != self.working_dtype:
                     raise ValueError("Single-system M must use the working dtype; supply a prepared operator otherwise")
-                if M.shape not in ((self.n,), (self.n, self.n)):
+                if _scalar_shape(M) not in ((self.n,), (self.n, self.n)):
                     raise ValueError("Single-system M must match the matrix dimension")
                 M = MultiRHSOperator(M, self.nrhs)
             elif M.shape != self.operator.shape or M.batch_count != self.nrhs or M.max_batch_length != self.n:
@@ -426,6 +434,7 @@ class CGSolve(_SolveAction):
             atol=self.atol,
             maxiter=self.maxiter,
             check_every=0,
+            use_cuda_graph=is_conditional_graph_supported(),
             run=False,
         )
 
