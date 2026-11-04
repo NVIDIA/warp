@@ -19237,7 +19237,7 @@ add_builtin(
 )
 
 
-cusolver_function_map = {"getrf": 0, "getrf_no_pivot": 1, "potrf": 2, "potrs": 3, "trsm": 4}
+cusolver_function_map = {"getrf_no_pivot": 0, "potrf": 2, "potrs": 3, "trsm": 4, "getrf_partial_pivot": 5}
 
 cusolver_type_map = {float32: ("wp::float32", 5), float64: ("wp::float64", 6)}
 
@@ -19246,6 +19246,125 @@ cusolver_fill_mode_map = {"upper": 0, "lower": 1}
 cusolver_side_map = {"-": -1, "left": 0, "right": 1}
 
 cusolver_diag_map = {"-": -1, "unit": 0, "nounit": 1}
+
+
+def tile_lu_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return (
+            tile(dtype=Float, shape=tuple[int, int]),
+            tile(dtype=int32, shape=tuple[int]),
+            tile(dtype=int32, shape=tuple[int]),
+        )
+
+    a = arg_types["A"]
+    if not is_tile(a):
+        raise TypeError(f"tile_lu() argument must be a tile, got {a!r}")
+    if len(a.shape) != 2:
+        raise ValueError("tile_lu() argument must be a 2D tile")
+    if a.shape[0] != a.shape[1]:
+        raise ValueError("tile_lu() argument must be square")
+    if a.dtype not in cusolver_type_map:
+        raise TypeError("tile_lu() argument must be a tile of float32 or float64 entries")
+
+    # Materialize views into a dense output suitable for the solver's fixed leading dimension.
+    return (
+        tile(dtype=a.dtype, shape=a.shape, storage="shared"),
+        tile(dtype=int32, shape=(a.shape[0],), storage="shared"),
+        tile(dtype=int32, shape=(1,), storage="shared"),
+    )
+
+
+def tile_lu_lto_dispatch_func(arg_types, return_type, return_values, arg_values, options, builder):
+    a = arg_values["A"]
+    a.type.storage = "shared"
+    arch = options["output_arch"]
+    if (
+        arch is None
+        or not warp._src.context.runtime.core.wp_is_mathdx_enabled()
+        or not options.get("enable_mathdx_solver", True)
+    ):
+        return ((0, a), [], [], 0)
+
+    out = return_values[0]
+    n = a.type.shape[0]
+    dtype, precision = cusolver_type_map[a.type.dtype]
+    symbol, code = warp._src.build.build_lto_solver(
+        n,
+        n,
+        1,
+        "getrf_partial_pivot",
+        cusolver_function_map["getrf_partial_pivot"],
+        cusolver_side_map["-"],
+        cusolver_diag_map["-"],
+        out.type.layout,
+        out.type.layout,
+        -1,  # LU reads the full matrix; cuSOLVERDx rejects a FillMode operator.
+        arch,
+        precision,
+        options["block_dim"],
+        f"({dtype}*, int*, int*)",
+        builder,
+        smem_estimate_bytes=2 * n * n * type_size_in_bytes(a.type.dtype) + (n + 1) * 4,
+    )
+    return ((Var(symbol, str, False, True, False), a), [], [code], 0)
+
+
+add_builtin(
+    "tile_lu",
+    input_types={"A": tile(dtype=Float, shape=tuple[int, int])},
+    value_func=tile_lu_value_func,
+    lto_dispatch_func=tile_lu_lto_dispatch_func,
+    doc="""Compute an LU factorization with partial pivoting of a square tile ``A``.
+
+    Returns ``(lu, pivots, info)`` without modifying ``A``. The upper triangle of
+    ``lu`` contains ``U``; its strict lower triangle contains ``L`` with an implicit
+    unit diagonal. Applying the row swaps ``(k, pivots[k])`` in increasing order
+    to ``A`` gives ``P @ A = L @ U``. Pivot indices are zero-based and describe a
+    sequence of swaps, not a final permutation vector.
+
+    ``info`` is a one-element integer tile. ``info[0] == 0`` indicates success;
+    a positive value ``i`` indicates that ``U[i-1, i-1]`` is exactly zero and the
+    factors cannot be used for a nonsingular solve. The factorization completes
+    even for singular inputs. This status does not estimate conditioning.
+
+    Supports ``float32`` and ``float64``. On CUDA, uses cuSOLVERDx when available
+    and :attr:`warp.config.enable_mathdx_solver` is enabled (also configurable per
+    module). Otherwise uses a cooperative native implementation, including on CPU.
+    Pivot choices may differ between backends when magnitudes are tied.
+
+    This is a cooperative operation, so every thread in the block must call it.
+    Automatic differentiation is not supported.
+
+    Args:
+        A: A square tile with ``shape=(N, N)``.
+
+    Returns:
+        A tuple containing the packed factor tile with ``shape=(N, N)``, an
+        ``int32`` pivot tile with ``shape=(N,)``, and an ``int32`` status tile
+        with ``shape=(1,)``. All outputs use shared storage.
+
+    Example:
+        .. code-block:: python
+
+            @wp.kernel(enable_backward=False)
+            def factor(
+                a: wp.array2d[float],
+                factors: wp.array2d[float],
+                pivots: wp.array1d[int],
+                status: wp.array1d[int],
+            ):
+                lu, p, info = wp.tile_lu(wp.tile_load(a, shape=(8, 8)))
+                wp.tile_store(factors, lu)
+                wp.tile_store(pivots, p)
+                wp.tile_store(status, info)
+
+            # Launch one cooperative block for the 8x8 matrix.
+            wp.launch_tiled(factor, dim=1, inputs=[a, factors, pivots, status], block_dim=32)
+    """,
+    group="Tile Primitives",
+    export=False,
+    is_differentiable=False,
+)
 
 
 ##

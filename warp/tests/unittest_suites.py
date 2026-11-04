@@ -297,6 +297,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.tile.test_tile_load_indexed import TestTileLoadIndexed
     from warp.tests.tile.test_tile_load_vectorized import TestTileLoadVectorized
     from warp.tests.tile.test_tile_low_precision_stack import TestTileLowPrecisionStack
+    from warp.tests.tile.test_tile_lu import TestTileLU
     from warp.tests.tile.test_tile_matmul import TestTileMatmul
     from warp.tests.tile.test_tile_matmul_no_mathdx import TestTileMatmulNoMathDx
     from warp.tests.tile.test_tile_matmul_strides import TestTileMatmulStrides
@@ -483,6 +484,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestTileBlockDimMismatch,
         TestTileCholesky,
         TestTileCholeskyNoMathDx,
+        TestTileLU,
         TestTileCompositeRow,
         TestTileConstruction,
         TestTileEmpty,
@@ -773,6 +775,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.tile.test_tile_load_indexed import TestTileLoadIndexed
     from warp.tests.tile.test_tile_load_vectorized import TestTileLoadVectorized
     from warp.tests.tile.test_tile_low_precision_stack import TestTileLowPrecisionStack
+    from warp.tests.tile.test_tile_lu import TestTileLU
     from warp.tests.tile.test_tile_matmul import TestTileMatmul
     from warp.tests.tile.test_tile_matmul_no_mathdx import TestTileMatmulNoMathDx
     from warp.tests.tile.test_tile_matmul_strides import TestTileMatmulStrides
@@ -991,6 +994,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestVerifyLibraryVersion,
         TestVersion,
         TestTileCholeskyNoMathDx,
+        TestTileLU,
         TestTileEmpty,
         TestTileFuncArg,
         TestTileFusedOps,

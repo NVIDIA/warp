@@ -5294,9 +5294,11 @@ bool wp_cuda_compile_solver(
     CHECK_CUSOLVER(cusolverdxSetOperatorInt64s(
         h, cusolverdxOperatorType::CUSOLVERDX_OPERATOR_ARRANGEMENT, arrangement.size(), arrangement.data()
     ));
-    CHECK_CUSOLVER(cusolverdxSetOperatorInt64(
-        h, cusolverdxOperatorType::CUSOLVERDX_OPERATOR_FILL_MODE, (cusolverdxFillMode)fill_mode
-    ));
+    if (fill_mode >= 0) {
+        CHECK_CUSOLVER(cusolverdxSetOperatorInt64(
+            h, cusolverdxOperatorType::CUSOLVERDX_OPERATOR_FILL_MODE, (cusolverdxFillMode)fill_mode
+        ));
+    }
     CHECK_CUSOLVER(
         cusolverdxSetOperatorInt64(h, cusolverdxOperatorType::CUSOLVERDX_OPERATOR_SM, (long long)(arch * 10))
     );

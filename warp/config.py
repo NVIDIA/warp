@@ -278,7 +278,7 @@ This setting can be overridden at the module level by setting the
 enable_mathdx_solver: bool = True
 """Use libmathdx (cuSolverDx) for tile solver ops on GPU when available.
 
-Controls all cuSolverDx-backed ops: :func:`tile_cholesky <warp._src.lang.tile_cholesky>`
+Controls all cuSolverDx-backed ops: :func:`tile_lu <warp._src.lang.tile_lu>`, :func:`tile_cholesky <warp._src.lang.tile_cholesky>`
 (and its adjoint), :func:`tile_cholesky_solve <warp._src.lang.tile_cholesky_solve>`,
 :func:`tile_lower_solve <warp._src.lang.tile_lower_solve>`, and
 :func:`tile_upper_solve <warp._src.lang.tile_upper_solve>`.

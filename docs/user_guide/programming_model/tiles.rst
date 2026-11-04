@@ -723,6 +723,7 @@ Linear Algebra
 * :func:`tile_transpose <warp._src.lang.tile_transpose>`
 * :func:`tile_fft <warp._src.lang.tile_fft>`
 * :func:`tile_ifft <warp._src.lang.tile_ifft>`
+* :func:`tile_lu <warp._src.lang.tile_lu>`
 * :func:`tile_cholesky <warp._src.lang.tile_cholesky>`
 * :func:`tile_cholesky_inplace <warp._src.lang.tile_cholesky_inplace>`
 * :func:`tile_cholesky_solve <warp._src.lang.tile_cholesky_solve>`

@@ -204,6 +204,7 @@ Tile Primitives
    tile_load_indexed
    tile_lower_solve
    tile_lower_solve_inplace
+   tile_lu
    tile_map
    tile_matmul
    tile_max

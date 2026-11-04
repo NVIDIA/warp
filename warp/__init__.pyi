@@ -11577,6 +11577,57 @@ def tile_ifft(inout: Tile[Vector[Float, Literal[2]], tuple[int, ...]]) -> None:
         inout: The tile to transform in place."""
     ...
 
+def tile_lu(
+    A: Tile[Float, tuple[int, int]],
+) -> tuple[Tile[Float, tuple[int, int]], Tile[int32, tuple[int]], Tile[int32, tuple[int]]]:
+    """Compute an LU factorization with partial pivoting of a square tile ``A``.
+
+    Returns ``(lu, pivots, info)`` without modifying ``A``. The upper triangle of
+    ``lu`` contains ``U``; its strict lower triangle contains ``L`` with an implicit
+    unit diagonal. Applying the row swaps ``(k, pivots[k])`` in increasing order
+    to ``A`` gives ``P @ A = L @ U``. Pivot indices are zero-based and describe a
+    sequence of swaps, not a final permutation vector.
+
+    ``info`` is a one-element integer tile. ``info[0] == 0`` indicates success;
+    a positive value ``i`` indicates that ``U[i-1, i-1]`` is exactly zero and the
+    factors cannot be used for a nonsingular solve. The factorization completes
+    even for singular inputs. This status does not estimate conditioning.
+
+    Supports ``float32`` and ``float64``. On CUDA, uses cuSOLVERDx when available
+    and :attr:`warp.config.enable_mathdx_solver` is enabled (also configurable per
+    module). Otherwise uses a cooperative native implementation, including on CPU.
+    Pivot choices may differ between backends when magnitudes are tied.
+
+    This is a cooperative operation, so every thread in the block must call it.
+    Automatic differentiation is not supported.
+
+    Args:
+        A: A square tile with ``shape=(N, N)``.
+
+    Returns:
+        A tuple containing the packed factor tile with ``shape=(N, N)``, an
+        ``int32`` pivot tile with ``shape=(N,)``, and an ``int32`` status tile
+        with ``shape=(1,)``. All outputs use shared storage.
+
+    Example:
+        .. code-block:: python
+
+            @wp.kernel(enable_backward=False)
+            def factor(
+                a: wp.array2d[float],
+                factors: wp.array2d[float],
+                pivots: wp.array1d[int],
+                status: wp.array1d[int],
+            ):
+                lu, p, info = wp.tile_lu(wp.tile_load(a, shape=(8, 8)))
+                wp.tile_store(factors, lu)
+                wp.tile_store(pivots, p)
+                wp.tile_store(status, info)
+
+            # Launch one cooperative block for the 8x8 matrix.
+            wp.launch_tiled(factor, dim=1, inputs=[a, factors, pivots, status], block_dim=32)"""
+    ...
+
 def tile_cholesky(A: Tile[Float, tuple[int, int]], fill_mode: str = "lower") -> Tile[Float, tuple[int, int]]:
     """Compute the Cholesky factor of a symmetric positive-definite matrix ``A`` and return it in a new tile.
 
