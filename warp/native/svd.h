@@ -660,6 +660,15 @@ inline CUDA_CALLABLE void adj_svd3(
     const mat_t<3, 3, Type>& adj_V
 )
 {
+    // Avoid singular-vector derivatives when only singular values contribute.
+    if (adj_U == mat_t<3, 3, Type>() && adj_V == mat_t<3, 3, Type>()) {
+        if (adj_sigma == vec_t<3, Type>())
+            return;
+
+        adj_A = adj_A + mul(U, mul(diag(adj_sigma), transpose(V)));
+        return;
+    }
+
     const Type epsilon = _svd_config<Type>::SVD_EPSILON;
 
     Type sx2 = sigma[0] * sigma[0];
@@ -719,6 +728,15 @@ inline CUDA_CALLABLE void adj_svd2(
     const mat_t<2, 2, Type>& adj_V
 )
 {
+    // Avoid singular-vector derivatives when only singular values contribute.
+    if (adj_U == mat_t<2, 2, Type>() && adj_V == mat_t<2, 2, Type>()) {
+        if (adj_sigma == vec_t<2, Type>())
+            return;
+
+        adj_A = adj_A + mul(U, mul(diag(adj_sigma), transpose(V)));
+        return;
+    }
+
     const Type epsilon = _svd_config<Type>::SVD_EPSILON;
 
     // With P = U^T dA V, the singular vectors turn as dU = U [[0, a], [-a, 0]] and dV = V [[0, b], [-b, 0]], where
