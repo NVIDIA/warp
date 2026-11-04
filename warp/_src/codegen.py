@@ -1740,6 +1740,21 @@ def iter_call_callable_arg_targets(adj, func, call_node, callable_arg_values=Non
         return
 
     arg_types, kwarg_types, resolved = resolve_call_arg_types(adj, call_node, callable_arg_values)
+
+    # Binding is costly; skip it unless an overload can take a function. Templates can when
+    # instantiated, and a custom get_overload() may dispatch anywhere. Checked after resolving
+    # the arguments, since resolving them may register overloads.
+    if (
+        type(func).get_overload is warp._src.context.Function.get_overload
+        and not func.user_templates
+        and not any(
+            warp._src.types.is_warp_function_annotation(arg_type)
+            for candidate in (func, *func.user_overloads.values())
+            for arg_type in candidate.input_types.values()
+        )
+    ):
+        return
+
     if resolved:
         overload = func.get_overload(arg_types, kwarg_types)
         func_candidates = (overload or func,)
