@@ -2703,18 +2703,18 @@ CUDA_CALLABLE inline void adj_smoothstep(T edge0, T edge1, T x, T& adj_edge0, T&
     T ab = edge0 - edge1;\
     T ax = edge0 - x;\
     T bx = edge1 - x;\
-    T xb = x - edge1;\
 \
     if (bx / ab >= T(0) || ax / ab <= T(0))\
     {\
         return;\
     }\
 \
-    T ab3 = ab * ab * ab;\
-    T ab4 = ab3 * ab;\
-    adj_edge0 += adj_ret * ((T(6) * ax * bx * bx) / ab4);\
-    adj_edge1 += adj_ret * ((T(6) * ax * ax * xb) / ab4);\
-    adj_x     += adj_ret * ((T(6) * ax * bx     ) / ab3);\
+    T u = ax / ab;\
+    T v = -bx / ab;\
+    T d = T(6) * u * v;\
+    adj_edge0 += adj_ret * ((d * v) / ab);\
+    adj_edge1 += adj_ret * ((d * u) / ab);\
+    adj_x     -= adj_ret * (d / ab);\
 }\
 CUDA_CALLABLE inline T lerp(const T& a, const T& b, T t)\
 {\
