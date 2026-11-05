@@ -1703,7 +1703,7 @@ inline CUDA_CALLABLE bfloat16 erfcinv(bfloat16 a)
 }
 #endif  // WP_NO_BFLOAT16
 
-#define DECLARE_ADJOINTS(T)\
+#define DECLARE_ADJOINTS(T, ATAN2_T)\
 inline CUDA_CALLABLE void adj_log(T a, T& adj_a, T adj_ret)\
 {\
     adj_a += (T(1)/a)*adj_ret;\
@@ -1804,18 +1804,20 @@ inline CUDA_CALLABLE void adj_atan(T x, T& adj_x, T adj_ret)\
 }\
 inline CUDA_CALLABLE void adj_atan2(T y, T x, T& adj_y, T& adj_x, T adj_ret)\
 {\
-    T d = x*x + y*y;\
-    DO_IF_FPCHECK(adj_x -= y/d*adj_ret;\
-    adj_y += x/d*adj_ret;\
-    if (!isfinite(adj_x) || !isfinite(adj_y) || d == T(0))\
+    /* Half squared magnitudes can overflow even when the partials are representable. */ \
+    ATAN2_T wx = ATAN2_T(x), wy = ATAN2_T(y);\
+    ATAN2_T d = wx*wx + wy*wy;\
+    DO_IF_FPCHECK(adj_x -= T(wy/d*ATAN2_T(adj_ret));\
+    adj_y += T(wx/d*ATAN2_T(adj_ret));\
+    if (!isfinite(adj_x) || !isfinite(adj_y) || d == ATAN2_T(0))\
     {\
         printf("%s:%d - adj_atan2(%f, %f, %f, %f, %f)\n", __FILE__, __LINE__, float(y), float(x), float(adj_y), float(adj_x), float(adj_ret));\
         assert(0);\
     })\
-    DO_IF_NO_FPCHECK(if (d > T(0))\
+    DO_IF_NO_FPCHECK(if (d > ATAN2_T(0))\
     {\
-        adj_x -= (y/d)*adj_ret;\
-        adj_y += (x/d)*adj_ret;\
+        adj_x -= T((wy/d)*ATAN2_T(adj_ret));\
+        adj_y += T((wx/d)*ATAN2_T(adj_ret));\
     })\
 }\
 inline CUDA_CALLABLE void adj_sin(T x, T& adj_x, T adj_ret)\
@@ -1889,12 +1891,12 @@ inline CUDA_CALLABLE void adj_frac(T x, T& adj_x, T adj_ret) \
     /* MISSINGADJOINT: gradient is 1 between integers (subgradient at integer points) */ \
 }
 
-DECLARE_ADJOINTS(float16)
+DECLARE_ADJOINTS(float16, float32)
 #ifndef WP_NO_BFLOAT16
-DECLARE_ADJOINTS(bfloat16)
+DECLARE_ADJOINTS(bfloat16, bfloat16)
 #endif
-DECLARE_ADJOINTS(float32)
-DECLARE_ADJOINTS(float64)
+DECLARE_ADJOINTS(float32, float32)
+DECLARE_ADJOINTS(float64, float64)
 
 template <typename C, typename T> CUDA_CALLABLE inline T where(const C& cond, const T& a, const T& b)
 {
