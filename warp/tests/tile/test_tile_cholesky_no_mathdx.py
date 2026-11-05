@@ -1,19 +1,10 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""Tile Cholesky tests with mathdx solver disabled (cooperative scalar fallback path).
+"""Test native tile Cholesky factors and adjoints on CUDA and CPU.
 
-Setting ``enable_mathdx_solver=False`` at module scope routes
-``tile_cholesky`` and ``tile_cholesky_inplace`` (and after Stage 4, the
-Cholesky adjoint) through the cooperative scalar implementation in
-``tile_cholesky.h`` on GPU and cooperative CPU blocks,
-exercising the path that runs whenever Warp is built without libmathdx or
-when a user disables the option per-module.
-
-Mirrors ``test_tile_matmul_no_mathdx.py`` / ``test_tile_solve_no_mathdx.py``.
-
-This file covers the cholesky-factorization forward path only. Adjoint
-coverage is added in the cooperative-adjoint commit.
+Disable MathDx solvers to exercise the native implementations, including
+cooperative CPU blocks, in-place calls, tile views, and shared diagonals.
 """
 
 import unittest
@@ -318,6 +309,196 @@ for name, func in cholesky_tests:
         devices=get_cpu_test_devices(),
         check_output=False,
         enable_cpu_blocks=True,
+    )
+
+
+def test_cholesky_shared_diagonal(test, device):
+    """Count diagonal reads to verify that large FP64 blocks compute each diagonal once."""
+    snippet = """
+    using Input = typename wp::remove_reference<decltype(a)>::type;
+    struct ObservedInput {
+        using Type = typename Input::Type;
+        using Layout = typename Input::Layout;
+        struct Storage {
+            typename Input::Storage source;
+            int* counts;
+            CUDA_CALLABLE Type operator()(typename Layout::Coord coord) {
+                if (coord[0] == coord[1])
+                    counts[WP_TILE_THREAD_IDX] += 1;
+                return source(coord);
+            }
+        } data;
+    } observed{{a.data, counts.data}};
+    wp::partitioned_gemm::scalar_cholesky_impl<false>(observed, factor);
+    """
+
+    @wp.func_native(snippet)
+    def count_diagonal_reads(
+        a: wp.tile[wp.float64, 8, 8], factor: wp.tile[wp.float64, 8, 8], counts: wp.array[int]
+    ): ...
+
+    @wp.kernel(enable_backward=False, module="unique", module_options={"enable_backward": False})
+    def count_diagonal_reads_kernel(a: wp.array2d[wp.float64], factor: wp.array2d[wp.float64], counts: wp.array[int]):
+        matrix = wp.tile_load(a, shape=(8, 8), storage="shared")
+        lower = wp.tile_empty(shape=(8, 8), dtype=wp.float64, storage="shared")
+        count_diagonal_reads(matrix, lower, counts)
+        wp.tile_store(factor, lower)
+
+    matrix, expected = _spd(8, seed=43)
+    a = wp.array(matrix, dtype=wp.float64, device=device)
+    factor = wp.empty_like(a)
+    counts = wp.zeros(128, dtype=wp.int32, device=device)
+    wp.launch_tiled(count_diagonal_reads_kernel, dim=1, inputs=[a, factor, counts], block_dim=128, device=device)
+    np.testing.assert_allclose(factor.numpy(), expected, rtol=1e-12, atol=1e-12)
+    expected_counts = np.zeros(128, dtype=np.int32)
+    expected_counts[0] = 8
+    np.testing.assert_array_equal(counts.numpy(), expected_counts)
+
+
+add_function_test(
+    TestTileCholeskyNoMathDx,
+    "test_cholesky_shared_diagonal",
+    test_cholesky_shared_diagonal,
+    devices=get_cuda_test_devices(),
+)
+
+
+def make_cholesky_storage_kernel(n, dtype, upper, inplace, view, backward=False):
+    padded_n = n + 2 if inplace else n
+    offset = 1 if inplace else 0
+
+    @wp.kernel(module="unique", enable_backward=backward)
+    def factor_kernel(matrices: wp.array3d[dtype], factors: wp.array3d[dtype], observed: wp.array3d[dtype]):
+        batch = wp.tid()
+        if wp.static(view):
+            full = wp.tile_load(matrices[batch], shape=(padded_n, padded_n), storage="shared")
+            matrix = wp.tile_transpose(wp.tile_view(full, offset=(offset, offset), shape=(n, n)))
+        else:
+            matrix = wp.tile_load(matrices[batch], shape=(n, n), storage="shared")
+        if wp.static(inplace):
+            if wp.static(upper):
+                wp.tile_cholesky_inplace(matrix, fill_mode="upper")
+            else:
+                wp.tile_cholesky_inplace(matrix)
+            wp.tile_store(factors[batch], matrix)
+        else:
+            if wp.static(upper):
+                factor = wp.tile_cholesky(matrix, fill_mode="upper")
+            else:
+                factor = wp.tile_cholesky(matrix)
+            wp.tile_store(factors[batch], factor)
+        wp.tile_store(observed[batch], matrix)
+
+    wp.set_module_options({"enable_backward": backward, "enable_mathdx_solver": False}, module=factor_kernel.module)
+    return factor_kernel
+
+
+def cholesky_storage_inputs(n, dtype, upper, view, inplace=False):
+    rng = np.random.default_rng(45 + n)
+    normal = rng.standard_normal((2, n, n))
+    matrices = (normal @ normal.transpose(0, 2, 1) / n + np.eye(n)).astype(dtype)
+    expected = np.linalg.cholesky(matrices.astype(np.float64))
+    if upper:
+        expected = expected.transpose(0, 2, 1)
+    unused = np.tril_indices(n, -1) if upper else np.triu_indices(n, 1)
+    matrices[:, unused[0], unused[1]] = np.nan
+    if view and inplace:
+        padded = np.full((2, n + 2, n + 2), np.nan, dtype=dtype)
+        padded[:, 1:-1, 1:-1] = matrices.transpose(0, 2, 1)
+    elif view:
+        padded = matrices.transpose(0, 2, 1).copy()
+    else:
+        padded = matrices.copy()
+    return padded, matrices, expected
+
+
+def test_cholesky_storage_and_blocks(test, device):
+    """Check both triangles, precisions, in-place calls, and padded views across block sizes."""
+    for dtype, np_dtype, tol in ((wp.float32, np.float32, 2e-6), (wp.float64, np.float64, 1e-12)):
+        for n, block_dim, view in (
+            (1, 128, False),
+            (5, 128, True),
+            (17, 64, False),
+            (32, 32, False),
+            (32, 128, False),
+            (64, 64, False),
+            (64, 128, False),
+        ):
+            for upper in (False, True):
+                for inplace in (False, True):
+                    with test.subTest(dtype=dtype, n=n, block_dim=block_dim, upper=upper, inplace=inplace, view=view):
+                        padded, matrices, expected = cholesky_storage_inputs(n, np_dtype, upper, view, inplace)
+                        a = wp.array(padded, dtype=dtype, device=device)
+                        factors = wp.empty((2, n, n), dtype=dtype, device=device)
+                        observed = wp.empty_like(factors)
+                        factor_kernel = make_cholesky_storage_kernel(n, dtype, upper, inplace, view)
+                        wp.launch_tiled(
+                            factor_kernel, dim=2, inputs=[a, factors, observed], block_dim=block_dim, device=device
+                        )
+                        np.testing.assert_allclose(factors.numpy(), expected, rtol=tol, atol=tol)
+                        if inplace:
+                            np.testing.assert_allclose(observed.numpy(), expected, rtol=tol, atol=tol)
+                        else:
+                            np.testing.assert_array_equal(observed.numpy(), matrices)
+                        np.testing.assert_array_equal(a.numpy(), padded)
+
+
+def test_cholesky_storage_gradients(test, device):
+    """Check large-block Cholesky gradients through both triangles and transposed tile views."""
+    rng = np.random.default_rng(46)
+    for dtype, np_dtype, tol in ((wp.float32, np.float32, 2e-5), (wp.float64, np.float64, 2e-8)):
+        for n, view in ((5, True), (17, False)):
+            for upper in (False, True):
+                with test.subTest(dtype=dtype, n=n, upper=upper, view=view):
+                    padded, matrices, _ = cholesky_storage_inputs(n, np_dtype, upper, view)
+                    a = wp.array(padded, dtype=dtype, device=device, requires_grad=True)
+                    factors = wp.empty((2, n, n), dtype=dtype, device=device, requires_grad=True)
+                    observed = wp.empty((2, n, n), dtype=dtype, device=device)
+                    factor_kernel = make_cholesky_storage_kernel(n, dtype, upper, False, view, backward=True)
+                    with wp.Tape() as tape:
+                        wp.launch_tiled(
+                            factor_kernel, dim=2, inputs=[a, factors, observed], block_dim=128, device=device
+                        )
+                    weights = rng.standard_normal((2, n, n)).astype(np_dtype)
+                    seed = wp.array(weights, dtype=dtype, device=device)
+                    tape.backward(grads={factors: seed})
+                    if device.is_cuda and view:
+                        tape.zero()
+                        seed.assign(weights)
+                        with wp.ScopedCapture(device=device) as capture:
+                            tape.backward(grads={factors: seed})
+                        wp.capture_launch(capture.graph)
+
+                    def objective(triangle, weight, upper=upper):
+                        stored = np.triu(triangle) if upper else np.tril(triangle)
+                        symmetric = stored + stored.T - np.diag(np.diag(stored))
+                        factor = np.linalg.cholesky(symmetric)
+                        return np.sum((factor.T if upper else factor) * weight)
+
+                    expected = np.zeros((2, n, n), dtype=np.float64)
+                    rows, cols = np.triu_indices(n) if upper else np.tril_indices(n)
+                    step = 1e-5
+                    for batch in range(2):
+                        for i, j in zip(rows, cols, strict=True):
+                            plus = matrices[batch].astype(np.float64)
+                            minus = plus.copy()
+                            plus[i, j] += step
+                            minus[i, j] -= step
+                            expected[batch, i, j] = (
+                                objective(plus, weights[batch]) - objective(minus, weights[batch])
+                            ) / (2 * step)
+                    if view:
+                        expected = expected.transpose(0, 2, 1)
+                    np.testing.assert_allclose(a.grad.numpy(), expected, rtol=tol, atol=tol)
+
+
+for name, func in (
+    ("test_cholesky_storage_and_blocks", test_cholesky_storage_and_blocks),
+    ("test_cholesky_storage_gradients", test_cholesky_storage_gradients),
+):
+    add_function_test(TestTileCholeskyNoMathDx, name, func, devices=get_test_devices())
+    add_function_test(
+        TestTileCholeskyNoMathDx, f"{name}_cpu_blocks", func, devices=get_cpu_test_devices(), enable_cpu_blocks=True
     )
 
 
