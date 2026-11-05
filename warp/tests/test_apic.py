@@ -697,6 +697,93 @@ class TestApic(unittest.TestCase):
             _replace_apic_section(warp_path + ".wrp", _APIC_SECTION_METADATA, metadata)
             _assert_apic_load_rejected(self, warp_path, device, r"produced by Warp.*loader is Warp")
 
+    def test_capture_load_rejects_oversized_metadata_strings(self):
+        """Reject metadata strings whose lengths run past the metadata section.
+
+        Patch the producer string and each module, kernel, and binding string to
+        claim one byte more than the section has left. Without the bounds check,
+        the loader reads past the section and either crashes or fails later with
+        an unrelated error.
+        """
+        device = wp.get_device("cpu")
+
+        a = wp.array(np.arange(16, dtype=np.float32), device=device)
+        b = wp.zeros(16, dtype=float, device=device)
+        wp.load_module(device=device)
+        with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+            wp.launch(scale_kernel, dim=16, inputs=[a, b, 2.0], device=device)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            stem = os.path.join(tmpdir, "oversized_metadata_string")
+            wp.capture_save(capture.graph, stem, inputs={"a": a}, outputs={"b": b})
+            path = stem + ".wrp"
+            with open(path, "rb") as wrp_file:
+                wrp_data = wrp_file.read()
+
+            section_offset, section_size = _find_apic_section(wrp_data, _APIC_SECTION_METADATA)
+            section_end = section_offset + section_size
+            # (expected error, field, length offset, section bytes after the length) per string.
+            strings = []
+            offset = section_offset + _APIC_UINT32.size  # Skip the format version.
+
+            def skip_string(error, field):
+                nonlocal offset
+                length = _APIC_UINT32.unpack_from(wrp_data, offset)[0]
+                offset += _APIC_UINT32.size
+                strings.append((error, field, offset - _APIC_UINT32.size, section_end - offset))
+                offset += length
+
+            skip_string("Invalid APIC metadata header", "producer version")
+            counts = _APIC_METADATA_HEADER_TAIL.unpack_from(wrp_data, offset)[1:]
+            offset += _APIC_METADATA_HEADER_TAIL.size
+            module_count, kernel_count, binding_count, mesh_count, location_count = counts
+            self.assertEqual((mesh_count, location_count), (0, 0))
+
+            # Record kind, count, and fields in the order the metadata writer in
+            # warp/native/apic.cpp emits them: a name per string, and a struct per
+            # run of fixed-size fields.
+            layouts = (
+                (
+                    "module",
+                    module_count,
+                    (
+                        "module_hash",
+                        "module_name",
+                        "cubin_filename",
+                        _APIC_UINT32,  # Target arch.
+                        "binary_digest",
+                        "source_filename",
+                        "source_digest",
+                        _APIC_MODULE_RECORD_TAIL,
+                    ),
+                ),
+                (
+                    "kernel",
+                    kernel_count,
+                    ("kernel_key", "module_hash", "forward_name", "backward_name", _APIC_KERNEL_RECORD_TAIL),
+                ),
+                ("binding", binding_count, ("name", _APIC_UINT32)),  # Name, then region ID.
+            )
+            for kind, record_count, fields in layouts:
+                self.assertGreater(record_count, 0, kind)
+                for record_index in range(record_count):
+                    for field in fields:
+                        if isinstance(field, struct.Struct):
+                            offset += field.size
+                        else:
+                            skip_string(f"Invalid APIC {kind} record {record_index}", f"{kind} {record_index} {field}")
+
+            # Fail loudly if the format drifts instead of patching the wrong bytes.
+            self.assertEqual(offset, section_end)
+
+            for error, field, length_offset, bytes_left in strings:
+                with self.subTest(field=field):
+                    patched = bytearray(wrp_data)
+                    _APIC_UINT32.pack_into(patched, length_offset, bytes_left + 1)
+                    with open(path, "wb") as wrp_file:
+                        wrp_file.write(patched)
+                    _assert_apic_load_rejected(self, path, device, error)
+
     def test_native_save_validates_cuda_module_metadata(self):
         """Reject CUDA module metadata that the matching reader cannot load."""
 
@@ -925,6 +1012,18 @@ _APIC_UINT32 = struct.Struct("<I")  # One serialized uint32_t.
 _APIC_OP_KERNEL_LAUNCH = 1
 _APIC_LAUNCH_SHAPE_OFFSET = _APIC_OP_HEADER.size
 
+# Metadata header fields after the format version and producer string: target
+# arch, then the module, kernel, binding, mesh, and pointer-location record counts.
+_APIC_METADATA_HEADER_TAIL = struct.Struct("<6I")
+
+# Fixed-size fields that end a metadata module record: binary kind, fallback
+# reason, and the 16-byte APICCudaCompileRecipe.
+_APIC_MODULE_RECORD_TAIL = struct.Struct("<BB16s")
+
+# Fixed-size fields that end a metadata kernel record: forward and backward
+# shared-memory bytes, then block dim.
+_APIC_KERNEL_RECORD_TAIL = struct.Struct("<3I")
+
 
 def _find_apic_section(wrp_data, requested_section_type):
     """Return the byte offset and size of one WRP section."""
@@ -1112,18 +1211,19 @@ def _patch_apic_file_header(path, **fields):
         wrp_file.write(_APIC_FILE_HEADER_PREFIX.pack(*(header[name] for name in names)))
 
 
-def _patch_apic_section_size(path, section_type, size):
-    """Overwrite the stored size of one WRP section-table entry."""
+def _patch_apic_section_entry(path, section_type, **fields):
+    """Overwrite selected fields of one WRP section-table entry."""
+    names = ("type", "flags", "offset", "size", "uncompressed_size")
     with open(path, "r+b") as wrp_file:
         wrp_data = wrp_file.read()
         _, _, _, section_count, section_table_offset = _APIC_FILE_HEADER_PREFIX.unpack_from(wrp_data)
         for section_index in range(section_count):
             entry_offset = section_table_offset + _APIC_SECTION_ENTRY.size * section_index
-            entry = list(_APIC_SECTION_ENTRY.unpack_from(wrp_data, entry_offset))
-            if entry[0] == section_type:
-                entry[3] = size
+            entry = dict(zip(names, _APIC_SECTION_ENTRY.unpack_from(wrp_data, entry_offset), strict=True))
+            if entry["type"] == section_type:
+                entry.update(fields)
                 wrp_file.seek(entry_offset)
-                wrp_file.write(_APIC_SECTION_ENTRY.pack(*entry))
+                wrp_file.write(_APIC_SECTION_ENTRY.pack(*(entry[name] for name in names)))
                 return
     raise ValueError(f"No WRP section of type {section_type}")
 
@@ -1283,7 +1383,7 @@ def test_capture_load_rejects_malformed_memory_regions(test, device):
 
 
 def test_capture_load_rejects_out_of_bounds_sections(test, device):
-    """Reject section tables, sections, and metadata that extend past their data."""
+    """Reject section tables, sections, and metadata records that extend past their data."""
 
     def truncate_metadata(path, *, binding):
         metadata = _read_apic_section(path, _APIC_SECTION_METADATA)
@@ -1292,6 +1392,30 @@ def test_capture_load_rejects_out_of_bounds_sections(test, device):
         header_size = 8 * _APIC_UINT32.size + producer_size
         size = header_size + 2 if binding else header_size - 1
         _replace_apic_section(path, _APIC_SECTION_METADATA, metadata[:size])
+
+    def metadata_header_tail_offset(wrp_data):
+        section_offset, _ = _find_apic_section(wrp_data, _APIC_SECTION_METADATA)
+        producer_size = _APIC_UINT32.unpack_from(wrp_data, section_offset + _APIC_UINT32.size)[0]
+        # Skip the format version and the producer string.
+        return section_offset + 2 * _APIC_UINT32.size + producer_size
+
+    def patch_record_count(path, record_index, count):
+        with open(path, "r+b") as wrp_file:
+            wrp_data = wrp_file.read()
+            tail_offset = metadata_header_tail_offset(wrp_data)
+            tail = list(_APIC_METADATA_HEADER_TAIL.unpack_from(wrp_data, tail_offset))
+            tail[1 + record_index] = count
+            wrp_file.seek(tail_offset)
+            wrp_file.write(_APIC_METADATA_HEADER_TAIL.pack(*tail))
+
+    def grow_memory_section_past_end(path):
+        with open(path, "rb") as wrp_file:
+            wrp_data = wrp_file.read()
+        section_offset, _ = _find_apic_section(wrp_data, _APIC_SECTION_MEMORY)
+        # One byte more than the data holds. Keep the sizes equal so the bounds
+        # check, not the size mismatch, rejects it.
+        size = len(wrp_data) - section_offset + 1
+        _patch_apic_section_entry(path, _APIC_SECTION_MEMORY, size=size, uncompressed_size=size)
 
     cases = {
         "section table offset": (
@@ -1302,8 +1426,14 @@ def test_capture_load_rejects_out_of_bounds_sections(test, device):
             lambda path: _patch_apic_file_header(path, num_sections=0xFFFFFFFF),
             r"section table is out of bounds",
         ),
+        # An offset exactly at the end passes the offset check and fails only the
+        # size check, so go one byte further.
+        "section offset": (
+            lambda path: _patch_apic_section_entry(path, _APIC_SECTION_MEMORY, offset=os.path.getsize(path) + 1),
+            r"section \d+ is out of bounds",
+        ),
         "section size": (
-            lambda path: _patch_apic_section_size(path, _APIC_SECTION_MEMORY, 1 << 40),
+            grow_memory_section_past_end,
             r"section \d+ is out of bounds",
         ),
         "metadata header": (
@@ -1316,6 +1446,22 @@ def test_capture_load_rejects_out_of_bounds_sections(test, device):
         ),
     }
     with tempfile.TemporaryDirectory() as tmpdir:
+        # The graph's single binding is its last record, so one extra record of any
+        # kind exhausts the section inside that kind's record loop. Counts stay
+        # small so that a loader without the check cannot loop for billions of
+        # records.
+        path = os.path.join(tmpdir, "metadata_counts.wrp")
+        _save_apic_memory_validation_graph(path, device)
+        with open(path, "rb") as wrp_file:
+            wrp_data = wrp_file.read()
+        counts = _APIC_METADATA_HEADER_TAIL.unpack_from(wrp_data, metadata_header_tail_offset(wrp_data))[1:]
+        test.assertEqual(counts, (0, 0, 1, 0, 0))
+        for record_index, kind in enumerate(("module", "kernel", "binding", "mesh", "pointer-location")):
+            cases[f"{kind} count"] = (
+                partial(patch_record_count, record_index=record_index, count=counts[record_index] + 1),
+                rf"Invalid APIC {kind} record {counts[record_index]}\b",
+            )
+
         for case, (corrupt, message_pattern) in cases.items():
             with test.subTest(case=case):
                 path = os.path.join(tmpdir, case.replace(" ", "_") + ".wrp")
