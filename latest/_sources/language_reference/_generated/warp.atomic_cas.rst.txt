@@ -12,6 +12,8 @@
 
    Atomically compare and swap ``value`` with ``arr[i]`` if ``arr[i]`` equals ``compare``, and return the old value.
    
+   For float32 and float64, comparison uses bitwise equality rather than numerical equality.
+   
    The operation is only atomic on a per-component basis for vectors and matrices.
 
 .. function:: atomic_cas(arr: Array[Any], i: Int, j: Int, compare: Any, value: Any) -> Any
@@ -23,6 +25,8 @@
       :differentiable: false
 
    Atomically compare and swap ``value`` with ``arr[i,j]`` if ``arr[i,j]`` equals ``compare``, and return the old value.
+   
+   For float32 and float64, comparison uses bitwise equality rather than numerical equality.
    
    The operation is only atomic on a per-component basis for vectors and matrices.
 
@@ -36,6 +40,8 @@
 
    Atomically compare and swap ``value`` with ``arr[i,j,k]`` if ``arr[i,j,k]`` equals ``compare``, and return the old value.
    
+   For float32 and float64, comparison uses bitwise equality rather than numerical equality.
+   
    The operation is only atomic on a per-component basis for vectors and matrices.
 
 .. function:: atomic_cas(arr: Array[Any], i: Int, j: Int, k: Int, l: Int, compare: Any, value: Any) -> Any
@@ -47,6 +53,8 @@
       :differentiable: false
 
    Atomically compare and swap ``value`` with ``arr[i,j,k,l]`` if ``arr[i,j,k,l]`` equals ``compare``, and return the old value.
+   
+   For float32 and float64, comparison uses bitwise equality rather than numerical equality.
    
    The operation is only atomic on a per-component basis for vectors and matrices.
 
@@ -60,6 +68,8 @@
 
    Atomically compare and swap ``value`` with ``arr[i]`` if ``arr[i]`` equals ``compare``, and return the old value.
    
+   For float32 and float64, comparison uses bitwise equality rather than numerical equality.
+   
    The operation is only atomic on a per-component basis for vectors and matrices.
 
 .. function:: atomic_cas(arr: FabricArray[Any], i: Int, j: Int, compare: Any, value: Any) -> Any
@@ -71,6 +81,8 @@
       :differentiable: false
 
    Atomically compare and swap ``value`` with ``arr[i,j]`` if ``arr[i,j]`` equals ``compare``, and return the old value.
+   
+   For float32 and float64, comparison uses bitwise equality rather than numerical equality.
    
    The operation is only atomic on a per-component basis for vectors and matrices.
 
@@ -84,6 +96,8 @@
 
    Atomically compare and swap ``value`` with ``arr[i,j,k]`` if ``arr[i,j,k]`` equals ``compare``, and return the old value.
    
+   For float32 and float64, comparison uses bitwise equality rather than numerical equality.
+   
    The operation is only atomic on a per-component basis for vectors and matrices.
 
 .. function:: atomic_cas(arr: FabricArray[Any], i: Int, j: Int, k: Int, l: Int, compare: Any, value: Any) -> Any
@@ -95,6 +109,8 @@
       :differentiable: false
 
    Atomically compare and swap ``value`` with ``arr[i,j,k,l]`` if ``arr[i,j,k,l]`` equals ``compare``, and return the old value.
+   
+   For float32 and float64, comparison uses bitwise equality rather than numerical equality.
    
    The operation is only atomic on a per-component basis for vectors and matrices.
 
@@ -108,6 +124,8 @@
 
    Atomically compare and swap ``value`` with ``arr[i]`` if ``arr[i]`` equals ``compare``, and return the old value.
    
+   For float32 and float64, comparison uses bitwise equality rather than numerical equality.
+   
    The operation is only atomic on a per-component basis for vectors and matrices.
 
 .. function:: atomic_cas(arr: IndexedFabricArray[Any], i: Int, j: Int, compare: Any, value: Any) -> Any
@@ -119,6 +137,8 @@
       :differentiable: false
 
    Atomically compare and swap ``value`` with ``arr[i,j]`` if ``arr[i,j]`` equals ``compare``, and return the old value.
+   
+   For float32 and float64, comparison uses bitwise equality rather than numerical equality.
    
    The operation is only atomic on a per-component basis for vectors and matrices.
 
@@ -132,6 +152,8 @@
 
    Atomically compare and swap ``value`` with ``arr[i,j,k]`` if ``arr[i,j,k]`` equals ``compare``, and return the old value.
    
+   For float32 and float64, comparison uses bitwise equality rather than numerical equality.
+   
    The operation is only atomic on a per-component basis for vectors and matrices.
 
 .. function:: atomic_cas(arr: IndexedFabricArray[Any], i: Int, j: Int, k: Int, l: Int, compare: Any, value: Any) -> Any
@@ -143,5 +165,7 @@
       :differentiable: false
 
    Atomically compare and swap ``value`` with ``arr[i,j,k,l]`` if ``arr[i,j,k,l]`` equals ``compare``, and return the old value.
+   
+   For float32 and float64, comparison uses bitwise equality rather than numerical equality.
    
    The operation is only atomic on a per-component basis for vectors and matrices.
