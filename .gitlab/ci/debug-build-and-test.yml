@@ -58,7 +58,7 @@ windows-x86_64 cu13 build:
   script:
     - |
       $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
-      uv run build_lib.py --msvc-path=_build\host-deps\msvc\VC\Tools\MSVC\14.29.30133 --sdk-path=_build\host-deps\winsdk --cuda-path=_build\target-deps\cuda
+      uv run build_lib.py --msvc-path=_build\host-deps\msvc\VC\Tools\MSVC\14.29.30133 --sdk-path=_build\host-deps\winsdk --cuda-path=_build\target-deps\cuda --mode=debug
 
 # ==============================================================================
 # Unit Testing Jobs (Debug)
@@ -103,8 +103,10 @@ linux-x86_64 cu13 test:
 windows-x86_64 cu13 test:
   stage: test
   needs: [windows-x86_64 cu13 build]
+  # Keep the test runner's --timeout below the job timeout so the runner can
+  # still write a partial JUnit report before the job is killed.
   variables:
-    IPP_RUNNER_EXECUTION_DURATION: "4500"
+    IPP_RUNNER_EXECUTION_DURATION: "7200"
   extends:
     - .runner-test-windows-x86_64-gpu
     - .save_test_report_artifact
@@ -117,4 +119,4 @@ windows-x86_64 cu13 test:
   script:
     - |
       $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
-      uv run --extra dev --extra torch-cu13 -m warp.tests --maxjobs 4 --junit-report-xml rspec.xml -s autodetect --failfast
+      uv run --extra dev --extra torch-cu13 -m warp.tests --maxjobs 4 --timeout 6600 --junit-report-xml rspec.xml -s autodetect --failfast
