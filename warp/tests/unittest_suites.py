@@ -122,6 +122,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.deterministic.test_deterministic_options import TestDeterministicOptions
     from warp.tests.deterministic.test_deterministic_scatter import TestDeterministicScatter
     from warp.tests.fem.test_fem_constrained_space import TestFemConstrainedSpace
+    from warp.tests.fem.test_fem_dirichlet import TestFemDirichlet
     from warp.tests.fem.test_fem_examples import TestFemDiffusionExamples, TestFemExamples
     from warp.tests.fem.test_fem_field import TestFemField
     from warp.tests.fem.test_fem_fp64 import TestFemFp64
@@ -384,6 +385,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestFastMath,
         TestFemDiffusionExamples,
         TestFemConstrainedSpace,
+        TestFemDirichlet,
         TestFemExamples,
         TestFemField,
         TestFemFp64,
@@ -1059,6 +1061,7 @@ def llvm_cuda_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoade
         "warp.tests.cuda.test_texture_compiler.TestTextureCompiler": [texture_zeros],
         "warp.tests.deterministic.test_deterministic_counter.TestDeterministicCounter": [no_atomic_bitwise],
         "warp.tests.fem.test_fem_constrained_space.TestFemConstrainedSpace": [no_shfl_64, no_atomic_bitwise],
+        "warp.tests.fem.test_fem_dirichlet.TestFemDirichlet": [no_shfl_64],
         "warp.tests.fem.test_fem_examples.TestFemDiffusionExamples": [child_process],
         "warp.tests.fem.test_fem_examples.TestFemExamples": [child_process],
         "warp.tests.fem.test_fem_fp64.TestFemFp64": [no_shfl_64, no_atomic_bitwise],
