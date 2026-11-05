@@ -113,6 +113,12 @@ default:
     - mkdir -p warp/bin/macos-aarch64
     - mv warp/bin/libwarp.dylib warp/bin/macos-aarch64/
     - mv warp/bin/libwarp-clang.dylib warp/bin/macos-aarch64/
+
+  # Packaging jobs get a copy of the version files from every build job they need. Fail if
+  # those copies or the native libraries disagree. Run after the binaries are in their
+  # platform folders and before VERSION.md is rewritten.
+  check-wheel-version-files:
+    - uv run --no-project python tools/ci/publishing/check_wheel_version_files.py
   
   # GitLab collapsible section wrappers for cleaner CI logs
   section-start-install-deps:

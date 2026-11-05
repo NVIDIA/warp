@@ -32,6 +32,25 @@ from warp._src.build_architecture import machine_architecture
 from warp._src.generated_files import generate_exports_header_file, generate_version_header
 
 
+def _nightly_build_date() -> datetime.date:
+    """Return the date to stamp into a nightly build's version.
+
+    Every build job stamps its own copy of the version files, and the wheel packaging
+    jobs combine binaries from all of them. The pipeline creation time is the same for
+    every job in the pipeline, including jobs that are retried later or that run on
+    runners in other time zones, so every binary gets the same version as the packaged
+    ``config.py``. Outside GitLab CI, fall back to the local date.
+    """
+    created_at = os.environ.get("CI_PIPELINE_CREATED_AT")
+    if created_at:
+        try:
+            created = datetime.datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+            return created.astimezone(datetime.UTC).date()
+        except ValueError:
+            print(f"Warning: could not parse CI_PIPELINE_CREATED_AT={created_at!r}; using the local date")
+    return datetime.date.today()
+
+
 def handle_ci_nightly_build(base_path: str) -> str | None:
     """Update version for nightly builds in scheduled CI pipeline.
 
@@ -68,7 +87,7 @@ def handle_ci_nightly_build(base_path: str) -> str | None:
     else:
         base_version_incremented = increment_minor(base_version)
 
-    dateint = datetime.date.today().strftime("%Y%m%d")
+    dateint = _nightly_build_date().strftime("%Y%m%d")
     dev_version_string = f"{base_version_incremented}.dev{dateint}"
 
     # Update files

@@ -8,6 +8,15 @@
 *.cmd text eol=crlf
 # Make sure shell scripts have LF line endings, even when checked out on a Windows client with autocrlf=true
 *.sh text eol=lf
+# CI build jobs on every platform save the version and generated files as artifacts, and the wheel packaging jobs
+# use whichever copy GitLab extracts last, so every platform must check them out with the same line endings
+VERSION.md text eol=lf
+warp/config.py text eol=lf
+warp/native/version.h text eol=lf
+warp/native/exports.h text eol=lf
+warp/__init__.pyi text eol=lf
+
+# Store binary assets in Git LFS
 *.nvdb.grid filter=lfs diff=lfs merge=lfs -text
 *.usd filter=lfs diff=lfs merge=lfs -text
 *.grid filter=lfs diff=lfs merge=lfs -text

@@ -1092,6 +1092,7 @@ create pypi wheels:
     # Move binaries into platform-specific folders. Already done in the build jobs for Linux.
     - !reference [.snippets, move-windows-binaries-to-platform-dir]
     - !reference [.snippets, move-macos-binaries-to-platform-dir]
+    - !reference [.snippets, check-wheel-version-files]
   script:
     - uv build --wheel -C--build-option=-Pwindows-x86_64
     - uv build --wheel -C--build-option=-Plinux-x86_64
@@ -1127,6 +1128,7 @@ create cu12 pypi wheels:
   before_script:
     # Move binaries into platform-specific folders. Already done for Linux.
     - !reference [.snippets, move-windows-binaries-to-platform-dir]
+    - !reference [.snippets, check-wheel-version-files]
   script:
     - printf '%s+cu12\n' "$(head -n1 VERSION.md | tr -d '\n\r')" > VERSION.md
     - uv build --wheel --out-dir dist-cu12 -C--build-option=-Pwindows-x86_64
@@ -1158,6 +1160,7 @@ create dev wheels:
     # Move binaries into platform-specific folders. Already done in the build jobs for Linux.
     - !reference [.snippets, move-windows-binaries-to-platform-dir]
     - !reference [.snippets, move-macos-binaries-to-platform-dir]
+    - !reference [.snippets, check-wheel-version-files]
   script:
     # Version files (VERSION.md, config.py, version.h) are already updated from build artifacts
     - uv build --wheel -C--build-option=-Pwindows-x86_64

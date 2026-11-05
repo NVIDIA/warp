@@ -41,6 +41,10 @@ def _c_copyright_header(year: int | str) -> str:
 def _write_generated_file(path: str, render: Callable[[io.TextIOBase], None]) -> bool:
     """Render a generated text file and write it only when its content changed.
 
+    The file is always written with LF line endings, and an existing file with CRLF
+    line endings counts as changed. CI build jobs on every platform save these files
+    as artifacts, so they must be byte-identical on Windows and Linux.
+
     Returns:
         True if the file was updated, or False if it was already current.
     """
@@ -49,13 +53,13 @@ def _write_generated_file(path: str, render: Callable[[io.TextIOBase], None]) ->
     new_content = output.getvalue()
 
     try:
-        with open(path, encoding="utf-8") as f:
+        with open(path, encoding="utf-8", newline="") as f:
             if f.read() == new_content:
                 return False
     except FileNotFoundError:
         pass
 
-    with open(path, "w", encoding="utf-8") as f:
+    with open(path, "w", encoding="utf-8", newline="\n") as f:
         f.write(new_content)
     return True
 
