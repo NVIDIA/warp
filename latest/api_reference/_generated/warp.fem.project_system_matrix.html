@@ -509,14 +509,40 @@
 <h1>warp.fem.project_system_matrix<a class="headerlink" href="#warp-fem-project-system-matrix" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.fem.project_system_matrix">
-<span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">project_system_matrix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">system_matrix</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">projector_matrix</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/dirichlet.py#L93-L104"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.project_system_matrix" title="Link to this definition">#</a></dt>
-<dd><p>Projects the right-hand-side of a linear system to enforce Dirichlet boundary conditions</p>
+<span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">project_system_matrix</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">system_matrix</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">projector_matrix</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">projector_structure</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'general'</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/dirichlet.py#L104-L146"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.project_system_matrix" title="Link to this definition">#</a></dt>
+<dd><p>Projects the left-hand-side of a linear system to enforce Dirichlet boundary conditions</p>
 <p><code class="docutils literal notranslate"><span class="pre">system</span> <span class="pre">=</span> <span class="pre">(I</span> <span class="pre">-</span> <span class="pre">projector)</span> <span class="pre">*</span> <span class="pre">system</span> <span class="pre">*</span> <span class="pre">(I</span> <span class="pre">-</span> <span class="pre">projector)</span> <span class="pre">+</span> <span class="pre">projector</span></code></p>
+<p>By default, the projection uses general sparse matrix products, which support any projector
+but allocate temporary storage and read back block counts. Dirichlet projectors assembled with
+<code class="docutils literal notranslate"><span class="pre">assembly=&quot;nodal&quot;</span></code> are block-diagonal: every block of the result then only depends on the
+matching block of <code class="docutils literal notranslate"><span class="pre">system_matrix</span></code> and on the projector’s diagonal blocks, and passing
+<code class="docutils literal notranslate"><span class="pre">projector_structure=&quot;block_diagonal&quot;</span></code> projects <code class="docutils literal notranslate"><span class="pre">system_matrix</span></code> in place with a single
+kernel, keeping its sparsity pattern.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>system_matrix</strong> (<a class="reference internal" href="warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a>)</p></li>
-<li><p><strong>projector_matrix</strong> (<a class="reference internal" href="warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a>)</p></li>
+<li><p><strong>system_matrix</strong> (<a class="reference internal" href="warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a>) – Square system matrix, modified in place.</p></li>
+<li><p><strong>projector_matrix</strong> (<a class="reference internal" href="warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a>) – Square projector matrix with the same block shape as <code class="docutils literal notranslate"><span class="pre">system_matrix</span></code>.</p></li>
+<li><p><strong>projector_structure</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.15)"><em>Literal</em></a><em>[</em><em>'general'</em><em>, </em><em>'block_diagonal'</em><em>]</em>) – <p>How to project the system matrix.</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;general&quot;</span></code> uses general sparse matrix products, which also support projectors with
+off-diagonal blocks.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;block_diagonal&quot;</span></code> uses the single-kernel projection. It does not allocate or read
+back, so it can be used during graph capture. The projector must be block-diagonal,
+and <code class="docutils literal notranslate"><span class="pre">system_matrix</span></code> must store a diagonal block in every row where the projector is
+nonzero: off-diagonal projector blocks are ignored, and a row where the projector is
+nonzero but <code class="docutils literal notranslate"><span class="pre">system_matrix</span></code> has no diagonal block does not get its projector block
+added.</p></li>
+</ul>
+</p></li>
 </ul>
 </dd>
 </dl>

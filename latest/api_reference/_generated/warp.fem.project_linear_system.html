@@ -517,11 +517,14 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">projector_matrix</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">fixed_value</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">normalize_projector</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">projector_structure</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'general'</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/dirichlet.py#L107-L123"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.project_linear_system" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/dirichlet.py#L149-L171"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.project_linear_system" title="Link to this definition">#</a></dt>
 <dd><p>Projects both the left-hand-side and right-hand-side of a linear system to enforce Dirichlet boundary conditions</p>
-<p>If normalize_projector is True, first apply scaling so that the projector_matrix is idempotent</p>
+<p>If normalize_projector is True, first apply scaling so that the projector_matrix is idempotent.
+<code class="docutils literal notranslate"><span class="pre">projector_structure</span></code> selects how the system matrix is projected; pass <code class="docutils literal notranslate"><span class="pre">&quot;block_diagonal&quot;</span></code> for
+the in-place, graph-capturable projection of block-diagonal projectors. See <a class="reference internal" href="warp.fem.project_system_matrix.html#warp.fem.project_system_matrix" title="warp.fem.project_system_matrix"><code class="xref py py-func docutils literal notranslate"><span class="pre">project_system_matrix()</span></code></a>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -529,6 +532,7 @@
 <li><p><strong>system_rhs</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>)</p></li>
 <li><p><strong>projector_matrix</strong> (<a class="reference internal" href="warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a>)</p></li>
 <li><p><strong>fixed_value</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>projector_structure</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.15)"><em>Literal</em></a><em>[</em><em>'general'</em><em>, </em><em>'block_diagonal'</em><em>]</em>)</p></li>
 </ul>
 </dd>
 </dl>
