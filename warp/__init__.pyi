@@ -11599,9 +11599,10 @@ def tile_lu(
     Pivot choices may differ between backends when magnitudes are tied.
 
     This is a cooperative operation, so every thread in the block must call it.
-    Automatic differentiation is not supported. Set ``enable_backward=False`` on
-    the kernel or its module; generating a backward pass that calls this operation,
-    including through a user function, raises an error.
+    Automatic differentiation of the packed factors is supported on both backends
+    for nonsingular inputs, treating the recorded pivot permutation as fixed.
+    Pivot indices and status are nondifferentiable. Gradients are undefined for
+    singular inputs and at boundaries where the selected pivot permutation changes.
 
     Args:
         A: A square tile with ``shape=(N, N)``.
@@ -11615,7 +11616,7 @@ def tile_lu(
     Example:
         .. code-block:: python
 
-            @wp.kernel(enable_backward=False)
+            @wp.kernel
             def factor_kernel(
                 a: wp.array2d[float],
                 factors: wp.array2d[float],

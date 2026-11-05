@@ -8,15 +8,18 @@ from unittest import mock
 import numpy as np
 
 import warp as wp
-from warp._src.codegen import WarpCodegenError
 from warp._src.context import builtin_functions
 from warp.tests.unittest_utils import add_function_test, get_cpu_test_devices, get_cuda_test_devices, get_test_devices
 
 
-def make_lu_kernel(n, dtype, mathdx, view=False):
+def make_lu_kernel(n, dtype, mathdx, view=False, backward=False, use_helper=False):
     padded_n = n + 2
 
-    @wp.kernel(module="unique", enable_backward=False)
+    @wp.func
+    def factor_value(matrix: Any):
+        return wp.tile_lu(matrix)
+
+    @wp.kernel(module="unique", enable_backward=backward)
     def factor_kernel(
         matrices: wp.array3d[dtype],
         factors: wp.array3d[dtype],
@@ -30,13 +33,16 @@ def make_lu_kernel(n, dtype, mathdx, view=False):
             a = wp.tile_transpose(wp.tile_view(full, offset=(1, 1), shape=(n, n)))
         else:
             a = wp.tile_load(matrices[batch], shape=(n, n))
-        lu, p, info = wp.tile_lu(a)
+        if wp.static(use_helper):
+            lu, p, info = factor_value(a)
+        else:
+            lu, p, info = wp.tile_lu(a)
         wp.tile_store(factors[batch], lu)
         wp.tile_store(pivots[batch], p)
         wp.tile_store(status[batch], info)
         wp.tile_store(original[batch], a)
 
-    wp.set_module_options({"enable_mathdx_solver": mathdx}, module=factor_kernel.module)
+    wp.set_module_options({"enable_mathdx_solver": mathdx, "enable_backward": backward}, module=factor_kernel.module)
     return factor_kernel
 
 
@@ -124,59 +130,133 @@ def test_lu_mathdx(test, device):
 
 
 def test_lu_backend_dispatch(test, device):
-    """Verify that enabling MathDx emits and links the pivoted GETRF call."""
+    """Verify that MathDx emits and links GETRF and both backward triangular solves."""
     if not wp._src.context.runtime.core.wp_is_mathdx_enabled():
         test.skipTest("Requires MathDx")
     for mathdx in (False, True):
-        factor_kernel = make_lu_kernel(8, wp.float32, mathdx)
-        options = factor_kernel.module.resolve_options(wp.config, block_dim=32) | {
-            "output_arch": device.get_cuda_compile_arch()
-        }
-        source, _, _, ltoirs, fatbins = factor_kernel.module._run_codegen(options, is_cpu=False)
-        if mathdx:
-            test.assertRegex(source, r"wp::tile_lu\(getrf_partial_pivot_8_8_1_\w+,")
-            test.assertTrue(ltoirs)
-            test.assertTrue(fatbins)
-        else:
-            test.assertNotIn("getrf_partial_pivot_", source)
-            test.assertFalse(ltoirs)
-            test.assertFalse(fatbins)
+        for backward in (False, True):
+            factor_kernel = make_lu_kernel(8, wp.float32, mathdx, backward=backward)
+            options = factor_kernel.module.resolve_options(wp.config, block_dim=32) | {
+                "output_arch": device.get_cuda_compile_arch()
+            }
+            source, _, _, ltoirs, fatbins = factor_kernel.module._run_codegen(options, is_cpu=False)
+            if mathdx:
+                test.assertRegex(source, r"wp::tile_lu\(getrf_partial_pivot_8_8_1_\w+,")
+                test.assertEqual(len(ltoirs), 3 if backward else 1)
+                test.assertTrue(fatbins)
+                if backward:
+                    test.assertRegex(
+                        source,
+                        r"wp::adj_tile_lu\(getrf_partial_pivot_\w+, trsm_\w+_0_0_0, trsm_\w+_1_1_1,",
+                    )
+            else:
+                test.assertNotIn("getrf_partial_pivot_", source)
+                test.assertNotIn("trsm_", source)
+                test.assertFalse(ltoirs)
+                test.assertFalse(fatbins)
 
 
-def make_backward_kernels(use_helper):
-    @wp.func
-    def factor_value(matrix: Any):
-        packed, _pivots, _status = wp.tile_lu(matrix)
-        return packed
+def check_lu_backward(test, device, mathdx):
+    rng = np.random.default_rng(29)
+    for dtype, np_dtype, tol in ((wp.float32, np.float32, 2e-5), (wp.float64, np.float64, 2e-9)):
+        for n, view, use_helper in (
+            (1, False, False),
+            (3, False, True),
+            (8, False, False),
+            (17, False, False),
+            (3, True, False),
+        ):
+            with test.subTest(dtype=dtype, n=n, view=view, use_helper=use_helper, mathdx=mathdx):
+                lower = np.eye(n) + np.tril(rng.uniform(-0.2, 0.2, (n, n)), -1)
+                upper = np.triu(rng.uniform(-0.5, 0.5, (n, n))) + 2.0 * np.eye(n)
+                base = lower @ upper
+                # A cyclic permutation forces multiple, noncommuting row swaps.
+                matrices = np.stack([base, np.roll(base, 1, axis=0)]).astype(np_dtype)
+                if view:
+                    padded = np.zeros((2, n + 2, n + 2), dtype=np_dtype)
+                    padded[:, 1:-1, 1:-1] = matrices.transpose(0, 2, 1)
+                else:
+                    padded = matrices
+                a = wp.array(padded, dtype=dtype, device=device, requires_grad=True)
+                lu = wp.empty((2, n, n), dtype=dtype, device=device, requires_grad=True)
+                original = wp.empty_like(lu)
+                p = wp.empty((2, n), dtype=wp.int32, device=device)
+                info = wp.empty((2, 1), dtype=wp.int32, device=device)
+                factor_kernel = make_lu_kernel(n, dtype, mathdx, view, backward=True, use_helper=use_helper)
+                block_dim = 64 if n == 17 or view else 32
+                with wp.Tape() as tape:
+                    wp.launch_tiled(
+                        factor_kernel, dim=2, inputs=[a, lu, p, info, original], block_dim=block_dim, device=device
+                    )
+                pivots = p.numpy()
+                np.testing.assert_array_equal(info.numpy(), 0)
+                np.testing.assert_array_equal(pivots[0], np.arange(n))
+                if n > 1:
+                    test.assertGreaterEqual(np.count_nonzero(pivots[1] != np.arange(n)), 2)
 
-    @wp.kernel(module="unique", enable_backward=False)
-    def forward_kernel(matrices: wp.array2d[float], factors: wp.array2d[float]):
-        matrix = wp.tile_load(matrices, shape=(1, 1))
-        wp.tile_store(factors, factor_value(matrix))
+                # Differentiate an arbitrary weighting of BOTH packed triangles.
+                # The direct input use also checks that the adjoint accumulates.
+                weights = rng.standard_normal((2, n, n)).astype(np_dtype)
+                direct_weights = rng.standard_normal((2, n, n)).astype(np_dtype)
+                seeds = {
+                    lu: wp.array(weights, dtype=dtype, device=device),
+                    original: wp.array(direct_weights, dtype=dtype, device=device),
+                }
+                tape.backward(grads=seeds)
+                if device.is_cuda and n == 8:
+                    tape.zero()
+                    # Tape.zero() also zeros the installed seed arrays.
+                    seeds[lu].assign(weights)
+                    seeds[original].assign(direct_weights)
+                    with wp.ScopedCapture(device=device) as capture:
+                        tape.backward(grads=seeds)
+                    wp.capture_launch(capture.graph)
 
-    @wp.kernel(module=forward_kernel.module, enable_backward=True)
-    def backward_kernel(matrices: wp.array2d[float], factors: wp.array2d[float]):
-        matrix = wp.tile_load(matrices, shape=(1, 1))
-        if wp.static(use_helper):
-            packed = factor_value(matrix)
-        else:
-            packed, _pivots, _status = wp.tile_lu(matrix)
-        wp.tile_store(factors, packed)
+                # Independent central differences of elimination with recorded pivots.
+                # Use double precision for the numerical oracle even for FP32 kernels.
+                def packed_objective(matrix, swaps, seed):
+                    packed = matrix.copy()
+                    for k, pivot in enumerate(swaps):
+                        # The test inputs stay away from pivot-choice boundaries.
+                        test.assertEqual(k + np.argmax(np.abs(packed[k:, k])), pivot)
+                        packed[[k, pivot]] = packed[[pivot, k]]
+                        packed[k + 1 :, k] /= packed[k, k]
+                        packed[k + 1 :, k + 1 :] -= np.outer(packed[k + 1 :, k], packed[k, k + 1 :])
+                    return np.sum(packed * seed)
 
-    # The explicit kernel option must take precedence over the module default.
-    wp.set_module_options({"enable_backward": False, "enable_mathdx_solver": False}, module=backward_kernel.module)
-    return backward_kernel
+                expected = np.empty_like(matrices, dtype=np.float64)
+                step = 1.0e-5
+                for batch in range(2):
+                    for i in range(n):
+                        for j in range(n):
+                            plus = matrices[batch].astype(np.float64)
+                            minus = plus.copy()
+                            plus[i, j] += step
+                            minus[i, j] -= step
+                            expected[batch, i, j] = (
+                                packed_objective(plus, pivots[batch], weights[batch])
+                                - packed_objective(minus, pivots[batch], weights[batch])
+                            ) / (2.0 * step)
+                expected += direct_weights
+                if view:
+                    padded_expected = np.zeros_like(padded)
+                    padded_expected[:, 1:-1, 1:-1] = expected.transpose(0, 2, 1)
+                    expected = padded_expected
+                np.testing.assert_allclose(a.grad.numpy(), expected, atol=tol, rtol=tol)
+                test.assertIsNone(p.grad)
+                test.assertIsNone(info.grad)
 
 
-def test_lu_reject_backward(test, device):
-    """Reject LU's unsupported adjoint in kernels and shared helper functions."""
-    matrices = wp.array([[2.0]], dtype=wp.float32, device=device, requires_grad=True)
-    factors = wp.empty_like(matrices)
-    for use_helper in (False, True):
-        with test.subTest(use_helper=use_helper):
-            factor_kernel = make_backward_kernels(use_helper)
-            with test.assertRaisesRegex(WarpCodegenError, "tile_lu.*automatic differentiation"):
-                wp.launch_tiled(factor_kernel, dim=1, inputs=[matrices, factors], block_dim=32, device=device)
+def test_lu_native_backward(test, device):
+    """Check native packed-factor gradients through fixed row swaps and tile views."""
+    check_lu_backward(test, device, False)
+
+
+def test_lu_mathdx_backward(test, device):
+    """Check cuSOLVERDx packed-factor gradients through fixed row swaps and tile views."""
+    if not wp._src.context.runtime.core.wp_is_mathdx_enabled():
+        test.skipTest("Requires MathDx")
+    check_lu_backward(test, device, True)
 
 
 def make_invalid_kernel(shape, dtype):
@@ -196,11 +276,11 @@ def make_invalid_kernel(shape, dtype):
 
 class TestTileLU(unittest.TestCase):
     def test_backward_cache_key(self):
-        """Invalidate cached LU kernels when enabling the forward-only restriction."""
+        """Invalidate cached LU kernels when the builtin's adjoint support changes."""
         for use_helper in (False, True):
             with self.subTest(use_helper=use_helper):
-                factor_kernel = make_backward_kernels(use_helper)
-                with mock.patch.object(builtin_functions["tile_lu"], "require_forward_only", False):
+                factor_kernel = make_lu_kernel(3, wp.float32, False, backward=True, use_helper=use_helper)
+                with mock.patch.object(builtin_functions["tile_lu"], "is_differentiable", False):
                     old_hash = factor_kernel.module.hash_module()
                 self.assertNotEqual(old_hash, factor_kernel.module.hash_module())
 
@@ -220,7 +300,15 @@ devices = get_test_devices()
 add_function_test(TestTileLU, "test_lu_native", test_lu_native, devices=devices)
 add_function_test(TestTileLU, "test_lu_mathdx", test_lu_mathdx, devices=get_cuda_test_devices())
 add_function_test(TestTileLU, "test_lu_backend_dispatch", test_lu_backend_dispatch, devices=get_cuda_test_devices())
-add_function_test(TestTileLU, "test_lu_reject_backward", test_lu_reject_backward, devices=devices)
+add_function_test(TestTileLU, "test_lu_native_backward", test_lu_native_backward, devices=devices)
+add_function_test(TestTileLU, "test_lu_mathdx_backward", test_lu_mathdx_backward, devices=get_cuda_test_devices())
+add_function_test(
+    TestTileLU,
+    "test_lu_native_backward_cpu_blocks",
+    test_lu_native_backward,
+    devices=get_cpu_test_devices(),
+    enable_cpu_blocks=True,
+)
 add_function_test(
     TestTileLU,
     "test_lu_native_cpu_blocks",

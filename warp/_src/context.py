@@ -261,7 +261,6 @@ class Function:
         scope_locals: dict[str, Any] | None = None,
         inline_hint: Literal["noinline", "forceinline"] | None = None,
         adjoint_uses_template_args: bool = False,
-        require_forward_only: bool = False,
     ):
         if code_transformers is None:
             code_transformers = []
@@ -304,7 +303,6 @@ class Function:
             skip_replay  # whether operation will be performed during the forward replay in the backward pass
         )
         self.is_differentiable = is_differentiable  # whether a corresponding adjoint exists for this builtin in Warp
-        self.require_forward_only = require_forward_only
         self.generic = generic
         self.mangled_name: str | None = None
         # Parameter naming the scalar type to instantiate the native function with, for built-ins
@@ -2484,7 +2482,6 @@ def add_builtin(
     defaults: dict[str, Any] | None = None,
     require_original_output_arg: bool = False,
     adjoint_uses_template_args: bool = False,
-    require_forward_only: bool = False,
 ):
     """Register a new built-in function.
 
@@ -2533,8 +2530,6 @@ def add_builtin(
         skip_replay: Whether operation will be performed during
             the forward replay in the backward pass.
         is_differentiable: Whether a corresponding adjoint exists for this function in Warp.
-        require_forward_only: Whether generating an automatic adjoint for a caller must fail.
-            Use for operations whose unsupported derivative must not silently contribute zero.
         native_func: Name of the underlying C++ function.
         defaults: Default values for the parameters defined in `input_types`.
         require_original_output_arg: Used during the codegen stage to
@@ -2665,7 +2660,6 @@ def add_builtin(
                     hidden=True,
                     skip_replay=skip_replay,
                     is_differentiable=is_differentiable,
-                    require_forward_only=require_forward_only,
                     native_func=native_func,
                     adjoint_uses_template_args=adjoint_uses_template_args,
                     defaults=defaults,
@@ -2690,7 +2684,6 @@ def add_builtin(
         hidden=hidden,
         skip_replay=skip_replay,
         is_differentiable=is_differentiable,
-        require_forward_only=require_forward_only,
         generic=generic,
         native_func=native_func,
         adjoint_uses_template_args=adjoint_uses_template_args,
@@ -3365,16 +3358,16 @@ class ModuleHasher:
         ch.update(bytes(func.key, "utf-8"))
         ch.update(bytes(func.native_func, "utf-8"))
 
-        if any(overload.require_forward_only for overload in func.overloads):
-            # Reject previously cached backward kernels when a builtin gains this restriction.
-            ch.update(b"require_forward_only")
-            ch.update(str(tuple(overload.require_forward_only for overload in func.overloads)).encode("utf-8"))
-
         # Most Warp builtins rely on the versioned cache directory. Builtins
-        # with a templated adjoint also affect reverse-call codegen, so include
+        # with LTO dispatch or a templated adjoint affect reverse-call codegen, so include
         # their overload dispatch metadata in the module hash.
-        if any(overload.adjoint_uses_template_args for overload in func.overloads):
-            dispatch = tuple((overload.native_func, overload.adjoint_uses_template_args) for overload in func.overloads)
+        if any(
+            overload.adjoint_uses_template_args or overload.lto_dispatch_func is not None for overload in func.overloads
+        ):
+            dispatch = tuple(
+                (overload.native_func, overload.adjoint_uses_template_args, overload.is_differentiable)
+                for overload in func.overloads
+            )
             ch.update(repr(dispatch).encode("utf-8"))
 
         external_contracts = (

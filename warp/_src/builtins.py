@@ -19277,17 +19277,20 @@ def tile_lu_value_func(arg_types, arg_values):
 def tile_lu_lto_dispatch_func(arg_types, return_type, return_values, arg_values, options, builder):
     a = arg_values["A"]
     a.type.storage = "shared"
+    n = a.type.shape[0]
+    scratch_bytes = n * n * type_size_in_bytes(a.type.dtype) if options["enable_backward"] else 0
     arch = options["output_arch"]
     if (
         arch is None
         or not warp._src.context.runtime.core.wp_is_mathdx_enabled()
         or not options.get("enable_mathdx_solver", True)
     ):
-        return ((0, a), [], [], 0)
+        # Cooperative CPU adjoints allocate scratch from the shared tile arena.
+        return ((0, 0, 0, a), [], [], scratch_bytes if arch is None else 0)
 
     out = return_values[0]
-    n = a.type.shape[0]
     dtype, precision = cusolver_type_map[a.type.dtype]
+    smem_bytes = 2 * n * n * type_size_in_bytes(a.type.dtype) + (n + 1) * 4 + scratch_bytes
     symbol, code = warp._src.build.build_lto_solver(
         n,
         n,
@@ -19304,9 +19307,37 @@ def tile_lu_lto_dispatch_func(arg_types, return_type, return_values, arg_values,
         options["block_dim"],
         f"({dtype}*, int*, int*)",
         builder,
-        smem_estimate_bytes=2 * n * n * type_size_in_bytes(a.type.dtype) + (n + 1) * 4,
+        smem_estimate_bytes=smem_bytes,
     )
-    return ((Var(symbol, str, False, True, False), a), [], [code], 0)
+    functions = [Var(symbol, str, False, True, False)]
+    ltoirs = [code]
+    if options["enable_backward"]:
+        # The output is dense row-major; column-major exposes its transpose.
+        # Solve L^T * X = W, then Y * U^T = X, without unpacking the factors.
+        for side, diagonal, triangle in (("left", "unit", "upper"), ("right", "nounit", "lower")):
+            symbol, code = warp._src.build.build_lto_solver(
+                n,
+                n,
+                1,
+                "trsm",
+                cusolver_function_map["trsm"],
+                cusolver_side_map[side],
+                cusolver_diag_map[diagonal],
+                "colmajor",
+                "rowmajor",
+                cusolver_fill_mode_map[triangle],
+                arch,
+                precision,
+                options["block_dim"],
+                f"({dtype}*, {dtype}*)",
+                builder,
+                smem_estimate_bytes=smem_bytes,
+            )
+            functions.append(Var(symbol, str, False, True, False))
+            ltoirs.append(code)
+    else:
+        functions.extend((0, 0))
+    return ((*functions, a), [], ltoirs, 0)
 
 
 add_builtin(
@@ -19333,9 +19364,10 @@ add_builtin(
     Pivot choices may differ between backends when magnitudes are tied.
 
     This is a cooperative operation, so every thread in the block must call it.
-    Automatic differentiation is not supported. Set ``enable_backward=False`` on
-    the kernel or its module; generating a backward pass that calls this operation,
-    including through a user function, raises an error.
+    Automatic differentiation of the packed factors is supported on both backends
+    for nonsingular inputs, treating the recorded pivot permutation as fixed.
+    Pivot indices and status are nondifferentiable. Gradients are undefined for
+    singular inputs and at boundaries where the selected pivot permutation changes.
 
     Args:
         A: A square tile with ``shape=(N, N)``.
@@ -19349,7 +19381,7 @@ add_builtin(
     Example:
         .. code-block:: python
 
-            @wp.kernel(enable_backward=False)
+            @wp.kernel
             def factor_kernel(
                 a: wp.array2d[float],
                 factors: wp.array2d[float],
@@ -19366,8 +19398,6 @@ add_builtin(
     """,
     group="Tile Primitives",
     export=False,
-    is_differentiable=False,
-    require_forward_only=True,
 )
 
 

@@ -734,6 +734,12 @@ Linear Algebra
 * :func:`tile_upper_solve_inplace <warp._src.lang.tile_upper_solve_inplace>`
 * :func:`tile_diag_add <warp._src.lang.tile_diag_add>`
 
+:func:`tile_lu <warp._src.lang.tile_lu>` supports automatic differentiation of its
+packed factors for nonsingular inputs in both precisions and on both solver backends.
+The backward pass treats the recorded row-swap permutation as fixed. Pivot indices
+and status are nondifferentiable; gradients are undefined at singular inputs or
+where the pivot selection changes.
+
 Spatial Queries
 ^^^^^^^^^^^^^^^
 

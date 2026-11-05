@@ -23,7 +23,7 @@ def make_lu_kernel(n, dtype, mathdx):
         wp.tile_store(pivots[batch], p)
         wp.tile_store(status[batch], info)
 
-    wp.set_module_options({"enable_mathdx_solver": mathdx}, module=factor_kernel.module)
+    wp.set_module_options({"enable_mathdx_solver": mathdx, "enable_backward": False}, module=factor_kernel.module)
     return factor_kernel
 
 
