@@ -11577,6 +11577,78 @@ def tile_ifft(inout: Tile[Vector[Float, Literal[2]], tuple[int, ...]]) -> None:
         inout: The tile to transform in place."""
     ...
 
+def tile_ldlt(
+    A: Tile[Float, tuple[int, int]],
+    fill_mode: str = "lower",
+) -> tuple[Tile[Float, tuple[int, int]], Tile[int32, tuple[int]], Tile[int32, tuple[int]]]:
+    """Compute a Bunch-Kaufman factorization of a real symmetric square tile.
+
+    Return ``(ld, pivots, info)`` without modifying ``A``. The selected triangle
+    determines the symmetric input; the other triangle is ignored. Both
+    ``float32`` and ``float64`` use a cooperative native implementation on CPU
+    and CUDA, including when MathDx solvers are enabled.
+
+    For ``fill_mode="lower"``, the packed factors satisfy ``P @ A @ P.T = L @ D @ L.T``.
+    ``L`` is unit lower triangular and ``D`` is symmetric block diagonal with
+    1-by-1 and 2-by-2 blocks. The diagonal of ``ld`` holds the diagonal of ``D``.
+    For each 2-by-2 block starting at ``k``, ``ld[k+1, k]`` holds its off-diagonal
+    entry, and ``L[k+1, k]`` is zero. All other strict lower entries hold ``L``.
+    The upper triangle of ``ld`` is zero.
+
+    For ``fill_mode="upper"``, transpose this storage convention: ``ld`` holds
+    ``U = L.T`` and the upper triangle of ``D``, satisfying
+    ``P @ A @ P.T = U.T @ D @ U``. The lower triangle of ``ld`` is zero.
+
+    Decode ``pivots`` in increasing index order for either fill mode:
+
+    * If ``pivots[k] >= 0``, interchange rows and columns ``k`` and ``pivots[k]``
+      and advance by one. This denotes a 1-by-1 diagonal block.
+    * Otherwise, ``pivots[k] == pivots[k+1] == -(p+1)`` denotes a 2-by-2 block.
+      Interchange rows and columns ``k+1`` and ``p``, then advance by two.
+
+    Apply those swaps to an identity permutation to construct ``P``. Earlier
+    multiplier rows follow later swaps, so extracting the triangular factor
+    and applying ``P`` separately suffices for reconstruction.
+
+    ``info`` is a one-element integer tile. Zero indicates success. A positive
+    value ``i`` identifies the first exactly zero 1-by-1 pivot ``D[i-1, i-1]``.
+    Factorization completes for singular inputs, but the factors cannot then
+    be used for a nonsingular solve. This status does not estimate conditioning.
+
+    Automatic differentiation of the packed factors holds the recorded
+    permutation and diagonal-block choices fixed. Pivot indices and status
+    are nondifferentiable. Gradients are undefined for singular inputs or at
+    boundaries where the pivot or block choices change. Only the selected
+    input triangle receives gradients; each off-diagonal input represents
+    both symmetric matrix entries.
+
+    Args:
+        A: A nonempty real tile with ``shape=(N, N)`` and finite entries in the selected triangle.
+        fill_mode: Compile-time triangle selector, ``"lower"`` or ``"upper"``.
+
+    Returns:
+        Packed triangular and block-diagonal factors with ``shape=(N, N)``,
+        an ``int32`` pivot/block tile with ``shape=(N,)``, and an ``int32``
+        status tile with ``shape=(1,)``. All outputs have dense shared storage.
+
+    Example:
+        .. code-block:: python
+
+            @wp.kernel
+            def factor_kernel(
+                a: wp.array2d[float],
+                factors: wp.array2d[float],
+                pivots: wp.array[int],
+                status: wp.array[int],
+            ):
+                ld, p, info = wp.tile_ldlt(wp.tile_load(a, shape=(8, 8)))
+                wp.tile_store(factors, ld)
+                wp.tile_store(pivots, p)
+                wp.tile_store(status, info)
+
+            wp.launch_tiled(factor_kernel, dim=1, inputs=[a, factors, pivots, status], block_dim=32)"""
+    ...
+
 def tile_cholesky(A: Tile[Float, tuple[int, int]], fill_mode: str = "lower") -> Tile[Float, tuple[int, int]]:
     """Compute the Cholesky factor of a symmetric positive-definite matrix ``A`` and return it in a new tile.
 

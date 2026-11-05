@@ -724,6 +724,7 @@ Linear Algebra
 * :func:`tile_fft <warp._src.lang.tile_fft>`
 * :func:`tile_ifft <warp._src.lang.tile_ifft>`
 * :func:`tile_cholesky <warp._src.lang.tile_cholesky>`
+* :func:`tile_ldlt <warp._src.lang.tile_ldlt>`
 * :func:`tile_cholesky_inplace <warp._src.lang.tile_cholesky_inplace>`
 * :func:`tile_cholesky_solve <warp._src.lang.tile_cholesky_solve>`
 * :func:`tile_cholesky_solve_inplace <warp._src.lang.tile_cholesky_solve_inplace>`
@@ -732,6 +733,14 @@ Linear Algebra
 * :func:`tile_upper_solve <warp._src.lang.tile_upper_solve>`
 * :func:`tile_upper_solve_inplace <warp._src.lang.tile_upper_solve_inplace>`
 * :func:`tile_diag_add <warp._src.lang.tile_diag_add>`
+
+:func:`tile_ldlt <warp._src.lang.tile_ldlt>` factors real symmetric indefinite
+matrices using Bunch-Kaufman pivoting with 1-by-1 and 2-by-2 diagonal blocks.
+It returns packed triangular/block-diagonal factors, symmetric swap and block
+information, and singularity status. Both precisions support differentiation
+of the packed factors with the recorded permutation and block choices held
+fixed. The implementation is native on both CPU and CUDA; benchmark the
+intended matrix sizes and workloads when choosing between LDLT and LU.
 
 Spatial Queries
 ^^^^^^^^^^^^^^^
