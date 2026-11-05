@@ -2539,8 +2539,14 @@ template <> inline CUDA_CALLABLE float atomic_cas(float* address, float compare,
     auto result = atomicCAS(reinterpret_cast<unsigned int*>(address), compare_bits, val_bits);
     return __uint_as_float(result);
 #else
+    // Compare bit patterns like CUDA does, so that -0.0 doesn't match 0.0
+    // and a NaN matches a NaN with the same bits.
     float old = *address;
-    if (old == compare) {
+    unsigned int old_bits;
+    unsigned int compare_bits;
+    memcpy(&old_bits, &old, sizeof(old_bits));
+    memcpy(&compare_bits, &compare, sizeof(compare_bits));
+    if (old_bits == compare_bits) {
         *address = val;
     }
     return old;
@@ -2555,8 +2561,14 @@ template <> inline CUDA_CALLABLE double atomic_cas(double* address, double compa
     auto result = atomicCAS(reinterpret_cast<unsigned long long int*>(address), compare_bits, val_bits);
     return __longlong_as_double(static_cast<long long int>(result));
 #else
+    // Compare bit patterns like CUDA does, so that -0.0 doesn't match 0.0
+    // and a NaN matches a NaN with the same bits.
     double old = *address;
-    if (old == compare) {
+    unsigned long long int old_bits;
+    unsigned long long int compare_bits;
+    memcpy(&old_bits, &old, sizeof(old_bits));
+    memcpy(&compare_bits, &compare, sizeof(compare_bits));
+    if (old_bits == compare_bits) {
         *address = val;
     }
     return old;

@@ -10506,6 +10506,8 @@ def atomic_max(
 def atomic_cas(arr: Array[Any] | FabricArray[Any] | IndexedFabricArray[Any], i: Int, compare: Any, value: Any) -> Any:
     """Atomically compare and swap ``value`` with ``arr[i]`` if ``arr[i]`` equals ``compare``, and return the old value.
 
+        For float32 and float64, comparison uses bitwise equality rather than numerical equality.
+
         The operation is only atomic on a per-component basis for vectors and matrices."""
     ...
 
@@ -10518,6 +10520,8 @@ def atomic_cas(
     value: Any,
 ) -> Any:
     """Atomically compare and swap ``value`` with ``arr[i,j]`` if ``arr[i,j]`` equals ``compare``, and return the old value.
+
+        For float32 and float64, comparison uses bitwise equality rather than numerical equality.
 
         The operation is only atomic on a per-component basis for vectors and matrices."""
     ...
@@ -10533,6 +10537,8 @@ def atomic_cas(
 ) -> Any:
     """Atomically compare and swap ``value`` with ``arr[i,j,k]`` if ``arr[i,j,k]`` equals ``compare``, and return the old value.
 
+        For float32 and float64, comparison uses bitwise equality rather than numerical equality.
+
         The operation is only atomic on a per-component basis for vectors and matrices."""
     ...
 
@@ -10547,6 +10553,8 @@ def atomic_cas(
     value: Any,
 ) -> Any:
     """Atomically compare and swap ``value`` with ``arr[i,j,k,l]`` if ``arr[i,j,k,l]`` equals ``compare``, and return the old value.
+
+        For float32 and float64, comparison uses bitwise equality rather than numerical equality.
 
         The operation is only atomic on a per-component basis for vectors and matrices."""
     ...
