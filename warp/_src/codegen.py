@@ -2404,6 +2404,8 @@ class Adjoint:
 
         # wp.ref[T] callees lacking a manual adjoint; rejected post-build, once used_by_backward_kernel is final
         adj.unvalidated_ref_calls = []
+        # Check only when emitting the adjoint, after shared-helper backward use is resolved.
+        adj.forward_only_calls = set()
 
         # Slot overwrites that cannot generate an adjoint. Backward use may
         # only become known after a shared helper has already been built.
@@ -3227,6 +3229,9 @@ class Adjoint:
             adj.add_forward(forward_call, replay="// " + replay_call)
         else:
             adj.add_forward(forward_call, replay=replay_call)
+
+        if func.require_forward_only:
+            adj.forward_only_calls.add(func.key)
 
         # Skip reverse call generation for functions that use warp.grad() - they don't have
         # meaningful adjoints (the gradient of a gradient call is not supported).
@@ -7357,10 +7362,11 @@ class Adjoint:
                         for callable_func in iter_call_callable_arg_targets(adj, func, node, callable_arg_values):
                             functions[callable_func] = None
                     elif func._has_external_builtin_contract or any(
-                        overload.adjoint_uses_template_args for overload in func.overloads
+                        overload.adjoint_uses_template_args or overload.require_forward_only
+                        for overload in func.overloads
                     ):
-                        # External builtins and templated native adjoints can change
-                        # generated calls without changing the kernel source.
+                        # External builtins, templated adjoints, and forward-only
+                        # restrictions can change codegen without changing the kernel source.
                         # Other Warp builtins use the versioned cache directory.
                         functions[func] = None
                 elif isinstance(func, Struct):
@@ -8252,6 +8258,11 @@ def codegen_func_forward(adj, func_type="kernel", device="cpu", grid_stride=Fals
 
 
 def codegen_func_reverse(adj, func_type="kernel", device="cpu", grid_stride=False):
+    if adj.forward_only_calls:
+        names = ", ".join(sorted(adj.forward_only_calls))
+        raise WarpCodegenError(
+            f"{names} does not support automatic differentiation. Set enable_backward=False on the kernel."
+        )
     if adj.slot_augassign_error is not None:
         raise WarpCodegenError(adj.slot_augassign_error)
 

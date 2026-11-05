@@ -10,7 +10,7 @@ from ..benchmarks_utils import LAUNCHES_PER_SAMPLE, CudaEventTimer, capture_laun
 
 def make_lu_kernel(n, dtype, mathdx):
     @wp.kernel(module="unique", enable_backward=False)
-    def factor(
+    def factor_kernel(
         matrices: wp.array3d[dtype],
         factors: wp.array3d[dtype],
         pivots: wp.array2d[wp.int32],
@@ -23,8 +23,8 @@ def make_lu_kernel(n, dtype, mathdx):
         wp.tile_store(pivots[batch], p)
         wp.tile_store(status[batch], info)
 
-    wp.set_module_options({"enable_mathdx_solver": mathdx}, module=factor.module)
-    return factor
+    wp.set_module_options({"enable_mathdx_solver": mathdx}, module=factor_kernel.module)
+    return factor_kernel
 
 
 class TileLU:

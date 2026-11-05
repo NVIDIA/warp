@@ -11599,21 +11599,24 @@ def tile_lu(
     Pivot choices may differ between backends when magnitudes are tied.
 
     This is a cooperative operation, so every thread in the block must call it.
-    Automatic differentiation is not supported.
+    Automatic differentiation is not supported. Set ``enable_backward=False`` on
+    the kernel or its module; generating a backward pass that calls this operation,
+    including through a user function, raises an error.
 
     Args:
         A: A square tile with ``shape=(N, N)``.
 
     Returns:
-        A tuple containing the packed factor tile with ``shape=(N, N)``, an
-        ``int32`` pivot tile with ``shape=(N,)``, and an ``int32`` status tile
-        with ``shape=(1,)``. All outputs use shared storage.
+        A tuple containing packed ``L`` and ``U`` with ``shape=(N, N)``, the
+        zero-based row-swap indices as an ``int32`` tile with ``shape=(N,)``,
+        and an ``int32`` status tile with ``shape=(1,)`` indicating success or
+        the first exactly zero pivot. All outputs use shared storage.
 
     Example:
         .. code-block:: python
 
             @wp.kernel(enable_backward=False)
-            def factor(
+            def factor_kernel(
                 a: wp.array2d[float],
                 factors: wp.array2d[float],
                 pivots: wp.array1d[int],
@@ -11625,7 +11628,7 @@ def tile_lu(
                 wp.tile_store(status, info)
 
             # Launch one cooperative block for the 8x8 matrix.
-            wp.launch_tiled(factor, dim=1, inputs=[a, factors, pivots, status], block_dim=32)"""
+            wp.launch_tiled(factor_kernel, dim=1, inputs=[a, factors, pivots, status], block_dim=32)"""
     ...
 
 def tile_cholesky(A: Tile[Float, tuple[int, int]], fill_mode: str = "lower") -> Tile[Float, tuple[int, int]]:
