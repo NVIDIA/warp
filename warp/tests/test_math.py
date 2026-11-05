@@ -64,6 +64,46 @@ def test_scalar_math(test, device):
 
 
 @wp.kernel
+def atan2_grad_kernel(x: wp.array[Any], y: wp.array[Any], out: wp.array[Any]):
+    i = wp.tid()
+    out[i] = wp.atan2(y[i], x[i])
+
+
+for _dtype in (wp.float16, wp.float32, wp.float64):
+    wp.overload(atan2_grad_kernel, [wp.array[_dtype], wp.array[_dtype], wp.array[_dtype]])
+
+
+def test_atan2_grad(test, device):
+    # Include all quadrants and squared magnitudes outside the half exponent range.
+    x_values = [1, 128, 256, 512, -512, 512, -512, 512, 2**-14, 2**-14]
+    y_values = [1, 128, 256, 512, 512, -512, -512, 256, 2**-14, 2**-13]
+    seeds = np.array([1, 2, -0.5, 1.5, 1, -2, 0.5, 1, 1, -0.5])
+    for dtype, angle_rtol in ((wp.float16, 2e-3), (wp.float32, 1e-6), (wp.float64, 1e-14)):
+        for initial in (0.0, 0.25):
+            with test.subTest(dtype=dtype, initial=initial):
+                x = wp.array(x_values, dtype=dtype, device=device, requires_grad=True)
+                y = wp.array(y_values, dtype=dtype, device=device, requires_grad=True)
+                out = wp.empty(len(x_values), dtype=dtype, device=device, requires_grad=True)
+                with wp.Tape() as tape:
+                    wp.launch(atan2_grad_kernel, dim=len(x_values), inputs=[x, y], outputs=[out], device=device)
+                x.grad.fill_(initial)
+                y.grad.fill_(initial)
+                tape.backward(grads={out: wp.array(seeds, dtype=dtype, device=device)})
+
+                # Evaluate the reference before rounding contributions to gradient storage.
+                x_ref = np.array(x_values, dtype=np.float64)
+                y_ref = np.array(y_values, dtype=np.float64)
+                denominator = x_ref**2 + y_ref**2
+                storage = x.numpy().dtype
+                dx = (-y_ref / denominator * seeds).astype(storage)
+                dy = (x_ref / denominator * seeds).astype(storage)
+                # A relative tolerance on the total can mask a representable increment.
+                np.testing.assert_array_equal(x.grad.numpy(), (dx + initial).astype(storage))
+                np.testing.assert_array_equal(y.grad.numpy(), (dy + initial).astype(storage))
+                np.testing.assert_allclose(out.numpy(), np.arctan2(y_ref, x_ref), rtol=angle_rtol, atol=0)
+
+
+@wp.kernel
 def erf_kernel(x: wp.array[Any], out: wp.array[Any]):
     i = wp.tid()
 
@@ -620,6 +660,7 @@ class TestMath(unittest.TestCase):
 
 
 add_function_test(TestMath, "test_scalar_math", test_scalar_math, devices=devices)
+add_function_test(TestMath, "test_atan2_grad", test_atan2_grad, devices=devices)
 add_function_test(TestMath, "test_erf_math", test_erf_math, devices=devices)
 add_function_test(TestMath, "test_erfcinv_extreme_args", test_erfcinv_extreme_args, devices=devices)
 add_function_test(TestMath, "test_erfcinv_erfc_roundtrip", test_erfcinv_erfc_roundtrip, devices=devices)
