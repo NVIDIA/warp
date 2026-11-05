@@ -456,8 +456,36 @@ if __name__ == "__main__":
         action="store_true",
         help="Run in headless mode, suppressing the opening of any graphical windows.",
     )
+    parser.add_argument(
+        "--resolution",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Override the grid resolution (must be a power of two and a multiple of "
+        f"{TILE_TRANSPOSE_DIM}). Default: {N_GRID}. Lowering this is useful on CPU "
+        "where the default 512² grid is too slow for interactive use.",
+    )
 
     args = parser.parse_known_args()[0]
+
+    if args.resolution is not None:
+        r = args.resolution
+        if r <= 0 or (r & (r - 1)) != 0:
+            parser.error(f"--resolution must be a positive power of two, got {r}")
+        if r % TILE_TRANSPOSE_DIM != 0:
+            parser.error(
+                f"--resolution must be a multiple of TILE_TRANSPOSE_DIM ({TILE_TRANSPOSE_DIM}), got {r}"
+            )
+        # Update module-level constants before the Example is constructed so
+        # that Warp kernels (compiled lazily on first launch) capture the new
+        # grid size.  H, INV_H2, and INV_2H are derived from N_GRID, and
+        # TILE_N / BLOCK_DIM drive the tiled-FFT launch dimensions.
+        N_GRID = r
+        H = DOMAIN_SIZE / N_GRID
+        INV_H2 = 1.0 / (H * H)
+        INV_2H = 1.0 / (2.0 * H)
+        TILE_N = N_GRID
+        BLOCK_DIM = TILE_N // 2
 
     with wp.ScopedDevice(args.device):
         example = Example()
