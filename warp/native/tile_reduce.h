@@ -12,6 +12,7 @@
 #endif  // __clang__
 
 namespace wp {
+WP_TILE_DEFAULT_DEVICE_BEGIN
 
 
 template <typename T>
@@ -1335,6 +1336,7 @@ template <typename Tile> CUDA_CALLABLE auto tile_argmax(Tile& t) { return tile_a
 template <typename Tile> CUDA_CALLABLE auto tile_argmin(Tile& t) { return tile_arg_reduce(min, argmin_tracker, t); }
 
 
+WP_TILE_DEFAULT_DEVICE_END
 }  // namespace wp
 
 

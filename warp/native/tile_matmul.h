@@ -25,6 +25,7 @@
 #endif  // __clang__
 
 namespace wp {
+WP_TILE_DEFAULT_DEVICE_BEGIN
 
 namespace partitioned_gemm {
 
@@ -602,6 +603,7 @@ CUDA_CALLABLE void adj_tile_matmul(
     WP_TILE_SYNC();
 }
 
+WP_TILE_DEFAULT_DEVICE_END
 }  // namespace wp
 
 #ifdef __clang__
