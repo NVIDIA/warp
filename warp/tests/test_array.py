@@ -3037,6 +3037,26 @@ def test_direct_from_numpy(test, device):
 
 
 @wp.kernel
+def inc_scalar_2d(a: wp.array2d[float]):
+    i, j = wp.tid()
+    a[i, j] = a[i, j] + 1.0
+
+
+def test_direct_from_numpy_ndim_mismatch(test, device):
+    """Reject NumPy arrays whose dimension count does not match the kernel parameter."""
+
+    with test.assertRaisesRegex(RuntimeError, r"expects an array with 2 dimension\(s\) but the passed array has 1"):
+        wp.launch(inc_scalar_2d, dim=(1, 1), inputs=[np.zeros(4, dtype=np.float32)], device=device)
+
+    with test.assertRaisesRegex(RuntimeError, r"expects an array with 1 dimension\(s\) but the passed array has 2"):
+        wp.launch(inc_scalar, dim=4, inputs=[np.zeros((2, 2), dtype=np.float32)], device=device)
+
+    # the inner dimension is consumed by the vector dtype, leaving 2 outer dimensions
+    with test.assertRaisesRegex(RuntimeError, r"expects an array with 1 dimension\(s\) but the passed array has 2"):
+        wp.launch(inc_vector, dim=4, inputs=[np.zeros((2, 4, 3), dtype=np.float32)], device=device)
+
+
+@wp.kernel
 def kernel_array_from_ptr(arr_orig: wp.array2d[wp.float32]):
     arr = wp.array(ptr=arr_orig.ptr, shape=(2, 3), dtype=wp.float32)
     arr[0, 0] = 1.0
@@ -4292,6 +4312,9 @@ add_function_test(TestArray, "test_numpy_array_conversion", test_numpy_array_con
 add_function_test(TestArray, "test_array_inplace_diff_ops", test_array_inplace_diff_ops, devices=devices)
 add_function_test(TestArray, "test_array_inplace_non_diff_ops", test_array_inplace_non_diff_ops, devices=devices)
 add_function_test(TestArray, "test_direct_from_numpy", test_direct_from_numpy, devices=["cpu"])
+add_function_test(
+    TestArray, "test_direct_from_numpy_ndim_mismatch", test_direct_from_numpy_ndim_mismatch, devices=["cpu"]
+)
 add_function_test(TestArray, "test_kernel_array_from_ptr", test_kernel_array_from_ptr, devices=devices)
 add_function_test(TestArray, "test_kernel_array_from_ptr_struct", test_kernel_array_from_ptr_struct, devices=devices)
 add_function_test(
