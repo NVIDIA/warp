@@ -238,10 +238,63 @@ def test_sgd_set_params_migrates_state(test, device):
     test.assertIs(opt.b[1], unmoved_b)
 
 
+def test_sgd_float_dtypes(test, device):
+    """Verify SGD updates parameters of non-float32 floating-point dtypes."""
+    with wp.ScopedDevice(device):
+        for dtype in (wp.float16, wp.float64, wp.vec3d, wp.vec3h, wp.mat22d):
+            params = wp.ones(2, dtype=dtype)
+            grad = wp.ones(2, dtype=dtype)
+            opt = warp.optim.SGD([params], lr=0.1, momentum=0.9, weight_decay=0.01)
+
+            opt.step([grad])
+            opt.step([grad])
+
+            # Step 1: g = 1 + 0.01 * 1 = 1.01, b = g, p = 1 - 0.1 * 1.01 = 0.899
+            # Step 2: g = 1 + 0.01 * 0.899 = 1.00899, b = 0.9 * 1.01 + g = 1.91799, p = 0.899 - 0.191799 = 0.707201
+            tol = 1e-3 if wp._src.types.type_scalar_type(dtype) == wp.float16 else 1e-9
+            expected = np.full(params.numpy().shape, 0.707201)
+            assert_np_equal(params.numpy(), expected, tol=tol)
+
+
+def test_sgd_dtype_does_not_break_other_instances(test, device):
+    """Verify an SGD instance for one dtype cannot break SGD for other parameters."""
+    with wp.ScopedDevice(device):
+        warp.optim.SGD([wp.zeros(2, dtype=wp.float64)], lr=0.1)
+        warp.optim.SGD([wp.zeros(2, dtype=wp.vec3h)], lr=0.1)
+
+        params = wp.array([1.0, 2.0], dtype=float)
+        grad = wp.array([1.0, 1.0], dtype=float)
+        opt = warp.optim.SGD([params], lr=0.1)
+        opt.step([grad])
+
+        assert_np_equal(params.numpy(), np.array([0.9, 1.9]), tol=1e-6)
+
+
 devices = get_test_devices()
 
 
 class TestSGD(unittest.TestCase):
+    def test_set_params_rejects_non_float_dtype(self):
+        with self.assertRaisesRegex(TypeError, "SGD parameters must have a floating-point dtype, got int32"):
+            warp.optim.SGD([wp.zeros(2, dtype=wp.int32, device="cpu")])
+
+        # The rejected dtype must not leave a kernel overload behind that breaks other instances.
+        params = wp.array([1.0, 2.0], dtype=float, device="cpu")
+        opt = warp.optim.SGD([params], lr=0.1)
+        opt.step([wp.ones(2, dtype=float, device="cpu")])
+        assert_np_equal(params.numpy(), np.array([0.9, 1.9]), tol=1e-6)
+
+        # Rejecting a list must leave an existing optimizer's parameters and buffers unchanged.
+        other = wp.array([5.0, 6.0], dtype=float, device="cpu")
+        with self.assertRaisesRegex(TypeError, "got int32"):
+            opt.set_params([other, wp.zeros(2, dtype=wp.int32, device="cpu")])
+        self.assertEqual(len(opt.params), 1)
+        self.assertIs(opt.params[0], params)
+        self.assertEqual(len(opt.b), 1)
+        opt.step([wp.ones(2, dtype=float, device="cpu")])
+        assert_np_equal(params.numpy(), np.array([0.8, 1.8]), tol=1e-6)
+        assert_np_equal(other.numpy(), np.array([5.0, 6.0]), tol=1e-6)
+
     def test_step_requires_parameters(self):
         opt = warp.optim.SGD()
 
@@ -266,6 +319,13 @@ add_function_test(TestSGD, "test_sgd_nesterov_momentum", test_sgd_nesterov_momen
 add_function_test(TestSGD, "test_sgd_combined_features", test_sgd_combined_features, devices=devices)
 add_function_test(TestSGD, "test_sgd_no_momentum", test_sgd_no_momentum, devices=devices)
 add_function_test(TestSGD, "test_sgd_reset_internal_state", test_sgd_reset_internal_state, devices=devices)
+add_function_test(TestSGD, "test_sgd_float_dtypes", test_sgd_float_dtypes, devices=devices)
+add_function_test(
+    TestSGD,
+    "test_sgd_dtype_does_not_break_other_instances",
+    test_sgd_dtype_does_not_break_other_instances,
+    devices=devices,
+)
 add_function_test(
     TestSGD,
     "test_sgd_set_params_migrates_state",
