@@ -286,6 +286,28 @@ template <typename T> inline CUDA_CALLABLE array_t<T> add(const array_t<T>& a, c
 }
 
 
+// Shape returned by the in-kernel `wp.zeros()` builtin. Assigning it to a declared
+// fixedarray_t zero-fills that array's own storage, instead of building a zeroed
+// temporary and copying it.
+template <int Size, typename T> struct fixedarray_zeros_t {
+    // Not default-constructible, so `adj = {}` on a fixedarray stays unambiguous.
+    CUDA_CALLABLE explicit fixedarray_zeros_t(int dim0, int dim1, int dim2, int dim3)
+        : dims { dim0, dim1, dim2, dim3 }
+    {
+    }
+
+    int dims[ARRAY_MAX_DIMS];
+};
+
+template <int Size, typename T>
+CUDA_CALLABLE inline fixedarray_zeros_t<Size, T> fixedarray_zeros(int dim0, int dim1 = 0, int dim2 = 0, int dim3 = 0)
+{
+    return fixedarray_zeros_t<Size, T>(dim0, dim1, dim2, dim3);
+}
+
+// Constructor tag that leaves storage uninitialized.
+struct no_init_t { };
+
 // Stack‑allocated counterpart to `array_t<T>`.
 // Useful for small buffers that have their shape known at compile-time,
 // and that gain from having array semantics instead of vectors.
@@ -300,32 +322,29 @@ template <int Size, typename T> struct fixedarray_t : array_t<T> {
     {
     }
 
-    CUDA_CALLABLE fixedarray_t(int dim0, T* grad = nullptr)
-        : Base(storage, dim0, grad)
-        , storage()
+    // For primal declarations in generated code, which always assign before use,
+    // so zero-filling here would double the cost of the zero-fill in `wp.zeros()`.
+    CUDA_CALLABLE explicit fixedarray_t(no_init_t)
+        : Base(storage, Size)
     {
-        assert(Size == dim0);
     }
 
-    CUDA_CALLABLE fixedarray_t(int dim0, int dim1, T* grad = nullptr)
-        : Base(storage, dim0, dim1, grad)
-        , storage()
+    CUDA_CALLABLE fixedarray_t<Size, T>& operator=(const fixedarray_zeros_t<Size, T>& zeros)
     {
-        assert(Size == dim0 * dim1);
-    }
+        const int* d = zeros.dims;
+        if (d[1] == 0)
+            Base::operator=(Base(storage, d[0]));
+        else if (d[2] == 0)
+            Base::operator=(Base(storage, d[0], d[1]));
+        else if (d[3] == 0)
+            Base::operator=(Base(storage, d[0], d[1], d[2]));
+        else
+            Base::operator=(Base(storage, d[0], d[1], d[2], d[3]));
 
-    CUDA_CALLABLE fixedarray_t(int dim0, int dim1, int dim2, T* grad = nullptr)
-        : Base(storage, dim0, dim1, dim2, grad)
-        , storage()
-    {
-        assert(Size == dim0 * dim1 * dim2);
-    }
-
-    CUDA_CALLABLE fixedarray_t(int dim0, int dim1, int dim2, int dim3, T* grad = nullptr)
-        : Base(storage, dim0, dim1, dim2, dim3, grad)
-        , storage()
-    {
-        assert(Size == dim0 * dim1 * dim2 * dim3);
+        for (int i = 0; i < Size; ++i) {
+            storage[i] = T();
+        }
+        return *this;
     }
 
     CUDA_CALLABLE fixedarray_t<Size, T>& operator=(const fixedarray_t<Size, T>& other)

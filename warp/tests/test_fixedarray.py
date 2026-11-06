@@ -48,6 +48,44 @@ def test_zeros():
     wp.expect_eq(s[1, 1], 5)
 
 
+@wp.kernel
+def test_zeros_in_loop_kernel(count: int, out: wp.array2d[float]):
+    # A runtime trip count keeps the loop rolled, so each iteration reassigns the same arrays.
+    for i in range(count):
+        a1 = wp.zeros(shape=4, dtype=int)
+        a2 = wp.zeros(shape=(2, 3), dtype=float)
+        a3 = wp.zeros(shape=(2, 1, 3), dtype=wp.vec3)
+        a4 = wp.zeros(shape=(1, 2, 1, 3), dtype=wp.mat22)
+        out[i, 0] = float(a1[3])
+        out[i, 1] = a2[1, 2]
+        out[i, 2] = wp.length_sq(a3[1, 0, 2])
+        out[i, 3] = wp.ddot(a4[0, 1, 0, 2], a4[0, 1, 0, 2])
+        out[i, 4] = float(a1.shape[0] + a2.shape[1] + a3.shape[2] + a4.shape[3])
+        a1[3] = i + 1
+        a2[1, 2] = float(i + 1)
+        a3[1, 0, 2] = wp.vec3(float(i + 1))
+        a4[0, 1, 0, 2] = wp.mat22(float(i + 1))
+
+
+def test_zeros_in_loop(test, device):
+    out = wp.full((3, 5), -1.0, dtype=float, device=device)
+    wp.launch(test_zeros_in_loop_kernel, dim=1, inputs=[3, out], device=device)
+    expected = np.zeros((3, 5), dtype=np.float32)
+    expected[:, 4] = 4 + 3 + 3 + 3
+    np.testing.assert_array_equal(out.numpy(), expected)
+
+
+@wp.kernel
+def test_zeros_grad_kernel(count: int, x: wp.array[float], y: wp.array[float]):
+    a = wp.zeros(shape=2, dtype=float)
+    a[0] = x[0] * x[0]
+    y[0] = a[0]
+    for _i in range(count):
+        b = wp.zeros(shape=2, dtype=float)
+        b[1] = x[0] * x[0]
+        y[0] += b[1]
+
+
 @wp.func
 def test_func_arg_func(arr: wp.array2d[int]):
     for i in range(arr.shape[0]):
@@ -281,10 +319,19 @@ def test_fixedarray_array_polymorphism():
 
 
 class TestFixedArray(unittest.TestCase):
-    pass
+    # CPU only: on CUDA, atomic adds to the stack-allocated adjoint trap.
+    def test_zeros_grad(self):
+        x = wp.array([3.0], dtype=float, device="cpu", requires_grad=True)
+        y = wp.zeros(1, dtype=float, device="cpu", requires_grad=True)
+        with wp.Tape() as tape:
+            wp.launch(test_zeros_grad_kernel, dim=1, inputs=[2, x, y], device="cpu")
+        tape.backward(loss=y)
+        np.testing.assert_allclose(y.numpy(), [27.0])
+        np.testing.assert_allclose(x.grad.numpy(), [18.0])
 
 
 add_kernel_test(TestFixedArray, kernel=test_zeros, name="test_zeros", dim=1, devices=devices)
+add_function_test(TestFixedArray, "test_zeros_in_loop", test_zeros_in_loop, devices=devices)
 add_kernel_test(TestFixedArray, kernel=test_func_arg, name="test_func_arg", dim=1, devices=devices)
 add_kernel_test(TestFixedArray, kernel=test_func_return, name="test_func_return", dim=1, devices=devices)
 add_kernel_test(

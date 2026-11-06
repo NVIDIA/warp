@@ -8230,6 +8230,8 @@ def codegen_func_forward(adj, func_type="kernel", device="cpu", grid_stride=Fals
             lines += [f"{var.ctype()} {var.emit()} = {var.type.cinit(requires_grad=False)};\n"]
         elif is_tile_stack(var.type):
             lines += [f"{var.ctype()} {var.emit()} = {var.type.cinit()};\n"]
+        elif isinstance(var.type, fixedarray):
+            lines += [f"{var.ctype()} {var.emit()}{{wp::no_init_t{{}}}};\n"]
         elif var.constant is None:
             lines += [f"{var.ctype()} {var.emit()};\n"]
         else:
@@ -8289,6 +8291,8 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu", grid_stride=Fals
             lines += [f"{var.ctype()} {var.emit()} = {var.type.cinit(requires_grad=True)};\n"]
         elif is_tile_stack(var.type):
             lines += [f"{var.ctype()} {var.emit()} = {var.type.cinit()};\n"]
+        elif isinstance(var.type, fixedarray):
+            lines += [f"{var.ctype()} {var.emit()}{{wp::no_init_t{{}}}};\n"]
         elif var.constant is None:
             lines += [f"{var.ctype()} {var.emit()};\n"]
         else:
