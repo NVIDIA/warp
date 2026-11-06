@@ -327,6 +327,50 @@ def test_fp64_lookup(test, device):
             _ = fem.integrate(lookup_integrand, domain=domain)
 
 
+def test_fp64_nanogrid_particle_lookup(test, device):
+    """Check containing and closest-cell lookups on float64 sparse grids."""
+    with wp.ScopedDevice(device):
+        for adaptive in (False, True):
+            for env_count in (1, 2):
+                with test.subTest(adaptive=adaptive, env_count=env_count):
+                    points = wp.array([[0, 0, 0]] * env_count, dtype=wp.vec3i)
+                    envs = wp.array(np.arange(env_count, dtype=np.int32), dtype=int)
+                    if adaptive:
+                        geometry = fem.AdaptiveNanogrid.from_environment_voxels(
+                            points,
+                            wp.ones(env_count, dtype=wp.uint8),
+                            envs,
+                            env_count,
+                            level_count=2,
+                            voxel_size=0.5,
+                            translation=(0.25, 0.25, 0.25),
+                            scalar_type=wp.float64,
+                        )
+                    else:
+                        geometry = fem.Nanogrid.from_environment_voxels(
+                            points,
+                            envs,
+                            env_count,
+                            voxel_size=1.0,
+                            translation=(0.5, 0.5, 0.5),
+                            scalar_type=wp.float64,
+                        )
+                    positions = np.tile([[0.25, 0.5, 0.75], [1.125, 0.5, 0.75], [-0.125, 0.5, 0.75]], (env_count, 1))
+                    particle_envs = np.repeat(np.arange(env_count, dtype=np.int32), 3)
+                    quadrature = fem.PicQuadrature(
+                        fem.Cells(geometry),
+                        wp.array(positions, dtype=wp.vec3d),
+                        env_indices=wp.array(particle_envs, dtype=int) if env_count > 1 else None,
+                        max_dist=0.25,
+                    )
+                    indices = quadrature.cell_indices.numpy()
+                    test.assertTrue(np.all(indices >= 0))
+                    np.testing.assert_array_equal(geometry.cell_env.numpy()[indices], particle_envs)
+                    # PicQuadrature uses the nearest cell but retains the
+                    # original position's local coordinates for extrapolation.
+                    np.testing.assert_allclose(quadrature.particle_coords.numpy(), positions, rtol=1e-14, atol=1e-14)
+
+
 # -- Test class --
 
 
@@ -345,6 +389,9 @@ add_function_test(TestFemFp64, "test_fp64_interpolation", test_fp64_interpolatio
 add_function_test(TestFemFp64, "test_fp64_scalar_type_operator", test_fp64_scalar_type_operator, devices=devices)
 add_function_test(TestFemFp64, "test_fp64_nanogrid_volume", test_fp64_nanogrid_volume, devices=devices)
 add_function_test(TestFemFp64, "test_fp64_lookup", test_fp64_lookup, devices=devices)
+add_function_test(
+    TestFemFp64, "test_fp64_nanogrid_particle_lookup", test_fp64_nanogrid_particle_lookup, devices=devices
+)
 
 if __name__ == "__main__":
     unittest.main()
