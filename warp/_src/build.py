@@ -95,7 +95,7 @@ def build_cuda(
 
     if llvm_cuda:
         err = warp._src.context.runtime.llvm.wp_compile_cuda(
-            src, cu_path_bytes, inc_path, num_cuda_include_dirs, cuda_include_dirs, output_path, False
+            src, cu_path_bytes, inc_path, num_cuda_include_dirs, cuda_include_dirs, output_path, False, arch
         )
     else:
         if ltoirs is None:
