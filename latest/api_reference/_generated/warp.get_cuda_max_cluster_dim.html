@@ -519,13 +519,13 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">dynamic_smem_bytes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L9496-L9562"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.get_cuda_max_cluster_dim" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L9496-L9555"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.get_cuda_max_cluster_dim" title="Link to this definition">#</a></dt>
 <dd><p>Return the maximum <code class="docutils literal notranslate"><span class="pre">cluster_dim</span></code> <em>kernel</em> can launch with on <em>device</em>.</p>
 <p>Probes the CUDA driver via <code class="docutils literal notranslate"><span class="pre">cuOccupancyMaxActiveClusters</span></code> for cluster
 sizes from 16 down to 2 and returns the largest one the driver reports as
 launchable. The result reflects actual hardware capability: integrated
-Hopper+ SoCs (NVIDIA Thor sm_101, DGX Spark sm_121) cap at the portable 8,
-while Hopper and Blackwell desktop parts typically support 16.</p>
+Hopper+ SoCs (NVIDIA Thor sm_110, formerly sm_101; DGX Spark sm_121) cap at
+the portable 8, while discrete Hopper and Blackwell GPUs typically support 16.</p>
 <p>For a plain kernel (no <code class="docutils literal notranslate"><span class="pre">cluster_dim</span></code> declared) the result is the
 device’s true cluster limit. For a kernel with <code class="docutils literal notranslate"><span class="pre">cluster_dim</span></code> declared,
 the driver only accepts that declared size, so the function returns the
@@ -535,8 +535,8 @@ declared value when the device supports it, or <code class="docutils literal not
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>kernel</strong> – A <code class="docutils literal notranslate"><span class="pre">&#64;warp.kernel</span></code>-decorated kernel instance.</p></li>
 <li><p><strong>device</strong> (<a class="reference internal" href="warp.Device.html#warp.Device" title="warp._src.context.Device"><em>Device</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a><em> | </em><em>None</em>) – Target device. Defaults to the current device.</p></li>
-<li><p><strong>block_dim</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a><em> | </em><em>None</em>) – Threads per block at launch. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, uses the kernel’s
-module-resolved <code class="docutils literal notranslate"><span class="pre">block_dim</span></code>.</p></li>
+<li><p><strong>block_dim</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a><em> | </em><em>None</em>) – Threads per block at launch. If <code class="docutils literal notranslate"><span class="pre">None</span></code>, uses the kernel
+module’s <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> option.</p></li>
 <li><p><strong>dynamic_smem_bytes</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a>) – Dynamic shared memory bytes used at launch.</p></li>
 </ul>
 </dd>
