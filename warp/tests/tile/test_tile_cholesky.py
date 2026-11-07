@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import tempfile
 import unittest
 from typing import Any
 
@@ -851,6 +852,13 @@ def test_tile_cholesky_solve_upper_multiple_rhs_inplace(test, device):
     np.testing.assert_allclose(Y_wp.numpy(), X_np)
 
 
+@wp.func
+def new_int32_shared_tile():
+    # In device-debug builds, nvJitLink fails to link this function's adjoint
+    # for targets older than sm_100 unless it links without optimization.
+    return wp.tile_empty(shape=(3,), dtype=wp.int32, storage="shared")
+
+
 all_devices = get_test_devices()
 cuda_devices = get_cuda_test_devices()
 
@@ -864,7 +872,23 @@ cuda_devices = get_cuda_test_devices()
     "MathDx is not enabled or is enabled but CUDA toolkit version is less than 12.6",
 )
 class TestTileCholesky(unittest.TestCase):
-    pass
+    def test_tile_cholesky_debug_link(self):
+        """Link device-debug MathDx code for a target older than ``sm_100``."""
+        arch = 80
+        if arch not in wp.get_cuda_supported_archs():
+            self.skipTest(f"NVRTC does not support compute capability {arch}")
+        if not wp._src.context.runtime.core.wp_is_mathdx_enabled():
+            self.skipTest("MathDx is not enabled")
+
+        @wp.kernel(module="unique", module_options={"mode": "debug", "block_dim": TILE_DIM, "enable_backward": True})
+        def kernel(A: wp.array2d[float], L: wp.array2d[float], P: wp.array1d[wp.int32]):
+            a = wp.tile_load(A, shape=(3, 3), storage="shared")
+            wp.tile_store(L, wp.tile_cholesky(a))
+            wp.tile_store(P, new_int32_shared_tile())
+
+        # A fresh output directory forces compilation even with a warm kernel cache.
+        with tempfile.TemporaryDirectory() as output_dir:
+            wp.compile_aot_module(kernel.module, module_dir=output_dir, arch=arch, use_ptx=True)
 
 
 add_function_test(
