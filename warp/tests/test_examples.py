@@ -326,7 +326,7 @@ add_example_test(
     TestOptimExamples,
     name="optim.example_particle_repulsion",
     devices=cuda_test_devices,
-    test_options={"headless": True, "num_frames": 100},
+    test_options={"headless": True, "num_frames": 100, "pillow_required": True},
 )
 add_example_test(
     TestOptimExamples,
@@ -388,7 +388,7 @@ add_example_test(
     TestTileExamples,
     name="tile.example_tile_mlp",
     devices=cuda_test_devices,
-    test_options_cuda={"train_iters": 10, "headless": True},
+    test_options_cuda={"train_iters": 10, "headless": True, "pillow_required": True},
 )
 add_example_test(
     TestTileExamples,
