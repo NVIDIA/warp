@@ -905,7 +905,6 @@ inline CUDA_CALLABLE void adj_floordiv(T a, T b, T& adj_a, T& adj_b, T adj_ret) 
 { \
     /* MISSINGADJOINT: gradient is zero almost everywhere (subgradient at integer points) */ \
 } \
-inline CUDA_CALLABLE void adj_mod(T a, T b, T& adj_a, T& adj_b, T adj_ret){ adj_a += adj_ret; }\
 inline CUDA_CALLABLE void adj_sign(T x, T adj_x, T& adj_ret) \
 { \
     /* MISSINGADJOINT: gradient is zero almost everywhere (subgradient at x = 0) */ \
@@ -1704,6 +1703,12 @@ inline CUDA_CALLABLE bfloat16 erfcinv(bfloat16 a)
 #endif  // WP_NO_BFLOAT16
 
 #define DECLARE_ADJOINTS(T)\
+inline CUDA_CALLABLE void adj_mod(T a, T b, T& adj_a, T& adj_b, T adj_ret)\
+{\
+    /* mod(a, b) = a - trunc(a / b) * b, where trunc(a / b) is piecewise constant */\
+    adj_a += adj_ret;\
+    adj_b -= trunc(a / b) * adj_ret;\
+}\
 inline CUDA_CALLABLE void adj_log(T a, T& adj_a, T adj_ret)\
 {\
     adj_a += (T(1)/a)*adj_ret;\
