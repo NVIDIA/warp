@@ -4617,7 +4617,73 @@ bool check_nvjitlink_result(nvJitLinkHandle handle, nvJitLinkResult result, cons
         return true;
     }
 }
+
+// Link Warp's NVRTC LTO-IR with the MathDx inputs. On success, `output` holds
+// the linked PTX or CUBIN instead of the LTO-IR. With `quiet_nvvm_error`, an
+// NVVM failure in nvJitLinkComplete() is returned without printing its log, so
+// the caller can retry with other options.
+static nvJitLinkResult link_ltoirs(
+    std::vector<char>& output,
+    std::vector<const char*>& lopts,
+    bool use_ptx,
+    size_t num_ltoirs,
+    char** ltoirs,
+    size_t* ltoir_sizes,
+    int* ltoir_input_types,
+    bool quiet_nvvm_error
+)
+{
+    nvJitLinkHandle handle = nullptr;
+    nvJitLinkResult result = nvJitLinkCreate(&handle, lopts.size(), lopts.data());
+    if (!check_nvjitlink(handle, result))
+        return result;
+
+    result = nvJitLinkAddData(handle, NVJITLINK_INPUT_LTOIR, output.data(), output.size(), "nvrtc_output");
+    check_nvjitlink(handle, result);
+
+    for (size_t ltoidx = 0; ltoidx < num_ltoirs && result == NVJITLINK_SUCCESS; ltoidx++) {
+        nvJitLinkInputType input_type = static_cast<nvJitLinkInputType>(ltoir_input_types[ltoidx]);
+        result = nvJitLinkAddData(handle, input_type, ltoirs[ltoidx], ltoir_sizes[ltoidx], "lto_online");
+        check_nvjitlink(handle, result);
+    }
+
+    if (result == NVJITLINK_SUCCESS) {
+        result = nvJitLinkComplete(handle);
+        if (!(quiet_nvvm_error && result == NVJITLINK_ERROR_NVVM_COMPILE))
+            check_nvjitlink(handle, result);
+    }
+
+    if (result == NVJITLINK_SUCCESS) {
+        size_t linked_size = 0;
+        std::vector<char> linked;
+        if (use_ptx) {
+            check_nvjitlink(handle, nvJitLinkGetLinkedPtxSize(handle, &linked_size));
+            linked.resize(linked_size);
+            check_nvjitlink(handle, nvJitLinkGetLinkedPtx(handle, linked.data()));
+        } else {
+            check_nvjitlink(handle, nvJitLinkGetLinkedCubinSize(handle, &linked_size));
+            linked.resize(linked_size);
+            check_nvjitlink(handle, nvJitLinkGetLinkedCubin(handle, linked.data()));
+        }
+        output.swap(linked);
+    }
+
+    check_nvjitlink(handle, nvJitLinkDestroy(&handle));
+    return result;
+}
 #endif
+
+// Whether a debug-mode NVRTC build compiles device-debug code (-G). Windows
+// debug builds keep assertions and line info only.
+static bool nvrtc_device_debug(bool debug)
+{
+#ifdef _WIN32
+    (void)debug;
+    return false;
+#else
+    return debug;
+#endif
+}
 
 // Append every NVRTC option shared by Warp's normal module compiler and APIC's
 // portable source-recompile path. Keep path-specific options (include paths,
@@ -4688,9 +4754,8 @@ static void append_common_nvrtc_compile_options(
     if (debug) {
         options.push_back("--define-macro=_DEBUG");
         options.push_back("--generate-line-info");
-#ifndef _WIN32
-        options.push_back("--device-debug");  // -G
-#endif
+        if (nvrtc_device_debug(debug))
+            options.push_back("--device-debug");  // -G
     } else {
         options.push_back("--define-macro=NDEBUG");
 
@@ -4924,7 +4989,6 @@ size_t wp_cuda_compile_program(
                     );
                     return size_t(-1);
                 }
-                nvJitLinkHandle handle = nullptr;
                 std::vector<const char*> lopts = { "-dlto", arch_opt_lto };
                 if (use_ptx) {
                     lopts.push_back("-ptx");
@@ -4935,68 +4999,54 @@ size_t wp_cuda_compile_program(
                         printf("%s\n", o);
                     }
                 }
-                if (!check_nvjitlink(handle, nvJitLinkCreate(&handle, lopts.size(), lopts.data()))) {
-                    res = nvrtcResult(-1);
-                }
-                // Links
                 if (std::getenv("WARP_DUMP_LTOIR")) {
                     write_file(output.data(), output.size(), "nvrtc_output.ltoir", "wb");
-                }
-                if (!check_nvjitlink(
-                        handle,
-                        nvJitLinkAddData(handle, NVJITLINK_INPUT_LTOIR, output.data(), output.size(), "nvrtc_output")
-                    ))  // NVRTC business
-                {
-                    res = nvrtcResult(-1);
-                }
-                for (size_t ltoidx = 0; ltoidx < num_ltoirs; ltoidx++) {
-                    nvJitLinkInputType input_type = static_cast<nvJitLinkInputType>(ltoir_input_types[ltoidx]);
-                    const char* ext = ".unknown";
-                    switch (input_type) {
-                    case NVJITLINK_INPUT_CUBIN:
-                        ext = ".cubin";
-                        break;
-                    case NVJITLINK_INPUT_LTOIR:
-                        ext = ".ltoir";
-                        break;
-                    case NVJITLINK_INPUT_FATBIN:
-                        ext = ".fatbin";
-                        break;
-                    default:
-                        break;
-                    }
-                    if (std::getenv("WARP_DUMP_LTOIR")) {
+                    for (size_t ltoidx = 0; ltoidx < num_ltoirs; ltoidx++) {
+                        const char* ext = ".unknown";
+                        switch (static_cast<nvJitLinkInputType>(ltoir_input_types[ltoidx])) {
+                        case NVJITLINK_INPUT_CUBIN:
+                            ext = ".cubin";
+                            break;
+                        case NVJITLINK_INPUT_LTOIR:
+                            ext = ".ltoir";
+                            break;
+                        case NVJITLINK_INPUT_FATBIN:
+                            ext = ".fatbin";
+                            break;
+                        default:
+                            break;
+                        }
                         write_file(
                             ltoirs[ltoidx], ltoir_sizes[ltoidx],
                             std::string("lto_online_") + std::to_string(ltoidx) + ext, "wb"
                         );
                     }
-                    if (!check_nvjitlink(
-                            handle,
-                            nvJitLinkAddData(handle, input_type, ltoirs[ltoidx], ltoir_sizes[ltoidx], "lto_online")
-                        ))  // External LTOIR
-                    {
-                        res = nvrtcResult(-1);
-                    }
                 }
-                if (!check_nvjitlink(handle, nvJitLinkComplete(handle))) {
+
+                // nvJitLink's default optimizing link can fail on device-debug
+                // LTO-IR for targets older than sm_100 with "Symbol name with
+                // unsupported characters" (GH-2249). Linking without
+                // optimization works but is much slower, so only fall back
+                // to it after a failure.
+                const bool retry_without_optimization = nvrtc_device_debug(debug);
+                nvJitLinkResult link_result = link_ltoirs(
+                    output, lopts, use_ptx, num_ltoirs, ltoirs, ltoir_sizes, ltoir_input_types,
+                    retry_without_optimization && !print_debug
+                );
+                if (retry_without_optimization && link_result == NVJITLINK_ERROR_NVVM_COMPILE) {
+                    fprintf(
+                        stderr,
+                        "Warp warning: nvJitLink failed to link device-debug code, retrying without "
+                        "optimization (-O0). This can take several minutes for large modules.\n"
+                    );
+                    lopts.push_back("-O0");
+                    link_result = link_ltoirs(
+                        output, lopts, use_ptx, num_ltoirs, ltoirs, ltoir_sizes, ltoir_input_types, false
+                    );
+                }
+                if (link_result != NVJITLINK_SUCCESS) {
                     res = nvrtcResult(-1);
-                } else {
-                    if (use_ptx) {
-                        size_t ptx_size = 0;
-                        check_nvjitlink(handle, nvJitLinkGetLinkedPtxSize(handle, &ptx_size));
-                        std::vector<char> ptx(ptx_size);
-                        check_nvjitlink(handle, nvJitLinkGetLinkedPtx(handle, ptx.data()));
-                        output = ptx;
-                    } else {
-                        size_t cubin_size = 0;
-                        check_nvjitlink(handle, nvJitLinkGetLinkedCubinSize(handle, &cubin_size));
-                        std::vector<char> cubin(cubin_size);
-                        check_nvjitlink(handle, nvJitLinkGetLinkedCubin(handle, cubin.data()));
-                        output = cubin;
-                    }
                 }
-                check_nvjitlink(handle, nvJitLinkDestroy(&handle));
 #else
                 fprintf(stderr, "Warp error: num_ltoirs > 0 but Warp was not built with MathDx support\n");
                 return size_t(-1);
