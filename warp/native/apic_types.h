@@ -48,6 +48,7 @@ enum APICOpType : uint32_t {
     APIC_OP_BVH_REFIT = 17,  // wp_bvh_refit_host
     APIC_OP_BVH_REBUILD = 18,  // wp_bvh_rebuild_host
     APIC_OP_HASH_GRID_UPDATE = 19,  // wp_hash_grid_update_host
+    APIC_OP_MESH_REFIT = 20,  // wp_mesh_refit_host
 };
 
 enum APICReductionKind : uint8_t {
@@ -529,6 +530,14 @@ struct APICBvhRecord {
     int32_t constructor_type;  // rebuild constructor; -1 for refit
     uint32_t _pad;
 };  // 24 bytes
+
+// Mesh refits use a live mesh handle and cannot be serialized.
+struct APICMeshRefitRecord {
+    APICOpHeader header;
+    uint64_t mesh_id;
+};
+
+static_assert(sizeof(APICMeshRefitRecord) == 16, "APIC mesh refit record must remain 16 bytes");
 
 struct APICHashGridUpdateRecord {
     APICOpHeader header;

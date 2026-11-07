@@ -6199,6 +6199,9 @@ class Bvh:
             to each group subtree. Start queries at the desired group's root to stay within this limit.
             Traversal from the global root is not guaranteed to fit the query stack for deep grouped trees.
         """
+        if lowers.device.is_cpu and warp._src.context._get_apic_capture_for_device(lowers.device) is not None:
+            raise NotImplementedError("Bvh() cannot be called during CPU graph capture; create the BVH before capture")
+
         if len(lowers) != len(uppers):
             raise RuntimeError("The same number of lower and upper bounds must be provided")
 
@@ -6440,6 +6443,11 @@ class Mesh:
             groups: Optional array of triangle group indices of data type :class:`warp.int32`.
               Should be a 1D array with shape ``(num_tris)``.
         """
+        if points.device.is_cpu and warp._src.context._get_apic_capture_for_device(points.device) is not None:
+            raise NotImplementedError(
+                "Mesh() cannot be called during CPU graph capture; create the mesh before capture"
+            )
+
         if points.device != indices.device:
             raise RuntimeError("Mesh points and indices must live on the same device")
 
@@ -6551,9 +6559,16 @@ class Mesh:
         """Refit the BVH to points.
 
         This should be called after users modify the ``points`` data.
+
+        Under CPU graph capture, the refit is recorded and replays against the
+        current points. The graph retains the mesh and cannot be serialized
+        with :func:`warp.capture_save`.
         """
 
         if self.device.is_cpu:
+            apic_capture = warp._src.context._get_apic_capture_for_device(self.device)
+            if apic_capture is not None:
+                apic_capture.retain_mesh(self)
             self.runtime.core.wp_mesh_refit_host(self.id)
         else:
             if not self.runtime.core.wp_mesh_refit_device(self.id):
@@ -6573,6 +6588,12 @@ class Mesh:
 
     @points.setter
     def points(self, points_new):
+        if self.device.is_cpu and warp._src.context._get_apic_capture_for_device(self.device) is not None:
+            raise NotImplementedError(
+                "Mesh.points assignment is not supported during CPU graph capture; "
+                "update the existing points array and call Mesh.refit() instead."
+            )
+
         if points_new.device != self._points.device:
             raise RuntimeError(
                 "The new points and the original points must live on the same device, the "
@@ -6604,6 +6625,12 @@ class Mesh:
 
     @velocities.setter
     def velocities(self, velocities_new):
+        if self.device.is_cpu and warp._src.context._get_apic_capture_for_device(self.device) is not None:
+            raise NotImplementedError(
+                "Mesh.velocities assignment is not supported during CPU graph capture; "
+                "update the existing velocities array instead."
+            )
+
         if velocities_new.device != self._velocities.device:
             raise RuntimeError(
                 "The new points and the original points must live on the same device, the "
@@ -6692,6 +6719,11 @@ class Volume:
             return
         self.device = data.device
 
+        if self.device.is_cpu and warp._src.context._get_apic_capture_for_device(self.device) is not None:
+            raise NotImplementedError(
+                "Volume() cannot be called during CPU graph capture; create the volume before capture"
+            )
+
         owner = False
         if self.device.is_cpu:
             self.id = self.runtime.core.wp_volume_create_host(
@@ -6749,6 +6781,11 @@ class Volume:
                 of ``tile_count`` ``vec3i`` or ``tile_count x 3`` ``int32``
                 on the same device as this volume.
         """
+
+        if self.device.is_cpu and warp._src.context._get_apic_capture_for_device(self.device) is not None:
+            raise NotImplementedError(
+                "Volume.get_tiles() cannot be called during CPU graph capture; query tiles outside capture"
+            )
 
         if self.id == 0:
             raise RuntimeError("Invalid Volume")
@@ -6815,6 +6852,11 @@ class Volume:
                 a new array will be allocated. `out` must be a contiguous array of ``voxel_count`` ``vec3i`` or ``voxel_count x 3`` ``int32``
                 on the same device as this volume.
         """
+
+        if self.device.is_cpu and warp._src.context._get_apic_capture_for_device(self.device) is not None:
+            raise NotImplementedError(
+                "Volume.get_voxels() cannot be called during CPU graph capture; query voxels outside capture"
+            )
 
         if self.id == 0:
             raise RuntimeError("Invalid Volume")
@@ -7633,6 +7675,10 @@ class Volume:
 
         """
         device = warp.get_device(device)
+        if device.is_cpu and warp._src.context._get_apic_capture_for_device(device) is not None:
+            raise NotImplementedError(
+                "Volume.allocate_by_tiles() cannot be called during CPU graph capture; allocate the volume before capture"
+            )
 
         if not _is_contiguous_vec_like_array(tile_points, vec_length=3, scalar_types=(float32, int32)):
             raise RuntimeError(
@@ -7842,6 +7888,10 @@ class Volume:
             ValueError: If a rebuild capacity is not positive or does not fit in ``uint32``.
         """
         device = warp.get_device(device)
+        if device.is_cpu and warp._src.context._get_apic_capture_for_device(device) is not None:
+            raise NotImplementedError(
+                "Volume.allocate_by_voxels() cannot be called during CPU graph capture; allocate the volume before capture"
+            )
 
         if not _is_contiguous_vec_like_array(voxel_points, vec_length=3, scalar_types=(float32, int32)):
             raise RuntimeError(
@@ -7953,6 +8003,11 @@ class Volume:
             RuntimeError: If ``points``, ``point_mask``, or ``status`` is not a contiguous array of the required
                 type and shape.
         """
+
+        if self.device.is_cpu and warp._src.context._get_apic_capture_for_device(self.device) is not None:
+            raise NotImplementedError(
+                "Volume.rebuild() cannot be called during CPU graph capture; rebuild the volume outside capture"
+            )
 
         if self._rebuild_info.kind == "tiles":
             return self._rebuild_tiles(points, status=status, point_mask=point_mask)

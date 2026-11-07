@@ -29,6 +29,7 @@ APIC_OP_REDUCTION = 16
 APIC_OP_BVH_REFIT = 17
 APIC_OP_BVH_REBUILD = 18
 APIC_OP_HASH_GRID_UPDATE = 19
+APIC_OP_MESH_REFIT = 20
 
 
 # Scalar element types (must match APICType in apic_types.h).

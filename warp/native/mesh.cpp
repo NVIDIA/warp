@@ -3,6 +3,8 @@
 
 #include "warp.h"
 
+#include "apic.h"
+#include "apic_internal.h"
 #include "bvh.h"
 #include "cuda_util.h"
 #include "error.h"
@@ -232,6 +234,11 @@ void wp_mesh_destroy_host(uint64_t id)
 
 void wp_mesh_refit_host(uint64_t id)
 {
+    if (APICState* state = wp_apic_get_recording_state()) {
+        apic_record_mesh_refit(state, id);
+        return;
+    }
+
     Mesh* m = (Mesh*)(id);
 
     float sum = 0.0;

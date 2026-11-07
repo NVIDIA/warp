@@ -67,6 +67,13 @@ class APICapture:
         self.collected_kernels: dict[tuple[str, str], dict] = {}  # (module_hash, kernel_key) -> info
         self.collected_mesh_ids: set[int] = set()  # mesh IDs seen during capture
 
+        # Live CPU mesh refits use process-local handles. Keep the owning mesh
+        # (and its vertex/index arrays) alive for as long as the graph can replay.
+        self._live_meshes: dict[int, warp.Mesh] = {}
+
+    def retain_mesh(self, mesh: warp.Mesh):
+        self._live_meshes[mesh.id] = mesh
+
     def begin_recording(self):
         self.runtime.core.wp_apic_begin_recording(self.apic_state, 1 if self.device.is_cpu else 0)
 
