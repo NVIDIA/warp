@@ -9505,8 +9505,8 @@ def get_cuda_max_cluster_dim(
     Probes the CUDA driver via ``cuOccupancyMaxActiveClusters`` for cluster
     sizes from 16 down to 2 and returns the largest one the driver reports as
     launchable. The result reflects actual hardware capability: integrated
-    Hopper+ SoCs (NVIDIA Thor sm_101, DGX Spark sm_121) cap at the portable 8,
-    while Hopper and Blackwell desktop parts typically support 16.
+    Hopper+ SoCs (NVIDIA Thor sm_110, formerly sm_101; DGX Spark sm_121) cap at
+    the portable 8, while discrete Hopper and Blackwell GPUs typically support 16.
 
     For a plain kernel (no ``cluster_dim`` declared) the result is the
     device's true cluster limit. For a kernel with ``cluster_dim`` declared,
@@ -9516,8 +9516,8 @@ def get_cuda_max_cluster_dim(
     Args:
         kernel: A ``@wp.kernel``-decorated kernel instance.
         device: Target device. Defaults to the current device.
-        block_dim: Threads per block at launch. If ``None``, uses the kernel's
-            module-resolved ``block_dim``.
+        block_dim: Threads per block at launch. If ``None``, uses the kernel
+            module's ``block_dim`` option.
         dynamic_smem_bytes: Dynamic shared memory bytes used at launch.
 
     Returns:
@@ -9531,30 +9531,23 @@ def get_cuda_max_cluster_dim(
         return 1
 
     if block_dim is None:
-        block_dim = kernel.module.options.get("block_dim", 256)
+        block_dim = kernel.module.options["block_dim"]
 
-    # ``Module.load(device, block_dim)`` mutates ``module.options["block_dim"]``
-    # as a side effect.  Snapshot and restore so this query helper has no
-    # observable effect on subsequent launches that don't pass ``block_dim``.
-    prior_block_dim = kernel.module.options["block_dim"]
     try:
-        try:
-            module_exec = kernel.module.load(device, block_dim)
-            if module_exec is None:
-                return 1
+        module_exec = kernel.module.load(device, block_dim)
+        if module_exec is None:
+            return 1
 
-            hooks = module_exec.get_kernel_hooks(kernel)
-            forward_handle = hooks.forward
-            if not forward_handle:
-                return 1
+        hooks = module_exec.get_kernel_hooks(kernel)
+        forward_handle = hooks.forward
+        if not forward_handle:
+            return 1
 
-            return int(
-                runtime.core.wp_cuda_get_max_cluster_dim(
-                    device.context, forward_handle, int(block_dim), int(dynamic_smem_bytes)
-                )
+        return int(
+            runtime.core.wp_cuda_get_max_cluster_dim(
+                device.context, forward_handle, int(block_dim), int(dynamic_smem_bytes)
             )
-        finally:
-            kernel.module.options["block_dim"] = prior_block_dim
+        )
     except Exception as error:
         _clear_error_frames(error)
         # this frame is still running, so drop its own reference

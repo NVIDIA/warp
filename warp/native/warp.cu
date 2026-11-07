@@ -5781,10 +5781,10 @@ int wp_cuda_get_max_cluster_dim(void* context, void* kernel, int block_dim, int 
     // Descending probe via cuOccupancyMaxActiveClusters: return the largest
     // cluster_dim the driver reports as launchable. For plain kernels this
     // reveals the device's true cluster limit (8 on integrated Hopper+ SoCs
-    // like Thor sm_101 and DGX Spark sm_121, up to 16 on Hopper/Blackwell
-    // desktop parts). For kernels with __cluster_dims__ baked in, the driver
-    // only accepts the declared size, so we get the declared value back (or
-    // 1 if the device can't support it).
+    // like Thor sm_110, formerly sm_101, and DGX Spark sm_121, up to 16 on
+    // discrete Hopper/Blackwell GPUs). For kernels with __cluster_dims__
+    // baked in, the driver only accepts the declared size, so we get the
+    // declared value back (or 1 if the device can't support it).
     CUlaunchAttribute cluster_attr = {};
     cluster_attr.id = CU_LAUNCH_ATTRIBUTE_CLUSTER_DIMENSION;
     cluster_attr.value.clusterDim.y = 1;
