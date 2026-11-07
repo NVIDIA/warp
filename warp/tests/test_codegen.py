@@ -2671,6 +2671,7 @@ class TestCodeGen(unittest.TestCase):
 
         # The view no longer matches the shared tree's derived caches.
         self.assertIsNone(adj._shared_source)
+        self.assertIsNot(adj.syntax(), shared.syntax)
 
     def test_substitute_nodes_one_frame_per_level(self):
         """Copy a deep path to a replacement with one stack frame per tree level."""
@@ -2742,6 +2743,7 @@ class TestCodeGen(unittest.TestCase):
         self.assertIsNotNone(k1.adj._shared_source)
         self.assertIs(k1.adj._shared_source, k2.adj._shared_source)
         self.assertIs(k1.adj.tree, k2.adj.tree)
+        self.assertIs(k1.adj.syntax(), k2.adj.syntax())
         self.assertNotEqual(k1.module.name, k2.module.name)
         self.assertIs(make(1.0), k1)
 

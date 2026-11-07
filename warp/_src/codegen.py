@@ -485,7 +485,7 @@ def iter_ast_nodes_of_types(root: ast.AST, *types: type):
 
 def _uses_tid_call(adj) -> bool:
     """Return whether ``adj`` calls ``wp.tid()`` directly or through an alias."""
-    local_variables = adj.assigned_name_ids()
+    local_variables = adj.syntax().assigned_name_ids
     tid_aliases = resolve_reference_tid_aliases(adj, local_variables)
     callable_arg_values = getattr(adj, "callable_arg_values", None) or {}
     return any(
@@ -1693,7 +1693,7 @@ def resolve_reference_tid_aliases(adj, local_variables) -> frozenset[str]:
 
     # Seed direct ``wp.tid()`` aliases and record local-to-local edges in reverse
     # so resolved sources can propagate to their dependent names.
-    for node in adj.reference_nodes():
+    for node in adj.syntax().reference_nodes:
         if not isinstance(node, ast.Assign):
             continue
 
@@ -1975,10 +1975,42 @@ class _NonUnrolledConstantRange(NamedTuple):
         return f"{iterator} {comparison} {self.start}"
 
 
+class _TreeSyntax:
+    """Syntax-only facts about a function tree: pure functions of the tree, so shareable across adjoints."""
+
+    __slots__ = ("assigned_name_ids", "assignment_call_dims", "assignment_call_name_ids", "reference_nodes")
+
+    def __init__(self, tree):
+        self.reference_nodes = tuple(iter_ast_nodes_of_types(tree, ast.Name, ast.Attribute, ast.Call, ast.Assign))
+        names = set()
+        # Unpacking arity of direct assignment calls, for ``wp.tid()`` dimension inference, and
+        # their bare callee names, so ``get_references()`` only resolves tid aliases when needed.
+        call_dims = {}
+        call_name_ids = set()
+        for node in self.reference_nodes:
+            if not isinstance(node, ast.Assign):
+                continue
+            pending = list(node.targets)
+            while pending:
+                target = pending.pop()
+                if isinstance(target, ast.Name):
+                    names.add(target.id)
+                elif isinstance(target, (ast.Tuple, ast.List)):
+                    pending.extend(target.elts)
+            if isinstance(node.value, ast.Call):
+                target = node.targets[0]
+                call_dims[node.value] = len(target.elts) if isinstance(target, ast.Tuple) else 1
+                if isinstance(node.value.func, ast.Name):
+                    call_name_ids.add(node.value.func.id)
+        self.assigned_name_ids = frozenset(names)
+        self.assignment_call_dims = call_dims
+        self.assignment_call_name_ids = frozenset(call_name_ids)
+
+
 class _SharedFunctionSource:
     """Extraction products shared by every Adjoint built from one code object.
 
-    Source, tree, and reference nodes are pure functions of the code object;
+    Source, tree, and syntax are pure functions of the code object;
     only reference *resolution* is rebind-sensitive and stays per-adjoint.
     ``wp.static`` substitution never mutates this tree: it produces a
     per-adjoint view (see ``replace_static_expressions``). Sharing requires
@@ -1986,15 +2018,13 @@ class _SharedFunctionSource:
     adjoint.
     """
 
-    __slots__ = ("assigned_name_ids", "assignment_call_metadata", "fun_lineno", "reference_nodes", "source", "tree")
+    __slots__ = ("fun_lineno", "source", "syntax", "tree")
 
     def __init__(self, source, fun_lineno, tree):
         self.source = source
         self.fun_lineno = fun_lineno
         self.tree = tree
-        self.reference_nodes = None
-        self.assigned_name_ids = None
-        self.assignment_call_metadata = None
+        self.syntax = None
 
 
 def _shared_source_for_code(code):
@@ -2170,11 +2200,8 @@ class Adjoint:
         # paths do not need to coordinate deterministic internals directly.
         adj.deterministic = DeterministicCodegen(adj)
 
-        # Caches derived from the AST. Reset all three if ``adj.tree`` is ever
-        # mutated after any cache is populated.
-        adj._reference_nodes = None
-        adj._assigned_name_ids = None
-        adj._assignment_call_metadata = None
+        # Derived from ``adj.tree``; reset if the tree is mutated after it is populated.
+        adj._syntax = None
 
     # allocate extra space for a function call that requires its
     # own shared memory space, we treat shared memory as a stack
@@ -7204,94 +7231,28 @@ class Adjoint:
         # return the Python code corresponding to the given AST node
         return ast.get_source_segment(adj.source, node)
 
-    def reference_nodes(adj) -> tuple[ast.AST, ...]:
-        """Return the cached ``Name``/``Attribute``/``Call``/``Assign`` nodes of ``adj.tree``.
+    def syntax(adj) -> _TreeSyntax:
+        """Return the syntax-only facts of ``adj.tree``, walked once and shared per tree.
 
-        Both ``Adjoint.get_references`` (module hashing) and ``Module._find_references``
-        (dependency tracking) walk the kernel AST to find references. They run at different
-        times (hashing versus registration), so they cannot share the resolution of those
-        nodes, but they can share the traversal: the tree is walked once here and the node
-        tuple is reused, each caller resolving from it at its own time.
+        ``Adjoint.get_references`` (module hashing) and ``Module._find_references`` (dependency
+        tracking) share this traversal but resolve its nodes separately, each at its own time:
+        resolving at hash time would miss transitive dependency edges at registration, and
+        resolving at registration would make hashes stale if a referenced global is rebound
+        before the first build.
 
-        Sharing the resolution would be wrong in either direction. Resolving at hash time and
-        reusing the result for dependency tracking would miss the dependency edges of modules
-        that are only reached transitively, so reloading such a module would not unload its
-        dependents. Resolving at registration time and reusing the result for hashing would
-        make a regular kernel's hash stale if a referenced global or constant is rebound
-        before the kernel is first built.
-
-        This cache assumes ``adj.tree`` is structurally final before the first call; adjoints
-        whose tree is mutated (transformers) never share it, and ``wp.static`` substitution
-        swaps in a per-adjoint view and detaches the adjoint from the shared entry. Any new
-        code that mutates ``adj.tree`` afterwards must reset ``adj._reference_nodes`` -- and
-        ``adj._shared_source.reference_nodes``, ``assigned_name_ids``, and
-        ``assignment_call_metadata`` when set, which invalidates every adjoint sharing the tree
-        -- or better, swap in a fresh tree like the static view does.
+        Assumes ``adj.tree`` is structurally final before the first call. Adjoints whose tree is
+        transformed never share it, and ``wp.static`` substitution gives the adjoint its own
+        tree view and detaches it from the shared entry.
         """
-        if adj._reference_nodes is None:
+        if adj._syntax is None:
             shared = adj._shared_source
-            if shared is not None and shared.reference_nodes is not None:
-                adj._reference_nodes = shared.reference_nodes
+            if shared is None:
+                adj._syntax = _TreeSyntax(adj.tree)
             else:
-                adj._reference_nodes = tuple(
-                    iter_ast_nodes_of_types(adj.tree, ast.Name, ast.Attribute, ast.Call, ast.Assign)
-                )
-                if shared is not None:
-                    shared.reference_nodes = adj._reference_nodes
-        return adj._reference_nodes
-
-    def assigned_name_ids(adj) -> frozenset[str]:
-        """Return names made local by assignments anywhere in the function."""
-
-        if adj._assigned_name_ids is None:
-            shared = adj._shared_source
-            if shared is not None and shared.assigned_name_ids is not None:
-                adj._assigned_name_ids = shared.assigned_name_ids
-            else:
-                names = set()
-                for node in adj.reference_nodes():
-                    if not isinstance(node, ast.Assign):
-                        continue
-                    pending = list(node.targets)
-                    while pending:
-                        target = pending.pop()
-                        if isinstance(target, ast.Name):
-                            names.add(target.id)
-                        elif isinstance(target, (ast.Tuple, ast.List)):
-                            pending.extend(target.elts)
-                adj._assigned_name_ids = frozenset(names)
-                if shared is not None:
-                    shared.assigned_name_ids = adj._assigned_name_ids
-        return adj._assigned_name_ids
-
-    def assignment_call_metadata(adj) -> tuple[dict[ast.Call, int], frozenset[str]]:
-        """Return direct assignment calls by unpacking arity and their bare callee names."""
-
-        if adj._assignment_call_metadata is None:
-            # Shared-source adjoints use identical AST nodes, so ``ast.Call`` keys
-            # remain valid when this metadata is reused.
-            shared = adj._shared_source
-            if shared is not None and shared.assignment_call_metadata is not None:
-                adj._assignment_call_metadata = shared.assignment_call_metadata
-            else:
-                # Record unpacking arity for ``wp.tid()`` dimension inference. Bare
-                # callee names let ``get_references()`` skip alias resolution unless
-                # a locally assigned name is actually called on an assignment RHS.
-                call_dims = {}
-                call_name_ids = set()
-                for node in adj.reference_nodes():
-                    if not isinstance(node, ast.Assign) or not isinstance(node.value, ast.Call):
-                        continue
-
-                    target = node.targets[0]
-                    call_dims[node.value] = len(target.elts) if isinstance(target, ast.Tuple) else 1
-                    if isinstance(node.value.func, ast.Name):
-                        call_name_ids.add(node.value.func.id)
-
-                adj._assignment_call_metadata = (call_dims, frozenset(call_name_ids))
-                if shared is not None:
-                    shared.assignment_call_metadata = adj._assignment_call_metadata
-        return adj._assignment_call_metadata
+                if shared.syntax is None:
+                    shared.syntax = _TreeSyntax(shared.tree)
+                adj._syntax = shared.syntax
+        return adj._syntax
 
     def get_references(adj) -> tuple[dict[str, Any], dict[Any, Any], dict[warp._src.context.Function, Any]]:
         """Traverse ``adj.tree`` for referenced constants, types, and user-defined functions.
@@ -7303,24 +7264,25 @@ class Adjoint:
         code generation records exact reachability before an oversized launch is rejected.
         """
 
-        # ``reference_nodes()`` is breadth-first, not source-ordered. Collect locals
+        # ``syntax.reference_nodes`` is breadth-first, not source-ordered. Collect locals
         # up front to match Python's function-scope semantics and avoid resolving a
         # local call target as an unrelated global before visiting its assignment.
-        local_variables = adj.assigned_name_ids()
+        syntax = adj.syntax()
+        local_variables = syntax.assigned_name_ids
 
         constants: dict[str, Any] = {}
         types: dict[Struct | type, Any] = {}
         functions: dict[warp._src.context.Function, Any] = {}
         max_dim = 0  # thread-grid dimension, inferred from wp.tid() unpack arity
-        assignment_call_dims, assignment_call_name_ids = adj.assignment_call_metadata()
-        if local_variables.isdisjoint(assignment_call_name_ids):
+        assignment_call_dims = syntax.assignment_call_dims
+        if local_variables.isdisjoint(syntax.assignment_call_name_ids):
             tid_aliases = frozenset()
         else:
             tid_aliases = resolve_reference_tid_aliases(adj, local_variables)
         tid_func = warp._src.context.builtin_functions["tid"]
         callable_arg_values = getattr(adj, "callable_arg_values", None) or {}
-        # Shared single traversal (see reference_nodes()); resolved here at hash time.
-        for node in adj.reference_nodes():
+        # Shared single traversal (see syntax()); resolved here at hash time.
+        for node in syntax.reference_nodes:
             if isinstance(node, ast.Name) and node.id not in local_variables:
                 # look up in closure/global variables
                 obj = adj.resolve_external_reference(node.id)

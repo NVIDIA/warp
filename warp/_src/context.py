@@ -4511,12 +4511,13 @@ class Module:
                 ref.dependents.add(self)
 
         callable_arg_values = getattr(adj, "callable_arg_values", None) or {}
-        local_variables = adj.assigned_name_ids()
+        syntax = adj.syntax()
+        local_variables = syntax.assigned_name_ids
 
         # scan for function calls and kernel-local function bindings. ``reference_nodes`` shares
         # a single AST traversal with Adjoint.get_references; it also yields Name/Attribute
         # nodes, which this dependency scan ignores.
-        for node in adj.reference_nodes():
+        for node in syntax.reference_nodes:
             if type(node) is ast.Call:
                 if isinstance(node.func, ast.Name) and node.func.id in local_variables:
                     continue
