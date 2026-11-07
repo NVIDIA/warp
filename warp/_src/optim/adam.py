@@ -155,6 +155,8 @@ class Adam:
         """
         if self.params is None:
             raise RuntimeError("Adam parameters must be set before calling step(), got None")
+        if len(grad) != len(self.params):
+            raise ValueError(f"Adam gradient count must match parameter count {len(self.params)}, got {len(grad)}")
         for i in range(len(self.params)):
             Adam.step_detail(
                 grad[i], self.m[i], self.v[i], self.lr, self.beta1, self.beta2, self.t, self.eps, self.params[i]
