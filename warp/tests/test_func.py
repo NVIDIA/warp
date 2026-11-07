@@ -215,6 +215,18 @@ def test_user_func_return_multiple_values():
 
 
 @wp.func
+def user_func_unpack_tuple_arg(values: tuple[int, float]) -> float:
+    a, b = values
+    return float(a) + b
+
+
+@wp.kernel
+def test_user_func_unpack_tuple_arg():
+    val = user_func_unpack_tuple_arg((123, 234.0))
+    wp.expect_eq(val, 357.0)
+
+
+@wp.func
 def user_func_overload(
     b: wp.array[Any],
     i: int,
@@ -670,6 +682,22 @@ def f(x: float):
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
+    def test_user_func_unpack_tuple_arg_mismatch(self):
+        @wp.func
+        def unpack_mismatch(values: tuple[int, int]):
+            a, b, c = values
+            return a + b + c
+
+        @wp.kernel(module="unique")
+        def test_kernel():
+            unpack_mismatch((1, 2))
+
+        with self.assertRaisesRegex(
+            wp.WarpCodegenError,
+            r"Invalid number of values to unpack \(expected 3, got 2\)",
+        ):
+            wp.launch(test_kernel, dim=1, device="cpu")
+
 
 devices = get_test_devices()
 
@@ -685,6 +713,13 @@ add_kernel_test(
     TestFunc,
     kernel=test_user_func_return_multiple_values,
     name="test_user_func_return_multiple_values",
+    dim=1,
+    devices=devices,
+)
+add_kernel_test(
+    TestFunc,
+    kernel=test_user_func_unpack_tuple_arg,
+    name="test_user_func_unpack_tuple_arg",
     dim=1,
     devices=devices,
 )
