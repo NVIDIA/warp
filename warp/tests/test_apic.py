@@ -1714,7 +1714,12 @@ def test_save_load_block_dependent_static_kernel(test, device):
 
 
 def test_cuda_source_fallback_and_guest_cache(test, device):
-    """Compile a rejected packaged binary from source, then reuse its guest cache."""
+    """Compile a rejected packaged binary from source, then reuse its guest cache.
+
+    The guest is compiled to PTX only when NVRTC cannot target the exact device
+    architecture. In that case, the published ``.ptx`` guest cache must not
+    contain NUL bytes, like the other PTX files Warp writes.
+    """
     n = 64
     a = wp.array(np.arange(n, dtype=np.float32), device=device)
     b = wp.zeros(n, dtype=float, device=device)
@@ -1753,6 +1758,9 @@ def test_cuda_source_fallback_and_guest_cache(test, device):
 
         guest_cache = [name for name in os.listdir(modules_dir) if name.startswith("apic_guest_")]
         test.assertEqual(len(guest_cache), 1)
+        if guest_cache[0].endswith(".ptx"):
+            with open(os.path.join(modules_dir, guest_cache[0]), "rb") as guest_file:
+                test.assertEqual(guest_file.read().count(0), 0, f"{guest_cache[0]} contains NUL bytes")
 
         # Cache lookup precedes source access. Removing the source proves the
         # second load consumes the persistent compiled output without NVRTC.

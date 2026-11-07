@@ -4598,6 +4598,14 @@ bool write_file(const char* data, size_t size, std::string filename, const char*
     }
 }
 
+// NVRTC and nvJitLink count the PTX string's NUL terminator in its size.
+// Leaving it out keeps the PTX files Warp writes plain text; the module
+// loaders append their own terminator.
+static size_t ptx_size_without_nul(const char* ptx, size_t size)
+{
+    return (size > 0 && ptx[size - 1] == '\0') ? size - 1 : size;
+}
+
 #if WP_ENABLE_MATHDX
 bool check_nvjitlink_result(nvJitLinkHandle handle, nvJitLinkResult result, const char* file, int line)
 {
@@ -5003,7 +5011,8 @@ size_t wp_cuda_compile_program(
 #endif
             }
 
-            if (!write_file(output.data(), output.size(), output_path, output_mode)) {
+            const size_t write_size = use_ptx ? ptx_size_without_nul(output.data(), output.size()) : output.size();
+            if (!write_file(output.data(), write_size, output_path, output_mode)) {
                 res = nvrtcResult(-1);
             }
         }
@@ -5545,6 +5554,10 @@ static bool apic_cuda_compile_program_to_memory(
         output.clear();
         diagnostic = std::string("NVRTC output: ") + nvrtcGetErrorString(result);
         return false;
+    }
+    if (use_ptx) {
+        // The output is published to the guest cache as a .ptx file.
+        output.resize(ptx_size_without_nul(reinterpret_cast<const char*>(output.data()), output.size()));
     }
     return true;
 }
