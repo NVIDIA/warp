@@ -116,6 +116,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.cuda.test_texture import TestTexture
     from warp.tests.cuda.test_texture_compiler import TestTextureCompiler
     from warp.tests.cuda.test_unified_memory import TestUnifiedMemory
+    from warp.tests.cuda.test_utils_device import TestUtilsDevice
     from warp.tests.deterministic.test_deterministic_backward import TestDeterministicBackward
     from warp.tests.deterministic.test_deterministic_counter import TestDeterministicCounter
     from warp.tests.deterministic.test_deterministic_graph_capture import TestDeterministicGraph
@@ -521,6 +522,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestUniqueModule,
         TestUnifiedMemory,
         TestUtils,
+        TestUtilsDevice,
         TestVec,
         TestVecConstructors,
         TestVecLite,

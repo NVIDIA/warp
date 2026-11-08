@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import cProfile
 import gc
 import hashlib
@@ -61,6 +62,18 @@ def quat_between_vectors(a: wp.vec3, b: wp.vec3) -> wp.quat:
     d = wp.dot(a, b)
     q = wp.quat(c[0], c[1], c[2], 1.0 + d)
     return wp.normalize(q)
+
+
+_NO_SCOPE = contextlib.nullcontext()
+
+
+def _cuda_device_scope(device) -> contextlib.AbstractContextManager:
+    """Make a CUDA ``device``'s context current for a native call; do nothing for the CPU.
+
+    The native CUDA helpers run on the current context's stream and allocate there,
+    so a call on another device's arrays must make that device's context current first.
+    """
+    return device.context_guard if device.is_cuda else _NO_SCOPE
 
 
 def array_scan(in_array: wp.array, out_array: wp.array, inclusive: bool = True) -> None:
@@ -156,7 +169,8 @@ def array_scan(in_array: wp.array, out_array: wp.array, inclusive: bool = True) 
         else:
             raise RuntimeError(f"Unsupported data type: {type_repr(in_array.dtype)}")
 
-    status = native_func(in_array.ptr, out_array.ptr, in_array.size, in_stride, out_stride, type_length, inclusive)
+    with _cuda_device_scope(in_array.device):
+        status = native_func(in_array.ptr, out_array.ptr, in_array.size, in_stride, out_stride, type_length, inclusive)
 
     # Only the CUDA implementations return a status.
     if in_array.device.is_cuda and not status:
@@ -259,21 +273,23 @@ def radix_sort_pairs(
             )
     elif keys.device.is_cuda:
         if keys.dtype == wp.int32:
-            runtime.core.wp_radix_sort_pairs_int_device(keys.ptr, values.ptr, count, begin_bit, end_bit, value_size)
+            native_func = runtime.core.wp_radix_sort_pairs_int_device
         elif keys.dtype == wp.uint32:
-            runtime.core.wp_radix_sort_pairs_uint_device(keys.ptr, values.ptr, count, begin_bit, end_bit, value_size)
+            native_func = runtime.core.wp_radix_sort_pairs_uint_device
         elif keys.dtype == wp.float32:
-            runtime.core.wp_radix_sort_pairs_float_device(keys.ptr, values.ptr, count, begin_bit, end_bit, value_size)
+            native_func = runtime.core.wp_radix_sort_pairs_float_device
         elif keys.dtype == wp.float64:
-            runtime.core.wp_radix_sort_pairs_double_device(keys.ptr, values.ptr, count, begin_bit, end_bit, value_size)
+            native_func = runtime.core.wp_radix_sort_pairs_double_device
         elif keys.dtype == wp.int64:
-            runtime.core.wp_radix_sort_pairs_int64_device(keys.ptr, values.ptr, count, begin_bit, end_bit, value_size)
+            native_func = runtime.core.wp_radix_sort_pairs_int64_device
         elif keys.dtype == wp.uint64:
-            runtime.core.wp_radix_sort_pairs_uint64_device(keys.ptr, values.ptr, count, begin_bit, end_bit, value_size)
+            native_func = runtime.core.wp_radix_sort_pairs_uint64_device
         else:
             raise RuntimeError(
                 f"Unsupported keys and values data types: {type_repr(keys.dtype)}, {type_repr(values.dtype)}"
             )
+        with keys.device.context_guard:
+            native_func(keys.ptr, values.ptr, count, begin_bit, end_bit, value_size)
 
 
 def segmented_sort_pairs(
@@ -453,25 +469,20 @@ def segmented_sort_pairs(
             raise ValueError(runtime.get_error_string())
     elif keys.device.is_cuda:
         if keys.dtype == wp.int32 and values.dtype == wp.int32:
-            runtime.core.wp_segmented_sort_pairs_int_device(
-                keys.ptr,
-                values.ptr,
-                count,
-                segment_start_indices_ptr,
-                segment_end_indices_ptr,
-                num_segments,
-            )
+            native_func = runtime.core.wp_segmented_sort_pairs_int_device
         elif keys.dtype == wp.float32 and values.dtype == wp.int32:
-            runtime.core.wp_segmented_sort_pairs_float_device(
-                keys.ptr,
-                values.ptr,
-                count,
-                segment_start_indices_ptr,
-                segment_end_indices_ptr,
-                num_segments,
-            )
+            native_func = runtime.core.wp_segmented_sort_pairs_float_device
         else:
             raise RuntimeError(f"Unsupported data type: {type_repr(keys.dtype)}")
+        with keys.device.context_guard:
+            native_func(
+                keys.ptr,
+                values.ptr,
+                count,
+                segment_start_indices_ptr,
+                segment_end_indices_ptr,
+                num_segments,
+            )
 
 
 def runlength_encode(
@@ -572,9 +583,10 @@ def runlength_encode(
             raise RuntimeError(f"Unsupported data type: {type_repr(values.dtype)}")
     elif values.device.is_cuda:
         if values.dtype == wp.int32:
-            runtime.core.wp_runlength_encode_int_device(
-                values.ptr, run_values.ptr, run_lengths.ptr, run_count.ptr, value_count
-            )
+            with values.device.context_guard:
+                runtime.core.wp_runlength_encode_int_device(
+                    values.ptr, run_values.ptr, run_lengths.ptr, run_count.ptr, value_count
+                )
         else:
             raise RuntimeError(f"Unsupported data type: {type_repr(values.dtype)}")
 
@@ -776,24 +788,26 @@ def array_sum(
         if requires_copy:
             values = values.contiguous()
         stride = wp._src.types.type_size_in_bytes(values.dtype)
-        native_func(values.ptr, out.ptr, value_count, stride, type_size)
+        with _cuda_device_scope(values.device):
+            native_func(values.ptr, out.ptr, value_count, stride, type_size)
 
         if host_return:
             return out.numpy()[0]
         return out
 
     stride = values.strides[axis]
-    for idx in np.ndindex(output_shape):
-        out_offset = sum(i * s for i, s in zip(idx, out.strides, strict=True))
-        val_offset = sum(i * s for i, s in zip(idx, values.strides, strict=True))
+    with _cuda_device_scope(values.device):
+        for idx in np.ndindex(output_shape):
+            out_offset = sum(i * s for i, s in zip(idx, out.strides, strict=True))
+            val_offset = sum(i * s for i, s in zip(idx, values.strides, strict=True))
 
-        native_func(
-            values.ptr + val_offset,
-            out.ptr + out_offset,
-            value_count,
-            stride,
-            type_size,
-        )
+            native_func(
+                values.ptr + val_offset,
+                out.ptr + out_offset,
+                value_count,
+                stride,
+                type_size,
+            )
 
     return out
 
@@ -950,7 +964,8 @@ def array_inner(
             b = b.contiguous()
         stride_a = wp._src.types.type_size_in_bytes(a.dtype)
         stride_b = wp._src.types.type_size_in_bytes(b.dtype)
-        native_func(a.ptr, b.ptr, out.ptr, count, stride_a, stride_b, type_size)
+        with _cuda_device_scope(a.device):
+            native_func(a.ptr, b.ptr, out.ptr, count, stride_a, stride_b, type_size)
 
         if host_return:
             return out.numpy()[0]
@@ -959,20 +974,21 @@ def array_inner(
     stride_a = a.strides[axis]
     stride_b = b.strides[axis]
 
-    for idx in np.ndindex(output_shape):
-        out_offset = sum(i * s for i, s in zip(idx, out.strides, strict=True))
-        a_offset = sum(i * s for i, s in zip(idx, a.strides, strict=True))
-        b_offset = sum(i * s for i, s in zip(idx, b.strides, strict=True))
+    with _cuda_device_scope(a.device):
+        for idx in np.ndindex(output_shape):
+            out_offset = sum(i * s for i, s in zip(idx, out.strides, strict=True))
+            a_offset = sum(i * s for i, s in zip(idx, a.strides, strict=True))
+            b_offset = sum(i * s for i, s in zip(idx, b.strides, strict=True))
 
-        native_func(
-            a.ptr + a_offset,
-            b.ptr + b_offset,
-            out.ptr + out_offset,
-            count,
-            stride_a,
-            stride_b,
-            type_size,
-        )
+            native_func(
+                a.ptr + a_offset,
+                b.ptr + b_offset,
+                out.ptr + out_offset,
+                count,
+                stride_a,
+                stride_b,
+                type_size,
+            )
 
     return out
 
