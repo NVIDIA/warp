@@ -44,7 +44,7 @@ def norm_l1(v: Any) -> float:
     Returns:
         float: The L1 norm of the vector.
     """
-    n = float(0.0)
+    n = type(v[0])(0.0)
     for i in range(len(v)):
         n += wp.abs(v[i])
     return n
@@ -66,7 +66,7 @@ def norm_l2(v: Any) -> float:
 
 
 @wp.func
-def norm_huber(v: Any, delta: float = 1.0) -> float:
+def norm_huber(v: Any, delta: Any = 1.0) -> float:
     """Compute the Huber norm of a vector v with a given delta.
 
     .. math::
@@ -82,14 +82,15 @@ def norm_huber(v: Any, delta: float = 1.0) -> float:
     Returns:
         float: The Huber norm of the vector.
     """
+    delta_t = type(v[0])(delta)
     a = wp.dot(v, v)
-    if a <= delta * delta:
-        return 0.5 * a
-    return delta * (wp.sqrt(a) - 0.5 * delta)
+    if a <= delta_t * delta_t:
+        return type(v[0])(0.5) * a
+    return delta_t * (wp.sqrt(a) - type(v[0])(0.5) * delta_t)
 
 
 @wp.func
-def norm_pseudo_huber(v: Any, delta: float = 1.0) -> float:
+def norm_pseudo_huber(v: Any, delta: Any = 1.0) -> float:
     """Compute the "pseudo" Huber norm of a vector v with a given delta.
 
     .. math::
@@ -105,12 +106,13 @@ def norm_pseudo_huber(v: Any, delta: float = 1.0) -> float:
     Returns:
         float: The Huber norm of the vector.
     """
+    delta_t = type(v[0])(delta)
     a = wp.dot(v, v)
-    return delta * wp.sqrt(1.0 + a / (delta * delta))
+    return (delta_t / wp.abs(delta_t)) * wp.sqrt(a + delta_t * delta_t)
 
 
 @wp.func
-def smooth_normalize(v: Any, delta: float = 1.0) -> Any:
+def smooth_normalize(v: Any, delta: Any = 1.0) -> Any:
     """Normalize a vector using the pseudo-Huber norm.
 
     See :func:`norm_pseudo_huber`.

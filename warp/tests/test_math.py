@@ -287,6 +287,84 @@ def test_vec_norm(test, device):
 
 
 @wp.kernel
+def test_vec_norm_dtype_kernel(vs: wp.array[Any], delta: wp.array[Any], out: wp.array2d[Any]):
+    tid = wp.tid()
+    v = vs[tid]
+    delta_value = delta[0]
+    out[tid, 0] = wp.norm_l1(v)
+    out[tid, 1] = wp.norm_l2(v)
+    out[tid, 2] = wp.norm_huber(v, delta_value)
+    out[tid, 3] = wp.norm_pseudo_huber(v, delta_value)
+    normalized = wp.smooth_normalize(v, delta_value)
+    out[tid, 4] = normalized[0]
+    out[tid, 5] = normalized[1]
+    out[tid, 6] = normalized[2]
+
+
+wp.overload(
+    test_vec_norm_dtype_kernel,
+    [wp.array[wp.vec3h], wp.array[wp.float16], wp.array2d[wp.float16]],
+)
+wp.overload(
+    test_vec_norm_dtype_kernel,
+    [wp.array[wp.vec3f], wp.array[wp.float32], wp.array2d[wp.float32]],
+)
+wp.overload(
+    test_vec_norm_dtype_kernel,
+    [wp.array[wp.vec3d], wp.array[wp.float64], wp.array2d[wp.float64]],
+)
+
+
+def test_vec_norm_dtypes(test, device):
+    vectors = [
+        (-2.0, -1.0, -3.0),
+        (2.0, 1.0, 3.0),
+        (0.0, 0.0, 0.0),
+    ]
+    for scalar_dtype, np_dtype, tol in (
+        (wp.float16, np.float16, 2e-3),
+        (wp.float32, np.float32, 1e-6),
+        (wp.float64, np.float64, 1e-12),
+    ):
+        vector_dtype = wp.types.vector(3, scalar_dtype)
+        xs = wp.array(np.asarray(vectors, dtype=np_dtype), dtype=vector_dtype, device=device)
+        out = wp.empty((len(vectors), 7), dtype=scalar_dtype, device=device)
+        delta = wp.array([0.5], dtype=scalar_dtype, device=device)
+
+        wp.launch(test_vec_norm_dtype_kernel, dim=len(vectors), inputs=[xs, delta], outputs=[out], device=device)
+
+        for i, vector in enumerate(vectors):
+            v = np.asarray(vector, dtype=np.float64)
+            length = np.linalg.norm(v)
+            huber = 0.5 * length**2 if length <= 0.5 else 0.5 * (length - 0.25)
+            pseudo_huber = np.sqrt(0.25 + length**2)
+            normalized = v if length == 0.0 else v / pseudo_huber
+            expected = np.concatenate(
+                (
+                    np.array([np.linalg.norm(v, ord=1), length, huber, pseudo_huber]),
+                    normalized,
+                )
+            )
+            actual = out.numpy()[i]
+            if actual.dtype == np.uint16:
+                actual = actual.view(np.float16)
+            np.testing.assert_allclose(actual.astype(np.float64), expected, rtol=tol, atol=tol)
+
+    xs = wp.array(np.asarray([[4.0, 0.0, 0.0]], dtype=np.float16), dtype=wp.vec3h, device=device)
+    delta = wp.array([0.01], dtype=wp.float16, device=device)
+    out = wp.empty((1, 7), dtype=wp.float16, device=device)
+    wp.launch(
+        test_vec_norm_dtype_kernel,
+        dim=1,
+        inputs=[xs, delta],
+        outputs=[out],
+        device=device,
+    )
+    normalized = out.numpy()[0, 4:].view(np.float16)
+    np.testing.assert_allclose(float(np.linalg.norm(normalized)), 1.0, rtol=2e-3, atol=2e-3)
+
+
+@wp.kernel
 def smooth_normalize_kernel(out: wp.array[float]):
     zero = wp.vec3(0.0, 0.0, 0.0)
     zero_n = wp.smooth_normalize(zero)
@@ -557,6 +635,29 @@ class TestMath(unittest.TestCase):
         np.testing.assert_allclose(wp.erfinv(2.0**-70), 7.5066340460236673721e-22, rtol=1e-6)
         np.testing.assert_allclose(float(wp.erfinv(wp.float64(2.0**-70))), 7.5066340460236673721e-22, rtol=1e-14)
 
+    def test_vec_norm_dtypes_python_scope(self):
+        """Verify the vector norm helpers also accept Python-scope vector values."""
+        for vector_dtype, np_dtype, tol in (
+            (wp.vec3h, np.float16, 2e-3),
+            (wp.vec3f, np.float32, 1e-6),
+            (wp.vec3d, np.float64, 1e-12),
+        ):
+            v = vector_dtype(-2.0, -1.0, -3.0)
+            values = np.asarray([-2.0, -1.0, -3.0], dtype=np.float64)
+            length = np.linalg.norm(values)
+            delta = 0.5
+            expected_huber = 0.5 * length**2 if length <= delta else delta * (length - 0.5 * delta)
+            expected_pseudo_huber = np.sqrt(delta**2 + length**2)
+
+            np.testing.assert_allclose(float(wp.norm_l1(v)), np.linalg.norm(values, ord=1), rtol=tol, atol=tol)
+            np.testing.assert_allclose(float(wp.norm_huber(v, delta)), expected_huber, rtol=tol, atol=tol)
+            np.testing.assert_allclose(float(wp.norm_pseudo_huber(v, delta)), expected_pseudo_huber, rtol=tol, atol=tol)
+            normalized = np.asarray(list(wp.smooth_normalize(v, delta)), dtype=np_dtype)
+            np.testing.assert_allclose(normalized / values, 1.0 / expected_pseudo_huber, rtol=tol, atol=tol)
+
+        small = wp.smooth_normalize(wp.vec3h(4.0, 0.0, 0.0), 0.01)
+        np.testing.assert_allclose(np.linalg.norm(np.asarray(list(small), dtype=np.float16)), 1.0, rtol=2e-3)
+
     def test_vec_type(self):
         vec5 = wp.types.vector(length=5, dtype=float)
         v = vec5()
@@ -625,6 +726,7 @@ add_function_test(TestMath, "test_erfcinv_extreme_args", test_erfcinv_extreme_ar
 add_function_test(TestMath, "test_erfcinv_erfc_roundtrip", test_erfcinv_erfc_roundtrip, devices=devices)
 add_function_test(TestMath, "test_erfinv_extreme_args", test_erfinv_extreme_args, devices=devices)
 add_function_test(TestMath, "test_vec_norm", test_vec_norm, devices=devices)
+add_function_test(TestMath, "test_vec_norm_dtypes", test_vec_norm_dtypes, devices=devices)
 add_function_test(TestMath, "test_smooth_normalize", test_smooth_normalize, devices=devices)
 add_function_test(TestMath, "test_quat_helpers", quat_helpers, devices=devices)
 add_function_test(TestMath, "test_quat_twist_angles", test_quat_twist_angles, devices=devices)
