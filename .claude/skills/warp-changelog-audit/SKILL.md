@@ -39,7 +39,8 @@ approved state, including on a release cleanup branch.
 - Edit fragment files before release finalization, not `CHANGELOG.md`.
 - After the final build, edit only the new generated release section and the
   comparison-link block. This release-only normalization is where impact
-  sorting and line wrapping happen.
+  sorting happens. Towncrier wraps the build at 120 columns; every later
+  edit to the section must keep that layout (Phase 6, step 3).
 - Treat the tagged release section as authoritative during post-release sync.
   Never reconstruct its order from fragments or Towncrier's default ordering.
 - Delete shipped fragments only when the release build commit proves which
@@ -82,7 +83,8 @@ Read these references when their phases begin:
    rg --files changelog
    ```
 
-   Exclude `changelog/README.md`. A fragment path must match:
+   Exclude `changelog/README.md` and the Towncrier template
+   `changelog/template.md`. A fragment path must match:
 
    ```text
    changelog/(<digits>|+<readable-slug>).(added|removed|deprecated|changed|fixed|documentation)(.<counter>).md
@@ -92,7 +94,7 @@ Read these references when their phases begin:
    fragment state being audited:
 
    ```bash
-   uvx --from towncrier==25.8.0 towncrier build --draft \
+   uvx --from towncrier==26.9.0 towncrier build --draft \
      --version <X.Y.Z> --date <YYYY-MM-DD>
    ```
 
@@ -306,21 +308,27 @@ Require an explicit release date. Do not substitute a guessed date or
    a temporary directory. Run the final Towncrier build there:
 
    ```bash
-   uvx --from towncrier==25.8.0 towncrier build --yes \
+   uvx --from towncrier==26.9.0 towncrier build --yes \
      --version <X.Y.Z> --date <YYYY-MM-DD>
    ```
 
 2. Read `references/sorting-rubric.md`. In the generated `## [X.Y.Z]`
    section, preserve canonical subsection order and sort entries high to low
    impact within each subsection. Use topic clustering only as a tie-breaker.
-3. Wrap the generated section to at most 120 columns. Towncrier's generated
-   issue links stay at each entry's end.
+3. Towncrier wraps the generated section at 120 columns and places issue
+   links inside each entry's final period. It breaks lines at any space, so
+   check that no inline code or Markdown link is split across lines. Keep
+   this layout through every later edit to the section, in this phase and
+   in generated-release review: refill each entry whose text changes to at
+   most 120 columns with a two-space continuation indent, without short
+   lines inside the entry, breaks inside inline code or links, or issue
+   links moved out of the final period.
 4. Add `[X.Y.Z]` to the comparison-link block and rotate `[Unreleased]` to
    compare `vX.Y.Z...HEAD`. Do not edit older release sections.
 5. Show the exact simulated diff: generated section, sorted order, consumed
    fragment deletions, and comparison links. Wait for explicit confirmation.
 6. Run the same build in the actual release worktree and apply the reviewed
-   ordering, wrapping, and link updates. Compare the actual diff with the
+   ordering, edits, and link updates. Compare the actual diff with the
    simulation; stop if they differ unexpectedly.
 7. Re-run a draft. It must report no pending fragments that were part of this
    release. Fragments intentionally excluded from the release must remain.

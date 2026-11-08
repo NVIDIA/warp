@@ -237,7 +237,8 @@ start_string = "<!-- towncrier release notes start -->\n"
 title_format = "## [{version}] - {project_date}"
 issue_format = "[GH-{issue}](https://github.com/NVIDIA/warp/issues/{issue})"
 issue_pattern = "\\d+"
-wrap = false
+wrap = 120
+template = "changelog/template.md"
 ignore = []
 
 [[tool.towncrier.type]]

@@ -38,5 +38,5 @@ jobs:
 
       - name: Render changelog draft
         run: >-
-          uvx --from towncrier==25.8.0 towncrier build --draft
+          uvx --from towncrier==26.9.0 towncrier build --draft
           --version Unreleased

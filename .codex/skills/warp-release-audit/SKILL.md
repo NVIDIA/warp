@@ -72,7 +72,7 @@ Generates a markdown audit of the upcoming Warp release for keep/defer decisions
    git ls-tree -r --name-only <head-ref> -- changelog
    ```
 
-   Exclude `changelog/README.md`. Record path, identifier, category, optional counter, and full content. Numeric IDs are GitHub issues; `+slug` IDs are
+   Exclude `changelog/README.md` and the Towncrier template `changelog/template.md`. Record path, identifier, category, optional counter, and full content. Numeric IDs are GitHub issues; `+slug` IDs are
    orphans with no generated issue link.
 
 3. Render those exact fragments with pinned Towncrier in a temporary detached
@@ -83,7 +83,7 @@ Generates a markdown audit of the upcoming Warp release for keep/defer decisions
    git worktree add --detach "$audit_worktree" <head-ref>
    trap 'git worktree remove --force "$audit_worktree" 2>/dev/null || true' EXIT
    draft_status=0
-   (cd "$audit_worktree" && uvx --from towncrier==25.8.0 towncrier build \
+   (cd "$audit_worktree" && uvx --from towncrier==26.9.0 towncrier build \
      --draft --version <target-X.Y.Z> --date "$(date +%F)") || draft_status=$?
    git worktree remove --force "$audit_worktree"
    trap - EXIT

@@ -258,7 +258,7 @@ validate fragments:
         - changelog/**/*
         - pyproject.toml
   script:
-    - uvx --from towncrier==25.8.0 towncrier build --draft --version Unreleased
+    - uvx --from towncrier==26.9.0 towncrier build --draft --version Unreleased
 
 type-check stubs:
   stage: quality

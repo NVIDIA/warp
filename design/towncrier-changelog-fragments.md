@@ -63,11 +63,18 @@ changelog:
 Numeric identifiers use an `issue_pattern` that accepts digits only. The
 `issue_format` points to `https://github.com/NVIDIA/warp/issues/{issue}`.
 Towncrier's `ignore` list is explicitly empty so a draft build reports malformed
-fragment names instead of silently skipping them. `wrap` is disabled to avoid
-rewrapping contributor prose.
+fragment names instead of silently skipping them. `wrap = 120` wraps rendered
+entries at 120 columns, the width of earlier release sections.
 
-The built-in Markdown rendering is enough for Warp's changelog format, so there
-is no custom Jinja template. CI and maintainer commands use Towncrier 25.8.0
+`changelog/template.md` replaces Towncrier's default Markdown template so that
+issue links land inside an entry's final period, as in `Fix X (GH-123).`,
+instead of after it. It also joins a one-paragraph entry into a single line
+before Towncrier wraps it, so the wrap refills the entry instead of keeping
+the fragment's line breaks. Entries with lists, code blocks, quotes, or
+tables keep their line breaks, and their issue links go on a separate line.
+The file keeps the `.md` extension because Towncrier
+picks Markdown or reStructuredText output from the template's extension.
+CI and maintainer commands use Towncrier 26.9.0
 through `uvx`; Towncrier does not become a project dependency.
 
 ### Fragment names and content
@@ -130,7 +137,7 @@ pull request branches. GitLab gets a small job in `.gitlab-ci.yml`. The two jobs
 run the same command:
 
 ```console
-uvx --from towncrier==25.8.0 towncrier build --draft --version Unreleased
+uvx --from towncrier==26.9.0 towncrier build --draft --version Unreleased
 ```
 
 They run only when one of these paths changes:
@@ -180,7 +187,7 @@ For each release, the maintainer works on `release-X.Y`:
 2. Run a draft build with the real version and date.
 3. Edit fragment wording as needed and repeat the draft until the release notes
    read well.
-4. Run `uvx --from towncrier==25.8.0 towncrier build --yes --version X.Y.Z --date YYYY-MM-DD`.
+4. Run `uvx --from towncrier==26.9.0 towncrier build --yes --version X.Y.Z --date YYYY-MM-DD`.
 5. Update the comparison links at the bottom of `CHANGELOG.md`.
 6. Commit the generated release section, consumed fragment deletions, and link
    updates together in a dedicated changelog build commit.
