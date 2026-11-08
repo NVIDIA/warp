@@ -44,7 +44,7 @@ def norm_l1(v: Any) -> float:
     Returns:
         float: The L1 norm of the vector.
     """
-    n = float(0.0)
+    n = v.dtype(0.0)
     for i in range(len(v)):
         n += wp.abs(v[i])
     return n
@@ -82,10 +82,11 @@ def norm_huber(v: Any, delta: float = 1.0) -> float:
     Returns:
         float: The Huber norm of the vector.
     """
+    delta_t = v.dtype(delta)
     a = wp.dot(v, v)
-    if a <= delta * delta:
-        return 0.5 * a
-    return delta * (wp.sqrt(a) - 0.5 * delta)
+    if a <= delta_t * delta_t:
+        return v.dtype(0.5) * a
+    return delta_t * (wp.sqrt(a) - v.dtype(0.5) * delta_t)
 
 
 @wp.func
@@ -105,8 +106,9 @@ def norm_pseudo_huber(v: Any, delta: float = 1.0) -> float:
     Returns:
         float: The Huber norm of the vector.
     """
+    delta_t = v.dtype(delta)
     a = wp.dot(v, v)
-    return delta * wp.sqrt(1.0 + a / (delta * delta))
+    return delta_t * wp.sqrt(v.dtype(1.0) + a / (delta_t * delta_t))
 
 
 @wp.func

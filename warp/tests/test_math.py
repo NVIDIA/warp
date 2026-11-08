@@ -287,6 +287,55 @@ def test_vec_norm(test, device):
 
 
 @wp.kernel
+def test_vec_norm_dtype_kernel(vs: wp.array[Any], out: wp.array2d[Any]):
+    tid = wp.tid()
+    v = vs[tid]
+    out[tid, 0] = wp.norm_l1(v)
+    out[tid, 1] = wp.norm_l2(v)
+    out[tid, 2] = wp.norm_huber(v)
+    out[tid, 3] = wp.norm_pseudo_huber(v)
+    normalized = wp.smooth_normalize(v)
+    out[tid, 4] = normalized[0]
+    out[tid, 5] = normalized[1]
+    out[tid, 6] = normalized[2]
+
+
+def test_vec_norm_dtypes(test, device):
+    vectors = [
+        (-2.0, -1.0, -3.0),
+        (2.0, 1.0, 3.0),
+        (0.0, 0.0, 0.0),
+    ]
+    for scalar_dtype, np_dtype, tol in (
+        (wp.float16, np.float16, 2e-3),
+        (wp.float32, np.float32, 1e-6),
+        (wp.float64, np.float64, 1e-12),
+    ):
+        vector_dtype = wp.types.vector(3, scalar_dtype)
+        xs = wp.array(np.asarray(vectors, dtype=np_dtype), dtype=vector_dtype, device=device)
+        out = wp.empty((len(vectors), 7), dtype=scalar_dtype, device=device)
+
+        wp.launch(test_vec_norm_dtype_kernel, dim=len(vectors), inputs=[xs], outputs=[out], device=device)
+
+        for i, vector in enumerate(vectors):
+            v = np.asarray(vector, dtype=np.float64)
+            length = np.linalg.norm(v)
+            huber = 0.5 * length**2 if length <= 1.0 else length - 0.5
+            pseudo_huber = np.sqrt(1.0 + length**2)
+            normalized = v if length == 0.0 else v / pseudo_huber
+            expected = np.concatenate(
+                (
+                    np.array([np.linalg.norm(v, ord=1), length, huber, pseudo_huber]),
+                    normalized,
+                )
+            )
+            actual = out.numpy()[i]
+            if actual.dtype == np.uint16:
+                actual = actual.view(np.float16)
+            np.testing.assert_allclose(actual.astype(np.float64), expected, rtol=tol, atol=tol)
+
+
+@wp.kernel
 def smooth_normalize_kernel(out: wp.array[float]):
     zero = wp.vec3(0.0, 0.0, 0.0)
     zero_n = wp.smooth_normalize(zero)
@@ -625,6 +674,7 @@ add_function_test(TestMath, "test_erfcinv_extreme_args", test_erfcinv_extreme_ar
 add_function_test(TestMath, "test_erfcinv_erfc_roundtrip", test_erfcinv_erfc_roundtrip, devices=devices)
 add_function_test(TestMath, "test_erfinv_extreme_args", test_erfinv_extreme_args, devices=devices)
 add_function_test(TestMath, "test_vec_norm", test_vec_norm, devices=devices)
+add_function_test(TestMath, "test_vec_norm_dtypes", test_vec_norm_dtypes, devices=devices)
 add_function_test(TestMath, "test_smooth_normalize", test_smooth_normalize, devices=devices)
 add_function_test(TestMath, "test_quat_helpers", quat_helpers, devices=devices)
 add_function_test(TestMath, "test_quat_twist_angles", test_quat_twist_angles, devices=devices)
