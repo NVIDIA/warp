@@ -1,3 +1,5 @@
+<!-- Labels: apply every existing project label whose description fits this MR. Do not create new labels. -->
+
 ## Description
 
 <!-- What does this MR change and why? Be specific:
