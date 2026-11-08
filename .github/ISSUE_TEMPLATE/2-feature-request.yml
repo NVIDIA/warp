@@ -1,0 +1,39 @@
+name: Feature Request
+description: Propose a capability for a concrete Warp workflow.
+labels: ["feature request"]
+type: Enhancement
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Discuss new features with maintainers before starting an implementation.
+        See the [contribution guide](https://github.com/NVIDIA/warp/blob/main/CONTRIBUTING.md#planning-a-contribution).
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: >-
+        Describe the capability you need and the expected behavior.
+        Include an example API or expected inputs and outputs when useful.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: >-
+        Describe the application, library, research project, or other concrete workflow
+        that needs this capability. Explain what you are trying to do with Warp and how
+        the current limitation affects that work. Include a small example, measurements,
+        or links to relevant code when they help demonstrate the need.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives or Workarounds
+      description: >-
+        Describe how you currently handle this problem and why existing Warp APIs or
+        other approaches are insufficient. If you have not found a workaround, say so.
+    validations:
+      required: false

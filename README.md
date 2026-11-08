@@ -281,9 +281,13 @@ Please see the following resources for additional background on Warp:
 
 See the [FAQ](https://nvidia.github.io/warp/stable/user_guide/faq.html) for common questions.
 
-Problems, questions, and feature requests can be opened on [GitHub Issues](https://github.com/NVIDIA/warp/issues).
+Report bugs, request features, and suggest documentation improvements through
+[GitHub Issues](https://github.com/NVIDIA/warp/issues).
 
-For inquiries not suited for GitHub Issues, please email <warp-python@nvidia.com>.
+Ask usage questions and discuss early ideas in
+[GitHub Discussions](https://github.com/NVIDIA/warp/discussions).
+
+For inquiries not suited for public discussion, please email <warp-python@nvidia.com>.
 
 ## Contributing
 
