@@ -129,6 +129,8 @@ On CPU, capture hooks append a record and skip the live operation. On CUDA, the 
 
 ``capture_pause()`` / ``capture_resume()`` suspend and restart the same APIC state. CPU pause ends recording because there is no native stream to pause. CUDA pause also pauses the native graph; by default it suspends APIC recording at the same boundary. Operations intentionally performed while paused execute live and do not become replay work. Internal conditional capture can keep APIC recording active while temporarily moving CUDA capture into a child graph.
 
+A CPU graph cannot be launched while a CPU capture is recording. CPU replay runs each operation through the same entry points that the capture hooks intercept, so replaying inside a capture would re-record a partial copy of the graph, with kernel launches dropped and conditions evaluated at capture time. ``capture_launch()`` therefore raises ``NotImplementedError`` for live and loaded CPU graphs before replaying anything, which leaves the outer capture usable, and the native ``wp_apic_cpu_replay_state()`` and ``wp_apic_cpu_replay_graph()`` return false in the same situation. CUDA also rejects launching a graph on a capturing stream. A CPU graph launched while the capture is paused, or during a CUDA capture, executes live under the device-scoping rules above.
+
 ``capture_end()`` closes and validates the APIC stream. CUDA closes the native stream capture as well, and APIC recording is ended even if native CUDA graph creation fails. A failed CUDA end raises instead of returning a usable graph. ``ScopedCapture`` always attempts to end an active capture and preserves the original exception from its body.
 
 ### Graph states and ownership
@@ -432,6 +434,7 @@ These are limitations, not implied future commitments:
 - Loaded replay does not reject a handle relocation that is absent from ``handle_ptr_remap``. It preserves the captured integer, which may be stale when mesh metadata is missing or the handle belongs to an unsupported object type.
 - BVH refit/rebuild is recordable for live CPU replay but causes ``capture_save()`` to fail. HashGrid update is also live CPU only and is rejected when attempted in a saveable capture. CUDA APIC has no corresponding spatial-update records.
 - APIC control-flow bodies cannot reference already captured ``Graph`` objects; use callbacks.
+- ``capture_launch()`` cannot launch a captured or loaded graph inside another capture of the same device on either backend. Issue the original operations inside the outer capture instead.
 - CUDA source fallback cannot reproduce caller-provided include directories, LLVM-CUDA compilation, or LTO-IR/fatbin link inputs, and it requires generated source that is unchanged since module load and associated with a hashed binary name. ``capture_save(source_fallback=True)`` rejects other modules, including those that use ``strip_hash=True``. Link inputs are detected from the generated source, which assumes a consistent kernel cache. Rejected modules can still be saved with ``source_fallback=False`` and require a compatible binary.
 - The loader validates the section table, metadata, memory records, operation stream, filenames, and, for source-enabled records, artifact digests. ``.wrp`` artifacts still contain executable native or GPU code and must come from a trusted source.
 - One APIC graph cannot span multiple GPUs.

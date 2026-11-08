@@ -14335,7 +14335,27 @@ def capture_launch(graph: Graph, stream: Stream | None = None):
         graph: A :class:`Graph` returned by :func:`~warp.capture_end()` or
           :func:`~warp.capture_load()`.
         stream: A :class:`Stream` to launch the graph on (CUDA only)
+
+    Raises:
+        NotImplementedError: If ``graph`` is a CPU graph and a CPU graph capture
+          is recording.
+        RuntimeError: If the launch fails, for example when a CUDA graph is
+          launched on a stream that is being captured.
     """
+
+    if graph.device.is_cpu and _get_apic_capture_for_device(graph.device) is not None:
+        # Replaying here would re-record the graph through the capture hooks,
+        # dropping kernel launches and fixing conditionals at capture time.
+        # Reject it to match CUDA, where this also fails:
+        # - CUDA limitation: cudaGraphLaunch() fails on a capturing stream, and
+        #   child graph nodes cannot contain conditional nodes.
+        # - Warp limitation: capture_launch() could embed other graphs as child
+        #   graph nodes (see is_valid_child_graph() in warp.cu), and loaded APIC
+        #   graphs could be replayed into the capture.
+        raise NotImplementedError(
+            "Cannot launch a CPU graph while a CPU graph capture is active; "
+            "launch it outside the capture or issue its operations inside the capture."
+        )
 
     # ---- APIC loaded graph path ----
     if graph._native_graph is not None:

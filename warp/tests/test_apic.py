@@ -893,6 +893,109 @@ class TestApic(unittest.TestCase):
                 finally:
                     wp_context.runtime.core.wp_apic_destroy_state(state)
 
+    def _save_and_load_cpu_scale_graph(self, src, dst):
+        """Capture ``dst = src * 2`` on the CPU, then save and reload it."""
+        with wp.ScopedCapture(device="cpu", apic=True, force_module_load=False) as capture:
+            wp.launch(scale_kernel, dim=src.shape[0], inputs=[src, dst, 2.0], device="cpu")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nested_launch")
+            wp.capture_save(capture.graph, path, inputs={"src": src}, outputs={"dst": dst})
+            return wp.capture_load(path, device="cpu")
+
+    def test_capture_launch_rejects_cpu_graph_during_cpu_capture(self):
+        """Verify that ``capture_launch()`` rejects live and loaded CPU graphs during a CPU capture."""
+        n = 4
+        src = wp.array(np.arange(n, dtype=np.float32), device="cpu")
+        dst = wp.zeros(n, dtype=float, device="cpu")
+        wp.load_module(device="cpu")
+        with wp.ScopedCapture(device="cpu", force_module_load=False) as inner:
+            wp.launch(scale_kernel, dim=n, inputs=[src, dst, 2.0], device="cpu")
+        loaded = self._save_and_load_cpu_scale_graph(src, dst)
+
+        for name, graph in (("live", inner.graph), ("loaded", loaded)):
+            with self.subTest(graph=name):
+                with wp.ScopedCapture(device="cpu", force_module_load=False):
+                    with self.assertRaises(NotImplementedError):
+                        wp.capture_launch(graph)
+
+    def test_capture_launch_rejection_keeps_cpu_capture_usable(self):
+        """Verify that a rejected nested launch leaves the outer CPU capture usable and free of inner-graph work."""
+        n = 4
+        base = np.arange(n, dtype=np.float32) + 1.0
+        filled = wp.zeros(n, dtype=float, device="cpu")
+        src = wp.array(base, device="cpu")
+        dst = wp.zeros(n, dtype=float, device="cpu")
+        wp.load_module(device="cpu")
+        with wp.ScopedCapture(device="cpu", force_module_load=False) as inner:
+            filled.fill_(10.0)
+            wp.launch(scale_kernel, dim=n, inputs=[filled, filled, 2.0], device="cpu")
+
+        with wp.ScopedCapture(device="cpu", force_module_load=False) as outer:
+            with self.assertRaises(NotImplementedError):
+                wp.capture_launch(inner.graph)
+            wp.launch(scale_kernel, dim=n, inputs=[src, dst, 3.0], device="cpu")
+
+        wp.capture_launch(outer.graph)
+        np.testing.assert_allclose(filled.numpy(), np.zeros(n, dtype=np.float32))
+        np.testing.assert_allclose(dst.numpy(), 3.0 * base)
+
+    def test_capture_launch_runs_cpu_graph_while_cpu_capture_paused(self):
+        """Verify that a CPU graph launched while the CPU capture is paused runs immediately and is not recorded."""
+        n = 4
+        base = np.arange(n, dtype=np.float32) + 1.0
+        src = wp.array(base, device="cpu")
+        dst = wp.zeros(n, dtype=float, device="cpu")
+        wp.load_module(device="cpu")
+        with wp.ScopedCapture(device="cpu", force_module_load=False) as inner:
+            wp.launch(scale_kernel, dim=n, inputs=[src, dst, 2.0], device="cpu")
+
+        with wp.ScopedCapture(device="cpu", force_module_load=False) as outer:
+            paused = wp_context.capture_pause(device="cpu")
+            wp.capture_launch(inner.graph)
+            wp_context.capture_resume(paused, device="cpu")
+        np.testing.assert_allclose(dst.numpy(), 2.0 * base)
+
+        dst.zero_()
+        wp.capture_launch(outer.graph)
+        np.testing.assert_allclose(dst.numpy(), np.zeros(n, dtype=np.float32))
+
+    def test_capture_launch_runs_cpu_graph_during_cuda_apic_capture(self):
+        """Verify that a CPU graph launched during a CUDA APIC capture runs immediately."""
+        if not wp.is_cuda_available():
+            self.skipTest("Requires a CUDA device")
+
+        n = 4
+        base = np.arange(n, dtype=np.float32) + 1.0
+        src = wp.array(base, device="cpu")
+        dst = wp.zeros(n, dtype=float, device="cpu")
+        wp.load_module(device="cpu")
+        with wp.ScopedCapture(device="cpu", force_module_load=False) as inner:
+            wp.launch(scale_kernel, dim=n, inputs=[src, dst, 2.0], device="cpu")
+
+        with wp.ScopedCapture(device="cuda:0", apic=True, force_module_load=False):
+            wp.capture_launch(inner.graph)
+        np.testing.assert_allclose(dst.numpy(), 2.0 * base)
+
+    def test_native_cpu_replay_refuses_during_cpu_capture(self):
+        """Verify that the native CPU replay functions refuse to run while a CPU capture is recording."""
+        n = 4
+        filled = wp.zeros(n, dtype=float, device="cpu")
+        src = wp.array(np.arange(n, dtype=np.float32), device="cpu")
+        dst = wp.zeros(n, dtype=float, device="cpu")
+        wp.load_module(device="cpu")
+        with wp.ScopedCapture(device="cpu", force_module_load=False) as inner:
+            filled.fill_(10.0)
+        loaded = self._save_and_load_cpu_scale_graph(src, dst)
+
+        core = wp_context.runtime.core
+        with wp.ScopedCapture(device="cpu", force_module_load=False) as outer:
+            self.assertFalse(core.wp_apic_cpu_replay_state(inner.graph.apic_state))
+            self.assertFalse(core.wp_apic_cpu_replay_graph(loaded._native_graph))
+
+        # The refused replay must not have recorded any of the inner graph's work.
+        wp.capture_launch(outer.graph)
+        np.testing.assert_allclose(filled.numpy(), np.zeros(n, dtype=np.float32))
+
 
 def _mock_apic_cuda_export_module(directory, module_name, filename, source_data=b"// generated CUDA source\n"):
     """Create CUDA artifact metadata for save preflight without requiring a GPU."""

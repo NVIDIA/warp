@@ -3127,9 +3127,23 @@ static bool apic_cpu_replay_container(Container* c, Resolver resolve, HandleRema
     );
 }
 
+// Replay calls the same entry points the CPU capture hooks intercept, so
+// replaying during a CPU capture would re-record the graph into it, dropping
+// kernel launches and fixing conditionals at capture time.
+static bool apic_check_cpu_replay_allowed()
+{
+    if (wp_apic_get_recording_state()) {
+        wp::set_error_string("Warp APIC error: cannot replay a CPU graph while a CPU graph capture is recording");
+        return false;
+    }
+    return true;
+}
+
 bool wp_apic_cpu_replay_state(APICState* state)
 {
     if (!state)
+        return false;
+    if (!apic_check_cpu_replay_allowed())
         return false;
     if (state->operation_stream.empty())
         return true;
@@ -3151,6 +3165,8 @@ bool wp_apic_cpu_replay_state(APICState* state)
 bool wp_apic_cpu_replay_graph(APICGraph* graph)
 {
     if (!graph)
+        return false;
+    if (!apic_check_cpu_replay_allowed())
         return false;
     if (graph->operation_stream.empty())
         return true;
