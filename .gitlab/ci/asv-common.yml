@@ -284,8 +284,9 @@
       # rc=1: regressions detected. rc>1: benchmark failures (e.g. a new
       # benchmark uses an API not yet on the compare ref); the table still
       # covers the benchmarks that ran. The exit status is propagated at the
-      # end.
-      uvx asv compare --split -f "$ASV_FACTOR" --machine "$ASV_MACHINE_NAME" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || true
+      # end. Each group is sorted by descending ratio, so slowdowns too small
+      # to count as regressions top the unchanged group.
+      uvx asv compare --split --sort ratio -f "$ASV_FACTOR" --machine "$ASV_MACHINE_NAME" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || true
       printf '\n'
 
       if [ "$rc" -eq 1 ]; then
