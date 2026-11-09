@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import itertools
+import os
+import tempfile
 import unittest
 
 import numpy as np
@@ -1600,6 +1602,102 @@ def test_fsai_preconditioned_solvers(test, device):
             _check_linear_solve(test, A, b, solver, M=M, maxiter=1000, tol=tol, is_left_preconditioner=True)
 
 
+def test_solver_capture_host_checks(test, device):
+    """Reject host-side solver convergence checks during graph capture."""
+    A_np = 2.2 * np.eye(8) - np.eye(8, k=1) - np.eye(8, k=-1)
+    b_np = np.random.default_rng(2199).standard_normal(8)
+    A = wp.array(A_np, dtype=wp.float64, device=device)
+    b = wp.array(b_np, dtype=wp.float64, device=device)
+
+    for solve in (cg, cr, bicgstab, gmres):
+        for use_cuda_graph in (False, True):
+            for mode in ("fresh", "reused"):
+                with test.subTest(solver=solve.__name__, use_cuda_graph=use_cuda_graph, mode=mode):
+                    x = wp.zeros_like(b)
+                    kwargs = {"tol": 1.0e-10, "maxiter": 32, "use_cuda_graph": use_cuda_graph}
+                    if solve is gmres:
+                        kwargs["restart"] = 8
+                    state = solve(A, b, x, run=False, **kwargs)
+
+                    # Leave converged residuals in the state.
+                    _, err, atol = state()
+                    test.assertLessEqual(err, atol)
+                    np.testing.assert_allclose(x.numpy(), np.linalg.solve(A_np, b_np), rtol=1.0e-8, atol=1.0e-8)
+                    x.zero_()
+
+                    with test.assertRaisesRegex(RuntimeError, "set check_every=0"):
+                        with wp.ScopedCapture(device=device, apic=True, force_module_load=False):
+                            if mode == "fresh":
+                                solve(A, b, x, **kwargs)
+                            else:
+                                state()
+
+                    test.assertFalse(wp.get_device(device).is_capturing)
+                    # A rejected solve must leave capture usable.
+                    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+                        x.fill_(1.0)
+                    wp.capture_launch(capture.graph)
+                    np.testing.assert_array_equal(x.numpy(), np.ones(8))
+
+
+def test_solver_capture_replay(test, device):
+    """Replay captured and serialized solvers against updated right-hand sides."""
+    A_np = 2.2 * np.eye(8) - np.eye(8, k=1) - np.eye(8, k=-1)
+    b_np = np.random.default_rng(2199).standard_normal(8)
+    A = wp.array(A_np, dtype=wp.float64, device=device)
+
+    for solve in (cg, cr, bicgstab, gmres):
+        for use_cuda_graph in (False, True):
+            if wp.get_device(device).is_cuda and use_cuda_graph and not wp.is_conditional_graph_supported():
+                continue
+            for allocate in (False, True):
+                with test.subTest(solver=solve.__name__, use_cuda_graph=use_cuda_graph, allocate=allocate):
+                    b = wp.array(b_np, dtype=wp.float64, device=device)
+                    x = wp.zeros_like(b)
+                    kwargs = {
+                        "tol": 1.0e-10,
+                        "maxiter": 32,
+                        "check_every": 0,
+                        "use_cuda_graph": use_cuda_graph,
+                    }
+                    if solve is gmres:
+                        kwargs["restart"] = 8
+                    state = solve(A, b, x, run=False, **kwargs)
+                    state()
+                    expected_x = x.numpy().copy()
+                    x.zero_()
+
+                    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+                        if allocate:
+                            solve(A, b, x, **kwargs)
+                        else:
+                            state()
+
+                    for scale in (1.0, 2.0):
+                        b.assign(scale * b_np)
+                        x.zero_()
+                        wp.capture_launch(capture.graph)
+                        np.testing.assert_allclose(x.numpy(), scale * expected_x, rtol=1.0e-8, atol=1.0e-8)
+                        np.testing.assert_allclose(
+                            x.numpy(), np.linalg.solve(A_np, scale * b_np), rtol=1.0e-8, atol=1.0e-8
+                        )
+
+                    with tempfile.TemporaryDirectory() as tmpdir:
+                        path = os.path.join(tmpdir, "solver")
+                        wp.capture_save(capture.graph, path, inputs={"b": b}, outputs={"x": x})
+                        loaded = wp.capture_load(path, device=device)
+                        b.assign(3.0 * b_np)
+                        x.zero_()
+                        loaded.set_param("b", b)
+                        loaded.set_param("x", x)
+                        wp.capture_launch(loaded)
+                        loaded.get_param("x", x)
+                        np.testing.assert_allclose(x.numpy(), 3.0 * expected_x, rtol=1.0e-8, atol=1.0e-8)
+                        np.testing.assert_allclose(
+                            x.numpy(), np.linalg.solve(A_np, 3.0 * b_np), rtol=1.0e-8, atol=1.0e-8
+                        )
+
+
 class TestLinearSolvers(unittest.TestCase):
     def test_host_matvec_default(self):
         # By default, CPU solves don't capture, so host-side operators keep working
@@ -1616,6 +1714,19 @@ class TestLinearSolvers(unittest.TestCase):
 
 devices = get_test_devices()
 devices_with_graph_capture_allocation = get_test_devices_with_graph_capture_allocation()
+
+add_function_test(
+    TestLinearSolvers,
+    "test_solver_capture_host_checks",
+    test_solver_capture_host_checks,
+    devices=devices_with_graph_capture_allocation,
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_solver_capture_replay",
+    test_solver_capture_replay,
+    devices=devices_with_graph_capture_allocation,
+)
 
 add_function_test(TestLinearSolvers, "test_cg", test_cg, devices=devices_with_graph_capture_allocation)
 add_function_test(TestLinearSolvers, "test_conjugate_solver_restart", test_conjugate_solver_restart, devices=devices)
