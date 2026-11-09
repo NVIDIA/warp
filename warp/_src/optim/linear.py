@@ -1715,8 +1715,9 @@ def cg(
         check_every: number of iterations every which to call `callback`, check the residual against the tolerance and possibility terminate the algorithm.
             Setting ``check_every`` to 0 disables host-side residual checks, allowing CPU and CUDA graph capture.
             Running during graph capture requires ``check_every=0``.
-            If conditional CUDA graphs are supported, convergence checks are performed device-side; otherwise, the solver will always run
-            to the maximum number of iterations.
+            On CPU, the solver stops once converged. On CUDA with ``use_cuda_graph`` and conditional graph support, it also
+            stops once converged. Otherwise, it runs whole cycles until the iteration count reaches ``maxiter``, which
+            restarted solvers can exceed by less than one cycle.
         use_cuda_graph: Whether to capture the solver iterations in a graph and replay it, reducing launch overhead.
             ``None`` captures on CUDA devices only. ``True`` also captures on CPU, using experimental CPU graph capture.
             With ``check_every=0``, a captured solve stops once converged; on CUDA, this needs conditional graph support.
@@ -1973,8 +1974,9 @@ def cr(
         check_every: number of iterations every which to call `callback`, check the residual against the tolerance and possibility terminate the algorithm.
             Setting ``check_every`` to 0 disables host-side residual checks, allowing CPU and CUDA graph capture.
             Running during graph capture requires ``check_every=0``.
-            If conditional CUDA graphs are supported, convergence checks are performed device-side; otherwise, the solver will always run
-            to the maximum number of iterations.
+            On CPU, the solver stops once converged. On CUDA with ``use_cuda_graph`` and conditional graph support, it also
+            stops once converged. Otherwise, it runs whole cycles until the iteration count reaches ``maxiter``, which
+            restarted solvers can exceed by less than one cycle.
         use_cuda_graph: Whether to capture the solver iterations in a graph and replay it, reducing launch overhead.
             ``None`` captures on CUDA devices only. ``True`` also captures on CPU, using experimental CPU graph capture.
             With ``check_every=0``, a captured solve stops once converged; on CUDA, this needs conditional graph support.
@@ -2263,8 +2265,9 @@ def bicgstab(
         check_every: number of iterations every which to call `callback`, check the residual against the tolerance and possibility terminate the algorithm.
             Setting ``check_every`` to 0 disables host-side residual checks, allowing CPU and CUDA graph capture.
             Running during graph capture requires ``check_every=0``.
-            If conditional CUDA graphs are supported, convergence checks are performed device-side; otherwise, the solver will always run
-            to the maximum number of iterations.
+            On CPU, the solver stops once converged. On CUDA with ``use_cuda_graph`` and conditional graph support, it also
+            stops once converged. Otherwise, it runs whole cycles until the iteration count reaches ``maxiter``, which
+            restarted solvers can exceed by less than one cycle.
         use_cuda_graph: Whether to capture the solver iterations in a graph and replay it, reducing launch overhead.
             ``None`` captures on CUDA devices only. ``True`` also captures on CPU, using experimental CPU graph capture.
             With ``check_every=0``, a captured solve stops once converged; on CUDA, this needs conditional graph support.
@@ -2614,8 +2617,9 @@ def gmres(
         check_every: number of iterations every which to call `callback`, check the residual against the tolerance and possibility terminate the algorithm.
             Setting ``check_every`` to 0 disables host-side residual checks, allowing CPU and CUDA graph capture.
             Running during graph capture requires ``check_every=0``.
-            If conditional CUDA graphs are supported, convergence checks are performed device-side; otherwise, the solver will always run
-            to the maximum number of iterations.
+            On CPU, the solver stops once converged. On CUDA with ``use_cuda_graph`` and conditional graph support, it also
+            stops once converged. Otherwise, it runs whole cycles until the iteration count reaches ``maxiter``, which
+            restarted solvers can exceed by less than one cycle.
         use_cuda_graph: Whether to capture the solver iterations in a graph and replay it, reducing launch overhead.
             ``None`` captures on CUDA devices only. ``True`` also captures on CPU, using experimental CPU graph capture.
             With ``check_every=0``, a captured solve stops once converged; on CUDA, this needs conditional graph support.
@@ -2846,6 +2850,12 @@ def _run_capturable_loop(
             with wp.ScopedCapture(device=device) as capture:
                 wp.capture_while(condition, do_cycle_with_condition)
             wp.capture_launch(capture.graph)
+    elif device.is_cpu:
+        # Outside capture, CPU launches finish before returning, so the host
+        # loop reads the condition without synchronizing. During CPU capture,
+        # launches only record, so capture_while records a while op instead
+        # of reading the not-yet-updated condition.
+        wp.capture_while(condition, do_cycle_with_condition)
     else:
         for _ in range(0, maxiter, cycle_size):
             do_cycle_with_condition()

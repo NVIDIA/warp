@@ -1699,6 +1699,56 @@ def test_solver_capture_replay(test, device):
 
 
 class TestLinearSolvers(unittest.TestCase):
+    def test_capturable_solvers_stop_on_cpu(self):
+        """Check that solvers without host checks stop at convergence on CPU instead of running maxiter."""
+        n = 64
+        a = np.diag(np.linspace(1.0, 4.0, n)) + np.diag(np.full(n - 1, 0.3), 1) + np.diag(np.full(n - 1, 0.3), -1)
+        rows, cols = np.nonzero(a)
+        with wp.ScopedDevice("cpu"):
+            A = bsr_from_triplets(
+                n, n, wp.array(rows, dtype=int), wp.array(cols, dtype=int), wp.array(a[rows, cols], dtype=wp.float64)
+            )
+            b = wp.array(np.linspace(-1.0, 1.0, n), dtype=wp.float64)
+            maxiter = 5000
+            for func in (cg, cr, bicgstab, gmres):
+                x = wp.zeros_like(b)
+                niter, err_sq, atol_sq = func(A, b, x, tol=1e-10, maxiter=maxiter, check_every=0)
+                niter = int(niter.numpy()[0])
+                self.assertLess(niter, maxiter, func.__name__)
+                self.assertLessEqual(err_sq.numpy()[0], atol_sq.numpy()[0], func.__name__)
+                np.testing.assert_allclose(x.numpy(), np.linalg.solve(a, b.numpy()), rtol=1e-7, atol=1e-9)
+                # Host-checked solves stop at a check boundary, so they never do fewer iterations.
+                x.zero_()
+                niter_checked, _, _ = func(A, b, x, tol=1e-10, maxiter=maxiter, check_every=1)
+                self.assertLessEqual(niter, niter_checked, func.__name__)
+                np.testing.assert_allclose(x.numpy(), np.linalg.solve(a, b.numpy()), rtol=1e-7, atol=1e-9)
+
+    def test_capturable_solvers_replay_on_cpu(self):
+        """Check that CPU graph replays of converged solvers without host checks redo the solve and stop early."""
+        n = 64
+        a = np.diag(np.linspace(1.0, 4.0, n)) + np.diag(np.full(n - 1, 0.3), 1) + np.diag(np.full(n - 1, 0.3), -1)
+        rows, cols = np.nonzero(a)
+        with wp.ScopedDevice("cpu"):
+            A = bsr_from_triplets(
+                n, n, wp.array(rows, dtype=int), wp.array(cols, dtype=int), wp.array(a[rows, cols], dtype=wp.float64)
+            )
+            b = wp.array(np.linspace(-1.0, 1.0, n), dtype=wp.float64)
+            expected = np.linalg.solve(a, b.numpy())
+            maxiter = 5000
+            for func in (cg, cr, bicgstab, gmres):
+                x = wp.zeros_like(b)
+                solver = func(A, b, x, tol=1e-10, maxiter=maxiter, check_every=0, run=False)
+                # Leave the solver's convergence flag cleared before capture, as after any completed solve.
+                solver()
+                x.zero_()
+                with wp.ScopedCapture() as capture:
+                    niter, err_sq, atol_sq = solver()
+                x.zero_()
+                wp.capture_launch(capture.graph)
+                self.assertLess(int(niter.numpy()[0]), maxiter, func.__name__)
+                self.assertLessEqual(err_sq.numpy()[0], atol_sq.numpy()[0], func.__name__)
+                np.testing.assert_allclose(x.numpy(), expected, rtol=1e-7, atol=1e-9, err_msg=func.__name__)
+
     def test_host_matvec_default(self):
         # By default, CPU solves don't capture, so host-side operators keep working
         device = wp.get_device("cpu")
