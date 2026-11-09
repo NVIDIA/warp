@@ -230,7 +230,16 @@ def test_point_basis_evaluation_restriction(test, device):
                 restriction._dof_indices_in_element.numpy()[: len(references)], [pair[1] for _, pair in references]
             )
             if compact:
-                test.assertLessEqual(restriction.total_node_element_count(), partition.node_count())
+                capacity = min(
+                    partition.node_count(),
+                    restriction.domain.element_count() * restriction.space_topology.MAX_NODES_PER_ELEMENT,
+                )
+                for output in (
+                    restriction.node_partition_indices(),
+                    restriction._dof_element_indices,
+                    restriction._dof_indices_in_element,
+                ):
+                    test.assertEqual(output.shape, (capacity,))
 
         for partial in (False, True):
             for capacity in (8, 2, 1):
@@ -260,6 +269,16 @@ def test_point_basis_evaluation_restriction(test, device):
                     ]
                 )
                 np.testing.assert_allclose(result, expected, rtol=1.0e-6)
+
+                if partial and capacity == 1:
+                    whole_partition = fem.make_space_partition(space_topology=basis.topology)
+                    partial_restriction = fem.make_space_restriction(
+                        space_partition=whole_partition,
+                        domain=fem.Cells(partial_geometry),
+                        temporary_store=store,
+                    )
+                    test.assertLess(partial_restriction.domain.element_count(), whole_partition.node_count())
+                    check_restriction(partial_restriction, incidences)
 
                 if not partial and capacity == 8:
                     # Reuse the restriction across zero, one, and many active nodes.
@@ -310,6 +329,8 @@ def test_point_basis_evaluation_restriction(test, device):
         partition = fem.make_space_partition(
             space_topology=basis.topology, environment_first=True, max_node_count=1, temporary_store=store
         )
+        test.assertEqual(partition.node_count(), 1)
+        test.assertEqual(np.count_nonzero(np.isin(partition.space_node_indices().numpy(), np.arange(5))), 1)
         restriction = fem.make_space_restriction(space_partition=partition, domain=domain, temporary_store=store)
         check_restriction(restriction, {0: (0, 0), 1: (0, 1), 2: (0, 2), 3: (2, 0), 4: (3, 0)})
 

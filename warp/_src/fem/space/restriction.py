@@ -183,9 +183,11 @@ class SpaceRestriction:
         offsets = self._require_restriction_array(
             "_dof_partition_element_offsets", (node_count + 1,), device, temporary_store
         )
-        indices = self._require_restriction_array("_dof_partition_indices", (node_count,), device, temporary_store)
-        elements = self._require_restriction_array("_dof_element_indices", (node_count,), device, temporary_store)
-        local = self._require_restriction_array("_dof_indices_in_element", (node_count,), device, temporary_store)
+        indices = self._require_restriction_array(
+            "_dof_partition_indices", (self._node_count,), device, temporary_store
+        )
+        elements = self._require_restriction_array("_dof_element_indices", (self._node_count,), device, temporary_store)
+        local = self._require_restriction_array("_dof_indices_in_element", (self._node_count,), device, temporary_store)
         count = self._require_restriction_array("_node_count_dev", (1,), device, temporary_store)
         node_element = cache.borrow_temporary(temporary_store, shape=(node_count,), dtype=int, device=device)
         node_local = cache.borrow_temporary(temporary_store, shape=(node_count,), dtype=int, device=device)
