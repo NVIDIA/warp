@@ -203,7 +203,7 @@ def test_conditional_restriction_rebuild(test, device):
             domain,
             positions=(
                 wp.array([0, 0, 1, -1], dtype=int),
-                wp.array([[0.2, 0.3, 0.4]] * 4, dtype=wp.vec3),
+                wp.array([[0.2, 0.3, 0.4], [0.4, 0.3, 0.4], [0.6, 0.3, 0.4], [0.0] * 3], dtype=wp.vec3),
             ),
         )
         basis = fem.PointBasisSpace(quadrature, max_nodes_per_element=4, use_evaluation_point_index=True)
@@ -215,7 +215,8 @@ def test_conditional_restriction_rebuild(test, device):
         # Warm the kernels, then capture with an empty store so scratch must be allocated
         # inside the callback rather than borrowed from a previous rebuild.
         restriction.rebuild(device=device)
-        fem.integrate(linear_form, quadrature=quadrature, fields={"u": point_test})
+        initial = fem.integrate(linear_form, quadrature=quadrature, fields={"u": point_test})
+        np.testing.assert_allclose(initial.numpy(), [0.25, 0.25, 0.5, 0.0], rtol=1.0e-6)
         store = fem.TemporaryStore()
         condition = wp.ones(1, dtype=int)
 
