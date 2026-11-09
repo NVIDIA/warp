@@ -192,7 +192,7 @@ class NanogridBase(Geometry):
 
                 offset = scalar(0.5)
                 min_cell_size = wp.min(cell_size)
-                max_offset = wp.ceil(max_dist / min_cell_size)
+                max_offset = wp.ceil(scalar(max_dist) / min_cell_size)
                 scales = wp.cw_div(vec3_type(min_cell_size), vec3_type(cell_size))
 
                 closest_cell = NULL_ELEMENT_INDEX
@@ -264,7 +264,7 @@ class NanogridBase(Geometry):
 
             offset = scalar(0.5)
             min_cell_size = wp.min(cell_size)
-            max_offset = wp.ceil(max_dist / min_cell_size)
+            max_offset = wp.ceil(scalar(max_dist) / min_cell_size)
             scales = wp.cw_div(vec3_type(min_cell_size), vec3_type(cell_size))
 
             closest_cell = NULL_ELEMENT_INDEX
