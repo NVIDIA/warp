@@ -529,7 +529,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">run</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L2219-L2295"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.bicgstab" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L2234-L2314"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.bicgstab" title="Link to this definition">#</a></dt>
 <dd><p>Compute an approximate solution to a linear system using the Biconjugate Gradient Stabilized method (BiCGSTAB).</p>
 <p>Supports batched systems when <code class="docutils literal notranslate"><span class="pre">A</span></code> is a <a class="reference internal" href="warp.optim.linear.LinearOperator.html#warp.optim.linear.LinearOperator" title="warp.optim.linear.LinearOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">LinearOperator</span></code></a> with <code class="docutils literal notranslate"><span class="pre">batch_offsets</span></code> set;
 all subproblems iterate together and convergence uses the worst-case residual.</p>
@@ -546,7 +546,8 @@ all subproblems iterate together and convergence uses the worst-case residual.</
 <li><p><strong>callback</strong> (<a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable" title="(in Python v3.15)"><em>Callable</em></a><em> | </em><em>None</em>) – function to be called every <cite>check_every</cite> iteration with the current iteration number, residual and tolerance.
 If <cite>check_every</cite> is 0, the callback should be a Warp kernel.</p></li>
 <li><p><strong>check_every</strong> – number of iterations every which to call <cite>callback</cite>, check the residual against the tolerance and possibility terminate the algorithm.
-Setting <cite>check_every</cite> to 0 disables host-side residual checks, making the solver fully CUDA-graph capturable.
+Setting <code class="docutils literal notranslate"><span class="pre">check_every</span></code> to 0 disables host-side residual checks, allowing CPU and CUDA graph capture.
+Running during graph capture requires <code class="docutils literal notranslate"><span class="pre">check_every=0</span></code>.
 If conditional CUDA graphs are supported, convergence checks are performed device-side; otherwise, the solver will always run
 to the maximum number of iterations.</p></li>
 <li><p><strong>use_cuda_graph</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a><em> | </em><em>None</em>) – Whether to capture the solver iterations in a graph and replay it, reducing launch overhead.
@@ -583,6 +584,9 @@ must match subsequent calls.</p></li>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>If <code class="docutils literal notranslate"><span class="pre">run</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code> and <code class="docutils literal notranslate"><span class="pre">check_every</span></code> &gt; 0</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#RuntimeError" title="(in Python v3.15)"><strong>RuntimeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">run</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code> during graph capture with <code class="docutils literal notranslate"><span class="pre">check_every</span></code> &gt; 0.</p>
 </dd>
 </dl>
 <p>If both <cite>tol</cite> and <cite>atol</cite> are provided, the absolute tolerance used as the termination criterion for the residual norm is <code class="docutils literal notranslate"><span class="pre">max(atol,</span> <span class="pre">tol</span> <span class="pre">*</span> <span class="pre">norm(b))</span></code>.</p>
