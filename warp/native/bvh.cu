@@ -220,8 +220,7 @@ __global__ void compute_morton_codes(
 }
 
 // max of two uint32_t for cub::BlockReduce::Reduce; cub::Max was removed in CCCL 3.0 (CUDA 13)
-struct MaxU32
-{
+struct MaxU32 {
     __device__ __forceinline__ uint32_t operator()(uint32_t a, uint32_t b) const { return a > b ? a : b; }
 };
 
