@@ -145,6 +145,9 @@
     GCN_TASK_TIMEOUT: "28800"
     # Slowdown ratio that asv reports as a regression.
     ASV_FACTOR: "1.10"
+    # Number CUDA devices in the order nvidia-smi lists them, so that CUDA
+    # device 0 is the GPU whose NUMA node before_script looks up.
+    CUDA_DEVICE_ORDER: "PCI_BUS_ID"
   before_script:
     - !reference [.snippets, section-start-install-deps]
     - |
@@ -197,6 +200,26 @@
         else
           echo "WARNING: failed to lock the GPU core clock to $ASV_GPU_CLOCK_MHZ MHz"
         fi
+      fi
+    # How fast a benchmark process launches work depends on the CPU it runs
+    # on. It is slower on a NUMA node away from the GPU and, on the B200
+    # hosts, on the second hyperthread of a core, where it slows down over
+    # its first second even while the first hyperthread is idle. The
+    # scheduler places every process anew, so the baseline's and the
+    # candidate's processes could differ by more than ASV_FACTOR. asv runs
+    # on the first hyperthread of each core on GPU 0's NUMA node instead.
+    - |
+      gpu_bus_id="$(nvidia-smi --query-gpu=pci.bus_id --format=csv,noheader -i 0 | tr 'A-F' 'a-f')"
+      gpu_node="$(cat "/sys/bus/pci/devices/${gpu_bus_id#0000}/numa_node" 2>/dev/null || echo -1)"
+      # lscpu lists CPUs in ascending order, so the first CPU listed for a
+      # core is its first hyperthread.
+      ASV_CPUS="$(lscpu -p=CPU,CORE,NODE 2>/dev/null |
+        awk -F, -v node="$gpu_node" '!/^#/ && (node < 0 || $3 == node) && !seen[$2]++ { print $1 }' | paste -sd, -)" || true
+      if [ -n "$ASV_CPUS" ] && command -v taskset > /dev/null; then
+        echo "GPU 0 ($gpu_bus_id) is on NUMA node $gpu_node; asv runs on CPUs $ASV_CPUS"
+      else
+        ASV_CPUS=
+        echo "WARNING: failed to find the CPUs for GPU 0 ($gpu_bus_id); asv runs on all CPUs"
       fi
     - curl -LsSf https://astral.sh/uv/install.sh | sh
     - export PATH="$HOME/.local/bin:$PATH"
@@ -261,11 +284,12 @@
       section_start() { echo -e "\e[0Ksection_start:$(date +%s):$1[collapsed=true]\r\e[0K$2"; }
       section_end() { echo -e "\e[0Ksection_end:$(date +%s):$1\r\e[0K"; }
       asv_progress='^(·|\[ *[0-9.]+%\] (··|···) [^=])'
+      on_gpu_cpus() { if [ -n "$ASV_CPUS" ]; then taskset -c "$ASV_CPUS" "$@"; else "$@"; fi; }
 
       date -u +"asv continuous start: %FT%TZ"
       {
         asv_rc=0
-        uvx asv continuous -e --interleave-rounds --append-samples --no-only-changed -f "$ASV_FACTOR" --bench "$ASV_BENCH_FILTER" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || asv_rc=$?
+        on_gpu_cpus uvx asv continuous -e --interleave-rounds --append-samples --no-only-changed -f "$ASV_FACTOR" --bench "$ASV_BENCH_FILTER" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || asv_rc=$?
         echo "$asv_rc" > asv-continuous.rc
       } | tee asv-continuous.log | LC_ALL=C grep --line-buffered -E "$asv_progress" || true
       rc="$(cat asv-continuous.rc)"
@@ -307,7 +331,7 @@
           uv run --no-project python -c 'import json; conf = json.load(open("asv.conf.json")); conf["results_dir"] = "asv/results-rerun"; json.dump(conf, open("asv-rerun.conf.json", "w"), indent=2)'
           {
             rerun_rc=0
-            uvx asv continuous --config asv-rerun.conf.json -e --interleave-rounds -f "$ASV_FACTOR" --bench "$rerun_filter" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || rerun_rc=$?
+            on_gpu_cpus uvx asv continuous --config asv-rerun.conf.json -e --interleave-rounds -f "$ASV_FACTOR" --bench "$rerun_filter" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || rerun_rc=$?
             echo "$rerun_rc" > asv-rerun.rc
           } | tee -a asv-continuous.log | LC_ALL=C grep --line-buffered -E "$asv_progress|^\|" || true
           rerun_rc="$(cat asv-rerun.rc)"
