@@ -509,15 +509,20 @@
 <h1>warp.capture_debug_dot_print<a class="headerlink" href="#warp-capture-debug-dot-print" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.capture_debug_dot_print">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">capture_debug_dot_print</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">graph</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L13678-L13687"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.capture_debug_dot_print" title="Link to this definition">#</a></dt>
-<dd><p>Export a CUDA graph to a DOT file for visualization</p>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">capture_debug_dot_print</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">graph</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/context.py#L13678-L13702"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.capture_debug_dot_print" title="Link to this definition">#</a></dt>
+<dd><p>Export a CUDA graph to a DOT file for visualization.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>graph</strong> (<a class="reference internal" href="warp.Graph.html#warp.Graph" title="warp._src.context.Graph"><em>Graph</em></a>) – A <a class="reference internal" href="warp.Graph.html#warp.Graph" title="warp.Graph"><code class="xref py py-class docutils literal notranslate"><span class="pre">Graph</span></code></a> as returned by <a class="reference internal" href="warp.capture_end.html#warp.capture_end" title="warp.capture_end"><code class="xref py py-func docutils literal notranslate"><span class="pre">capture_end()</span></code></a></p></li>
-<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a>) – Path to save the DOT file</p></li>
-<li><p><strong>verbose</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether to include additional debug information in the output</p></li>
+<li><p><strong>graph</strong> (<a class="reference internal" href="warp.Graph.html#warp.Graph" title="warp._src.context.Graph"><em>Graph</em></a>) – A CUDA <a class="reference internal" href="warp.Graph.html#warp.Graph" title="warp.Graph"><code class="xref py py-class docutils literal notranslate"><span class="pre">Graph</span></code></a> as returned by <a class="reference internal" href="warp.capture_end.html#warp.capture_end" title="warp.capture_end"><code class="xref py py-func docutils literal notranslate"><span class="pre">capture_end()</span></code></a>,
+<a class="reference internal" href="warp.capture_load.html#warp.capture_load" title="warp.capture_load"><code class="xref py py-func docutils literal notranslate"><span class="pre">capture_load()</span></code></a>, or <a class="reference internal" href="warp.capture_load_from_bytes.html#warp.capture_load_from_bytes" title="warp.capture_load_from_bytes"><code class="xref py py-func docutils literal notranslate"><span class="pre">capture_load_from_bytes()</span></code></a>.</p></li>
+<li><p><strong>path</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a>) – Path to save the DOT file.</p></li>
+<li><p><strong>verbose</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether to include additional debug information in the output.</p></li>
 </ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#RuntimeError" title="(in Python v3.15)"><strong>RuntimeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">graph</span></code> was captured on a CPU device, which isn’t supported yet,
+    or if the DOT file can’t be written.</p>
 </dd>
 </dl>
 </dd></dl>

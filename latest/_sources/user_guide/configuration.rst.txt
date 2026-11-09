@@ -98,7 +98,7 @@ The options for a module can also be queried using :func:`wp.get_module_options(
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
 |``fast_math``                         | Boolean | ``False``   | If ``True``, CUDA kernels will be compiled with the ``--use_fast_math``  |
 |                                      |         |             | compiler option, which enables some fast math operations that are faster |
-|                                      |         |             | but less accurate.                                                       |
+|                                      |         |             | but less accurate. CPU compilation currently ignores this option.        |
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
 |``fuse_fp``                           | Boolean | ``True``    | If ``True``, allow compilers to emit fused floating point operations     |
 |                                      |         |             | such as fused-multiply-add. This may improve numerical accuracy and      |
