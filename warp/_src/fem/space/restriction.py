@@ -5,11 +5,14 @@ from typing import Optional
 
 import warp as wp
 from warp._src.fem import cache
-from warp._src.fem.domain import GeometryDomain
+from warp._src.fem.domain import Cells, GeometryDomain
+from warp._src.fem.quadrature.pic_quadrature import PicQuadrature
 from warp._src.fem.types import NULL_ELEMENT_INDEX, NULL_NODE_INDEX, NodeElementIndex
 from warp._src.fem.utils import compress_node_indices, host_read_at_index
+from warp._src.utils import array_scan
 
 from .partition import SpacePartition
+from .point_basis_space import UnstructuredPointTopology
 from .topology import SpaceTopology
 
 wp.set_module_options({"enable_backward": False})
@@ -62,6 +65,17 @@ class SpaceRestriction:
     def rebuild(self, device: Optional["wp.DeviceLike"] = None, temporary_store: cache.TemporaryStore | None = None):
         """Rebuild internal indices for the space restriction."""
         self.node_arg_value.invalidate(self)
+
+        topology = self.space_topology
+        if (
+            type(topology) is UnstructuredPointTopology
+            and topology._use_evaluation_point_index
+            and isinstance(topology._quadrature, PicQuadrature)
+            and type(self.domain) is Cells
+            and self.domain == topology._quadrature.domain
+        ):
+            self._rebuild_point_restriction(device, temporary_store)
+            return
 
         max_nodes_per_element = self.space_topology.MAX_NODES_PER_ELEMENT
 
@@ -153,6 +167,109 @@ class SpaceRestriction:
 
         # Upper bound on node count, use `node_count_sync` to get the actual value
         self._node_count = min(self.space_partition.node_count(), self._dof_partition_indices.shape[0])
+
+    def _require_point_array(self, name, shape, device, temporary_store):
+        array = getattr(self, name)
+        if array is None or array.shape != shape or array.device != device or array.dtype != wp.int32:
+            if array is not None:
+                array.release()
+            array = cache.borrow_temporary(temporary_store, shape=shape, dtype=int, device=device)
+            setattr(self, name, array)
+        return array
+
+    def _rebuild_point_restriction(self, device=None, temporary_store=None):
+        """Build unique evaluation-node incidences without a padded table or sort."""
+        device = wp.get_device(device)
+        topology = self.space_topology
+        partition = self.space_partition
+        domain = self.domain
+        node_count = partition.node_count()
+        # Keep the original unsynchronized launch upper bound for clamped spaces.
+        self._node_count = min(node_count, domain.element_count() * topology.MAX_NODES_PER_ELEMENT)
+
+        offsets = self._require_point_array(
+            "_dof_partition_element_offsets", (node_count + 1,), device, temporary_store
+        )
+        indices = self._require_point_array("_dof_partition_indices", (node_count,), device, temporary_store)
+        elements = self._require_point_array("_dof_element_indices", (node_count,), device, temporary_store)
+        local = self._require_point_array("_dof_indices_in_element", (node_count,), device, temporary_store)
+        count = self._require_point_array("_node_count_dev", (1,), device, temporary_store)
+        node_element = cache.borrow_temporary(temporary_store, shape=(node_count,), dtype=int, device=device)
+        node_local = cache.borrow_temporary(temporary_store, shape=(node_count,), dtype=int, device=device)
+        offsets.zero_()
+        indices.fill_(NULL_NODE_INDEX)
+        elements.fill_(NULL_ELEMENT_INDEX)
+        local.zero_()
+
+        @cache.dynamic_kernel(
+            suffix=(domain.name, topology.name, partition.name, "compact_pic_restriction"),
+            kernel_options={"max_unroll": 8, "enable_backward": False},
+        )
+        def mark_point_incidence(
+            element_arg: domain.ElementArg,
+            domain_index_arg: domain.ElementIndexArg,
+            topo_arg: topology.TopologyArg,
+            partition_arg: partition.PartitionArg,
+            node_element: wp.array[int],
+            node_local: wp.array[int],
+            counts: wp.array[int],
+        ):
+            cell = wp.tid()
+            element = domain.element_index(domain_index_arg, cell)
+            if element != NULL_ELEMENT_INDEX:
+                # This preserves the original explicit picN clipping semantics.
+                points = topology.element_node_count(element_arg, topo_arg, element)
+                for local_node in range(points):
+                    space_node = topology.element_node_index(element_arg, topo_arg, element, local_node)
+                    partition_node = partition.partition_node_index(partition_arg, space_node)
+                    # NULL_NODE_INDEX is INT_MAX, so check before adding one.
+                    if partition_node >= 0 and partition_node < counts.shape[0] - 1:
+                        counts[partition_node + 1] = 1
+                        node_element[partition_node] = cell
+                        node_local[partition_node] = local_node
+
+        wp.launch(
+            mark_point_incidence,
+            dim=domain.element_count(),
+            inputs=[
+                domain.element_arg_value(device),
+                domain.element_index_arg_value(device),
+                topology.topo_arg_value(device),
+                partition.partition_arg_value(device),
+                node_element,
+                node_local,
+                offsets,
+            ],
+            device=device,
+        )
+        array_scan(offsets, offsets, inclusive=True)
+        wp.launch(
+            SpaceRestriction._finish_point_restriction,
+            dim=max(1, node_count),
+            inputs=[offsets, node_element, node_local, indices, elements, local, count],
+            device=device,
+        )
+        node_element.release()
+        node_local.release()
+
+    @wp.kernel
+    def _finish_point_restriction(
+        offsets: wp.array[int],
+        node_element: wp.array[int],
+        node_local_index: wp.array[int],
+        partition_indices: wp.array[int],
+        element_indices: wp.array[int],
+        local_indices: wp.array[int],
+        node_count: wp.array[int],
+    ):
+        n = wp.tid()
+        if n == 0:
+            node_count[0] = offsets[offsets.shape[0] - 1]
+        if n + 1 < offsets.shape[0] and offsets[n + 1] > offsets[n]:
+            destination = offsets[n]
+            partition_indices[destination] = n
+            element_indices[destination] = node_element[n]
+            local_indices[destination] = node_local_index[n]
 
     def node_count_sync(self) -> int:
         """Ensure that the node count is synchronized with the device and return it."""

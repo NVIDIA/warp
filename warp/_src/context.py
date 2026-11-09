@@ -13910,6 +13910,10 @@ def capture_if(
     captures with ``apic=True``), branch bodies must be callbacks; passing :class:`Graph` objects is not yet
     supported. CUDA capture with ``apic=False`` supports either form.
 
+    With CUDA memory pools enabled, arrays created in a callback body receive persistent backing at capture
+    time. The backing is retained until both the array and its owning graph are released; it is reused on
+    every replay. Separately captured :class:`Graph` bodies must not contain memory allocation nodes.
+
     Args:
         condition: Warp array holding the condition value.
         on_true: A callback function or :class:`Graph` to execute if the condition is True.
@@ -14141,6 +14145,8 @@ def capture_while(condition: warp.array[int], while_body: Callable | Graph, stre
     CUDA 12.4+ is required for CUDA graph conditional nodes. During APIC recording (all CPU captures and CUDA
     captures with ``apic=True``), the loop body must be a callback; passing a :class:`Graph` object is not yet
     supported. CUDA capture with ``apic=False`` supports either form.
+
+    CUDA callback-body allocations follow the persistent backing and lifetime rules of :func:`capture_if`.
 
     Args:
         condition: Warp array holding the condition value.

@@ -192,6 +192,126 @@ def test_point_basis(test, device):
     )
 
 
+def test_point_basis_evaluation_restriction(test, device):
+    with wp.ScopedDevice(device):
+        geometry = fem.Grid3D(res=wp.vec3i(2, 1, 1), env_count=2)
+        domain = fem.Cells(geometry)
+        quadrature = fem.PicQuadrature(
+            domain,
+            positions=(
+                wp.array([0, 0, 0, 2, 3, -1], dtype=int),
+                wp.array(
+                    [[0.2, 0.3, 0.4], [0.4, 0.3, 0.4], [0.6, 0.3, 0.4], [0.2, 0.3, 0.4], [0.3, 0.4, 0.5], [0.0] * 3],
+                    dtype=wp.vec3,
+                ),
+            ),
+        )
+        partial_geometry = fem.LinearGeometryPartition(geometry, partition_rank=0, partition_count=2)
+        store = fem.TemporaryStore()
+
+        def check_restriction(restriction, incidences, compact=True):
+            partition = restriction.space_partition
+            references = [
+                (p, incidences[n]) for p, n in enumerate(partition.space_node_indices().numpy()) if n in incidences
+            ]
+            expected_offsets = np.zeros(partition.node_count() + 1, dtype=np.int32)
+            for p, _ in references:
+                expected_offsets[p + 1] = 1
+            np.cumsum(expected_offsets, out=expected_offsets)
+            np.testing.assert_array_equal(restriction.partition_element_offsets().numpy(), expected_offsets)
+            test.assertEqual(int(restriction._node_count_dev.numpy()[0]), len(references))
+            np.testing.assert_array_equal(
+                restriction.node_partition_indices().numpy()[: len(references)], [p for p, _ in references]
+            )
+            np.testing.assert_array_equal(
+                restriction._dof_element_indices.numpy()[: len(references)], [pair[0] for _, pair in references]
+            )
+            np.testing.assert_array_equal(
+                restriction._dof_indices_in_element.numpy()[: len(references)], [pair[1] for _, pair in references]
+            )
+            if compact:
+                test.assertLessEqual(restriction.total_node_element_count(), partition.node_count())
+
+        for partial in (False, True):
+            for capacity in (8, 2, 1):
+                basis = fem.PointBasisSpace(quadrature, max_nodes_per_element=capacity, use_evaluation_point_index=True)
+                space = fem.make_collocated_function_space(basis)
+                partition = fem.make_space_partition(
+                    space_topology=basis.topology,
+                    geometry_partition=partial_geometry if partial else domain.geometry_partition,
+                    environment_first=True,
+                    with_halo=False,
+                    max_node_count=6,
+                    temporary_store=store,
+                )
+                restriction = fem.make_space_restriction(
+                    space_partition=partition, domain=domain, temporary_store=store
+                )
+                incidences = {n: (0, n) for n in range(min(capacity, 3))}
+                if not partial:
+                    incidences.update({3: (2, 0), 4: (3, 0)})
+                check_restriction(restriction, incidences)
+                point_test = fem.make_test(space, space_restriction=restriction)
+                result = fem.integrate(linear_form, quadrature=quadrature, fields={"u": point_test}).numpy()
+                expected = np.array(
+                    [
+                        0 if n not in incidences else 0.5 / (3 if n < 3 else 1)
+                        for n in partition.space_node_indices().numpy()
+                    ]
+                )
+                np.testing.assert_allclose(result, expected, rtol=1.0e-6)
+
+                if not partial and capacity == 8:
+                    # Reuse the restriction across zero, one, and many active nodes.
+                    old_offsets = quadrature.cell_particle_offsets.numpy().copy()
+                    for offsets, expected in (([0, 0, 0, 0, 0], {}), ([0, 0, 0, 0, 1], {0: (3, 0)})):
+                        quadrature.cell_particle_offsets.assign(np.array(offsets, dtype=np.int32))
+                        partition.rebuild(device=device, temporary_store=store)
+                        restriction.rebuild(device=device, temporary_store=store)
+                        check_restriction(restriction, expected)
+                    quadrature.cell_particle_offsets.assign(old_offsets)
+                    partition.rebuild(device=device, temporary_store=store)
+                    restriction.rebuild(device=device, temporary_store=store)
+                    check_restriction(restriction, incidences)
+
+                if device.is_cuda and not partial and capacity == 8:
+                    # Rebuilding on another device must replace all persistent buffers.
+                    for target in (wp.get_device("cpu"), device):
+                        restriction.rebuild(device=target, temporary_store=store)
+                        check_restriction(restriction, incidences)
+                        test.assertEqual(restriction.partition_element_offsets().device, target)
+                        test.assertEqual(restriction.node_arg_value(target).dof_element_indices.device, target)
+
+                if device.is_cuda and not partial and capacity == 2:
+                    for _ in range(2):
+                        partition.rebuild(device=device, temporary_store=store)
+                        restriction.rebuild(device=device, temporary_store=store)
+                    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+                        partition.rebuild(device=device, temporary_store=store)
+                        restriction.rebuild(device=device, temporary_store=store)
+                    old_offsets = quadrature.cell_particle_offsets.numpy().copy()
+                    quadrature.cell_particle_offsets.assign(np.array([0, 1, 2, 4, 5], dtype=np.int32))
+                    wp.capture_launch(capture.graph)
+                    check_restriction(restriction, {0: (0, 0), 1: (1, 0), 2: (2, 0), 3: (2, 1), 4: (3, 0)})
+                    quadrature.cell_particle_offsets.assign(old_offsets)
+                    wp.capture_launch(capture.graph)
+                    check_restriction(restriction, incidences)
+
+        # A subset domain retains the generic path and its domain-local cell indices.
+        basis = fem.PointBasisSpace(quadrature, max_nodes_per_element=8, use_evaluation_point_index=True)
+        partition = fem.make_space_partition(space_topology=basis.topology)
+        subset = fem.Subdomain(domain, element_indices=wp.array([0, 3], dtype=int))
+        restriction = fem.make_space_restriction(space_partition=partition, domain=subset, temporary_store=store)
+        check_restriction(restriction, {0: (0, 0), 1: (0, 1), 2: (0, 2), 4: (1, 0)}, compact=False)
+
+        # A deliberately smaller partition excludes otherwise valid point nodes.
+        partition = fem.make_space_partition(
+            space_topology=basis.topology, environment_first=True, max_node_count=1, temporary_store=store
+        )
+        restriction = fem.make_space_restriction(space_partition=partition, domain=domain, temporary_store=store)
+        check_restriction(restriction, {0: (0, 0), 1: (0, 1), 2: (0, 2), 3: (2, 0), 4: (3, 0)})
+
+
 def test_point_basis_gradient_identity(test, device):
     """Verify that point bases with different gradient functions do not share evaluators."""
     with wp.ScopedDevice(device):
@@ -562,6 +682,12 @@ add_function_test(
 )
 add_function_test(TestFemQuadrature, "test_gimp_quadrature", test_gimp_quadrature)
 add_function_test(TestFemQuadrature, "test_point_basis", test_point_basis)
+add_function_test(
+    TestFemQuadrature,
+    "test_point_basis_evaluation_restriction",
+    test_point_basis_evaluation_restriction,
+    devices=devices,
+)
 add_function_test(
     TestFemQuadrature, "test_point_basis_gradient_identity", test_point_basis_gradient_identity, devices=devices
 )
