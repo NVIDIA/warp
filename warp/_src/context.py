@@ -3359,10 +3359,15 @@ class ModuleHasher:
         ch.update(bytes(func.native_func, "utf-8"))
 
         # Most Warp builtins rely on the versioned cache directory. Builtins
-        # with a templated adjoint also affect reverse-call codegen, so include
+        # with LTO dispatch or a templated adjoint affect reverse-call codegen, so include
         # their overload dispatch metadata in the module hash.
-        if any(overload.adjoint_uses_template_args for overload in func.overloads):
-            dispatch = tuple((overload.native_func, overload.adjoint_uses_template_args) for overload in func.overloads)
+        if any(
+            overload.adjoint_uses_template_args or overload.lto_dispatch_func is not None for overload in func.overloads
+        ):
+            dispatch = tuple(
+                (overload.native_func, overload.adjoint_uses_template_args, overload.is_differentiable)
+                for overload in func.overloads
+            )
             ch.update(repr(dispatch).encode("utf-8"))
 
         external_contracts = (
@@ -13377,7 +13382,7 @@ def set_module_options(options: dict[str, Any], module: Any = None):
     * **max_unroll**: The maximum fixed-size loop to unroll, defaults to the value of ``warp.config.max_unroll``.
     * **enable_backward**: Whether to generate the backward pass for kernels, defaults to the value of ``warp.config.enable_backward``.
     * **enable_mathdx_gemm**: Use libmathdx (cuBLASDx) for ``tile_matmul`` on GPU. If ``None`` (the default), defers to ``warp.config.enable_mathdx_gemm`` at compile time.
-    * **enable_mathdx_solver**: Use libmathdx (cuSolverDx) for ``tile_cholesky``, ``tile_cholesky_solve``, ``tile_lower_solve``, and ``tile_upper_solve`` on GPU. If ``None`` (the default), defers to ``warp.config.enable_mathdx_solver`` at compile time.
+    * **enable_mathdx_solver**: Use libmathdx (cuSolverDx) for ``tile_lu``, ``tile_cholesky``, ``tile_cholesky_solve``, ``tile_lower_solve``, and ``tile_upper_solve`` on GPU. If ``None`` (the default), defers to ``warp.config.enable_mathdx_solver`` at compile time.
     * **enable_mathdx_fft**: Use libmathdx (cuFFTDx) for ``tile_fft`` / ``tile_ifft`` on GPU. If ``None`` (the default), defers to ``warp.config.enable_mathdx_fft`` at compile time.
     * **fast_math**: Enable fast math for CUDA compilation, defaults to ``False``. CPU compilation currently ignores this option.
     * **fuse_fp**: Enable floating-point contraction (FMA fusion) during compilation, defaults to ``True``.

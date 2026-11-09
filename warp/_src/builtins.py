@@ -19245,7 +19245,7 @@ add_builtin(
 )
 
 
-cusolver_function_map = {"getrf": 0, "getrf_no_pivot": 1, "potrf": 2, "potrs": 3, "trsm": 4}
+cusolver_function_map = {"getrf_no_pivot": 0, "potrf": 2, "potrs": 3, "trsm": 4, "getrf_partial_pivot": 5}
 
 cusolver_type_map = {float32: ("wp::float32", 5), float64: ("wp::float64", 6)}
 
@@ -19254,6 +19254,194 @@ cusolver_fill_mode_map = {"upper": 0, "lower": 1}
 cusolver_side_map = {"-": -1, "left": 0, "right": 1}
 
 cusolver_diag_map = {"-": -1, "unit": 0, "nounit": 1}
+
+
+def tile_lu_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return (
+            tile(dtype=Float, shape=tuple[int, int]),
+            tile(dtype=int32, shape=tuple[int]),
+            tile(dtype=int32, shape=tuple[int]),
+        )
+
+    a = arg_types["A"]
+    if not is_tile(a):
+        raise TypeError(f"tile_lu() argument must be a tile, got {a!r}")
+    if len(a.shape) != 2:
+        raise ValueError("tile_lu() argument must be a 2D tile")
+    if a.shape[0] != a.shape[1]:
+        raise ValueError("tile_lu() argument must be square")
+    if a.dtype not in cusolver_type_map:
+        raise TypeError("tile_lu() argument must be a tile of float32 or float64 entries")
+
+    # Materialize views into a dense output suitable for the solver's fixed leading dimension.
+    return (
+        tile(dtype=a.dtype, shape=a.shape, storage="shared"),
+        tile(dtype=int32, shape=(a.shape[0],), storage="shared"),
+        tile(dtype=int32, shape=(1,), storage="shared"),
+    )
+
+
+def tile_lu_lto_dispatch_func(arg_types, return_type, return_values, arg_values, options, builder):
+    a = arg_values["A"]
+    a.type.storage = "shared"
+    n = a.type.shape[0]
+    scratch_bytes = n * n * type_size_in_bytes(a.type.dtype) if options["enable_backward"] else 0
+    arch = options["output_arch"]
+    if (
+        arch is None
+        or not warp._src.context.runtime.core.wp_is_mathdx_enabled()
+        or not options.get("enable_mathdx_solver", True)
+    ):
+        # Cooperative CPU adjoints allocate scratch from the shared tile arena.
+        return ((0, 0, 0, a), [], [], scratch_bytes if arch is None else 0)
+
+    out = return_values[0]
+    dtype, precision = cusolver_type_map[a.type.dtype]
+    smem_bytes = 2 * n * n * type_size_in_bytes(a.type.dtype) + (n + 1) * 4 + scratch_bytes
+    symbol, code = warp._src.build.build_lto_solver(
+        n,
+        n,
+        1,
+        "getrf_partial_pivot",
+        cusolver_function_map["getrf_partial_pivot"],
+        cusolver_side_map["-"],
+        cusolver_diag_map["-"],
+        out.type.layout,
+        out.type.layout,
+        -1,  # LU reads the full matrix; cuSOLVERDx rejects a FillMode operator.
+        arch,
+        precision,
+        options["block_dim"],
+        f"({dtype}*, int*, int*)",
+        builder,
+        smem_estimate_bytes=smem_bytes,
+    )
+    functions = [Var(symbol, str, False, True, False)]
+    ltoirs = [code]
+    if options["enable_backward"]:
+        # The output is dense row-major; column-major exposes its transpose.
+        # Solve L^T * X = W, then Y * U^T = X, without unpacking the factors.
+        for side, diagonal, triangle in (("left", "unit", "upper"), ("right", "nounit", "lower")):
+            symbol, code = warp._src.build.build_lto_solver(
+                n,
+                n,
+                1,
+                "trsm",
+                cusolver_function_map["trsm"],
+                cusolver_side_map[side],
+                cusolver_diag_map[diagonal],
+                "colmajor",
+                "rowmajor",
+                cusolver_fill_mode_map[triangle],
+                arch,
+                precision,
+                options["block_dim"],
+                f"({dtype}*, {dtype}*)",
+                builder,
+                smem_estimate_bytes=smem_bytes,
+            )
+            functions.append(Var(symbol, str, False, True, False))
+            ltoirs.append(code)
+    else:
+        functions.extend((0, 0))
+    return ((*functions, a), [], ltoirs, 0)
+
+
+add_builtin(
+    "tile_lu",
+    input_types={"A": tile(dtype=Float, shape=tuple[int, int])},
+    value_func=tile_lu_value_func,
+    lto_dispatch_func=tile_lu_lto_dispatch_func,
+    doc="""Compute an LU factorization with partial pivoting of a square tile ``A``.
+
+    ``A`` is not modified. The factorization completes even for singular inputs.
+
+    Supports ``float32`` and ``float64``. On CUDA, uses cuSOLVERDx when available
+    and :attr:`warp.config.enable_mathdx_solver` is enabled (also configurable per
+    module). Otherwise uses a cooperative native implementation, including on CPU.
+    Pivot choices may differ between backends when magnitudes are tied.
+
+    This is a cooperative operation, so every thread in the block must call it.
+
+    Gradients propagate through ``lu`` to ``A`` with the recorded pivot sequence
+    held fixed. ``pivots`` and ``info`` are nondifferentiable. Gradients are
+    undefined for singular inputs and where the selected pivot sequence changes.
+
+    Args:
+        A: A square tile with ``shape=(N, N)``.
+
+    Returns:
+        A tuple ``(lu, pivots, info)`` of tiles in shared storage:
+
+        - ``lu``: The packed factors, with ``shape=(N, N)``. The upper triangle
+          holds ``U``. The strict lower triangle holds ``L``, whose unit diagonal
+          is implicit and not stored.
+        - ``pivots``: Zero-based row-swap indices, as an ``int32`` tile with
+          ``shape=(N,)``. Swapping rows ``k`` and ``pivots[k]`` of ``A`` for
+          ``k = 0, 1, ..., N-1`` in that order gives ``P @ A = L @ U``. The
+          indices are a sequence of swaps, not a permutation vector.
+        - ``info``: An ``int32`` tile with ``shape=(1,)``. ``info[0] == 0``
+          indicates success. A positive value ``i`` indicates that
+          ``U[i-1, i-1]`` is exactly zero, so the factors cannot be used for a
+          nonsingular solve. ``info`` does not estimate conditioning.
+
+    Example:
+
+        .. testsetup::
+
+            __name__ = "warp_docs_tile_lu"
+
+        .. testcode::
+
+            @wp.kernel
+            def solve_linear_system(a: wp.array2d[float], b: wp.array[float], x: wp.array[float], status: wp.array[int]):
+                lu, pivots, info = wp.tile_lu(wp.tile_load(a, shape=(3, 3)))
+                status[0] = info[0]
+                if info[0] == 0:
+                    # every thread solves the small system with the shared factors
+                    y = wp.vec3(b[0], b[1], b[2])
+
+                    # apply the row swaps to the right-hand side in order
+                    for k in range(3):
+                        p = pivots[k]
+                        swapped = y[k]
+                        y[k] = y[p]
+                        y[p] = swapped
+
+                    # forward substitution with the implicit unit diagonal of L
+                    for i in range(3):
+                        for j in range(i):
+                            y[i] -= lu[i, j] * y[j]
+
+                    # back substitution with U
+                    for i in range(2, -1, -1):
+                        for j in range(i + 1, 3):
+                            y[i] -= lu[i, j] * y[j]
+                        y[i] /= lu[i, i]
+
+                    for i in range(3):
+                        x[i] = y[i]
+
+            # the zero in the top-left corner requires a row swap
+            a = wp.array(np.array([[0.0, 2.0, 1.0], [1.0, 1.0, 1.0], [2.0, 1.0, 0.0]], dtype=np.float32))
+            b = wp.array(np.array([7.0, 6.0, 4.0], dtype=np.float32))
+            x = wp.zeros(3, dtype=float)
+            status = wp.zeros(1, dtype=int)
+
+            wp.launch_tiled(solve_linear_system, dim=1, inputs=[a, b], outputs=[x, status], block_dim=32)
+
+            print(status.numpy()[0])
+            print(np.round(x.numpy(), 3))
+
+        .. testoutput::
+
+            0
+            [1. 2. 3.]
+    """,
+    group="Tile Primitives",
+    export=False,
+)
 
 
 ##
