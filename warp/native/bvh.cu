@@ -219,6 +219,12 @@ __global__ void compute_morton_codes(
     }
 }
 
+// max of two uint32_t for cub::BlockReduce::Reduce; cub::Max was removed in CCCL 3.0 (CUDA 13)
+struct MaxU32
+{
+    __device__ __forceinline__ uint32_t operator()(uint32_t a, uint32_t b) const { return a > b ? a : b; }
+};
+
 // largest group id as uint32_t, reduced on the device so that the key layout needs no CPU<->GPU sync
 __global__ void compute_max_group(const int* __restrict__ item_groups, uint32_t* max_group, int n)
 {
@@ -232,7 +238,7 @@ __global__ void compute_max_group(const int* __restrict__ item_groups, uint32_t*
     const int tid = blockStart + threadIdx.x;
     const uint32_t group = tid < n ? static_cast<uint32_t>(item_groups[tid]) : 0u;
 
-    const uint32_t block_max = BlockReduce(temp_storage).Reduce(group, cub::Max(), numValid);
+    const uint32_t block_max = BlockReduce(temp_storage).Reduce(group, MaxU32(), numValid);
 
     if (threadIdx.x == 0)
         atomicMax(max_group, block_max);
