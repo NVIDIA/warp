@@ -66,7 +66,7 @@ class UnstructuredPointTopology(SpaceTopology):
         else:
             return self._quadrature.total_point_count()
 
-    def is_discontinuous(self) -> bool:
+    def has_unique_node_incidence(self) -> bool:
         return self._use_evaluation_point_index
 
     def _make_topology_arg(self):

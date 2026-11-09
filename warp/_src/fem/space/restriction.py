@@ -65,7 +65,7 @@ class SpaceRestriction:
         self.node_arg_value.invalidate(self)
 
         # Cells enumerates each geometric cell once; arbitrary Subdomains may repeat cells.
-        if self.space_topology.is_discontinuous() and type(self.domain) is Cells:
+        if self.space_topology.has_unique_node_incidence() and type(self.domain) is Cells:
             self._rebuild_discontinuous_restriction(device, temporary_store)
             return
 

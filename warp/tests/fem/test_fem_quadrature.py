@@ -345,10 +345,10 @@ def test_discontinuous_restriction(test, device):
         nodal = fem.NodalQuadrature(domain, continuous)
         point_basis = fem.PointBasisSpace(nodal)
         evaluation_basis = fem.PointBasisSpace(nodal, use_evaluation_point_index=True)
-        test.assertFalse(point_basis.topology.is_discontinuous())
-        test.assertTrue(evaluation_basis.topology.is_discontinuous())
-        test.assertTrue(discontinuous.topology.is_discontinuous())
-        test.assertFalse(discontinuous.topology.trace().is_discontinuous())
+        test.assertFalse(point_basis.topology.has_unique_node_incidence())
+        test.assertTrue(evaluation_basis.topology.has_unique_node_incidence())
+        test.assertTrue(discontinuous.topology.has_unique_node_incidence())
+        test.assertFalse(discontinuous.topology.trace().has_unique_node_incidence())
 
         for topology, cell_nodes in (
             (discontinuous.topology, [[0, 1, 2, 3], [4, 5, 6, 7]]),
