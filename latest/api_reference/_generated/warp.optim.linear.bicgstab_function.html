@@ -524,12 +524,12 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">M</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">callback</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">check_every</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">use_cuda_graph</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">use_cuda_graph</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">is_left_preconditioner</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">run</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L2153-L2226"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.bicgstab" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L2218-L2294"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.bicgstab" title="Link to this definition">#</a></dt>
 <dd><p>Compute an approximate solution to a linear system using the Biconjugate Gradient Stabilized method (BiCGSTAB).</p>
 <p>Supports batched systems when <code class="docutils literal notranslate"><span class="pre">A</span></code> is a <a class="reference internal" href="warp.optim.linear.LinearOperator.html#warp.optim.linear.LinearOperator" title="warp.optim.linear.LinearOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">LinearOperator</span></code></a> with <code class="docutils literal notranslate"><span class="pre">batch_offsets</span></code> set;
 all subproblems iterate together and convergence uses the worst-case residual.</p>
@@ -549,8 +549,11 @@ If <cite>check_every</cite> is 0, the callback should be a Warp kernel.</p></li>
 Setting <cite>check_every</cite> to 0 disables host-side residual checks, making the solver fully CUDA-graph capturable.
 If conditional CUDA graphs are supported, convergence checks are performed device-side; otherwise, the solver will always run
 to the maximum number of iterations.</p></li>
-<li><p><strong>use_cuda_graph</strong> – If true and when run on a CUDA device, capture the solver iteration as a CUDA graph for reduced launch overhead.
-The linear operator and preconditioner must only perform graph-friendly operations.</p></li>
+<li><p><strong>use_cuda_graph</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a><em> | </em><em>None</em>) – Whether to capture the solver iterations in a graph and replay it, reducing launch overhead.
+<code class="docutils literal notranslate"><span class="pre">None</span></code> captures on CUDA devices only. <code class="docutils literal notranslate"><span class="pre">True</span></code> also captures on CPU, using experimental CPU graph capture.
+With <code class="docutils literal notranslate"><span class="pre">check_every=0</span></code>, a captured solve stops once converged; on CUDA, this needs conditional graph support.
+CPU capture is process-wide, so don’t run captured CPU solves from several threads at once.
+When capturing, the linear operator and preconditioner must only perform graph-friendly operations.</p></li>
 <li><p><strong>is_left_preconditioner</strong> – whether <cite>M</cite> should be used as a left- or right- preconditioner.</p></li>
 <li><p><strong>run</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code> (default), allocate temporary buffers and immediately run the solver. If <code class="docutils literal notranslate"><span class="pre">False</span></code>, return a
 pre-allocated <a class="reference internal" href="warp.optim.linear.BiCGSTAB.html#warp.optim.linear.BiCGSTAB" title="warp.optim.linear.BiCGSTAB"><code class="xref py py-class docutils literal notranslate"><span class="pre">BiCGSTAB</span></code></a> functor. The functor can be called repeatedly without
