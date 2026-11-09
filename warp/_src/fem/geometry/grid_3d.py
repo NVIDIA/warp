@@ -676,21 +676,19 @@ class Grid3D(Geometry):
         if self.environment_count() <= 1:
 
             @dynamic_func(suffix=suffix, allow_overloads=True)
-            def cell_lookup(
-                args: self.CellArg, pos: vec3_type, max_dist: self._scalar_type, filter_data: Any, filter_target: Any
-            ):
-                return cell_lookup_env(args, pos, max_dist, filter_data, filter_target, 0)
+            def cell_lookup(args: self.CellArg, pos: vec3_type, max_dist: Any, filter_data: Any, filter_target: Any):
+                return cell_lookup_env(args, pos, scalar(max_dist), filter_data, filter_target, 0)
 
         @dynamic_func(suffix=suffix, allow_overloads=True)
         def cell_lookup(
             args: self.CellArg,
             pos: vec3_type,
-            max_dist: self._scalar_type,
+            max_dist: Any,
             filter_data: Any,
             filter_target: Any,
             env_index: int,
         ):
-            return cell_lookup_env(args, pos, max_dist, filter_data, filter_target, env_index)
+            return cell_lookup_env(args, pos, scalar(max_dist), filter_data, filter_target, env_index)
 
         return cell_lookup
 

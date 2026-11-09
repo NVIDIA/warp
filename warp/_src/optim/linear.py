@@ -9,6 +9,7 @@ from typing import Any
 
 import warp as wp
 import warp.sparse as sparse
+from warp._src.context import DeviceLike
 from warp._src.types import type_is_matrix, type_is_vector, type_length, type_scalar_type, type_size_in_bytes
 
 __all__ = [
@@ -72,7 +73,7 @@ class LinearOperator:
         self,
         shape: tuple[int, int],
         dtype: type,
-        device: wp._src.context.Device,
+        device: DeviceLike,
         matvec: Callable,
         batch_offsets: wp.array | None = None,
         max_batch_length: int | None = None,
@@ -85,7 +86,7 @@ class LinearOperator:
 
         self._shape = shape
         self._dtype = dtype
-        self._device = device
+        self._device = wp.get_device(device)
         self._matvec = matvec
         self._batch_offsets = batch_offsets
         self._max_batch_length = max_batch_length

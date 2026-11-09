@@ -1607,6 +1607,12 @@ class TestLinearSolvers(unittest.TestCase):
         _solve_with_host_matvec(self, device, check_every=10)
         _solve_with_host_matvec(self, device, check_every=0)
 
+    def test_linear_operator_device_alias(self):
+        """Resolve a device alias passed to ``LinearOperator`` to its ``wp.Device``."""
+        device = wp.get_device()
+        A = LinearOperator((4, 4), wp.float32, device.alias, matvec=lambda x, y, z, alpha, beta: None)
+        self.assertIs(A.device, device)
+
 
 devices = get_test_devices()
 devices_with_graph_capture_allocation = get_test_devices_with_graph_capture_allocation()
