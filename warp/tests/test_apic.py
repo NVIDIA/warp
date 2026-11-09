@@ -1599,6 +1599,59 @@ def test_load_same_capture_twice(test, device):
     np.testing.assert_allclose(result.numpy(), np.arange(n, dtype=np.float32) * 2.0)
 
 
+def test_capture_debug_dot_print_loaded_cpu_graph_raises(test, device):
+    """Reject a loaded CPU graph in ``capture_debug_dot_print()``, which has no CUDA graph to export."""
+    n = 16
+    a = wp.array(np.arange(n, dtype=np.float32), device=device)
+    b = wp.zeros(n, dtype=float, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(scale_kernel, dim=n, inputs=[a, b, 2.0], device=device)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "loaded_cpu")
+        wp.capture_save(capture.graph, path, inputs={"a": a}, outputs={"b": b})
+        loaded = wp.capture_load(path, device=device)
+
+        dot_path = os.path.join(tmpdir, "graph.dot")
+        with test.assertRaisesRegex(
+            RuntimeError,
+            rf"^capture_debug_dot_print\(\) requires a CUDA graph, got a graph on device '{device}'$",
+        ):
+            wp.capture_debug_dot_print(loaded, dot_path)
+        test.assertFalse(os.path.exists(dot_path))
+
+
+def test_capture_debug_dot_print_loaded_cuda_graph(test, device):
+    """Export a loaded CUDA graph before its first launch, then launch it."""
+    n = 16
+    a = wp.array(np.arange(n, dtype=np.float32), device=device)
+    b = wp.zeros(n, dtype=float, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(scale_kernel, dim=n, inputs=[a, b, 2.0], device=device)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "loaded_cuda")
+        wp.capture_save(capture.graph, path, inputs={"a": a}, outputs={"b": b})
+        loaded = wp.capture_load(path, device=device)
+
+        dot_path = os.path.join(tmpdir, "graph.dot")
+        wp.capture_debug_dot_print(loaded, dot_path, verbose=False)
+        with open(dot_path) as dot_file:
+            dot = dot_file.read()
+
+    test.assertTrue(dot.startswith("digraph"))
+    test.assertRegex(dot, r"scale_kernel_[0-9a-f]+_cuda_kernel_forward")
+
+    wp.capture_launch(loaded)
+    result = wp.zeros(n, dtype=float, device=device)
+    loaded.get_param("b", result)
+    np.testing.assert_array_equal(result.numpy(), np.arange(n, dtype=np.float32) * 2.0)
+
+
 def test_save_load_large_shared_memory(test, device, conditional=False):
     """Restore a loaded tile kernel's dynamic shared-memory opt-in."""
     if device.max_shared_memory_per_block <= 64 * 1024:
@@ -5278,6 +5331,18 @@ add_function_test(
     "test_load_same_capture_twice",
     test_load_same_capture_twice,
     devices=devices_with_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
+    "test_capture_debug_dot_print_loaded_cpu_graph_raises",
+    test_capture_debug_dot_print_loaded_cpu_graph_raises,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_debug_dot_print_loaded_cuda_graph",
+    test_capture_debug_dot_print_loaded_cuda_graph,
+    devices=[d for d in devices_with_cuda_graph_module_load if d.is_cuda],
 )
 add_function_test(
     TestApic,

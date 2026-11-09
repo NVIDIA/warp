@@ -13379,7 +13379,7 @@ def set_module_options(options: dict[str, Any], module: Any = None):
     * **enable_mathdx_gemm**: Use libmathdx (cuBLASDx) for ``tile_matmul`` on GPU. If ``None`` (the default), defers to ``warp.config.enable_mathdx_gemm`` at compile time.
     * **enable_mathdx_solver**: Use libmathdx (cuSolverDx) for ``tile_cholesky``, ``tile_cholesky_solve``, ``tile_lower_solve``, and ``tile_upper_solve`` on GPU. If ``None`` (the default), defers to ``warp.config.enable_mathdx_solver`` at compile time.
     * **enable_mathdx_fft**: Use libmathdx (cuFFTDx) for ``tile_fft`` / ``tile_ifft`` on GPU. If ``None`` (the default), defers to ``warp.config.enable_mathdx_fft`` at compile time.
-    * **fast_math**: Enable fast math for CUDA compilation, defaults to ``False``.
+    * **fast_math**: Enable fast math for CUDA compilation, defaults to ``False``. CPU compilation currently ignores this option.
     * **fuse_fp**: Enable floating-point contraction (FMA fusion) during compilation, defaults to ``True``.
     * **lineinfo**: Emit line-number debug info for CUDA kernels, defaults to the value of ``warp.config.lineinfo``.
     * **cuda_output**: CUDA compilation output format: ``"ptx"``, ``"cubin"``, or ``None`` (automatic), defaults to ``None``.
@@ -13676,13 +13676,28 @@ def capture_end(device: DeviceLike = None, stream: Stream | None = None) -> Grap
 
 
 def capture_debug_dot_print(graph: Graph, path: str, verbose: bool = True):
-    """Export a CUDA graph to a DOT file for visualization
+    """Export a CUDA graph to a DOT file for visualization.
 
     Args:
-        graph: A :class:`Graph` as returned by :func:`~warp.capture_end()`
-        path: Path to save the DOT file
-        verbose: Whether to include additional debug information in the output
+        graph: A CUDA :class:`Graph` as returned by :func:`~warp.capture_end()`,
+          :func:`~warp.capture_load()`, or :func:`~warp.capture_load_from_bytes()`.
+        path: Path to save the DOT file.
+        verbose: Whether to include additional debug information in the output.
+
+    Raises:
+        RuntimeError: If ``graph`` was captured on a CPU device, which isn't supported yet,
+          or if the DOT file can't be written.
     """
+    if not graph.device.is_cuda:
+        raise RuntimeError(f"capture_debug_dot_print() requires a CUDA graph, got a graph on device '{graph.device}'")
+
+    # A loaded graph builds its CUDA graph on first launch; build it now if needed.
+    if not graph.graph and graph._native_graph is not None:
+        cuda_graph = runtime.core.wp_apic_get_cuda_graph(graph._native_graph)
+        if not cuda_graph:
+            raise RuntimeError(f"Failed to build CUDA graph from APIC: {runtime.get_error_string()}")
+        graph.graph = ctypes.c_void_p(cuda_graph)
+
     if not runtime.core.wp_capture_debug_dot_print(graph.graph, path.encode(), 1 if verbose else 0):
         raise RuntimeError(f"Graph debug dot print error: {runtime.get_error_string()}")
 
