@@ -1037,6 +1037,29 @@ _array_cast_kernels = {
 }
 
 
+def _flatten_to_scalars(a: warp.array) -> warp.array:
+    """Return a 1-D array of the scalars in ``a`` that shares its memory and keeps it alive."""
+    a = a.flatten()
+    scalar_type = wp._src.types.type_scalar_type(a.dtype)
+    if scalar_type == a.dtype:
+        return a
+
+    if not a.is_contiguous:
+        raise RuntimeError("Flattening non-contiguous arrays is unsupported.")
+
+    result = wp.array(
+        data=None,
+        ptr=a.ptr,
+        capacity=a.capacity,
+        device=a.device,
+        dtype=scalar_type,
+        shape=a.shape[0] * warp._src.types.type_size(a.dtype),
+    )
+    # store back-ref to stop data being destroyed
+    result._ref = a
+    return result
+
+
 def array_cast(in_array: warp.array, out_array: warp.array, count: int | None = None):
     """Cast elements from one array to another array with a different data type.
 
@@ -1069,31 +1092,10 @@ def array_cast(in_array: warp.array, out_array: warp.array, count: int | None = 
     if in_array.ndim != out_array.ndim or in_array_data_shape != out_array_data_shape:
         # Number of dimensions or data type shape do not match.
         # Flatten arrays and do cast at the scalar level
-        in_array = in_array.flatten()
-        out_array = out_array.flatten()
-
         in_array_data_length = warp._src.types.type_size(in_array.dtype)
-        out_array_data_length = warp._src.types.type_size(out_array.dtype)
-        in_array_scalar_type = wp._src.types.type_scalar_type(in_array.dtype)
-        out_array_scalar_type = wp._src.types.type_scalar_type(out_array.dtype)
 
-        in_array = wp.array(
-            data=None,
-            ptr=in_array.ptr,
-            capacity=in_array.capacity,
-            device=in_array.device,
-            dtype=in_array_scalar_type,
-            shape=in_array.shape[0] * in_array_data_length,
-        )
-
-        out_array = wp.array(
-            data=None,
-            ptr=out_array.ptr,
-            capacity=out_array.capacity,
-            device=out_array.device,
-            dtype=out_array_scalar_type,
-            shape=out_array.shape[0] * out_array_data_length,
-        )
+        in_array = _flatten_to_scalars(in_array)
+        out_array = _flatten_to_scalars(out_array)
 
         if count is not None:
             count *= in_array_data_length
