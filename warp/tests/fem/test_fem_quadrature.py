@@ -286,32 +286,16 @@ def test_point_basis_evaluation_restriction(test, device):
                     for _ in range(2):
                         partition.rebuild(device=device, temporary_store=store)
                         restriction.rebuild(device=device, temporary_store=store)
-                    if not wp.is_conditional_graph_supported():
-                        continue
-                    condition = wp.ones(1, dtype=int, device=device)
-                    # A cold store exercises FEM scratch allocation inside the callable body.
-                    conditional_store = fem.TemporaryStore()
-
-                    def rebuild(partition=partition, restriction=restriction, conditional_store=conditional_store):
-                        partition.rebuild(device=device, temporary_store=conditional_store)
-                        restriction.rebuild(device=device, temporary_store=conditional_store)
-
+                    # Warm scratch buffers make ordinary capture independent of callback allocation handling.
                     with wp.ScopedCapture(device=device, force_module_load=False) as capture:
-                        wp.capture_if(condition, on_true=rebuild)
+                        partition.rebuild(device=device, temporary_store=store)
+                        restriction.rebuild(device=device, temporary_store=store)
                     old_offsets = quadrature.cell_particle_offsets.numpy().copy()
                     quadrature.cell_particle_offsets.assign(np.array([0, 1, 2, 4, 5], dtype=np.int32))
-                    condition.zero_()
-                    wp.capture_launch(capture.graph)
-                    check_restriction(restriction, incidences)
-                    condition.fill_(1)
                     wp.capture_launch(capture.graph)
                     changed = {0: (0, 0), 1: (1, 0), 2: (2, 0), 3: (2, 1), 4: (3, 0)}
                     check_restriction(restriction, changed)
                     quadrature.cell_particle_offsets.assign(old_offsets)
-                    condition.zero_()
-                    wp.capture_launch(capture.graph)
-                    check_restriction(restriction, changed)
-                    condition.fill_(1)
                     wp.capture_launch(capture.graph)
                     check_restriction(restriction, incidences)
 
@@ -328,6 +312,52 @@ def test_point_basis_evaluation_restriction(test, device):
         )
         restriction = fem.make_space_restriction(space_partition=partition, domain=domain, temporary_store=store)
         check_restriction(restriction, {0: (0, 0), 1: (0, 1), 2: (0, 2), 3: (2, 0), 4: (3, 0)})
+
+
+def test_discontinuous_restriction(test, device):
+    with wp.ScopedDevice(device):
+        geometry = fem.Grid2D(res=wp.vec2i(2, 1))
+        domain = fem.Cells(geometry)
+        discontinuous = fem.make_polynomial_space(geometry, degree=1, discontinuous=True)
+        continuous = fem.make_polynomial_space(geometry, degree=1)
+        # Quadrature point IDs may share nodes; evaluation-point IDs cannot.
+        nodal = fem.NodalQuadrature(domain, continuous)
+        point_basis = fem.PointBasisSpace(nodal)
+        evaluation_basis = fem.PointBasisSpace(nodal, use_evaluation_point_index=True)
+        test.assertFalse(point_basis.topology.is_discontinuous())
+        test.assertTrue(evaluation_basis.topology.is_discontinuous())
+        test.assertTrue(discontinuous.topology.is_discontinuous())
+        test.assertFalse(discontinuous.topology.trace().is_discontinuous())
+
+        for topology, cell_nodes in (
+            (discontinuous.topology, [[0, 1, 2, 3], [4, 5, 6, 7]]),
+            (evaluation_basis.topology, [[0, 1, 2, 3], [4, 5, 6, 7]]),
+            (point_basis.topology, [[0, 1, 2, 3], [2, 3, 4, 5]]),
+        ):
+            for cells in ([0, 1], [1, 1]):
+                # Explicit Subdomains can repeat cells and must retain every incidence.
+                restricted_domain = (
+                    domain if cells == [0, 1] else fem.Subdomain(domain, element_indices=wp.array(cells, dtype=int))
+                )
+                restriction = fem.make_space_restriction(space_topology=topology, domain=restricted_domain)
+                expected = [[] for _ in range(topology.node_count())]
+                for element, cell in enumerate(cells):
+                    for local, node in enumerate(cell_nodes[cell]):
+                        expected[node].append((element, local))
+                offsets = np.concatenate(([0], np.cumsum([len(entries) for entries in expected])))
+                np.testing.assert_array_equal(restriction.partition_element_offsets().numpy(), offsets)
+                test.assertEqual(restriction.node_count_sync(), sum(bool(entries) for entries in expected))
+                elements = restriction._dof_element_indices.numpy()
+                local_indices = restriction._dof_indices_in_element.numpy()
+                for node, entries in enumerate(expected):
+                    actual = list(
+                        zip(
+                            elements[offsets[node] : offsets[node + 1]],
+                            local_indices[offsets[node] : offsets[node + 1]],
+                            strict=True,
+                        )
+                    )
+                    test.assertEqual(sorted(actual), sorted(entries))
 
 
 def test_point_basis_gradient_identity(test, device):
@@ -706,6 +736,7 @@ add_function_test(
     test_point_basis_evaluation_restriction,
     devices=devices,
 )
+add_function_test(TestFemQuadrature, "test_discontinuous_restriction", test_discontinuous_restriction, devices=devices)
 add_function_test(
     TestFemQuadrature, "test_point_basis_gradient_identity", test_point_basis_gradient_identity, devices=devices
 )

@@ -63,6 +63,17 @@ class SpaceTopology:
         """Number of nodes in the interpolation basis"""
         raise NotImplementedError
 
+    def is_discontinuous(self) -> bool:
+        """Whether each node is guaranteed to belong to at most one cell.
+
+        When ``True``, each node index occurs at most once across the local node
+        lists of all geometry cells.
+
+        The default is conservative: ``False`` also covers topologies that do not
+        provide this guarantee, even if their current connectivity is discontinuous.
+        """
+        return False
+
     @cache.cached_arg_value
     def topo_arg_value(self, device) -> "TopologyArg":
         """Value of the topology argument structure to be passed to device functions"""
@@ -391,6 +402,9 @@ class RegularDiscontinuousSpaceTopologyMixin:
     def node_count(self):
         return self.geometry.cell_count() * self.MAX_NODES_PER_ELEMENT
 
+    def is_discontinuous(self) -> bool:
+        return True
+
     def rebuild(self) -> None:
         """Refresh this topology after rebuilding its geometry.
 
@@ -435,6 +449,7 @@ class DeformedGeometrySpaceTopology(SpaceTopology):
         super().__init__(geometry, base_topology.MAX_NODES_PER_ELEMENT)
 
         self.node_count = self.base.node_count
+        self.is_discontinuous = self.base.is_discontinuous
         self.topo_arg_value = self.base.topo_arg_value
         self.fill_topo_arg = self.base.fill_topo_arg
         self.TopologyArg = self.base.TopologyArg
