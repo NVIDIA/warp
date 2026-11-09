@@ -7,6 +7,7 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 
 ## 2026
 
+- **CuPIQP: A Batched and Differentiable QP Solver on GPUs for Robot Learning and Control**. *F. Song, R. Schwan, Y. Chen, Y. Jiang, C. N. Jones*. October 2026. [arXiv:2610.41021](https://arxiv.org/abs/2610.41021)
 - **Multimodal MPC via Bayesian Set Optimization for Dynamic Manipulation of Deformable Linear Objects**. *Y. Long, G. Solak, A. Ajoudani*. October 2026. [arXiv:2610.31852](https://arxiv.org/abs/2610.31852)
 - **RLMuscle: Muscle-Driven Character Animation via Reinforcement Learning**. *C. Li, S. Yu, Y. Gao, S. Li, P. Yu, A. Hao, H. Wang*. October 2026. [arXiv:2610.30033](https://arxiv.org/abs/2610.30033)
 - **DefFlow: Goal-Conditioned Deformable Object Manipulation using 3D Point Flows**. *G. Singh, S. Orozco, R. Duong, M. T. Akbulut, G. Konidaris, S. Sridhar*. October 2026. [arXiv:2610.22827](https://arxiv.org/abs/2610.22827)
