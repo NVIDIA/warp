@@ -13665,6 +13665,8 @@ def capture_end(device: DeviceLike = None, stream: Stream | None = None) -> Grap
         runtime._apic_graph = None
 
     if not result:
+        # Native failure cleanup already releases any unpublished capture graph.
+        graph.graph = None
         # A concrete error should've already been reported, so we don't need to go into details here
         raise RuntimeError(f"CUDA graph capture failed. {runtime.get_error_string()}")
 

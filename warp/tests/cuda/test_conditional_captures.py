@@ -1093,42 +1093,56 @@ def test_body_allocation_lifetime(test, device):
 
 @unittest.skipUnless(wp.is_conditional_graph_supported(), "Conditional graph nodes not supported")
 def test_failed_body_allocation_lifetime(test, device):
-    """An aborted callback preserves live scratch and releases discarded capture resources."""
+    """Callback aborts and failed capture ends preserve live scratch without leaking dropped scratch."""
     with wp.ScopedDevice(device):
         wp.load_module(device=device)
         condition = wp.ones(1, dtype=wp.int32)
         result = wp.zeros(4, dtype=wp.float32)
-        for retain_array in (False, True):
-            with test.subTest(retain_array=retain_array):
-                wp.synchronize_device()
-                baseline = wp.get_mempool_used_mem_current(device)
-                holder = {}
+        for failure in ("callback", "capture_end"):
+            for retain_array in (False, True):
+                with test.subTest(failure=failure, retain_array=retain_array):
+                    wp.synchronize_device()
+                    baseline = wp.get_mempool_used_mem_current(device)
+                    holder = {}
 
-                def body(retain_array=retain_array, holder=holder):
-                    temporary = wp.empty_like(result)
-                    temporary.fill_(2.0)
+                    def body(retain_array=retain_array, holder=holder, failure=failure):
+                        temporary = wp.empty_like(result)
+                        temporary.fill_(2.0)
+                        if retain_array:
+                            holder["temporary"] = temporary
+                        if failure == "callback":
+                            raise ValueError("rejected callback")
+
+                    error = ValueError if failure == "callback" else RuntimeError
+                    message = "rejected callback" if failure == "callback" else "CUDA graph capture failed"
+                    stderr = StdErrCapture()
+                    stderr.begin()
+                    try:
+                        with test.assertRaisesRegex(error, message):
+                            with wp.ScopedCapture(
+                                force_module_load=False, capture_mode=wp.CaptureMode.THREAD_LOCAL
+                            ) as capture:
+                                wp.capture_if(condition, on_true=body)
+                                # Invalidate only the parent: its conditional body must remain valid during teardown.
+                                test.assertFalse(
+                                    wp._src.context.runtime.core.wp_cuda_context_synchronize(device.context)
+                                )
+                    finally:
+                        diagnostics = stderr.end()  # Expected capture errors, not invalid graph releases.
+                    test.assertNotIn("invalid argument", diagnostics)
+                    test.assertFalse(device.is_capturing)
+                    # A callback exception may finalize a partial graph. Never replay an aborted capture.
+                    del capture
                     if retain_array:
-                        holder["temporary"] = temporary
-                    del temporary
-                    raise ValueError("rejected callback")
-
-                with test.assertRaisesRegex(ValueError, "rejected callback"):
-                    with wp.ScopedCapture(force_module_load=False) as capture:
-                        wp.capture_if(condition, on_true=body)
-                test.assertFalse(device.is_capturing)
-                # The outer scope may finalize a partial graph while propagating the
-                # callback exception. Discard it rather than replaying an aborted capture.
-                del capture
-                if retain_array:
-                    holder["temporary"].fill_(3.0)
-                    np.testing.assert_array_equal(holder["temporary"].numpy(), np.full(4, 3.0))
-                    holder.clear()
-                wp.synchronize_device()
-                test.assertLessEqual(wp.get_mempool_used_mem_current(device), baseline)
-                with wp.ScopedCapture(force_module_load=False) as recovery:
-                    result.fill_(5.0)
-                wp.capture_launch(recovery.graph)
-                np.testing.assert_array_equal(result.numpy(), np.full(4, 5.0))
+                        holder["temporary"].fill_(3.0)
+                        np.testing.assert_array_equal(holder["temporary"].numpy(), np.full(4, 3.0))
+                        holder.clear()
+                    wp.synchronize_device()
+                    test.assertLessEqual(wp.get_mempool_used_mem_current(device), baseline)
+                    with wp.ScopedCapture(force_module_load=False) as recovery:
+                        result.fill_(5.0)
+                    wp.capture_launch(recovery.graph)
+                    np.testing.assert_array_equal(result.numpy(), np.full(4, 5.0))
 
 
 @unittest.skipUnless(wp.is_conditional_graph_supported(), "Conditional graph nodes not supported")
