@@ -494,6 +494,9 @@ void apic_record_bvh_refit(APICState* state, uint64_t bvh_id);
 // construction algorithm (a BVH_CONSTRUCTOR_* value).
 void apic_record_bvh_rebuild(APICState* state, uint64_t bvh_id, int32_t constructor_type);
 
+// Records a same-process mesh refit, including its bounds and winding data.
+void apic_record_mesh_refit(APICState* state, uint64_t mesh_id);
+
 void apic_record_hash_grid_update(
     APICState* state,
     uint64_t grid_id,
