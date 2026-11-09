@@ -62,8 +62,9 @@ class LinearOperator:
             ...
 
     For performance reasons, by default the iterative linear solvers in this module will try to capture the calls
-    for one or more iterations in CUDA graphs. If the ``matvec`` function of a custom :class:`LinearOperator`
-    cannot be graph-captured, the ``use_cuda_graph=False`` parameter should be passed to the solver function.
+    for one or more iterations in CUDA graphs when running on a CUDA device. If the ``matvec`` function of a custom
+    :class:`LinearOperator` cannot be graph-captured, the ``use_cuda_graph=False`` parameter should be passed to the
+    solver function. On CPU, solvers only capture graphs when passed ``use_cuda_graph=True``.
 
     """
 
@@ -888,7 +889,8 @@ class TiledDot:
     Args:
         max_length: Total length of the arrays to dot (sum of all subproblem lengths).
         scalar_type: Scalar data type of the arrays.
-        tile_size: Number of threads per tile/block.
+        tile_size: Number of threads per tile/block. On CPU, or when it is 1, a single thread
+            computes each dot product instead.
         device: Device on which to allocate scratch memory and launch kernels.
         max_column_count: Maximum number of simultaneous dot products.
         batch_offsets: Optional array of shape ``(B+1,)`` partitioning scalar degrees of freedom into
@@ -922,14 +924,34 @@ class TiledDot:
         self.max_batch_length = max_batch_length
         self.batch_count = 1 if batch_offsets is None else batch_offsets.shape[0] - 1
 
-        use_segmented_tree = (
-            batch_offsets is not None
-            and self.device.is_cuda
-            and self.tile_size > 1
-            and (max_batch_length is None or max_batch_length > self.tile_size)
-        )
+        if self.device.is_cpu or self.tile_size == 1:
+            # CPU blocks hold one thread, so a tiled reduction would only repeat the same
+            # sum in every lane, and a tree of one-element tiles never shrinks. One thread
+            # per (column, batch) sums its range instead.
+            self.tile_size = 1
 
-        if batch_offsets is None:
+            self.partial_sums_a = wp.zeros(
+                shape=(max_column_count, self.batch_count),
+                dtype=scalar_type,
+                device=self.device,
+            )
+            self.partial_sums_b = self.partial_sums_a
+
+            self.rounds = 0
+            self._output = self.partial_sums_a
+            self.dot_launch = None
+            self.sum_launch = None
+            self.segmented_dot_launch = None
+            self.batch_dot_launch = None
+
+            self.sequential_dot_launch: wp.Launch = wp.launch(
+                _sequential_dot_kernel,
+                dim=(max_column_count, self.batch_count),
+                inputs=[self.partial_sums_a, self.partial_sums_b, self.partial_sums_a, batch_offsets],
+                device=self.device,
+                record_cmd=True,
+            )
+        elif batch_offsets is None:
             num_blocks = (max_length + self.tile_size - 1) // self.tile_size
             scratch = wp.zeros(
                 shape=(2, max_column_count, num_blocks),
@@ -970,7 +992,8 @@ class TiledDot:
             )
             self.batch_dot_launch = None
             self.segmented_dot_launch = None
-        elif use_segmented_tree:
+            self.sequential_dot_launch = None
+        elif max_batch_length is None or max_batch_length > self.tile_size:
             (
                 plan_offsets_kernel,
                 segmented_dot_kernel,
@@ -1050,13 +1073,10 @@ class TiledDot:
             )
             self.dot_launch = None
             self.batch_dot_launch = None
+            self.sequential_dot_launch = None
         else:
-            # CPU reductions remain direct because CPU tiles contain one thread. CUDA
-            # reductions use this path when every batch fits in one tile, avoiding the
+            # Every batch fits in one tile, so a single block per batch avoids the
             # segmented offset plan and per-block binary search.
-            if not self.device.is_cuda:
-                self.tile_size = 1
-
             self.partial_sums_a = wp.zeros(
                 shape=(max_column_count, self.batch_count),
                 dtype=scalar_type,
@@ -1069,6 +1089,7 @@ class TiledDot:
             self.dot_launch = None
             self.sum_launch = None
             self.segmented_dot_launch = None
+            self.sequential_dot_launch = None
 
             self.batch_dot_launch: wp.Launch = wp.launch(
                 batch_dot_kernel,
@@ -1098,7 +1119,13 @@ class TiledDot:
         data_out = self.partial_sums_a[col_offset : col_offset + column_count]
         data_in = self.partial_sums_b[col_offset : col_offset + column_count]
 
-        if self.batch_dot_launch is not None:
+        if self.sequential_dot_launch is not None:
+            self.sequential_dot_launch.set_param_at_index(0, a)
+            self.sequential_dot_launch.set_param_at_index(1, b)
+            self.sequential_dot_launch.set_param_at_index(2, data_out)
+            self.sequential_dot_launch.set_dim((column_count, self.batch_count))
+            self.sequential_dot_launch.launch()
+        elif self.batch_dot_launch is not None:
             # Batched path: one block per (col, batch_id) with tile_size lanes
             self.batch_dot_launch.set_param_at_index(0, a)
             self.batch_dot_launch.set_param_at_index(1, b)
@@ -1294,6 +1321,37 @@ def batch_dot_kernel(
     wp.tile_store(result[col], total, offset=batch_id)
 
 
+_SEQUENTIAL_DOT_CHUNK_SIZE = wp.constant(256)
+
+
+@wp.kernel(module="unique")
+def _sequential_dot_kernel(
+    a: wp.array2d[Any],
+    b: wp.array2d[Any],
+    result: wp.array2d[Any],
+    batch_offsets: wp.array1d[int],
+):
+    col, batch_id = wp.tid()
+
+    start = int(0)
+    end = a.shape[1]
+    if batch_offsets:
+        start = batch_offsets[batch_id]
+        end = batch_offsets[batch_id + 1]
+
+    # Summing fixed-size chunks separately makes the rounding error grow with the number
+    # of chunks rather than with the length, for the same cost as a single loop.
+    total = a.dtype(0.0)
+    for chunk_start in range(start, end, _SEQUENTIAL_DOT_CHUNK_SIZE):
+        chunk_end = wp.min(chunk_start + _SEQUENTIAL_DOT_CHUNK_SIZE, end)
+        chunk_sum = a.dtype(0.0)
+        for i in range(chunk_start, chunk_end):
+            chunk_sum += a[col, i] * b[col, i]
+        total += chunk_sum
+
+    result[col, batch_id] = total
+
+
 class LinearSolverState:
     """Pre-allocated state for a linear iterative solver.
 
@@ -1316,7 +1374,8 @@ class LinearSolverState:
         M: optional preconditioner.
         callback: function to be called every ``check_every`` iteration with the current iteration number, residual and tolerance.
         check_every: number of iterations every which to call ``callback`` and check the residual against the tolerance.
-        use_cuda_graph: whether to capture the solver iteration as a CUDA graph for reduced launch overhead.
+        use_cuda_graph: whether to capture the solver iteration as a graph for reduced launch overhead.
+            ``None`` captures on CUDA devices only, and ``True`` also captures on CPU.
 
     Instances are not directly constructible — use the solver-specific subclasses
     :class:`~warp.optim.linear.CG`, :class:`~warp.optim.linear.CR`, :class:`~warp.optim.linear.BiCGSTAB`, and :class:`~warp.optim.linear.GMRES`, or obtain one by
@@ -1335,7 +1394,7 @@ class LinearSolverState:
         M: _Matrix | None = None,
         callback: Callable | None = None,
         check_every: int = 10,
-        use_cuda_graph: bool = True,
+        use_cuda_graph: bool | None = None,
     ):
         self._A = aslinearoperator(A)
         self._M = aslinearoperator(M)
@@ -1345,9 +1404,9 @@ class LinearSolverState:
         self._atol = atol
         self._callback = callback
         self._check_every = check_every
-        self._use_cuda_graph = use_cuda_graph
 
         self._device = self._A.device
+        self._use_cuda_graph = self._device.is_cuda if use_cuda_graph is None else bool(use_cuda_graph)
         self._scalar_type = self._A.scalar_type
         self._batch_count = self._A.batch_count
         self._dofs_per_entry = _dofs_per_entry(b.dtype)
@@ -1431,7 +1490,7 @@ class _RestartableLinearSolverState(LinearSolverState):
         M: _Matrix | None = None,
         callback: Callable | None = None,
         check_every: int = 10,
-        use_cuda_graph: bool = True,
+        use_cuda_graph: bool | None = None,
         *,
         restart: int | None = None,
     ):
@@ -1618,7 +1677,7 @@ def cg(
     M: _Matrix | None = None,
     callback: Callable | None = None,
     check_every=10,
-    use_cuda_graph=True,
+    use_cuda_graph: bool | None = None,
     run: bool = True,
     *,
     restart: int | None = None,
@@ -1645,8 +1704,11 @@ def cg(
             Setting `check_every` to 0 disables host-side residual checks, making the solver fully CUDA-graph capturable.
             If conditional CUDA graphs are supported, convergence checks are performed device-side; otherwise, the solver will always run
             to the maximum number of iterations.
-        use_cuda_graph: If true and when run on a CUDA device, capture the solver iteration as a CUDA graph for reduced launch overhead.
-            The linear operator and preconditioner must only perform graph-friendly operations.
+        use_cuda_graph: Whether to capture the solver iterations in a graph and replay it, reducing launch overhead.
+            ``None`` captures on CUDA devices only. ``True`` also captures on CPU, using experimental CPU graph capture.
+            With ``check_every=0``, a captured solve stops once converged; on CUDA, this needs conditional graph support.
+            CPU capture is process-wide, so don't run captured CPU solves from several threads at once.
+            When capturing, the linear operator and preconditioner must only perform graph-friendly operations.
         run: If ``True`` (default), allocate temporary buffers and immediately run the solver, returning the iteration count,
             residual norm, and absolute tolerance. If ``False``, return a pre-allocated :class:`~warp.optim.linear.CG` functor.
             The functor can be called repeatedly without reallocating temporary buffers when replacement operands match the
@@ -1871,7 +1933,7 @@ def cr(
     M: _Matrix | None = None,
     callback: Callable | None = None,
     check_every=10,
-    use_cuda_graph=True,
+    use_cuda_graph: bool | None = None,
     run: bool = True,
     *,
     restart: int | None = None,
@@ -1898,8 +1960,11 @@ def cr(
             Setting `check_every` to 0 disables host-side residual checks, making the solver fully CUDA-graph capturable.
             If conditional CUDA graphs are supported, convergence checks are performed device-side; otherwise, the solver will always run
             to the maximum number of iterations.
-        use_cuda_graph: If true and when run on a CUDA device, capture the solver iteration as a CUDA graph for reduced launch overhead.
-          The linear operator and preconditioner must only perform graph-friendly operations.
+        use_cuda_graph: Whether to capture the solver iterations in a graph and replay it, reducing launch overhead.
+            ``None`` captures on CUDA devices only. ``True`` also captures on CPU, using experimental CPU graph capture.
+            With ``check_every=0``, a captured solve stops once converged; on CUDA, this needs conditional graph support.
+            CPU capture is process-wide, so don't run captured CPU solves from several threads at once.
+            When capturing, the linear operator and preconditioner must only perform graph-friendly operations.
         run: If ``True`` (default), allocate temporary buffers and immediately run the solver. If ``False``, return a
             pre-allocated :class:`~warp.optim.linear.CR` functor. The functor can be called repeatedly without
             reallocating temporary buffers when replacement operands match the construction-time shape, dtype, device,
@@ -1974,7 +2039,7 @@ class BiCGSTAB(LinearSolverState):
         M: _Matrix | None = None,
         callback: Callable | None = None,
         check_every: int = 10,
-        use_cuda_graph: bool = True,
+        use_cuda_graph: bool | None = None,
         is_left_preconditioner: bool = False,
     ):
         self._is_left_preconditioner = is_left_preconditioner
@@ -2160,7 +2225,7 @@ def bicgstab(
     M: _Matrix | None = None,
     callback: Callable | None = None,
     check_every=10,
-    use_cuda_graph=True,
+    use_cuda_graph: bool | None = None,
     is_left_preconditioner=False,
     run: bool = True,
 ):
@@ -2183,8 +2248,11 @@ def bicgstab(
             Setting `check_every` to 0 disables host-side residual checks, making the solver fully CUDA-graph capturable.
             If conditional CUDA graphs are supported, convergence checks are performed device-side; otherwise, the solver will always run
             to the maximum number of iterations.
-        use_cuda_graph: If true and when run on a CUDA device, capture the solver iteration as a CUDA graph for reduced launch overhead.
-            The linear operator and preconditioner must only perform graph-friendly operations.
+        use_cuda_graph: Whether to capture the solver iterations in a graph and replay it, reducing launch overhead.
+            ``None`` captures on CUDA devices only. ``True`` also captures on CPU, using experimental CPU graph capture.
+            With ``check_every=0``, a captured solve stops once converged; on CUDA, this needs conditional graph support.
+            CPU capture is process-wide, so don't run captured CPU solves from several threads at once.
+            When capturing, the linear operator and preconditioner must only perform graph-friendly operations.
         is_left_preconditioner: whether `M` should be used as a left- or right- preconditioner.
         run: If ``True`` (default), allocate temporary buffers and immediately run the solver. If ``False``, return a
             pre-allocated :class:`~warp.optim.linear.BiCGSTAB` functor. The functor can be called repeatedly without
@@ -2253,7 +2321,7 @@ class GMRES(LinearSolverState):
         M: _Matrix | None = None,
         callback: Callable | None = None,
         check_every: int = 31,
-        use_cuda_graph: bool = True,
+        use_cuda_graph: bool | None = None,
         is_left_preconditioner: bool = False,
     ):
         self._restart = restart
@@ -2502,7 +2570,7 @@ def gmres(
     M: _Matrix | None = None,
     callback: Callable | None = None,
     check_every=31,
-    use_cuda_graph=True,
+    use_cuda_graph: bool | None = None,
     is_left_preconditioner=False,
     run: bool = True,
 ):
@@ -2527,8 +2595,11 @@ def gmres(
             Setting `check_every` to 0 disables host-side residual checks, making the solver fully CUDA-graph capturable.
             If conditional CUDA graphs are supported, convergence checks are performed device-side; otherwise, the solver will always run
             to the maximum number of iterations.
-        use_cuda_graph: If true and when run on a CUDA device, capture the solver iteration as a CUDA graph for reduced launch overhead.
-          The linear operator and preconditioner must only perform graph-friendly operations.
+        use_cuda_graph: Whether to capture the solver iterations in a graph and replay it, reducing launch overhead.
+            ``None`` captures on CUDA devices only. ``True`` also captures on CPU, using experimental CPU graph capture.
+            With ``check_every=0``, a captured solve stops once converged; on CUDA, this needs conditional graph support.
+            CPU capture is process-wide, so don't run captured CPU solves from several threads at once.
+            When capturing, the linear operator and preconditioner must only perform graph-friendly operations.
         is_left_preconditioner: whether `M` should be used as a left- or right- preconditioner.
         run: If ``True`` (default), allocate temporary buffers and immediately run the solver. If ``False``, return a
             pre-allocated :class:`~warp.optim.linear.GMRES` functor. The functor can be called repeatedly without
@@ -2660,9 +2731,7 @@ def _initialize_absolute_tolerance(
 
 
 @functools.cache
-def _create_update_condition_kernel(batch_count: int):
-    tile_size = max(32, min(512, 1 << math.ceil(math.log2(max(batch_count, 1)))))
-
+def _create_update_condition_kernel(batch_count: int, tile_size: int):
     @wp.kernel(module="unique")
     def _update_condition(
         maxiter: int,
@@ -2688,7 +2757,7 @@ def _create_update_condition_kernel(batch_count: int):
             cur_iter[0] += cycle_size
             condition[0] = wp.where(converged or cur_iter[0] >= maxiter, 0, 1)
 
-    return _update_condition, tile_size
+    return _update_condition
 
 
 def _run_capturable_loop(
@@ -2714,7 +2783,12 @@ def _run_capturable_loop(
     cur_iter = cur_iter_and_condition[0:1]
     condition = cur_iter_and_condition[1:2]
 
-    update_condition_kernel, update_condition_tile_size = _create_update_condition_kernel(batch_count)
+    if device.is_cpu:
+        # CPU blocks hold one thread, so wider tiles would only repeat the reduction per lane
+        update_condition_tile_size = 1
+    else:
+        update_condition_tile_size = max(32, min(512, 1 << math.ceil(math.log2(max(batch_count, 1)))))
+    update_condition_kernel = _create_update_condition_kernel(batch_count, update_condition_tile_size)
     update_condition_launch = wp.launch(
         update_condition_kernel,
         dim=(1, update_condition_tile_size),
@@ -2741,7 +2815,7 @@ def _run_capturable_loop(
         if callback_launch is not None:
             callback_launch.launch()
 
-    if use_cuda_graph and device.is_cuda:
+    if use_cuda_graph:
         if device.is_capturing:
             wp.capture_while(condition, do_cycle_with_condition)
         else:
@@ -2787,7 +2861,7 @@ def _run_solver_loop(
 
     while True:
         # Do not do graph capture at first iteration -- modules may not be loaded yet
-        if device.is_cuda and use_cuda_graph and cur_iter > 0:
+        if use_cuda_graph and cur_iter > 0:
             if graph is None:
                 with wp.ScopedCapture(device=device, force_module_load=False) as capture:
                     do_cycle()

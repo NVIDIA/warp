@@ -12,7 +12,19 @@ from warp._src.optim.linear import (
     _create_segmented_tiled_dot_kernels,
     _run_solver_loop,
 )
-from warp.optim.linear import CG, CR, GMRES, BiCGSTAB, aslinearoperator, bicgstab, cg, cr, gmres, preconditioner
+from warp.optim.linear import (
+    CG,
+    CR,
+    GMRES,
+    BiCGSTAB,
+    LinearOperator,
+    aslinearoperator,
+    bicgstab,
+    cg,
+    cr,
+    gmres,
+    preconditioner,
+)
 from warp.sparse import bsr_from_triplets, bsr_identity, bsr_mv, bsr_set_from_triplets, bsr_zeros
 from warp.tests.unittest_utils import *
 
@@ -370,6 +382,33 @@ def test_gmres_conditional_graph_cycle_iterations(test, device):
         wp.capture_launch(capture.graph)
         test.assertEqual(niter.numpy()[0], 0)
         test.assertLessEqual(residual_sq.numpy()[0], tolerance_sq.numpy()[0])
+
+
+def test_batched_check_every_zero_checks_all_batches(test, device):
+    if device.is_cuda and not wp.is_conditional_graph_supported():
+        test.skipTest("conditional CUDA graphs are not supported")
+
+    # Every batch but the last converges after one CG iteration. The last one has five
+    # distinct eigenvalues and needs five, so the device-side check must cover it.
+    batch_count = 40
+    batch_size = 5
+    diag_np = np.full((batch_count, batch_size), 2.0)
+    diag_np[-1] = (1.0, 2.0, 3.0, 4.0, 5.0)
+    diag = wp.array(diag_np.ravel(), dtype=wp.float64, device=device)
+    b = wp.ones(batch_count * batch_size, dtype=wp.float64, device=device)
+    offsets = _batch_offsets([batch_size] * batch_count, device)
+    A = aslinearoperator(diag, batch_offsets=offsets, max_batch_length=batch_size)
+
+    x = wp.zeros_like(b)
+    host_iterations, _err, _atol = cg(A, b, x, tol=1.0e-10, maxiter=100, check_every=1, use_cuda_graph=False)
+
+    x.zero_()
+    iterations, residual_sq, tolerance_sq = cg(A, b, x, tol=1.0e-10, maxiter=100, check_every=0, use_cuda_graph=True)
+
+    test.assertGreater(host_iterations, 1)
+    test.assertEqual(iterations.numpy()[0], host_iterations)
+    test.assertTrue(np.all(residual_sq.numpy() <= tolerance_sq.numpy()))
+    np.testing.assert_allclose(x.numpy(), 1.0 / diag_np.ravel(), rtol=1.0e-8)
 
 
 def test_cr(test, device):
@@ -746,6 +785,40 @@ def test_tiled_dot_plan_offsets_int_max(test, device):
     np.testing.assert_array_equal(output_offsets.numpy(), (0, 4_194_304))
 
 
+def test_tiled_dot_tile_size_one(test, device):
+    length = 1000
+    rng = np.random.default_rng(42)
+    a_np = np.abs(rng.standard_normal(length)).astype(np.float32)
+    b_np = np.abs(rng.standard_normal(length)).astype(np.float32)
+    a = wp.array(a_np, device=device)
+    b = wp.array(b_np, device=device)
+
+    # One-element tiles can't shrink a reduction tree, so this must not loop forever
+    tiled_dot = TiledDot(length, wp.float32, tile_size=1, device=device)
+    tiled_dot.compute(a, b)
+
+    expected = np.dot(a_np.astype(np.float64), b_np.astype(np.float64))
+    np.testing.assert_allclose(tiled_dot.col().numpy(), (expected,), rtol=1.0e-6)
+
+
+def test_tiled_dot_float32_accuracy(test, device):
+    # Accumulating 2**20 positive float32 terms one by one drifts by about 4e-4 relative,
+    # which is enough to perturb the convergence checks of float32 solves.
+    length = 1 << 20
+    rng = np.random.default_rng(7)
+    values = np.abs(rng.standard_normal(length)).astype(np.float32)
+    a = wp.array(values, device=device)
+    expected = np.dot(values.astype(np.float64), values.astype(np.float64))
+
+    single_dot = TiledDot(length, wp.float32, device=device)
+    single_dot.compute(a, a)
+    test.assertLess(abs(single_dot.col().numpy()[0] - expected) / expected, 1.0e-5)
+
+    batched_dot = TiledDot(length, wp.float32, device=device, batch_offsets=_batch_offsets([length], device))
+    batched_dot.compute(a, a)
+    test.assertLess(abs(batched_dot.col().numpy()[0] - expected) / expected, 1.0e-5)
+
+
 def _run_batched_gmres(test, device, dtype, batch_sizes, seed_base, tol, restart):
     rows = sum(batch_sizes)
     A_np_full = np.zeros((rows, rows), dtype=np.float64 if dtype == wp.float64 else np.float32)
@@ -894,6 +967,87 @@ def test_functor_iteration_buffer_reuse(test, device):
                 wp.capture_launch(capture.graph)
                 test.assertEqual(final_iteration.ptr, capture_state._cur_iter_and_condition.ptr)
                 test.assertLessEqual(err.numpy()[0], atol.numpy()[0])
+
+
+def _solve_counting_matvec_calls(test, device, check_every, **kwargs):
+    """Solve with CG and return how often ``matvec`` ran in Python, and the iteration count.
+
+    A captured solve calls ``matvec`` a fixed number of times while recording, whatever the
+    iteration count; an eager solve calls it at least once per iteration.
+    """
+    n = 64
+    diag = wp.array(np.arange(1.0, n + 1.0), dtype=wp.float64, device=device)
+    diag_op = aslinearoperator(diag)
+    calls = 0
+
+    def matvec(x, y, z, alpha, beta):
+        nonlocal calls
+        calls += 1
+        diag_op.matvec(x, y, z, alpha, beta)
+
+    A = LinearOperator(diag_op.shape, diag_op.dtype, device, matvec=matvec)
+    b = wp.ones(n, dtype=wp.float64, device=device)
+    x = wp.zeros_like(b)
+
+    iterations, _err, _atol = cg(A, b, x, tol=1.0e-10, maxiter=200, check_every=check_every, **kwargs)
+    if check_every == 0:
+        iterations = int(iterations.numpy()[0])
+
+    test.assertGreaterEqual(iterations, 10)
+    np.testing.assert_allclose(x.numpy(), 1.0 / diag.numpy(), rtol=1.0e-6)
+    return calls, iterations
+
+
+def test_use_cuda_graph_resolution(test, device):
+    calls, iterations = _solve_counting_matvec_calls(test, device, check_every=10, use_cuda_graph=False)
+    test.assertGreaterEqual(calls, iterations)
+
+    calls, _iterations = _solve_counting_matvec_calls(test, device, check_every=10, use_cuda_graph=True)
+    test.assertLessEqual(calls, 3)
+
+    # The default captures on CUDA only
+    calls, iterations = _solve_counting_matvec_calls(test, device, check_every=10)
+    if device.is_cuda:
+        test.assertLessEqual(calls, 3)
+    else:
+        test.assertGreaterEqual(calls, iterations)
+
+    if device.is_cuda and not wp.is_conditional_graph_supported():
+        return
+
+    calls, iterations = _solve_counting_matvec_calls(test, device, check_every=0, use_cuda_graph=False)
+    test.assertGreaterEqual(calls, iterations)
+
+    calls, _iterations = _solve_counting_matvec_calls(test, device, check_every=0, use_cuda_graph=True)
+    test.assertLessEqual(calls, 3)
+
+    calls, iterations = _solve_counting_matvec_calls(test, device, check_every=0)
+    if device.is_cuda:
+        test.assertLessEqual(calls, 3)
+    else:
+        test.assertGreaterEqual(calls, iterations)
+
+
+def _solve_with_host_matvec(test, device, check_every):
+    n = 32
+    rng = np.random.default_rng(11)
+    C = rng.standard_normal((n, n))
+    A_np = 4.0 * np.eye(n) + 0.01 * (C @ C.T) / n
+    b_np = rng.standard_normal(n)
+
+    def matvec(x, y, z, alpha, beta):
+        # Host-side work that a graph capture would only run once, at record time
+        result = alpha * (A_np @ x.numpy())
+        if beta != 0.0:
+            result += beta * y.numpy()
+        z.numpy()[:] = result
+
+    A = LinearOperator((n, n), wp.float64, device, matvec=matvec)
+    b = wp.array(b_np, dtype=wp.float64, device=device)
+    x = wp.zeros_like(b)
+    cg(A, b, x, tol=1.0e-10, maxiter=100, check_every=check_every)
+
+    np.testing.assert_allclose(x.numpy(), np.linalg.solve(A_np, b_np), rtol=1.0e-6)
 
 
 def test_functor_preconditioner(test, device):
@@ -1447,7 +1601,11 @@ def test_fsai_preconditioned_solvers(test, device):
 
 
 class TestLinearSolvers(unittest.TestCase):
-    pass
+    def test_host_matvec_default(self):
+        # By default, CPU solves don't capture, so host-side operators keep working
+        device = wp.get_device("cpu")
+        _solve_with_host_matvec(self, device, check_every=10)
+        _solve_with_host_matvec(self, device, check_every=0)
 
 
 devices = get_test_devices()
@@ -1478,6 +1636,12 @@ add_function_test(
     "test_gmres_conditional_graph_cycle_iterations",
     test_gmres_conditional_graph_cycle_iterations,
     devices=get_cuda_test_devices_with_mempool(),
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_batched_check_every_zero_checks_all_batches",
+    test_batched_check_every_zero_checks_all_batches,
+    devices=devices,
 )
 add_function_test(TestLinearSolvers, "test_cr", test_cr, devices=devices_with_graph_capture_allocation)
 add_function_test(TestLinearSolvers, "test_bicgstab", test_bicgstab, devices=devices_with_graph_capture_allocation)
@@ -1514,7 +1678,7 @@ add_function_test(
     TestLinearSolvers,
     "test_tiled_dot_large_single_batch",
     test_tiled_dot_large_single_batch,
-    devices=get_cuda_test_devices(),
+    devices=devices,
 )
 add_function_test(
     TestLinearSolvers,
@@ -1534,6 +1698,18 @@ add_function_test(
     test_tiled_dot_plan_offsets_int_max,
     devices=get_cuda_test_devices(),
 )
+add_function_test(
+    TestLinearSolvers,
+    "test_tiled_dot_tile_size_one",
+    test_tiled_dot_tile_size_one,
+    devices=devices,
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_tiled_dot_float32_accuracy",
+    test_tiled_dot_float32_accuracy,
+    devices=devices,
+)
 add_function_test(TestLinearSolvers, "test_functor_reuse", test_functor_reuse, devices=devices)
 add_function_test(
     TestLinearSolvers,
@@ -1541,6 +1717,7 @@ add_function_test(
     test_functor_iteration_buffer_reuse,
     devices=devices,
 )
+add_function_test(TestLinearSolvers, "test_use_cuda_graph_resolution", test_use_cuda_graph_resolution, devices=devices)
 add_function_test(TestLinearSolvers, "test_functor_preconditioner", test_functor_preconditioner, devices=devices)
 add_function_test(TestLinearSolvers, "test_functor_compat_errors", test_functor_compat_errors, devices=devices)
 add_function_test(
