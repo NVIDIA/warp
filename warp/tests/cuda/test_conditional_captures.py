@@ -1092,6 +1092,46 @@ def test_body_allocation_lifetime(test, device):
 
 
 @unittest.skipUnless(wp.is_conditional_graph_supported(), "Conditional graph nodes not supported")
+def test_failed_body_allocation_lifetime(test, device):
+    """An aborted callback preserves live scratch and releases discarded capture resources."""
+    with wp.ScopedDevice(device):
+        wp.load_module(device=device)
+        condition = wp.ones(1, dtype=wp.int32)
+        result = wp.zeros(4, dtype=wp.float32)
+        for retain_array in (False, True):
+            with test.subTest(retain_array=retain_array):
+                wp.synchronize_device()
+                baseline = wp.get_mempool_used_mem_current(device)
+                holder = {}
+
+                def body(retain_array=retain_array, holder=holder):
+                    temporary = wp.empty_like(result)
+                    temporary.fill_(2.0)
+                    if retain_array:
+                        holder["temporary"] = temporary
+                    del temporary
+                    raise ValueError("rejected callback")
+
+                with test.assertRaisesRegex(ValueError, "rejected callback"):
+                    with wp.ScopedCapture(force_module_load=False) as capture:
+                        wp.capture_if(condition, on_true=body)
+                test.assertFalse(device.is_capturing)
+                # The outer scope may finalize a partial graph while propagating the
+                # callback exception. Discard it rather than replaying an aborted capture.
+                del capture
+                if retain_array:
+                    holder["temporary"].fill_(3.0)
+                    np.testing.assert_array_equal(holder["temporary"].numpy(), np.full(4, 3.0))
+                    holder.clear()
+                wp.synchronize_device()
+                test.assertLessEqual(wp.get_mempool_used_mem_current(device), baseline)
+                with wp.ScopedCapture(force_module_load=False) as recovery:
+                    result.fill_(5.0)
+                wp.capture_launch(recovery.graph)
+                np.testing.assert_array_equal(result.numpy(), np.full(4, 5.0))
+
+
+@unittest.skipUnless(wp.is_conditional_graph_supported(), "Conditional graph nodes not supported")
 def test_error_alloc_if_subgraph(test, device):
     with wp.ScopedDevice(device):
         # capture body subgraph
@@ -1209,6 +1249,12 @@ add_function_test(
     TestConditionalCaptures,
     "test_body_allocation_lifetime",
     test_body_allocation_lifetime,
+    devices=cuda_devices_with_mempool,
+)
+add_function_test(
+    TestConditionalCaptures,
+    "test_failed_body_allocation_lifetime",
+    test_failed_body_allocation_lifetime,
     devices=cuda_devices_with_mempool,
 )
 add_function_test(

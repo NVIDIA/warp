@@ -286,14 +286,32 @@ def test_point_basis_evaluation_restriction(test, device):
                     for _ in range(2):
                         partition.rebuild(device=device, temporary_store=store)
                         restriction.rebuild(device=device, temporary_store=store)
+                    if not wp.is_conditional_graph_supported():
+                        continue
+                    condition = wp.ones(1, dtype=int, device=device)
+                    # A cold store exercises FEM scratch allocation inside the callable body.
+                    conditional_store = fem.TemporaryStore()
+
+                    def rebuild(partition=partition, restriction=restriction, conditional_store=conditional_store):
+                        partition.rebuild(device=device, temporary_store=conditional_store)
+                        restriction.rebuild(device=device, temporary_store=conditional_store)
+
                     with wp.ScopedCapture(device=device, force_module_load=False) as capture:
-                        partition.rebuild(device=device, temporary_store=store)
-                        restriction.rebuild(device=device, temporary_store=store)
+                        wp.capture_if(condition, on_true=rebuild)
                     old_offsets = quadrature.cell_particle_offsets.numpy().copy()
                     quadrature.cell_particle_offsets.assign(np.array([0, 1, 2, 4, 5], dtype=np.int32))
+                    condition.zero_()
                     wp.capture_launch(capture.graph)
-                    check_restriction(restriction, {0: (0, 0), 1: (1, 0), 2: (2, 0), 3: (2, 1), 4: (3, 0)})
+                    check_restriction(restriction, incidences)
+                    condition.fill_(1)
+                    wp.capture_launch(capture.graph)
+                    changed = {0: (0, 0), 1: (1, 0), 2: (2, 0), 3: (2, 1), 4: (3, 0)}
+                    check_restriction(restriction, changed)
                     quadrature.cell_particle_offsets.assign(old_offsets)
+                    condition.zero_()
+                    wp.capture_launch(capture.graph)
+                    check_restriction(restriction, changed)
+                    condition.fill_(1)
                     wp.capture_launch(capture.graph)
                     check_restriction(restriction, incidences)
 
