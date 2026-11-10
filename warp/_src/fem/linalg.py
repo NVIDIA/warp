@@ -530,7 +530,7 @@ def symmetric_eigenvalues_qr(A: Any, tol: Any):
 
 def array_axpy(x: wp.array, y: wp.array, alpha: float = 1.0, beta: float = 1.0):
     """Compute ``y = alpha*x + beta*y``."""
-    from warp._src.context import runtime  # noqa: PLC0415
+    from warp._src.tape import Tape, no_grad  # noqa: PLC0415
 
     dtype = type_scalar_type(y.dtype)
 
@@ -545,9 +545,9 @@ def array_axpy(x: wp.array, y: wp.array, alpha: float = 1.0, beta: float = 1.0):
     # and record a custom adjoint function on the tape.
 
     # temporarily disable tape to avoid printing warning that kernel is not differentiable
-    (tape, runtime.tape) = (runtime.tape, None)
-    wp.launch(kernel=_array_axpy_kernel, dim=x.shape, device=x.device, inputs=[x, y, alpha, beta])
-    runtime.tape = tape
+    tape = Tape.get_active()
+    with no_grad():
+        wp.launch(kernel=_array_axpy_kernel, dim=x.shape, device=x.device, inputs=[x, y, alpha, beta])
 
     if tape is not None and (x.requires_grad or y.requires_grad):
 

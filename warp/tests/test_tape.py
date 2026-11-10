@@ -1014,16 +1014,181 @@ def test_tape_backward_cuda_launch_failure(test, device):
         tape.backward(grads={y: wp.ones_like(y)})
 
 
+def test_tape_no_grad_gradients(test, device):
+    """Launches and copies inside ``no_grad`` are not recorded and don't change gradients."""
+    x = wp.array([1.0, 2.0, 3.0], dtype=float, requires_grad=True, device=device)
+    y = wp.zeros_like(x, requires_grad=True)
+    z = wp.zeros_like(x, requires_grad=True)
+    w = wp.zeros_like(x, requires_grad=True)
+
+    with wp.Tape() as tape:
+        wp.launch(mul_constant, dim=x.shape, inputs=[x], outputs=[y], device=device)
+        with wp.no_grad():
+            # would add 2 to x.grad if recorded
+            wp.launch(mul_constant, dim=x.shape, inputs=[x], outputs=[z], device=device)
+            wp.copy(w, x)
+        test.assertEqual(len(tape.launches), 1)
+
+    tape.backward(grads={y: wp.ones_like(y), z: wp.ones_like(z), w: wp.ones_like(w)})
+
+    assert_np_equal(y.numpy(), np.array([2.0, 4.0, 6.0]))
+    assert_np_equal(z.numpy(), np.array([2.0, 4.0, 6.0]))
+    assert_np_equal(w.numpy(), x.numpy())
+    assert_np_equal(x.grad.numpy(), np.full(3, 2.0))
+
+
+def test_tape_nested_gradients(test, device):
+    """An inner tape records only its own launches, and both tapes compute their own gradients."""
+    x = wp.array([1.0, 2.0, 3.0], dtype=float, requires_grad=True, device=device)
+    y = wp.zeros_like(x, requires_grad=True)
+    z = wp.zeros_like(x, requires_grad=True)
+    u = wp.zeros_like(x, requires_grad=True)
+
+    outer = wp.Tape()
+    inner = wp.Tape()
+    with outer:
+        wp.launch(mul_constant, dim=x.shape, inputs=[x], outputs=[y], device=device)
+        with inner:
+            wp.launch(mul_constant, dim=y.shape, inputs=[y], outputs=[z], device=device)
+        wp.launch(mul_constant, dim=y.shape, inputs=[y], outputs=[u], device=device)
+
+    test.assertEqual(len(outer.launches), 2)
+    test.assertEqual(len(inner.launches), 1)
+
+    # inner: dz/dy = 2
+    inner.backward(grads={z: wp.ones_like(z)})
+    assert_np_equal(y.grad.numpy(), np.full(3, 2.0))
+    assert_np_equal(x.grad.numpy(), np.zeros(3))
+    inner.zero()
+
+    # outer: du/dx = 4, without the inner launch
+    outer.backward(grads={u: wp.ones_like(u)})
+    assert_np_equal(x.grad.numpy(), np.full(3, 4.0))
+
+
 devices = get_test_devices()
 cuda_devices = get_cuda_test_devices()
 
 
 class TestTape(unittest.TestCase):
-    def test_tape_no_nested_tapes(self):
-        with self.assertRaises(RuntimeError):
-            with wp.Tape():
+    def test_tape_get_active(self):
+        self.assertIsNone(wp.Tape.get_active())
+        with wp.Tape() as tape:
+            self.assertIs(wp.Tape.get_active(), tape)
+        self.assertIsNone(wp.Tape.get_active())
+
+    def test_tape_nested_tapes(self):
+        outer = wp.Tape()
+        inner = wp.Tape()
+        with outer:
+            with inner:
+                self.assertIs(wp.Tape.get_active(), inner)
+            self.assertIs(wp.Tape.get_active(), outer)
+            with inner:
+                self.assertIs(wp.Tape.get_active(), inner)
+            self.assertIs(wp.Tape.get_active(), outer)
+        self.assertIsNone(wp.Tape.get_active())
+
+    def test_tape_nested_tape_exception(self):
+        outer = wp.Tape()
+        with outer:
+            with self.assertRaisesRegex(ValueError, "inner"):
                 with wp.Tape():
+                    raise ValueError("inner")
+            self.assertIs(wp.Tape.get_active(), outer)
+        self.assertIsNone(wp.Tape.get_active())
+
+    def test_tape_reenter_active_tape_raises(self):
+        tape = wp.Tape()
+        with tape:
+            with self.assertRaisesRegex(RuntimeError, "already active"):
+                with tape:
                     pass
+            self.assertIs(wp.Tape.get_active(), tape)
+
+            # also when the tape is active further out in the stack
+            with wp.Tape():
+                with self.assertRaisesRegex(RuntimeError, "already active"):
+                    with tape:
+                        pass
+            self.assertIs(wp.Tape.get_active(), tape)
+        self.assertIsNone(wp.Tape.get_active())
+
+    def test_tape_exit_inactive_tape_raises(self):
+        outer = wp.Tape()
+        inner = wp.Tape()
+        with self.assertRaisesRegex(RuntimeError, "tape not present"):
+            outer.__exit__(None, None, None)
+        with outer:
+            inner.__enter__()
+            with self.assertRaisesRegex(RuntimeError, "tape not present"):
+                outer.__exit__(None, None, None)
+            inner.__exit__(None, None, None)
+            self.assertIs(wp.Tape.get_active(), outer)
+        self.assertIsNone(wp.Tape.get_active())
+
+    def test_tape_no_grad(self):
+        # no effect without an active tape
+        with wp.no_grad():
+            self.assertIsNone(wp.Tape.get_active())
+        self.assertIsNone(wp.Tape.get_active())
+
+        with wp.Tape() as tape:
+            with wp.no_grad():
+                self.assertIsNone(wp.Tape.get_active())
+                with wp.no_grad():
+                    self.assertIsNone(wp.Tape.get_active())
+                self.assertIsNone(wp.Tape.get_active())
+                # a tape entered while paused records, and the pause resumes after it
+                with wp.Tape() as inner:
+                    self.assertIs(wp.Tape.get_active(), inner)
+                self.assertIsNone(wp.Tape.get_active())
+            self.assertIs(wp.Tape.get_active(), tape)
+
+    def test_tape_no_grad_exception(self):
+        with wp.Tape() as tape:
+            with self.assertRaisesRegex(ValueError, "paused"):
+                with wp.no_grad():
+                    raise ValueError("paused")
+            self.assertIs(wp.Tape.get_active(), tape)
+
+    def test_tape_no_grad_decorator(self):
+        @wp.no_grad
+        def bare():
+            """Docstring."""
+            return wp.Tape.get_active()
+
+        @wp.no_grad()
+        def called():
+            return wp.Tape.get_active()
+
+        self.assertEqual(bare.__name__, "bare")
+        self.assertEqual(bare.__doc__, "Docstring.")
+        with wp.Tape() as tape:
+            self.assertIsNone(bare())
+            self.assertIsNone(called())
+            self.assertIs(wp.Tape.get_active(), tape)
+
+        with self.assertRaises(TypeError):
+            wp.no_grad(1)
+
+    def test_tape_no_grad_reentrant(self):
+        pause = wp.no_grad()
+
+        @pause
+        def recurse(n):
+            self.assertIsNone(wp.Tape.get_active())
+            if n > 0:
+                recurse(n - 1)
+            with wp.Tape() as inner:
+                self.assertIs(wp.Tape.get_active(), inner)
+                with pause:
+                    self.assertIsNone(wp.Tape.get_active())
+                self.assertIs(wp.Tape.get_active(), inner)
+
+        with wp.Tape() as tape:
+            recurse(3)
+            self.assertIs(wp.Tape.get_active(), tape)
 
     def test_tape_scope_end_without_matching_begin(self):
         tape = wp.Tape()
@@ -1100,6 +1265,8 @@ add_function_test(
 add_function_test(
     TestTape, "test_tape_backward_cuda_launch_failure", test_tape_backward_cuda_launch_failure, devices=cuda_devices
 )
+add_function_test(TestTape, "test_tape_no_grad_gradients", test_tape_no_grad_gradients, devices=devices)
+add_function_test(TestTape, "test_tape_nested_gradients", test_tape_nested_gradients, devices=devices)
 
 
 if __name__ == "__main__":

@@ -124,6 +124,7 @@ from warp._src.context import get_cuda_kernel_properties as get_cuda_kernel_prop
 from warp._src.context import get_suggested_block_size as get_suggested_block_size
 from warp._src.context import synchronize as synchronize
 from warp._src.tape import Tape as Tape
+from warp._src.tape import no_grad as no_grad
 from warp._src.context import Device as Device
 from warp._src.utils import ScopedDevice as ScopedDevice
 from warp._src.context import is_device_available as is_device_available
