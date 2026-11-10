@@ -288,6 +288,56 @@ def test_tape_nested_struct(test, device):
     assert_np_equal(wrapper.nested.arr.grad.numpy(), [0.0])
 
 
+@wp.struct
+class ValueFieldsInner:
+    w: float
+
+
+@wp.struct
+class ValueFieldsStruct:
+    s: float
+    v: wp.vec3
+    t: wp.transform
+    inner: ValueFieldsInner
+
+
+@wp.func
+def scale_value_fields(p: ValueFieldsStruct, x: float) -> ValueFieldsStruct:
+    p.s = p.s * x
+    p.v = p.v * x
+    p.t = p.t * x
+    p.inner.w = p.inner.w * x
+    return p
+
+
+@wp.kernel
+def value_fields_loss_kernel(p: ValueFieldsStruct, x: wp.array[float], loss: wp.array[float]):
+    q = scale_value_fields(p, x[0])
+    loss[0] = q.s + wp.dot(q.v, wp.vec3(1.0)) + q.t[6] + q.inner.w
+
+
+def test_tape_struct_value_field_adjoints(test, device):
+    """Check that a struct argument's value fields start from a zero adjoint in Tape.backward()."""
+    p = ValueFieldsStruct()
+    p.s = 2.0
+    p.v = wp.vec3(3.0, 4.0, 5.0)
+    p.t = wp.transform_identity()
+    p.inner = ValueFieldsInner()
+    p.inner.w = 6.0
+
+    x = wp.array([0.5], dtype=float, requires_grad=True, device=device)
+    loss = wp.zeros(1, dtype=float, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(value_fields_loss_kernel, dim=1, inputs=[p, x], outputs=[loss], device=device)
+    tape.backward(loss=loss)
+
+    # loss = x * (s + v.x + v.y + v.z + t.q.w + inner.w), so d(loss)/dx = 21.
+    assert_np_equal(loss.numpy(), np.array([10.5]), tol=1e-5)
+    assert_np_equal(x.grad.numpy(), np.array([21.0]), tol=1e-5)
+
+
 def test_tape_visualize(test, device):
     dim = 8
     tape = wp.Tape()
@@ -1079,6 +1129,9 @@ add_function_test(
 )
 add_function_test(TestTape, "test_tape_zero_multiple_outputs", test_tape_zero_multiple_outputs, devices=devices)
 add_function_test(TestTape, "test_tape_nested_struct", test_tape_nested_struct, devices=devices)
+add_function_test(
+    TestTape, "test_tape_struct_value_field_adjoints", test_tape_struct_value_field_adjoints, devices=devices
+)
 add_function_test(TestTape, "test_tape_visualize", test_tape_visualize, devices=devices)
 add_function_test(TestTape, "test_tape_struct_subscript", test_tape_struct_subscript, devices=devices)
 add_function_test(TestTape, "test_tape_nested_struct_subscript", test_tape_nested_struct_subscript, devices=devices)
