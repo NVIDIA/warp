@@ -2388,8 +2388,10 @@ are replayed with <a class="reference internal" href="../api_reference/_generate
 <a class="reference internal" href="../api_reference/_generated/warp.utils.array_scan.html#warp.utils.array_scan" title="warp.utils.array_scan"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_scan()</span></code></a>,
 <a class="reference internal" href="../api_reference/_generated/warp.utils.radix_sort_pairs.html#warp.utils.radix_sort_pairs" title="warp.utils.radix_sort_pairs"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.radix_sort_pairs()</span></code></a>,
 <a class="reference internal" href="../api_reference/_generated/warp.utils.segmented_sort_pairs.html#warp.utils.segmented_sort_pairs" title="warp.utils.segmented_sort_pairs"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.segmented_sort_pairs()</span></code></a>,
-<a class="reference internal" href="../api_reference/_generated/warp.utils.runlength_encode.html#warp.utils.runlength_encode" title="warp.utils.runlength_encode"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.runlength_encode()</span></code></a>, and the
-<code class="docutils literal notranslate"><span class="pre">warp.sparse</span></code> BSR <code class="docutils literal notranslate"><span class="pre">from_triplets</span></code> / <code class="docutils literal notranslate"><span class="pre">transpose</span></code> topology builders.</p></li>
+<a class="reference internal" href="../api_reference/_generated/warp.utils.runlength_encode.html#warp.utils.runlength_encode" title="warp.utils.runlength_encode"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.runlength_encode()</span></code></a>, the
+<code class="docutils literal notranslate"><span class="pre">warp.sparse</span></code> BSR <code class="docutils literal notranslate"><span class="pre">from_triplets</span></code> / <code class="docutils literal notranslate"><span class="pre">transpose</span></code> topology builders, and
+<a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_compress.html#warp.sparse.bsr_compress" title="warp.sparse.bsr_compress"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.sparse.bsr_compress()</span></code></a>, which replays on the
+current offsets, row counts, columns, and values.</p></li>
 <li><p>Bounding-volume-hierarchy updates (<a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh.refit" title="warp.Bvh.refit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">wp.Bvh.refit()</span></code></a> and
 <a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh.rebuild" title="warp.Bvh.rebuild"><code class="xref py py-meth docutils literal notranslate"><span class="pre">wp.Bvh.rebuild()</span></code></a>), re-run on replay against the
 current <code class="docutils literal notranslate"><span class="pre">lowers</span></code> / <code class="docutils literal notranslate"><span class="pre">uppers</span></code> so a captured graph queries the updated tree.
@@ -2481,7 +2483,7 @@ undefined behavior.</p></li>
 surface, the C <code class="docutils literal notranslate"><span class="pre">wp_apic_*</span></code> API, and the recorded operation set are all
 subject to change without a formal deprecation cycle. The writer and loader
 must use the same Warp version. The current writer and reader use format
-version 18, which stores explicit element counts for handle relocations.
+version 19, which adds BSR compression records.
 Recapture graphs saved with earlier formats.</p>
 </div>
 <p>The APIC operation stream lets Warp serialize a supported captured graph to
@@ -2513,7 +2515,8 @@ graphs replay them from current inputs: kernel launches (forward, adjoint, and r
 <a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_assign.html#warp.sparse.bsr_assign" title="warp.sparse.bsr_assign"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.sparse.bsr_assign()</span></code></a>,
 <a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_axpy.html#warp.sparse.bsr_axpy" title="warp.sparse.bsr_axpy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.sparse.bsr_axpy()</span></code></a>,
 <a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_mm.html#warp.sparse.bsr_mm" title="warp.sparse.bsr_mm"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.sparse.bsr_mm()</span></code></a> when no host count readback is required,
-<a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_set_transpose.html#warp.sparse.bsr_set_transpose" title="warp.sparse.bsr_set_transpose"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.sparse.bsr_set_transpose()</span></code></a>, and
+<a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_set_transpose.html#warp.sparse.bsr_set_transpose" title="warp.sparse.bsr_set_transpose"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.sparse.bsr_set_transpose()</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_compress.html#warp.sparse.bsr_compress" title="warp.sparse.bsr_compress"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.sparse.bsr_compress()</span></code></a>, and
 <a class="reference internal" href="../api_reference/_generated/warp.capture_if.html#warp.capture_if" title="warp.capture_if"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_if()</span></code></a> / <a class="reference internal" href="../api_reference/_generated/warp.capture_while.html#warp.capture_while" title="warp.capture_while"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_while()</span></code></a>
 conditionals. Unlike the CPU path, CUDA host code for these helper operations
 issues CUDA operations while CUDA stream capture is active so the driver
