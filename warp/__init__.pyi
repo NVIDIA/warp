@@ -135,6 +135,7 @@ from warp._src.context import get_cuda_device as get_cuda_device
 from warp._src.context import get_cuda_supported_archs as get_cuda_supported_archs
 from warp._src.context import get_cuda_toolkit_version as get_cuda_toolkit_version
 from warp._src.context import get_cuda_driver_version as get_cuda_driver_version
+from warp._src.context import get_libmathdx_version as get_libmathdx_version
 from warp._src.context import map_cuda_device as map_cuda_device
 from warp._src.context import unmap_cuda_device as unmap_cuda_device
 from warp._src.context import get_device as get_device

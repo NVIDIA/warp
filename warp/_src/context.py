@@ -17226,15 +17226,20 @@ def get_host_compiler_version() -> str:
     return runtime.get_host_compiler_version()
 
 
-def get_libmathdx_version() -> str:
+def get_libmathdx_version() -> tuple[int, int, int] | None:
     """Return the libmathdx version used by Warp.
 
     Returns:
-        Version string (e.g., ``"0.3.0"``), or empty string if MathDx is not enabled.
+        A tuple of ``(major, minor, patch)`` version numbers (e.g., ``(0, 3, 0)``),
+        or ``None`` if MathDx is not enabled or its version is unavailable.
     """
     if runtime is None:
         init()
-    return runtime.get_libmathdx_version()
+    version = runtime.get_libmathdx_version()
+    if not version:
+        return None
+    major, minor, patch = version.split(".")
+    return int(major), int(minor), int(patch)
 
 
 def get_nvrtc_version() -> tuple[int, int] | None:
