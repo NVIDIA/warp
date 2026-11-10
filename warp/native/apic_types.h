@@ -50,6 +50,7 @@ enum APICOpType : uint32_t {
     APIC_OP_BVH_REBUILD = 18,  // wp_bvh_rebuild_host
     APIC_OP_HASH_GRID_UPDATE = 19,  // wp_hash_grid_update_host
     APIC_OP_BSR_COMPRESS = 20,  // wp_bsr_compress_inplace_host/device
+    APIC_OP_CHILD_GRAPH = 21,  // Graph branch of wp.capture_if/capture_while (live CPU only)
 };
 
 enum APICReductionKind : uint8_t {
@@ -601,6 +602,16 @@ struct APICCondRecord {
     // followed by branch_a_size bytes of inner ops
     // followed by branch_b_size bytes of inner ops
 };  // 40 bytes fixed
+
+// Live-only reference to a finished CPU capture, indexed in APICState::child_states.
+// Replay executes the child's stream; save and load reject this record.
+struct APICChildGraphRecord {
+    APICOpHeader header;  // op_type = APIC_OP_CHILD_GRAPH
+    uint32_t child_index;
+    uint32_t _pad;
+};  // 16 bytes
+
+static_assert(sizeof(APICChildGraphRecord) == 16, "APICChildGraphRecord must remain 16 bytes");
 
 // =============================================================================
 // Memory Section Records

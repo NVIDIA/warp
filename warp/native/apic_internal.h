@@ -287,6 +287,12 @@ struct APICState {
     // CPU kernel function pointers (registered during capture for replay)
     std::unordered_map<std::string, APICCPUKernel> cpu_kernels;
 
+    // Finished CPU captures referenced by APIC_OP_CHILD_GRAPH records, indexed by
+    // APICChildGraphRecord::child_index. Not owned: the Python Graph that owns this
+    // state retains the Graph objects that own the children. Only grows, so an
+    // index validated against an earlier size stays valid.
+    std::vector<APICState*> child_states;
+
     void append_bytes(const void* data, size_t sz)
     {
         size_t offset = operation_stream.size();
@@ -600,13 +606,16 @@ struct APICGraph {
 
 // Walk the operation byte stream once and verify that every record header,
 // variable-length payload, and op_type is within bounds. Prints a diagnostic
-// and returns false on first inconsistency. Defined in apic.cpp.
+// and returns false on first inconsistency. ``child_graph_count`` is the size of
+// the live state's child table that APIC_OP_CHILD_GRAPH records index; loaded
+// streams pass 0, so any child-graph record is rejected. Defined in apic.cpp.
 bool apic_validate_operation_stream(
     const uint8_t* data,
     size_t size,
     uint32_t operation_count,
     uint32_t depth = 0,
-    uint32_t format_version = APIC_FORMAT_VERSION
+    uint32_t format_version = APIC_FORMAT_VERSION,
+    size_t child_graph_count = 0
 );
 
 // ============================================================================

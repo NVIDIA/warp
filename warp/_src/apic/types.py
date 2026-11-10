@@ -30,6 +30,7 @@ APIC_OP_BVH_REFIT = 17
 APIC_OP_BVH_REBUILD = 18
 APIC_OP_HASH_GRID_UPDATE = 19
 APIC_OP_BSR_COMPRESS = 20
+APIC_OP_CHILD_GRAPH = 21
 
 
 # Scalar element types (must match APICType in apic_types.h).

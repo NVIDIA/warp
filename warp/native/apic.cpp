@@ -103,7 +103,8 @@ void wp_apic_end_recording(APICState* state)
         // Downstream replay paths gate on operations_validated and skip per-op
         // bounds checks.
         state->operations_validated = apic_validate_operation_stream(
-            state->operation_stream.data(), state->operation_stream.size(), state->operation_count
+            state->operation_stream.data(), state->operation_stream.size(), state->operation_count, 0,
+            APIC_FORMAT_VERSION, state->child_states.size()
         );
         g_apic_state = nullptr;
     }
@@ -1078,6 +1079,65 @@ void wp_apic_record_conditional(
     delete b;
 }
 
+bool wp_apic_state_has_conditional(const APICState* state)
+{
+    if (!state || !state->operations_validated)
+        return false;
+    // Nested conditionals and child-graph records are only recorded inside
+    // branch bodies, so scanning the top level is enough.
+    const uint8_t* ptr = state->operation_stream.data();
+    for (uint32_t i = 0; i < state->operation_count; ++i) {
+        const auto* header = reinterpret_cast<const APICOpHeader*>(ptr);
+        if (header->op_type == APIC_OP_IF || header->op_type == APIC_OP_WHILE)
+            return true;
+        ptr += header->total_size;
+    }
+    return false;
+}
+
+bool wp_apic_record_child_graph(APICState* state, APICState* child)
+{
+    if (!state || !child) {
+        wp::set_error_string(
+            "Warp APIC error: Null %s passed to wp_apic_record_child_graph", !state ? "state" : "child"
+        );
+        return false;
+    }
+    if (!state->recording || !state->is_cpu) {
+        wp::set_error_string("Warp APIC error: A child graph can only be recorded into an active CPU capture");
+        return false;
+    }
+    if (child == state || child->recording || !child->operations_validated) {
+        wp::set_error_string("Warp APIC error: A child graph must be a finished CPU capture");
+        return false;
+    }
+    if (!child->is_cpu) {
+        wp::set_error_string("Warp APIC error: A child graph of a CPU capture must also be a CPU capture");
+        return false;
+    }
+    // CUDA child graph nodes cannot contain conditional nodes; keep CPU capture
+    // from composing graphs that CUDA capture cannot.
+    if (wp_apic_state_has_conditional(child)) {
+        wp::set_error_string("Warp APIC error: A child graph cannot contain capture_if() or capture_while()");
+        return false;
+    }
+
+    // Reuse the slot when the same graph is referenced more than once.
+    uint32_t child_index = 0;
+    while (child_index < state->child_states.size() && state->child_states[child_index] != child)
+        ++child_index;
+    if (child_index == state->child_states.size())
+        state->child_states.push_back(child);
+
+    APICChildGraphRecord rec = {};
+    rec.header.op_type = APIC_OP_CHILD_GRAPH;
+    rec.header.total_size = sizeof(rec);
+    rec.child_index = child_index;
+    state->append_bytes(&rec, sizeof(rec));
+    state->operation_count++;
+    return true;
+}
+
 // ============================================================================
 // Mesh Registration
 //
@@ -1820,7 +1880,12 @@ static bool apic_add_check(uint64_t a, uint64_t b, uint64_t* out)
 // for live capture; after .wrp load for deserialized graphs). Replay paths
 // skip per-op bounds checks once this returns true.
 bool apic_validate_operation_stream(
-    const uint8_t* data, size_t size, uint32_t operation_count, uint32_t depth, uint32_t format_version
+    const uint8_t* data,
+    size_t size,
+    uint32_t operation_count,
+    uint32_t depth,
+    uint32_t format_version,
+    size_t child_graph_count
 )
 {
     // Cap conditional nesting before recursion can stack-overflow on a
@@ -2323,7 +2388,7 @@ bool apic_validate_operation_stream(
             // Recurse into the inner sub-streams.
             if (rec->branch_a_size > 0
                 && !apic_validate_operation_stream(
-                    branch_a, rec->branch_a_size, rec->branch_a_op_count, depth + 1, format_version
+                    branch_a, rec->branch_a_size, rec->branch_a_op_count, depth + 1, format_version, child_graph_count
                 )) {
                 fprintf(stderr, "Warp APIC error: branch_a invalid at operation %u\n", i);
                 return false;
@@ -2334,9 +2399,25 @@ bool apic_validate_operation_stream(
             }
             if (rec->branch_b_size > 0
                 && !apic_validate_operation_stream(
-                    branch_b, rec->branch_b_size, rec->branch_b_op_count, depth + 1, format_version
+                    branch_b, rec->branch_b_size, rec->branch_b_op_count, depth + 1, format_version, child_graph_count
                 )) {
                 fprintf(stderr, "Warp APIC error: branch_b invalid at operation %u\n", i);
+                return false;
+            }
+            break;
+        }
+        case APIC_OP_CHILD_GRAPH: {
+            // Only a live CPU capture has a child table to index; a loaded
+            // stream passes child_graph_count == 0 and is rejected here.
+            if (header->total_size != sizeof(APICChildGraphRecord)) {
+                fprintf(stderr, "Warp APIC error: invalid child graph record size at operation %u\n", i);
+                return false;
+            }
+            const APICChildGraphRecord* rec = reinterpret_cast<const APICChildGraphRecord*>(ptr);
+            if (rec->child_index >= child_graph_count) {
+                fprintf(
+                    stderr, "Warp APIC error: child graph index %u out of range at operation %u\n", rec->child_index, i
+                );
                 return false;
             }
             break;
@@ -2373,9 +2454,10 @@ static const char* apic_bvh_op_name(uint32_t op_type)
 }
 
 // Returns the op_type of the first operation in `data` whose replay depends on a
-// process-local handle -- BVH refit/rebuild (a live BVH pointer) or a HashGrid
-// update (a live grid_id) -- or 0 if the stream is fully serializable. Recurses
-// into capture_if / capture_while branch bodies. Deriving non-serializability
+// process-local handle -- BVH refit/rebuild (a live BVH pointer), a HashGrid
+// update (a live grid_id), or a child graph (a live APICState) -- or 0 if the
+// stream is fully serializable. Recurses into capture_if / capture_while
+// branch bodies. Deriving non-serializability
 // from the finalized stream, rather than from a flag set eagerly when an op is
 // recorded, means an op that a branch body discards when it unwinds no longer
 // blocks a later save. Callers validate the stream first, so record sizes and
@@ -2389,6 +2471,7 @@ static uint32_t apic_stream_first_nonserializable_op(const uint8_t* data, uint32
         case APIC_OP_BVH_REFIT:
         case APIC_OP_BVH_REBUILD:
         case APIC_OP_HASH_GRID_UPDATE:
+        case APIC_OP_CHILD_GRAPH:
             return header->op_type;
         case APIC_OP_IF:
         case APIC_OP_WHILE: {
@@ -2556,14 +2639,17 @@ apic_check_bsr_rows(const int32_t* offsets, const int32_t* row_counts, int32_t r
 // remap_handle:  (uint64_t old_id) -> uint64_t (identity for live recording,
 //                                                load-time remap for loaded graphs)
 // find_kernel:   (const std::string& key, uint8_t is_forward) -> void*
-template <typename ResolvePtrFn, typename RemapHandleFn, typename FindKernelFn>
+// replay_child:  (uint32_t child_index) -> bool, replays an APIC_OP_CHILD_GRAPH
+//                target (live CPU captures only; validation rejects the op elsewhere)
+template <typename ResolvePtrFn, typename RemapHandleFn, typename FindKernelFn, typename ReplayChildFn>
 static bool apic_cpu_replay_stream(
     const uint8_t* stream_data,
     size_t stream_size,
     uint32_t operation_count,
     ResolvePtrFn resolve_ptr,
     RemapHandleFn remap_handle,
-    FindKernelFn find_kernel
+    FindKernelFn find_kernel,
+    ReplayChildFn replay_child
 )
 {
     // Capture and load validate the stream before replay; no per-op bounds
@@ -3219,12 +3305,14 @@ static bool apic_cpu_replay_stream(
 
             if (cond_value && rec->branch_a_size > 0) {
                 if (!apic_cpu_replay_stream(
-                        branch_a, rec->branch_a_size, rec->branch_a_op_count, resolve_ptr, remap_handle, find_kernel
+                        branch_a, rec->branch_a_size, rec->branch_a_op_count, resolve_ptr, remap_handle, find_kernel,
+                        replay_child
                     ))
                     return false;
             } else if (!cond_value && rec->branch_b_size > 0) {
                 if (!apic_cpu_replay_stream(
-                        branch_b, rec->branch_b_size, rec->branch_b_op_count, resolve_ptr, remap_handle, find_kernel
+                        branch_b, rec->branch_b_size, rec->branch_b_op_count, resolve_ptr, remap_handle, find_kernel,
+                        replay_child
                     ))
                     return false;
             }
@@ -3248,13 +3336,23 @@ static bool apic_cpu_replay_stream(
                 if (rec->branch_a_size == 0)
                     break;
                 if (!apic_cpu_replay_stream(
-                        body, rec->branch_a_size, rec->branch_a_op_count, resolve_ptr, remap_handle, find_kernel
+                        body, rec->branch_a_size, rec->branch_a_op_count, resolve_ptr, remap_handle, find_kernel,
+                        replay_child
                     ))
                     return false;
                 if (++guard >= guard_limit) {
                     fprintf(stderr, "Warp APIC error: APIC_OP_WHILE exceeded guard limit at operation %u\n", i);
                     return false;
                 }
+            }
+            break;
+        }
+
+        case APIC_OP_CHILD_GRAPH: {
+            const APICChildGraphRecord* rec = reinterpret_cast<const APICChildGraphRecord*>(ptr);
+            if (!replay_child(rec->child_index)) {
+                fprintf(stderr, "Warp APIC error: child graph replay failed at operation %u\n", i);
+                return false;
             }
             break;
         }
@@ -3274,9 +3372,10 @@ static bool apic_cpu_replay_stream(
 // APICState or APICGraph; both expose operation_stream,
 // operation_count, and cpu_kernels (map<string, APICCPUKernel>). The only
 // per-container difference is how region_id is resolved to a host pointer,
-// which the caller supplies as `resolve`.
-template <typename Container, typename Resolver, typename HandleRemap>
-static bool apic_cpu_replay_container(Container* c, Resolver resolve, HandleRemap remap_handle)
+// which the caller supplies as `resolve`, and how child graphs are replayed.
+template <typename Container, typename Resolver, typename HandleRemap, typename ChildReplay>
+static bool
+apic_cpu_replay_container(Container* c, Resolver resolve, HandleRemap remap_handle, ChildReplay replay_child)
 {
     auto find_kernel = [c](const std::string& key, const std::string& module_hash, uint8_t is_forward) -> void* {
         // Prefer the exact (module_hash, key) match so same-key kernels from
@@ -3291,7 +3390,8 @@ static bool apic_cpu_replay_container(Container* c, Resolver resolve, HandleRema
         return is_forward ? it->second.forward_fn : it->second.backward_fn;
     };
     return apic_cpu_replay_stream(
-        c->operation_stream.data(), c->operation_stream.size(), c->operation_count, resolve, remap_handle, find_kernel
+        c->operation_stream.data(), c->operation_stream.size(), c->operation_count, resolve, remap_handle, find_kernel,
+        replay_child
     );
 }
 
@@ -3306,13 +3406,16 @@ bool wp_apic_cpu_replay_state(APICState* state)
         return false;
     }
     // Live recording: handles captured this session are still valid, so the
-    // remap is identity.
+    // remap is identity. Child indices were validated against child_states,
+    // which only grows. A child is a finished capture without conditionals, so
+    // it holds no child records and replay recurses at most one level.
     return apic_cpu_replay_container(
         state,
         [state](int32_t region_id, uint64_t offset, size_t access_size) {
             return apic_resolve_state_region_ptr(state, region_id, offset, access_size);
         },
-        [](uint64_t handle) -> uint64_t { return handle; }
+        [](uint64_t handle) -> uint64_t { return handle; },
+        [state](uint32_t child_index) { return wp_apic_cpu_replay_state(state->child_states[child_index]); }
     );
 }
 
@@ -3331,7 +3434,9 @@ bool wp_apic_cpu_replay_graph(APICGraph* graph)
         [graph](uint64_t handle) -> uint64_t {
             auto it = graph->handle_ptr_remap.find(handle);
             return (it != graph->handle_ptr_remap.end()) ? it->second : handle;
-        }
+        },
+        // Unreachable: loader validation rejects APIC_OP_CHILD_GRAPH.
+        [](uint32_t) { return false; }
     );
 }
 
@@ -3381,7 +3486,8 @@ bool wp_apic_state_save(APICState* state, const char* path, int target_arch, voi
     }
 
     if (!apic_validate_operation_stream(
-            state->operation_stream.data(), state->operation_stream.size(), state->operation_count
+            state->operation_stream.data(), state->operation_stream.size(), state->operation_count, 0,
+            APIC_FORMAT_VERSION, state->child_states.size()
         )) {
         wp::set_error_string("Warp APIC error: operation stream failed validation");
         return false;
@@ -3406,6 +3512,14 @@ bool wp_apic_state_save(APICState* state, const char* path, int target_arch, voi
     }
     if (nonserializable_op == APIC_OP_HASH_GRID_UPDATE) {
         wp::set_error_string("Warp APIC error: HashGrid serialization is not yet supported in APIC graphs");
+        return false;
+    }
+    if (nonserializable_op == APIC_OP_CHILD_GRAPH) {
+        wp::set_error_string(
+            "Warp APIC error: Cannot serialize a captured graph that runs another captured Graph passed to "
+            "wp.capture_if() or wp.capture_while(). Replay the captured graph in-process instead of saving it, or "
+            "pass a callable branch."
+        );
         return false;
     }
 

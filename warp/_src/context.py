@@ -6568,6 +6568,9 @@ class Graph:
         self.apic_state: ctypes.c_void_p | None = None  # C++ APICState*
         self._apic_capture = None  # APICapture instance
         self._apic_recording_suspended: bool = False
+        # Graph branches recorded into this CPU graph; their APIC states must
+        # outlive this graph's replay.
+        self._apic_child_graphs: list[Graph] = []
 
         # APIC loaded graph (from .wrp file)
         self._native_graph: ctypes.c_void_p | None = None  # APICGraph*
@@ -7049,6 +7052,10 @@ class Runtime:
                 ctypes.c_void_p,  # branch_b (consumed)
             ]
             self.core.wp_apic_record_conditional.restype = None
+            self.core.wp_apic_state_has_conditional.argtypes = [ctypes.c_void_p]
+            self.core.wp_apic_state_has_conditional.restype = ctypes.c_bool
+            self.core.wp_apic_record_child_graph.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.wp_apic_record_child_graph.restype = ctypes.c_bool
             self.core.wp_apic_register_memory_region_by_ptr.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_uint64,
@@ -13841,6 +13848,33 @@ def capture_resume(
 condition_host = None
 
 
+def _apic_record_child_graph(graph: Graph):
+    """Record a CPU ``Graph`` branch and retain it for replay."""
+    if graph._native_graph is not None:
+        raise NotImplementedError(
+            "A Graph loaded with capture_load() cannot be a capture_if()/capture_while() branch during CPU capture"
+        )
+    outer = runtime._apic_graph
+    if graph.device != outer.device:
+        raise RuntimeError(
+            f"A capture_if()/capture_while() branch Graph captured on device '{graph.device}' cannot run in a "
+            f"capture on device '{outer.device}'"
+        )
+    if graph is outer or graph._apic_recording_suspended or graph.apic_state is None:
+        raise RuntimeError("A capture_if()/capture_while() branch Graph is still being captured; end its capture first")
+    if runtime.core.wp_apic_state_has_conditional(graph.apic_state):
+        # CUDA child graph nodes cannot contain conditional nodes, and CPU capture
+        # should not compose graphs in ways CUDA capture cannot.
+        raise NotImplementedError(
+            "Using a Graph that contains capture_if() or capture_while() as a capture_if()/capture_while() branch "
+            "is not yet supported, as in CUDA graph capture; nest conditionals with callable branches instead."
+        )
+    if not runtime.core.wp_apic_record_child_graph(runtime._apic_capture.apic_state, graph.apic_state):
+        raise RuntimeError(runtime.get_error_string())
+    if graph not in outer._apic_child_graphs:
+        outer._apic_child_graphs.append(graph)
+
+
 def _apic_capture_branch(callback, **kwargs):
     """Run ``callback`` with the APIC byte stream redirected into a fresh
     sub-stream. Returns the branch body (an opaque void* owned by C++,
@@ -13850,18 +13884,18 @@ def _apic_capture_branch(callback, **kwargs):
     an active APIC capture (wp_cpu_launch_kernel / wp_memcpy_* skip the
     execute path when ``g_apic_state`` is set), so the branch body's
     side-effects on tracked arrays only land at replay time. This matches
-    CUDA graph capture semantics.
+    CUDA graph capture semantics. A :class:`Graph` branch records a single
+    child-graph operation that replays it.
     """
     apic_capture = runtime._apic_capture
     start = runtime.core.wp_apic_begin_branch(apic_capture.apic_state)
     try:
         if isinstance(callback, Graph):
-            raise NotImplementedError(
-                "APIC capture_if/capture_while with Graph branches is not yet implemented; pass a Callable instead"
-            )
-        if not isinstance(callback, Callable):
-            raise TypeError("branch must be a Callable")
-        callback(**kwargs)
+            _apic_record_child_graph(callback)
+        elif isinstance(callback, Callable):
+            callback(**kwargs)
+        else:
+            raise TypeError("branch must be a Callable or a Graph")
     except Exception:
         # Free the body we'd otherwise leak.
         body = runtime.core.wp_apic_end_branch(apic_capture.apic_state, start)
@@ -13925,10 +13959,12 @@ def capture_if(
 
     The condition value is retrieved from the first element of the ``condition`` array.
 
-    This function is particularly useful with CUDA graphs, but can be used without graph capture as well.
-    CUDA 12.4+ is required for CUDA graph conditional nodes. During APIC recording (all CPU captures and CUDA
-    captures with ``apic=True``), branch bodies must be callbacks; passing :class:`Graph` objects is not yet
-    supported. CUDA capture with ``apic=False`` supports either form.
+    This function is particularly useful during graph capture, but can be used without graph capture as well.
+    CUDA 12.4+ is required for CUDA graph conditional nodes. A :class:`Graph` branch must be a finished capture
+    on the same device as ``condition`` and must not itself contain :func:`capture_if` or :func:`capture_while`.
+    CUDA captures with ``apic=True`` do not yet support :class:`Graph` branches, and CPU captures do not yet
+    support a :class:`Graph` from :func:`capture_load`. :func:`capture_save` rejects a CPU graph that records a
+    :class:`Graph` branch.
 
     Args:
         condition: Warp array holding the condition value.
@@ -14157,10 +14193,12 @@ def capture_while(condition: warp.array[int], while_body: Callable | Graph, stre
 
     The ``while_body`` callback is responsible for updating the condition value so the loop can terminate.
 
-    This function is particularly useful with CUDA graphs, but can be used without graph capture as well.
-    CUDA 12.4+ is required for CUDA graph conditional nodes. During APIC recording (all CPU captures and CUDA
-    captures with ``apic=True``), the loop body must be a callback; passing a :class:`Graph` object is not yet
-    supported. CUDA capture with ``apic=False`` supports either form.
+    This function is particularly useful during graph capture, but can be used without graph capture as well.
+    CUDA 12.4+ is required for CUDA graph conditional nodes. A :class:`Graph` loop body must be a finished
+    capture on the same device as ``condition`` and must not itself contain :func:`capture_if` or
+    :func:`capture_while`. CUDA captures with ``apic=True`` do not yet support a :class:`Graph` loop body, and
+    CPU captures do not yet support a :class:`Graph` from :func:`capture_load`. :func:`capture_save` rejects a
+    CPU graph that records a :class:`Graph` loop body.
 
     Args:
         condition: Warp array holding the condition value.

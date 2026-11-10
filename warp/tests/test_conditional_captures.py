@@ -145,9 +145,9 @@ def test_if_capture(test, device):
             np.testing.assert_array_equal(array.numpy(), expected)
 
 
-@unittest.skipUnless(wp.is_conditional_graph_supported(), "Conditional graph nodes not supported")
 def test_if_capture_with_subgraph(test, device):
-    assert device.is_cuda
+    if device.is_cuda and not wp.is_conditional_graph_supported():
+        test.skipTest("Conditional graph nodes not supported")
 
     with wp.ScopedDevice(device):
         array = wp.zeros(4, dtype=wp.float32)
@@ -265,9 +265,9 @@ def test_if_else_capture(test, device):
             np.testing.assert_array_equal(array.numpy(), expected)
 
 
-@unittest.skipUnless(wp.is_conditional_graph_supported(), "Conditional graph nodes not supported")
 def test_if_else_capture_with_subgraph(test, device):
-    assert device.is_cuda
+    if device.is_cuda and not wp.is_conditional_graph_supported():
+        test.skipTest("Conditional graph nodes not supported")
 
     with wp.ScopedDevice(device):
         array = wp.zeros(4, dtype=wp.float32)
@@ -395,9 +395,9 @@ def test_else_capture(test, device):
             np.testing.assert_array_equal(array.numpy(), expected)
 
 
-@unittest.skipUnless(wp.is_conditional_graph_supported(), "Conditional graph nodes not supported")
 def test_else_capture_with_subgraph(test, device):
-    assert device.is_cuda
+    if device.is_cuda and not wp.is_conditional_graph_supported():
+        test.skipTest("Conditional graph nodes not supported")
 
     with wp.ScopedDevice(device):
         array = wp.zeros(4, dtype=wp.float32)
@@ -521,9 +521,9 @@ def test_while_capture(test, device):
             np.testing.assert_array_equal(array.numpy(), expected)
 
 
-@unittest.skipUnless(wp.is_conditional_graph_supported(), "Conditional graph nodes not supported")
 def test_while_capture_with_subgraph(test, device):
-    assert device.is_cuda
+    if device.is_cuda and not wp.is_conditional_graph_supported():
+        test.skipTest("Conditional graph nodes not supported")
 
     with wp.ScopedDevice(device):
         array = wp.zeros(4, dtype=wp.float32)
@@ -705,9 +705,9 @@ def test_complex_capture(test, device):
                         np.testing.assert_array_equal(array.numpy(), base)
 
 
-@unittest.skipUnless(wp.is_conditional_graph_supported(), "Conditional graph nodes not supported")
 def test_complex_capture_with_subgraphs(test, device):
-    assert device.is_cuda
+    if device.is_cuda and not wp.is_conditional_graph_supported():
+        test.skipTest("Conditional graph nodes not supported")
 
     with wp.ScopedDevice(device):
         # data array
@@ -1132,29 +1132,29 @@ class TestConditionalCaptures(unittest.TestCase):
 # tests with graph capture
 add_function_test(TestConditionalCaptures, "test_if_capture", test_if_capture, devices=cuda_devices)
 add_function_test(
-    TestConditionalCaptures, "test_if_capture_with_subgraph", test_if_capture_with_subgraph, devices=cuda_devices
+    TestConditionalCaptures, "test_if_capture_with_subgraph", test_if_capture_with_subgraph, devices=devices
 )
 add_function_test(TestConditionalCaptures, "test_if_else_capture", test_if_else_capture, devices=cuda_devices)
 add_function_test(
     TestConditionalCaptures,
     "test_if_else_capture_with_subgraph",
     test_if_else_capture_with_subgraph,
-    devices=cuda_devices,
+    devices=devices,
 )
 add_function_test(TestConditionalCaptures, "test_else_capture", test_else_capture, devices=cuda_devices)
 add_function_test(
-    TestConditionalCaptures, "test_else_capture_with_subgraph", test_else_capture_with_subgraph, devices=cuda_devices
+    TestConditionalCaptures, "test_else_capture_with_subgraph", test_else_capture_with_subgraph, devices=devices
 )
 add_function_test(TestConditionalCaptures, "test_while_capture", test_while_capture, devices=cuda_devices)
 add_function_test(
-    TestConditionalCaptures, "test_while_capture_with_subgraph", test_while_capture_with_subgraph, devices=cuda_devices
+    TestConditionalCaptures, "test_while_capture_with_subgraph", test_while_capture_with_subgraph, devices=devices
 )
 add_function_test(TestConditionalCaptures, "test_complex_capture", test_complex_capture, devices=cuda_devices)
 add_function_test(
     TestConditionalCaptures,
     "test_complex_capture_with_subgraphs",
     test_complex_capture_with_subgraphs,
-    devices=cuda_devices,
+    devices=devices,
 )
 
 

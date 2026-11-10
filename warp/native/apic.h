@@ -162,6 +162,16 @@ WP_API void wp_apic_record_conditional(
     APICBranchBody* branch_b  // consumed; may be NULL for OP_WHILE / IF without else
 );
 
+// Return true if a finished capture records capture_if() or capture_while().
+WP_API bool wp_apic_state_has_conditional(const APICState* state);
+
+// Record a finished CPU child capture in the current branch. The caller must
+// retain the child for the parent's lifetime and reject paused captures. A
+// child that records capture_if() or capture_while() is rejected because CUDA
+// child graph nodes cannot contain conditional nodes. Returns false and sets
+// the error string on invalid input.
+WP_API bool wp_apic_record_child_graph(APICState* state, APICState* child);
+
 // Opaque loaded .wrp graph state (CPU or CUDA; see wp_apic_load_graph).
 // Defined in apic_internal.h.
 struct APICGraph;

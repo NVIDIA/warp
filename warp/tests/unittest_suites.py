@@ -189,6 +189,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_compile_consts import TestConstants
     from warp.tests.test_composite_component_adjoint import TestCompositeComponentAdjoint
     from warp.tests.test_conditional import TestConditional
+    from warp.tests.test_conditional_captures import TestConditionalCaptures
     from warp.tests.test_constant_precision import TestConstantPrecision
     from warp.tests.test_context import TestContext
     from warp.tests.test_copy import TestCopy
@@ -354,6 +355,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestCompositeComponentAdjoint,
         TestConstants,
         TestConditional,
+        TestConditionalCaptures,
         TestConstantPrecision,
         TestContext,
         TestCopy,
@@ -585,7 +587,6 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.cuda.test_capture_mode import TestCaptureMode
     from warp.tests.cuda.test_clang_cuda import TestClangCUDA
     from warp.tests.cuda.test_cluster_dim import TestClusterDim
-    from warp.tests.cuda.test_conditional_captures import TestConditionalCaptures
     from warp.tests.cuda.test_cuda_arch_suffix import TestCudaArchSuffix
     from warp.tests.cuda.test_ipc import TestIpc
     from warp.tests.cuda.test_mempool import TestMempool
@@ -653,6 +654,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_compile_consts import TestConstants
     from warp.tests.test_composite_component_adjoint import TestCompositeComponentAdjoint
     from warp.tests.test_conditional import TestConditional
+    from warp.tests.test_conditional_captures import TestConditionalCaptures
     from warp.tests.test_constant_precision import TestConstantPrecision
     from warp.tests.test_context import TestContext
     from warp.tests.test_cpu_block_codegen import TestCpuBlockCodegen
