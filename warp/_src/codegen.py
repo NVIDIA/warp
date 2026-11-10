@@ -5974,7 +5974,7 @@ class Adjoint:
             if is_reference(rhs.type):
                 rhs = adj.add_builtin_call("copy", [rhs])
 
-            target, indices = adj.eval_subscript(lhs, as_target=True)
+            target, indices = adj.resolve_subscript_store_target(lhs)
             target_type = strip_reference(target.type)
             indices = adj.eval_indices(target_type, indices)
             if adj.store_array_slot(adj.select_array_slot(target, indices=indices), rhs):
@@ -6387,12 +6387,7 @@ class Adjoint:
             else:
                 if adj.builder_options.get("enable_vector_component_overwrites", False):
                     out = adj.add_builtin_call("assign_copy", [target, *indices, rhs])
-
-                    # re-point target symbol to out var
-                    for symbol_name in adj.symbols:
-                        if adj.symbols[symbol_name] == target:
-                            adj.symbols[symbol_name] = out
-                            break
+                    adj.rebind_component_copy(target, out)
                 else:
                     adj.add_builtin_call("assign_inplace", [target, *indices, rhs])
 
@@ -6411,23 +6406,58 @@ class Adjoint:
         assignment branch in :meth:`_store_attribute`, which emits correct root-to-leaf
         adjoints. Evaluating to a reference instead only flushes leaf-to-root, which is
         correct for reads but silently drops the write gradient (the parent's adjoint is
-        never read back into the stored value).
+        never read back into the stored value). Vector, matrix, quaternion, and
+        transformation fields (e.g. ``s.v`` in ``s.v.x = ...``) resolve the same way, so
+        their component stores take the differentiable value-type path.
 
-        Falls back to :meth:`eval` for anything that is not a pure local-struct chain
-        (array-rooted writes, vector/transform components, function-argument
-        references), preserving the existing reference-based paths.
+        Falls back to :meth:`eval_store_target` for anything that is not a pure local-struct chain
+        (array-rooted writes, function-argument references), preserving the existing
+        reference-based paths.
         """
         member = adj._resolve_struct_member_lvalue(node)
-        if member is not None and isinstance(member.type, Struct):
+        if member is not None and (isinstance(member.type, Struct) or type_is_composite(member.type)):
             return member
         return adj.eval_store_target(node)
+
+    def resolve_subscript_store_target(adj, node):
+        """Resolve the target and unevaluated indices of a subscript store/augmented-store.
+
+        A subscripted vector, matrix, quaternion, or transformation field of a local struct
+        (e.g. ``s.v`` in ``s.v[0] = ...``) resolves to a flat dotted member ``Var``, as in
+        :meth:`resolve_attribute_store_aggregate`. Evaluating it to a ``Reference`` instead
+        lowers the write to a non-differentiable ``store`` that drops the gradient.
+        """
+        root = node
+        indices = []
+        while isinstance(root, ast.Subscript):
+            indices = [*(root.slice.elts if isinstance(root.slice, ast.Tuple) else [root.slice]), *indices]
+            root = root.value
+
+        member = adj._resolve_struct_member_lvalue(root)
+        if member is not None and type_is_composite(member.type):
+            return member, indices
+        return adj.eval_subscript(node, as_target=True)
+
+    def rebind_component_copy(adj, target, out):
+        """Make ``out``, the result of an ``assign_copy`` component write, the new value of ``target``."""
+        for symbol_name in adj.symbols:
+            if adj.symbols[symbol_name] == target:
+                adj.symbols[symbol_name] = out
+                return
+
+        # The target is not a symbol (e.g. a struct field resolved to a member Var): store the copy back into it.
+        adj.add_forward(f"{target.emit()} = {out.emit()};")
+        adj.add_reverse(f"{target.emit_adj()} = {{}};")
+        if adj.is_differentiable_value_type(target.type):
+            adj.add_reverse(f"{out.emit_adj()} += {target.emit_adj()};")
 
     def _resolve_struct_member_lvalue(adj, node):
         """Resolve a struct attribute chain rooted at a local variable to a flat dotted
         ``Var``, or return ``None`` if ``node`` is not such a chain.
 
         Each level must be a non-reference struct field so the result can be written as
-        a direct ``a.b.c`` member access. Used by :meth:`resolve_attribute_store_aggregate`.
+        a direct ``a.b.c`` member access. Used by :meth:`resolve_attribute_store_aggregate` and
+        :meth:`resolve_subscript_store_target`.
         """
         if not isinstance(node, ast.Attribute):
             return None
@@ -6463,12 +6493,7 @@ class Adjoint:
             else:
                 if adj.builder_options.get("enable_vector_component_overwrites", False):
                     out = adj.add_builtin_call("assign_copy", [aggregate, index, rhs])
-
-                    # re-point target symbol to out var
-                    for id in adj.symbols:
-                        if adj.symbols[id] == aggregate:
-                            adj.symbols[id] = out
-                            break
+                    adj.rebind_component_copy(aggregate, out)
                 else:
                     adj.add_builtin_call("assign_inplace", [aggregate, index, rhs])
 
@@ -6774,7 +6799,7 @@ class Adjoint:
                 adj.add_forward(f"{adjoint_target.emit()} = {result.emit()};")
                 return
 
-            target, indices = adj.eval_subscript(lhs, as_target=True)
+            target, indices = adj.resolve_subscript_store_target(lhs)
 
             target_type = strip_reference(target.type)
             indices = adj.eval_indices(target_type, indices)
