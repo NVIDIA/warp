@@ -174,15 +174,6 @@ def check_lu_backward(test, device, mathdx):
             (3, True, False),
         ):
             with test.subTest(dtype=dtype, n=n, view=view, use_helper=use_helper, mathdx=mathdx):
-                if (
-                    mathdx
-                    and use_helper
-                    and wp.config.mode == "debug"
-                    and wp._src.context.runtime.toolkit_version >= (13, 0)
-                ):
-                    # CUDA 13 nvJitLink rejects debug builds that call MathDx from a Warp function
-                    # ("Symbol name with unsupported characters"). Kernel-level calls still link.
-                    test.skipTest("MathDx calls from Warp functions do not link in CUDA 13 debug builds")
                 lower = np.eye(n) + np.tril(rng.uniform(-0.2, 0.2, (n, n)), -1)
                 upper = np.triu(rng.uniform(-0.5, 0.5, (n, n))) + 2.0 * np.eye(n)
                 base = lower @ upper
