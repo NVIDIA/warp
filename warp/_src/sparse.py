@@ -1004,6 +1004,24 @@ def _bsr_status_message(status: int) -> str:
     return f"unknown status {status}"
 
 
+def _bsr_track_native_compress(src: BsrMatrix, values: wp.array | None, compact: bool) -> None:
+    """Register the arrays a native compression accesses with the active APIC capture, if any.
+
+    Under CPU capture, the native call records the compression instead of running it, so a compact
+    compression leaves the block count unknown until replay.
+    """
+    from warp._src.context import _get_apic_capture_for_device  # noqa: PLC0415
+
+    apic_capture = _get_apic_capture_for_device(src.device)
+    if apic_capture is None:
+        return
+
+    for array in (src.offsets, src.row_counts, src.columns, values):
+        apic_capture.track_array(array)
+    if compact and src.device.is_cpu:
+        _mark_apic_deferred_nnz_update(src, apic_capture)
+
+
 def _bsr_try_native_compress_inplace(src: BsrMatrix, prune_numerical_zeros: bool, compact: bool = False) -> str | None:
     scalar_type_code = _bsr_scalar_type_codes.get(src.scalar_type)
     if scalar_type_code is None:
@@ -1026,6 +1044,7 @@ def _bsr_try_native_compress_inplace(src: BsrMatrix, prune_numerical_zeros: bool
 
     scalar_values = src.scalar_values
     zero_value_mask = _zero_value_masks.get(src.scalar_type, 0) if prune_numerical_zeros else 0
+    _bsr_track_native_compress(src, scalar_values, compact)
     with wp.ScopedDevice(src.device):
         native_func(
             src.nrow,
@@ -1087,6 +1106,7 @@ def _bsr_try_native_compress_indices_inplace(
     except AttributeError:
         return "requires native symbolic compression support"
 
+    _bsr_track_native_compress(src, values_to_prune, compact)
     with wp.ScopedDevice(src.device):
         native_func(
             src.nrow,

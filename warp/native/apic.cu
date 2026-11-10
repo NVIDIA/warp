@@ -179,6 +179,8 @@ APICGraph::~APICGraph()
     release_or_defer(ReleaseKind::Graph, cuda_context, (uint64_t)cuda_graph);
     for (auto& pair : regions)
         release_or_defer(ReleaseKind::DeviceFree, cuda_context, (uint64_t)pair.second.ptr);
+    if (scan_temp_storage)
+        release_or_defer(ReleaseKind::DeviceFree, cuda_context, (uint64_t)scan_temp_storage);
     for (auto& pair : modules)
         release_or_defer(ReleaseKind::Module, cuda_context, (uint64_t)pair.second.cuda_module);
 }
@@ -555,27 +557,30 @@ static bool apic_replay_ops_into_cuda_capture(
             }
             // g_apic_state is null during rebuild, so these execute (not record)
             // on the capture stream set as current above. Same entry points
-            // wp.utils.array_scan() dispatches to.
+            // wp.utils.array_scan() dispatches to. The graph's preallocated scan
+            // scratch keeps them from allocating, which conditional bodies reject.
+            uint64_t temp = reinterpret_cast<uint64_t>(graph->scan_temp_storage);
+            size_t temp_bytes = graph->scan_temp_storage_bytes;
             bool scan_ok;
             if (rec->dtype == APIC_TYPE_INT32)
                 scan_ok = wp_array_scan_int_device(
                     reinterpret_cast<uint64_t>(src), reinterpret_cast<uint64_t>(dst), static_cast<int>(rec->length),
-                    rec->in_stride, rec->out_stride, rec->type_len, rec->inclusive != 0
+                    rec->in_stride, rec->out_stride, rec->type_len, rec->inclusive != 0, temp, temp_bytes
                 );
             else if (rec->dtype == APIC_TYPE_INT64)
                 scan_ok = wp_array_scan_int64_device(
                     reinterpret_cast<uint64_t>(src), reinterpret_cast<uint64_t>(dst), static_cast<int>(rec->length),
-                    rec->in_stride, rec->out_stride, rec->type_len, rec->inclusive != 0
+                    rec->in_stride, rec->out_stride, rec->type_len, rec->inclusive != 0, temp, temp_bytes
                 );
             else if (rec->dtype == APIC_TYPE_FLOAT32)
                 scan_ok = wp_array_scan_float_device(
                     reinterpret_cast<uint64_t>(src), reinterpret_cast<uint64_t>(dst), static_cast<int>(rec->length),
-                    rec->in_stride, rec->out_stride, rec->type_len, rec->inclusive != 0
+                    rec->in_stride, rec->out_stride, rec->type_len, rec->inclusive != 0, temp, temp_bytes
                 );
             else
                 scan_ok = wp_array_scan_double_device(
                     reinterpret_cast<uint64_t>(src), reinterpret_cast<uint64_t>(dst), static_cast<int>(rec->length),
-                    rec->in_stride, rec->out_stride, rec->type_len, rec->inclusive != 0
+                    rec->in_stride, rec->out_stride, rec->type_len, rec->inclusive != 0, temp, temp_bytes
                 );
             if (!scan_ok) {
                 // The scan has already recorded the CUDA reason; do not overwrite it.
@@ -867,6 +872,44 @@ static bool apic_replay_ops_into_cuda_capture(
             break;
         }
 
+        case APIC_OP_BSR_COMPRESS: {
+            const APICBsrCompressRecord* rec = reinterpret_cast<const APICBsrCompressRecord*>(ptr);
+            const size_t nnz = static_cast<size_t>(rec->nnz_upper_bound);
+            const size_t rowp1_bytes = (static_cast<size_t>(rec->row_count) + 1) * sizeof(int32_t);
+            const size_t values_bytes
+                = nnz * static_cast<size_t>(rec->block_size) * static_cast<size_t>(rec->scalar_size_in_bytes);
+            void* offsets = apic_resolve_region_ptr(graph, rec->offsets_region_id, rec->offsets_offset, rowp1_bytes);
+            void* row_counts = rec->row_counts_region_id >= 0
+                ? apic_resolve_region_ptr(
+                      graph, rec->row_counts_region_id, rec->row_counts_offset,
+                      static_cast<size_t>(rec->row_count) * sizeof(int32_t)
+                  )
+                : nullptr;
+            void* columns = rec->columns_region_id >= 0
+                ? apic_resolve_region_ptr(graph, rec->columns_region_id, rec->columns_offset, nnz * sizeof(int32_t))
+                : nullptr;
+            void* values = rec->values_region_id >= 0
+                ? apic_resolve_region_ptr(graph, rec->values_region_id, rec->values_offset, values_bytes)
+                : nullptr;
+            if (!offsets || (nnz > 0 && !columns) || (rec->row_counts_region_id >= 0 && !row_counts)
+                || (rec->values_region_id >= 0 && !values)) {
+                wp::set_error_string("Warp APIC error: bsr-compress failed to resolve region (op %u)", i);
+                success = false;
+                break;
+            }
+            // g_apic_state is null during rebuild, so this executes (not record)
+            // on the capture stream set as current above. Unlike the CPU replay,
+            // the row ranges are device memory that cannot be checked against
+            // the recorded storage here.
+            wp_bsr_compress_inplace_device(
+                rec->row_count, rec->col_count, rec->block_size, rec->scalar_size_in_bytes, rec->scalar_type,
+                rec->nnz_upper_bound, rec->prune_numerical_zeros != 0, rec->scalar_zero_mask, rec->make_compact != 0,
+                reinterpret_cast<int*>(offsets), reinterpret_cast<int*>(row_counts), reinterpret_cast<int*>(columns),
+                values, rec->compress_values != 0
+            );
+            break;
+        }
+
         case APIC_OP_IF: {
             const APICCondRecord* rec = reinterpret_cast<const APICCondRecord*>(ptr);
             const uint8_t* branch_a = ptr + sizeof(APICCondRecord);
@@ -1011,6 +1054,77 @@ static bool apic_cuda_graph_requires_helper_target(const APICGraph* graph)
     return false;
 }
 
+// Finds the largest temporary storage any scan op needs, including scans nested
+// in IF/WHILE bodies. The operation stream has already been validated.
+static bool apic_max_scan_temp_storage_size(
+    APICGraph* graph, const uint8_t* op_data, size_t op_size, uint32_t op_count, size_t& max_bytes
+)
+{
+    const uint8_t* ptr = op_data;
+    const uint8_t* end = ptr + op_size;
+
+    for (uint32_t i = 0; i < op_count && ptr < end; ++i) {
+        const APICOpHeader* header = reinterpret_cast<const APICOpHeader*>(ptr);
+
+        if (header->op_type == APIC_OP_SCAN) {
+            const APICScanRecord* rec = reinterpret_cast<const APICScanRecord*>(ptr);
+            int len = static_cast<int>(rec->length);
+            size_t bytes = 0;
+            bool ok;
+            if (rec->dtype == APIC_TYPE_INT32)
+                ok = wp_array_scan_int_device_temp_storage_size(graph->cuda_context, len, &bytes);
+            else if (rec->dtype == APIC_TYPE_INT64)
+                ok = wp_array_scan_int64_device_temp_storage_size(graph->cuda_context, len, &bytes);
+            else if (rec->dtype == APIC_TYPE_FLOAT32)
+                ok = wp_array_scan_float_device_temp_storage_size(graph->cuda_context, len, &bytes);
+            else
+                ok = wp_array_scan_double_device_temp_storage_size(graph->cuda_context, len, &bytes);
+            if (!ok)
+                return false;
+            max_bytes = std::max(max_bytes, bytes);
+        } else if (header->op_type == APIC_OP_IF || header->op_type == APIC_OP_WHILE) {
+            const APICCondRecord* rec = reinterpret_cast<const APICCondRecord*>(ptr);
+            const uint8_t* branch_a = ptr + sizeof(APICCondRecord);
+            const uint8_t* branch_b = branch_a + rec->branch_a_size;
+            if (!apic_max_scan_temp_storage_size(graph, branch_a, rec->branch_a_size, rec->branch_a_op_count, max_bytes)
+                || !apic_max_scan_temp_storage_size(
+                    graph, branch_b, rec->branch_b_size, rec->branch_b_op_count, max_bytes
+                ))
+                return false;
+        }
+
+        ptr += header->total_size;
+    }
+    return true;
+}
+
+// Allocates the scratch shared by the graph's scan ops. Must run outside capture.
+static bool apic_prepare_scan_temp_storage(APICGraph* graph)
+{
+    size_t required = 0;
+    if (!apic_max_scan_temp_storage_size(
+            graph, graph->operation_stream.data(), graph->operation_stream.size(), graph->operation_count, required
+        ))
+        return false;
+
+    if (required <= graph->scan_temp_storage_bytes)
+        return true;
+
+    void* ptr = nullptr;
+    cudaError_t err = cudaMalloc(&ptr, required);
+    if (err != cudaSuccess) {
+        wp::set_error_string(
+            "Warp APIC error: Failed to allocate %llu bytes of scan scratch: %d", (unsigned long long)required, err
+        );
+        return false;
+    }
+    if (graph->scan_temp_storage)
+        release_or_defer(ReleaseKind::DeviceFree, graph->cuda_context, (uint64_t)graph->scan_temp_storage);
+    graph->scan_temp_storage = ptr;
+    graph->scan_temp_storage_bytes = required;
+    return true;
+}
+
 static bool apic_rebuild_cuda_graph(APICGraph* graph, CUstream stream)
 {
     // The shared graph loader guarantees graph->operations_validated is true.
@@ -1024,6 +1138,9 @@ static bool apic_rebuild_cuda_graph(APICGraph* graph, CUstream stream)
     }
 
     if (!apic_configure_kernel_cluster_attrs(graph))
+        return false;
+
+    if (!apic_prepare_scan_temp_storage(graph))
         return false;
 
     int helper_target_arch = 0;
@@ -1051,7 +1168,7 @@ static bool apic_rebuild_cuda_graph(APICGraph* graph, CUstream stream)
     }
 
     // Use Warp's capture management (not a raw cudaStreamBeginCapture) so the
-    // allocator knows a capture is active. Extended ops (reduction/scan/sort/bsr) allocate
+    // allocator knows a capture is active. Extended ops (reduction/sort/bsr) allocate
     // CUB scratch during capture; the allocator only routes those allocs/frees
     // to graph memory nodes when it sees an active Warp capture, otherwise it
     // would cudaFreeAsync on the null stream and invalidate the capture.

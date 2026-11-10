@@ -1375,6 +1375,7 @@ class LinearSolverState:
         M: optional preconditioner.
         callback: function to be called every ``check_every`` iteration with the current iteration number, residual and tolerance.
         check_every: number of iterations every which to call ``callback`` and check the residual against the tolerance.
+            Set to 0 to disable host-side residual checks when running during CPU or CUDA graph capture.
         use_cuda_graph: whether to capture the solver iteration as a graph for reduced launch overhead.
             ``None`` captures on CUDA devices only, and ``True`` also captures on CPU.
 
@@ -1467,7 +1468,17 @@ class LinearSolverState:
     ):
         """Run the solver, optionally substituting a new compatible matrix, right-hand-side,
         solution vector, or preconditioner. Any argument left as ``None`` uses the value that
-        was passed at construction."""
+        was passed at construction.
+
+        Raises:
+            RuntimeError: If called during CPU or CUDA graph capture with ``check_every`` > 0.
+        """
+        if self._check_every > 0 and self._device.is_capturing:
+            raise RuntimeError(
+                "Linear solvers with check_every > 0 cannot run during graph capture; "
+                "set check_every=0 to disable host-side convergence checks."
+            )
+
         A_op = aslinearoperator(A) if A is not None else self._A
         M_op = aslinearoperator(M) if M is not None else self._M
         b_arr = b if b is not None else self._b
@@ -1702,9 +1713,11 @@ def cg(
         callback: function to be called every `check_every` iteration with the current iteration number, residual and tolerance.
             If `check_every` is 0, the callback should be a Warp kernel.
         check_every: number of iterations every which to call `callback`, check the residual against the tolerance and possibility terminate the algorithm.
-            Setting `check_every` to 0 disables host-side residual checks, making the solver fully CUDA-graph capturable.
-            If conditional CUDA graphs are supported, convergence checks are performed device-side; otherwise, the solver will always run
-            to the maximum number of iterations.
+            Setting ``check_every`` to 0 disables host-side residual checks, allowing CPU and CUDA graph capture.
+            Running during graph capture requires ``check_every=0``.
+            On CPU, the solver stops once converged. On CUDA with ``use_cuda_graph`` and conditional graph support, it also
+            stops once converged. Otherwise, it runs whole cycles until the iteration count reaches ``maxiter``, which
+            restarted solvers can exceed by less than one cycle.
         use_cuda_graph: Whether to capture the solver iterations in a graph and replay it, reducing launch overhead.
             ``None`` captures on CUDA devices only. ``True`` also captures on CPU, using experimental CPU graph capture.
             With ``check_every=0``, a captured solve stops once converged; on CUDA, this needs conditional graph support.
@@ -1739,6 +1752,7 @@ def cg(
     Raises:
         TypeError: If ``restart`` is not an integer or ``None``.
         ValueError: If a specified ``restart`` is not positive.
+        RuntimeError: If ``run`` is ``True`` during graph capture with ``check_every`` > 0.
 
     If both `tol` and `atol` are provided, the absolute tolerance used as the termination criterion for the residual norm is ``max(atol, tol * norm(b))``.
     """
@@ -1958,9 +1972,11 @@ def cr(
         callback: function to be called every `check_every` iteration with the current iteration number, residual and tolerance.
             If `check_every` is 0, the callback should be a Warp kernel.
         check_every: number of iterations every which to call `callback`, check the residual against the tolerance and possibility terminate the algorithm.
-            Setting `check_every` to 0 disables host-side residual checks, making the solver fully CUDA-graph capturable.
-            If conditional CUDA graphs are supported, convergence checks are performed device-side; otherwise, the solver will always run
-            to the maximum number of iterations.
+            Setting ``check_every`` to 0 disables host-side residual checks, allowing CPU and CUDA graph capture.
+            Running during graph capture requires ``check_every=0``.
+            On CPU, the solver stops once converged. On CUDA with ``use_cuda_graph`` and conditional graph support, it also
+            stops once converged. Otherwise, it runs whole cycles until the iteration count reaches ``maxiter``, which
+            restarted solvers can exceed by less than one cycle.
         use_cuda_graph: Whether to capture the solver iterations in a graph and replay it, reducing launch overhead.
             ``None`` captures on CUDA devices only. ``True`` also captures on CPU, using experimental CPU graph capture.
             With ``check_every=0``, a captured solve stops once converged; on CUDA, this needs conditional graph support.
@@ -1995,6 +2011,7 @@ def cr(
     Raises:
         TypeError: If ``restart`` is not an integer or ``None``.
         ValueError: If a specified ``restart`` is not positive.
+        RuntimeError: If ``run`` is ``True`` during graph capture with ``check_every`` > 0.
 
     If both `tol` and `atol` are provided, the absolute tolerance used as the termination criterion for the residual norm is ``max(atol, tol * norm(b))``.
     """
@@ -2246,9 +2263,11 @@ def bicgstab(
         callback: function to be called every `check_every` iteration with the current iteration number, residual and tolerance.
             If `check_every` is 0, the callback should be a Warp kernel.
         check_every: number of iterations every which to call `callback`, check the residual against the tolerance and possibility terminate the algorithm.
-            Setting `check_every` to 0 disables host-side residual checks, making the solver fully CUDA-graph capturable.
-            If conditional CUDA graphs are supported, convergence checks are performed device-side; otherwise, the solver will always run
-            to the maximum number of iterations.
+            Setting ``check_every`` to 0 disables host-side residual checks, allowing CPU and CUDA graph capture.
+            Running during graph capture requires ``check_every=0``.
+            On CPU, the solver stops once converged. On CUDA with ``use_cuda_graph`` and conditional graph support, it also
+            stops once converged. Otherwise, it runs whole cycles until the iteration count reaches ``maxiter``, which
+            restarted solvers can exceed by less than one cycle.
         use_cuda_graph: Whether to capture the solver iterations in a graph and replay it, reducing launch overhead.
             ``None`` captures on CUDA devices only. ``True`` also captures on CPU, using experimental CPU graph capture.
             With ``check_every=0``, a captured solve stops once converged; on CUDA, this needs conditional graph support.
@@ -2274,6 +2293,9 @@ def bicgstab(
             - absolute_tolerance_squared_array: Device array containing the squared absolute tolerance
 
         If ``run`` is ``False``: a :class:`~warp.optim.linear.BiCGSTAB` functor with all temporary buffers pre-allocated.
+
+    Raises:
+        RuntimeError: If ``run`` is ``True`` during graph capture with ``check_every`` > 0.
 
     If both `tol` and `atol` are provided, the absolute tolerance used as the termination criterion for the residual norm is ``max(atol, tol * norm(b))``.
     """
@@ -2593,9 +2615,11 @@ def gmres(
         callback: function to be called every `check_every` iteration with the current iteration number, residual and tolerance.
             If `check_every` is 0, the callback should be a Warp kernel.
         check_every: number of iterations every which to call `callback`, check the residual against the tolerance and possibility terminate the algorithm.
-            Setting `check_every` to 0 disables host-side residual checks, making the solver fully CUDA-graph capturable.
-            If conditional CUDA graphs are supported, convergence checks are performed device-side; otherwise, the solver will always run
-            to the maximum number of iterations.
+            Setting ``check_every`` to 0 disables host-side residual checks, allowing CPU and CUDA graph capture.
+            Running during graph capture requires ``check_every=0``.
+            On CPU, the solver stops once converged. On CUDA with ``use_cuda_graph`` and conditional graph support, it also
+            stops once converged. Otherwise, it runs whole cycles until the iteration count reaches ``maxiter``, which
+            restarted solvers can exceed by less than one cycle.
         use_cuda_graph: Whether to capture the solver iterations in a graph and replay it, reducing launch overhead.
             ``None`` captures on CUDA devices only. ``True`` also captures on CPU, using experimental CPU graph capture.
             With ``check_every=0``, a captured solve stops once converged; on CUDA, this needs conditional graph support.
@@ -2620,6 +2644,9 @@ def gmres(
             - absolute_tolerance_squared_array: Device array containing the squared absolute tolerance
 
         If ``run`` is ``False``: a :class:`~warp.optim.linear.GMRES` functor with all temporary buffers pre-allocated.
+
+    Raises:
+        RuntimeError: If ``run`` is ``True`` during graph capture with ``check_every`` > 0.
 
     If both `tol` and `atol` are provided, the absolute tolerance used as the termination criterion for the residual norm is ``max(atol, tol * norm(b))``.
     """
@@ -2823,6 +2850,12 @@ def _run_capturable_loop(
             with wp.ScopedCapture(device=device) as capture:
                 wp.capture_while(condition, do_cycle_with_condition)
             wp.capture_launch(capture.graph)
+    elif device.is_cpu:
+        # Outside capture, CPU launches finish before returning, so the host
+        # loop reads the condition without synchronizing. During CPU capture,
+        # launches only record, so capture_while records a while op instead
+        # of reading the not-yet-updated condition.
+        wp.capture_while(condition, do_cycle_with_condition)
     else:
         for _ in range(0, maxiter, cycle_size):
             do_cycle_with_condition()

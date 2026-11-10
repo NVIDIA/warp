@@ -520,7 +520,29 @@ devices = get_test_devices()
 
 
 class TestTileLoad(unittest.TestCase):
-    pass
+    def test_tile_load_padded_vector_cpu(self):
+        """Load padded vector elements and zero-pad a partial CPU tile."""
+
+        @wp.kernel(module="unique", enable_backward=False)
+        def load_padded(input: wp.array2d[wp.vec3], output: wp.array2d[wp.vec3]):
+            """Copy a shared tile from a byte-strided vector array."""
+            tile = wp.tile_load(input, shape=(8, 9), storage="shared")
+            wp.tile_store(output, tile)
+
+        padded = np.arange(5 * 7 * 4, dtype=np.float32).reshape(5, 7, 4)
+        source = wp.array(
+            ptr=padded.ctypes.data,
+            shape=(5, 7),
+            strides=padded.strides[:2],
+            dtype=wp.vec3,
+            device="cpu",
+            copy=False,
+        )
+        output = wp.empty((8, 9), dtype=wp.vec3, device="cpu")
+        wp.launch_tiled(load_padded, dim=1, inputs=[source, output], block_dim=1, device="cpu")
+        expected = np.zeros((8, 9, 3), dtype=np.float32)
+        expected[:5, :7] = padded[:, :, :3]
+        np.testing.assert_array_equal(output.numpy(), expected)
 
 
 add_function_test(

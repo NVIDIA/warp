@@ -337,6 +337,7 @@ Device Management
    get_cuda_toolkit_version
    get_device
    get_devices
+   get_libmathdx_version
    get_preferred_device
    is_device_available
    map_cuda_device

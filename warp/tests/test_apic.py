@@ -36,6 +36,7 @@ from warp.sparse import (
     bsr_assign,
     bsr_axpy,
     bsr_axpy_work_arrays,
+    bsr_compress,
     bsr_copy,
     bsr_from_triplets,
     bsr_mm,
@@ -893,6 +894,81 @@ class TestApic(unittest.TestCase):
                 finally:
                     wp_context.runtime.core.wp_apic_destroy_state(state)
 
+    def test_capture_launch_rejects_bsr_compress_out_of_range_rows(self):
+        """Reject replaying a compression whose current rows reach past the recorded block storage."""
+        device = wp.get_device("cpu")
+
+        compact = _make_apic_compress_matrix(device)
+        with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+            bsr_compress(compact, inplace=True)
+
+        compact.offsets.assign(np.array([0, 9], dtype=np.int32))
+        _assert_apic_launch_rejected(self, capture.graph, r"bsr-compress row range out of bounds")
+        np.testing.assert_array_equal(compact.columns.numpy(), np.array([1, 0, 1, 2]))
+
+        padded = _make_apic_compress_matrix(device)
+        padded.row_counts = wp.array([4], dtype=int, device=device)
+        with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+            bsr_compress(padded, inplace=True, topology="padded")
+
+        padded.row_counts.assign(np.array([9], dtype=np.int32))
+        _assert_apic_launch_rejected(self, capture.graph, r"bsr-compress row range out of bounds")
+        np.testing.assert_array_equal(padded.columns.numpy(), np.array([1, 0, 1, 2]))
+
+        # Rows that each stay within the storage but overlap: packing them to compact rows would write 12 blocks.
+        # The matrix storage is a view of larger arrays, so a write past it lands in visible sentinel slots.
+        columns_base = wp.array([0, 1, 2, 3, -7, -7, -7, -7, -7, -7, -7, -7], dtype=int, device=device)
+        values_base = wp.array(
+            [1.0, 2.0, 3.0, 4.0, -7.0, -7.0, -7.0, -7.0, -7.0, -7.0, -7.0, -7.0], dtype=wp.float32, device=device
+        )
+        overlapping = bsr_zeros(3, 4, wp.float32, device=device)
+        overlapping.nnz = 4
+        overlapping.offsets = wp.array([0, 4, 4, 4], dtype=int, device=device)
+        # Compact compression detaches the row counts from the matrix, but the replay still reads them.
+        row_counts = wp.array([4, 0, 0], dtype=int, device=device)
+        overlapping.row_counts = row_counts
+        overlapping.columns = columns_base[:4]
+        overlapping.values = values_base[:4]
+        with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+            bsr_compress(overlapping, inplace=True, prune_numerical_zeros=False)
+
+        overlapping.offsets.assign(np.array([0, 0, 0, 4], dtype=np.int32))
+        row_counts.assign(np.array([4, 4, 4], dtype=np.int32))
+        _assert_apic_launch_rejected(self, capture.graph, r"bsr-compress row range out of bounds")
+        np.testing.assert_array_equal(columns_base.numpy(), np.array([0, 1, 2, 3, -7, -7, -7, -7, -7, -7, -7, -7]))
+
+    def test_capture_load_rejects_bsr_compress_span_overflow(self):
+        """Reject loading a BSR compress record whose value span overflows."""
+        device = wp.get_device("cpu")
+        matrix = _make_apic_compress_matrix(device)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "bsr_compress_span_overflow.wrp")
+            with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+                bsr_compress(matrix, inplace=True)
+            wp.capture_save(capture.graph, path, outputs={"offsets": matrix.offsets})
+            # (2**31 - 1) blocks of (2**31 - 1) 8-byte scalars exceed 2**64 bytes.
+            _corrupt_apic_bsr_compress_record(
+                path, nnz_upper_bound=2**31 - 1, block_size=2**31 - 1, scalar_size_in_bytes=8
+            )
+
+            _assert_apic_load_rejected(self, path, device, r"operation stream failed validation")
+
+    def test_capture_load_rejects_padded_bsr_compress_without_row_counts(self):
+        """Reject loading a padded BSR compress record that has no row counts to write."""
+        device = wp.get_device("cpu")
+        matrix = _make_apic_compress_matrix(device)
+        matrix.row_counts = wp.array([4], dtype=int, device=device)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "bsr_compress_without_row_counts.wrp")
+            with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+                bsr_compress(matrix, inplace=True, topology="padded")
+            wp.capture_save(capture.graph, path, outputs={"offsets": matrix.offsets})
+            _corrupt_apic_bsr_compress_record(path, row_counts_region_id=-1)
+
+            _assert_apic_load_rejected(self, path, device, r"operation stream failed validation")
+
 
 def _mock_apic_cuda_export_module(directory, module_name, filename, source_data=b"// generated CUDA source\n"):
     """Create CUDA artifact metadata for save preflight without requiring a GPU."""
@@ -984,7 +1060,7 @@ def _mock_apic_cuda_export_graph(modules):
 _APIC_SECTION_METADATA = 1
 _APIC_SECTION_MEMORY = 2
 _APIC_SECTION_OPERATIONS = 3
-_APIC_FORMAT_VERSION = 18
+_APIC_FORMAT_VERSION = 19
 
 # These layouts mirror the packed structs in warp/native/apic_types.h. "<"
 # selects little-endian standard sizes without implicit alignment; "4s", "i",
@@ -1023,6 +1099,19 @@ _APIC_MODULE_RECORD_TAIL = struct.Struct("<BB16s")
 # Fixed-size fields that end a metadata kernel record: forward and backward
 # shared-memory bytes, then block dim.
 _APIC_KERNEL_RECORD_TAIL = struct.Struct("<3I")
+
+# APICBsrCompressRecord: operation type/size; row count, column count, block size,
+# scalar size, scalar type, and nnz upper bound; prune, compact, and value flags
+# with padding; zero mask; then the offsets, row-count, column, and value region
+# IDs followed by their byte offsets.
+_APIC_BSR_COMPRESS_RECORD = struct.Struct("<II6i3B5xQ4i4Q")
+_APIC_BSR_COMPRESS_FIELDS = {
+    "block_size": 4,
+    "scalar_size_in_bytes": 5,
+    "nnz_upper_bound": 7,
+    "row_counts_region_id": 13,
+}
+_APIC_OP_BSR_COMPRESS = 20
 
 
 def _find_apic_section(wrp_data, requested_section_type):
@@ -1198,6 +1287,46 @@ def _corrupt_apic_memtile_record(path, *, srcsize=None, count=None):
             memtile[5] = count
         wrp_file.seek(memtile_offset)
         wrp_file.write(_APIC_MEMTILE_RECORD.pack(*memtile))
+
+
+def _corrupt_apic_bsr_compress_record(path, **fields):
+    """Overwrite selected fields of the first BSR compress record in a saved WRP."""
+    operations = _read_apic_section(path, _APIC_SECTION_OPERATIONS)
+    operation_count = _APIC_UINT32.unpack_from(operations)[0]
+    offset = _APIC_UINT32.size
+    for _ in range(operation_count):
+        operation_type, operation_size = _APIC_OP_HEADER.unpack_from(operations, offset)
+        if operation_type == _APIC_OP_BSR_COMPRESS:
+            record = list(_APIC_BSR_COMPRESS_RECORD.unpack_from(operations, offset))
+            for name, value in fields.items():
+                record[_APIC_BSR_COMPRESS_FIELDS[name]] = value
+            _APIC_BSR_COMPRESS_RECORD.pack_into(operations, offset, *record)
+            _replace_apic_section(path, _APIC_SECTION_OPERATIONS, operations)
+            return
+        offset += operation_size
+
+    raise ValueError("Expected at least one APIC BSR compress operation")
+
+
+def _make_apic_compress_matrix(device):
+    """Create an uncompressed 1x3 matrix with a duplicate, unsorted column."""
+    matrix = bsr_zeros(1, 3, wp.float32, device=device)
+    matrix.nnz = 4
+    matrix.offsets = wp.array([0, 4], dtype=int, device=device)
+    matrix.columns = wp.array([1, 0, 1, 2], dtype=int, device=device)
+    matrix.values = wp.array([1.0, 2.0, 3.0, 4.0], dtype=wp.float32, device=device)
+    return matrix
+
+
+def _assert_apic_launch_rejected(test, graph, message_pattern):
+    """Assert that a CPU graph replay fails without noisy native stderr."""
+    saved_error_output_enabled = wp_context.runtime.core.wp_is_error_output_enabled()
+    try:
+        wp_context.runtime.core.wp_set_error_output_enabled(False)
+        with test.assertRaisesRegex(RuntimeError, message_pattern):
+            wp.capture_launch(graph)
+    finally:
+        wp_context.runtime.core.wp_set_error_output_enabled(saved_error_output_enabled)
 
 
 def _patch_apic_file_header(path, **fields):
@@ -1597,6 +1726,59 @@ def test_load_same_capture_twice(test, device):
     result = wp.zeros(n, dtype=float, device=device)
     second.get_param("b", result)
     np.testing.assert_allclose(result.numpy(), np.arange(n, dtype=np.float32) * 2.0)
+
+
+def test_capture_debug_dot_print_loaded_cpu_graph_raises(test, device):
+    """Reject a loaded CPU graph in ``capture_debug_dot_print()``, which has no CUDA graph to export."""
+    n = 16
+    a = wp.array(np.arange(n, dtype=np.float32), device=device)
+    b = wp.zeros(n, dtype=float, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(scale_kernel, dim=n, inputs=[a, b, 2.0], device=device)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "loaded_cpu")
+        wp.capture_save(capture.graph, path, inputs={"a": a}, outputs={"b": b})
+        loaded = wp.capture_load(path, device=device)
+
+        dot_path = os.path.join(tmpdir, "graph.dot")
+        with test.assertRaisesRegex(
+            RuntimeError,
+            rf"^capture_debug_dot_print\(\) requires a CUDA graph, got a graph on device '{device}'$",
+        ):
+            wp.capture_debug_dot_print(loaded, dot_path)
+        test.assertFalse(os.path.exists(dot_path))
+
+
+def test_capture_debug_dot_print_loaded_cuda_graph(test, device):
+    """Export a loaded CUDA graph before its first launch, then launch it."""
+    n = 16
+    a = wp.array(np.arange(n, dtype=np.float32), device=device)
+    b = wp.zeros(n, dtype=float, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(scale_kernel, dim=n, inputs=[a, b, 2.0], device=device)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "loaded_cuda")
+        wp.capture_save(capture.graph, path, inputs={"a": a}, outputs={"b": b})
+        loaded = wp.capture_load(path, device=device)
+
+        dot_path = os.path.join(tmpdir, "graph.dot")
+        wp.capture_debug_dot_print(loaded, dot_path, verbose=False)
+        with open(dot_path) as dot_file:
+            dot = dot_file.read()
+
+    test.assertTrue(dot.startswith("digraph"))
+    test.assertRegex(dot, r"scale_kernel_[0-9a-f]+_cuda_kernel_forward")
+
+    wp.capture_launch(loaded)
+    result = wp.zeros(n, dtype=float, device=device)
+    loaded.get_param("b", result)
+    np.testing.assert_array_equal(result.numpy(), np.arange(n, dtype=np.float32) * 2.0)
 
 
 def test_save_load_large_shared_memory(test, device, conditional=False):
@@ -3424,6 +3606,221 @@ def test_capture_while_cpu(test, device):
     test.assertEqual(int(counter.numpy()[0]), 0)
 
 
+def test_capture_if_graph_branch_retains_inner_cpu(test, device):
+    """Replay a CPU ``Graph`` branch after the caller drops every reference to it."""
+    n = 4
+    out = wp.zeros(n, dtype=float, device=device)
+    increment = wp.full(n, 3.0, dtype=float, device=device)
+    cond = wp.array([1], dtype=wp.int32, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, force_module_load=False) as inner:
+        wp.launch(add_kernel, dim=n, inputs=[out, increment, out], device=device)
+    inner_ref = weakref.ref(inner.graph)
+
+    with wp.ScopedCapture(device=device, force_module_load=False) as outer:
+        wp.capture_if(cond, on_true=inner.graph)
+
+    del inner
+    gc.collect()
+    test.assertIsNotNone(inner_ref(), "the outer graph must keep its Graph branch alive")
+
+    out.zero_()
+    wp.capture_launch(outer.graph)
+    wp.capture_launch(outer.graph)
+    np.testing.assert_allclose(out.numpy(), np.full(n, 6.0, dtype=np.float32))
+
+    del outer
+    gc.collect()
+    test.assertIsNone(inner_ref(), "releasing the outer graph must release its Graph branch")
+
+
+def test_capture_if_mixed_graph_and_callable_branches_cpu(test, device):
+    """Select between a ``Graph`` branch and a callable branch on each CPU replay."""
+    n = 4
+    out = wp.zeros(n, dtype=float, device=device)
+    cond = wp.array([1], dtype=wp.int32, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, force_module_load=False) as true_capture:
+        wp.launch(write_value_kernel, dim=n, inputs=[out, 11.0], device=device)
+
+    def on_false():
+        wp.launch(write_value_kernel, dim=n, inputs=[out, 22.0], device=device)
+
+    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+        wp.capture_if(cond, on_true=true_capture.graph, on_false=on_false)
+
+    for cond_value, expected in ((1, 11.0), (0, 22.0)):
+        cond.assign([cond_value])
+        out.zero_()
+        wp.capture_launch(capture.graph)
+        np.testing.assert_allclose(out.numpy(), np.full(n, expected, dtype=np.float32))
+
+
+def test_capture_graph_branch_nested_cpu(test, device):
+    """Replay a ``Graph`` branch nested inside a callable CPU loop body."""
+    out = wp.zeros(1, dtype=float, device=device)
+    increment = wp.ones(1, dtype=float, device=device)
+    counter = wp.zeros(1, dtype=wp.int32, device=device)
+    flag = wp.zeros(1, dtype=wp.int32, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, force_module_load=False) as add_capture:
+        wp.launch(add_kernel, dim=1, inputs=[out, increment, out], device=device)
+
+    def body():
+        wp.capture_if(flag, on_true=add_capture.graph)
+        wp.launch(decrement_counter_kernel, dim=1, inputs=[counter], device=device)
+
+    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+        wp.capture_while(counter, while_body=body)
+
+    for count, flag_value, expected in ((3, 1, 3.0), (2, 0, 0.0)):
+        out.zero_()
+        counter.assign([count])
+        flag.assign([flag_value])
+        wp.capture_launch(capture.graph)
+        test.assertEqual(int(counter.numpy()[0]), 0)
+        np.testing.assert_allclose(out.numpy(), np.array([expected], dtype=np.float32))
+
+
+def test_capture_rejects_conditional_graph_branch_cpu(test, device):
+    """Reject a CPU ``Graph`` branch or loop body that contains a conditional, as CUDA capture does."""
+    out = wp.zeros(1, dtype=float, device=device)
+    flag = wp.ones(1, dtype=wp.int32, device=device)
+    counter = wp.zeros(1, dtype=wp.int32, device=device)
+
+    def write_one():
+        wp.launch(write_value_kernel, dim=1, inputs=[out, 1.0], device=device)
+
+    def decrement():
+        wp.launch(decrement_counter_kernel, dim=1, inputs=[counter], device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, force_module_load=False) as if_capture:
+        wp.capture_if(flag, on_true=write_one)
+    with wp.ScopedCapture(device=device, force_module_load=False) as while_capture:
+        wp.capture_while(counter, while_body=decrement)
+
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as outer:
+        wp.launch(write_value_kernel, dim=1, inputs=[out, 5.0], device=device)
+        for inner in (if_capture.graph, while_capture.graph):
+            with test.assertRaisesRegex(NotImplementedError, r"contains capture_if\(\) or capture_while\(\)"):
+                wp.capture_if(flag, on_true=inner)
+            with test.assertRaisesRegex(NotImplementedError, r"contains capture_if\(\) or capture_while\(\)"):
+                wp.capture_while(counter, while_body=inner)
+
+    # The rejected branches leave nothing behind, so the outer graph replays and saves.
+    out.zero_()
+    wp.capture_launch(outer.graph)
+    np.testing.assert_allclose(out.numpy(), np.array([5.0], dtype=np.float32))
+    with tempfile.TemporaryDirectory() as tmpdir:
+        wp.capture_save(outer.graph, os.path.join(tmpdir, "rejected_conditional_branch"))
+
+
+def test_capture_graph_branch_save_rejected_cpu(test, device):
+    """Reject ``capture_save()`` for a CPU graph that records a ``Graph`` branch or loop body."""
+    out = wp.zeros(1, dtype=float, device=device)
+    cond = wp.zeros(1, dtype=wp.int32, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, force_module_load=False) as inner:
+        wp.launch(write_value_kernel, dim=1, inputs=[out, 1.0], device=device)
+
+    for name, record in (
+        ("capture_if", lambda: wp.capture_if(cond, on_true=inner.graph)),
+        ("capture_while", lambda: wp.capture_while(cond, while_body=inner.graph)),
+    ):
+        with test.subTest(name):
+            with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as outer:
+                record()
+            with tempfile.TemporaryDirectory() as tmpdir:
+                path = os.path.join(tmpdir, "graph_branch_should_not_save")
+                with test.assertRaisesRegex(RuntimeError, r"wp\.capture_if\(\) or wp\.capture_while\(\)"):
+                    wp.capture_save(outer.graph, path)
+                test.assertFalse(os.path.exists(path + ".wrp"))
+
+
+def test_discarded_graph_branch_does_not_block_save_cpu(test, device):
+    """Save a CPU graph whose ``Graph`` branch was discarded when its sibling branch raised."""
+    out = wp.zeros(1, dtype=float, device=device)
+    cond = wp.array([1], dtype=wp.int32, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, force_module_load=False) as inner:
+        wp.launch(write_value_kernel, dim=1, inputs=[out, 1.0], device=device)
+
+    def raising_branch():
+        raise ValueError("branch failed")
+
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as outer:
+        wp.launch(write_value_kernel, dim=1, inputs=[out, 5.0], device=device)
+        with test.assertRaises(ValueError):
+            wp.capture_if(cond, on_true=inner.graph, on_false=raising_branch)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "discarded_graph_branch")
+        wp.capture_save(outer.graph, path, outputs={"out": out})
+        loaded = wp.capture_load(path, device=device)
+        wp.capture_launch(loaded)
+        result = wp.zeros(1, dtype=float, device=device)
+        loaded.get_param("out", result)
+        np.testing.assert_allclose(result.numpy(), np.array([5.0], dtype=np.float32))
+
+
+def test_capture_if_rejects_unfinished_graph_branch_cpu(test, device):
+    """Reject a CPU ``Graph`` branch that is still being captured."""
+    cond = wp.array([1], dtype=wp.int32, device=device)
+
+    wp.capture_begin(device=device, force_module_load=False)
+    try:
+        # Internal pause/resume is the only way to get the in-progress Graph object.
+        current = wp_context.capture_pause(device=device)
+        wp_context.capture_resume(current, device=device)
+        with test.assertRaisesRegex(RuntimeError, "still being captured"):
+            wp.capture_if(cond, on_true=current)
+    finally:
+        wp.capture_end(device=device)
+
+
+def test_capture_if_rejects_loaded_graph_branch_cpu(test, device):
+    """Reject a ``Graph`` branch loaded by ``capture_load()`` during CPU capture."""
+    out = wp.zeros(1, dtype=float, device=device)
+    cond = wp.array([1], dtype=wp.int32, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as inner:
+        wp.launch(write_value_kernel, dim=1, inputs=[out, 1.0], device=device)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "loaded_branch")
+        wp.capture_save(inner.graph, path)
+        loaded = wp.capture_load(path, device=device)
+
+    with wp.ScopedCapture(device=device, force_module_load=False):
+        with test.assertRaisesRegex(NotImplementedError, r"capture_load\(\)"):
+            wp.capture_if(cond, on_true=loaded)
+
+
+def test_capture_if_rejects_cuda_graph_branch_cpu(test, device):
+    """Reject a CUDA ``Graph`` branch during CPU capture."""
+    if not wp.is_cuda_available():
+        test.skipTest("Requires a CUDA device")
+
+    cuda_device = wp.get_cuda_device()
+    cuda_out = wp.zeros(1, dtype=float, device=cuda_device)
+    cond = wp.array([1], dtype=wp.int32, device=device)
+
+    wp.load_module(device=cuda_device)
+    with wp.ScopedCapture(device=cuda_device, force_module_load=False) as cuda_capture:
+        wp.launch(write_value_kernel, dim=1, inputs=[cuda_out, 1.0], device=cuda_device)
+
+    with wp.ScopedCapture(device=device, force_module_load=False):
+        with test.assertRaisesRegex(RuntimeError, r"captured on device 'cuda:\d+'"):
+            wp.capture_if(cond, on_true=cuda_capture.graph)
+
+
 def _make_const_writer(value):
     """Build a kernel that writes a compile-time constant.
 
@@ -4465,6 +4862,86 @@ def test_capture_with_bsr_transpose(test, device):
         np.testing.assert_array_equal(values_out.numpy()[:n], np.arange(1, n + 1, dtype=np.float32))
 
 
+def _check_save_load_bsr_compress(test, device, inplace):
+    """Check that a loaded graph compresses the data saved with it."""
+    if not inplace:
+        # Load the value-accumulation kernel before module loading is disabled for capture.
+        bsr_compress(_make_apic_compress_matrix(device), inplace=False)
+
+    matrix = bsr_zeros(2, 4, wp.float32, device=device)
+    matrix.nnz = 6
+    matrix.offsets = wp.array([0, 3, 6], dtype=int, device=device)
+    matrix.columns = wp.array([2, 0, 2, 1, 1, 3], dtype=int, device=device)
+    matrix.values = wp.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], dtype=wp.float32, device=device)
+
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        bsr_compress(matrix, inplace=inplace)
+
+    # Saving snapshots the current data, so the loaded graph must compress these blocks: row 0 has a duplicate
+    # and an out-of-range column, and row 1 has a zero block to prune.
+    matrix.offsets.assign(np.array([0, 4, 6], dtype=np.int32))
+    matrix.columns.assign(np.array([3, 1, 3, 7, 0, 2], dtype=np.int32))
+    matrix.values.assign(np.array([1.0, 2.0, 3.0, 9.0, 5.0, 0.0], dtype=np.float32))
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "bsr_compress")
+        wp.capture_save(
+            capture.graph, path, outputs={"offsets": matrix.offsets, "columns": matrix.columns, "values": matrix.values}
+        )
+        loaded = wp.capture_load(path, device=device)
+        wp.capture_launch(loaded)
+
+        offsets_out = wp.zeros_like(matrix.offsets)
+        columns_out = wp.zeros_like(matrix.columns)
+        values_out = wp.zeros_like(matrix.values)
+        loaded.get_param("offsets", offsets_out)
+        loaded.get_param("columns", columns_out)
+        loaded.get_param("values", values_out)
+
+        np.testing.assert_array_equal(offsets_out.numpy(), np.array([0, 2, 3]))
+        np.testing.assert_array_equal(columns_out.numpy()[:3], np.array([1, 3, 0]))
+        np.testing.assert_array_equal(values_out.numpy()[:3], np.array([2.0, 4.0, 5.0]))
+
+
+def test_capture_save_load_bsr_compress(test, device):
+    """Verify that saved graphs keep in-place and out-of-place BSR compression."""
+    _check_save_load_bsr_compress(test, device, inplace=True)
+    _check_save_load_bsr_compress(test, device, inplace=False)
+
+
+def test_capture_save_load_bsr_compress_skips_uncaptured_stream(test, device):
+    """Verify that compression on a stream outside the capture runs once and stays out of saved graphs."""
+    matrix = bsr_zeros(1, 2, wp.float32, device=device)
+    matrix.nnz = 2
+    matrix.offsets = wp.array([0, 2], dtype=int, device=device)
+    matrix.row_counts = wp.array([2], dtype=int, device=device)
+    matrix.columns = wp.array([1, 0], dtype=int, device=device)
+    matrix.values = wp.array([1.0, 2.0], dtype=wp.float32, device=device)
+
+    other_stream = wp.Stream(device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        with wp.ScopedStream(other_stream, sync_enter=False):
+            bsr_compress(matrix, inplace=True, topology="padded")
+    wp.synchronize_stream(other_stream)
+
+    # The compression ran immediately on the other stream, outside the live graph.
+    np.testing.assert_array_equal(matrix.columns.numpy(), np.array([0, 1]))
+
+    matrix.columns.assign(np.array([1, 0], dtype=np.int32))
+    wp.capture_launch(capture.graph)
+    np.testing.assert_array_equal(matrix.columns.numpy(), np.array([1, 0]))
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "bsr_compress_uncaptured_stream")
+        wp.capture_save(capture.graph, path, outputs={"columns": matrix.columns})
+        loaded = wp.capture_load(path, device=device)
+        wp.capture_launch(loaded)
+
+        columns_out = wp.zeros_like(matrix.columns)
+        loaded.get_param("columns", columns_out)
+        np.testing.assert_array_equal(columns_out.numpy(), np.array([1, 0]))
+
+
 def test_capture_with_padded_bsr_transpose(test, device):
     """Verify that padded BSR transpose replay must preserve row_counts and status pointers."""
     from warp.sparse import (  # noqa: PLC0415
@@ -5281,6 +5758,18 @@ add_function_test(
 )
 add_function_test(
     TestApic,
+    "test_capture_debug_dot_print_loaded_cpu_graph_raises",
+    test_capture_debug_dot_print_loaded_cpu_graph_raises,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_debug_dot_print_loaded_cuda_graph",
+    test_capture_debug_dot_print_loaded_cuda_graph,
+    devices=[d for d in devices_with_cuda_graph_module_load if d.is_cuda],
+)
+add_function_test(
+    TestApic,
     "test_save_load_large_shared_memory",
     test_save_load_large_shared_memory,
     devices=[d for d in devices_with_cuda_graph_module_load if d.is_cuda],
@@ -5611,6 +6100,18 @@ add_function_test(
 )
 add_function_test(
     TestApic,
+    "test_capture_save_load_bsr_compress",
+    test_capture_save_load_bsr_compress,
+    devices=devices_with_graph_capture_allocation_and_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
+    "test_capture_save_load_bsr_compress_skips_uncaptured_stream",
+    test_capture_save_load_bsr_compress_skips_uncaptured_stream,
+    devices=cuda_devices_with_graph_capture_allocation_and_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
     "test_capture_padded_bsr_transpose_rebuilds_offsets",
     test_capture_padded_bsr_transpose_rebuilds_offsets,
     devices=devices,
@@ -5746,6 +6247,61 @@ add_function_test(
 # reconstructs the conditional body sub-graphs on CUDA.
 add_function_test(TestApic, "test_capture_if_cpu", test_capture_if_cpu, devices=devices)
 add_function_test(TestApic, "test_capture_while_cpu", test_capture_while_cpu, devices=devices)
+# CPU-only Graph branches: CUDA graph composition is covered by test_conditional_captures.py.
+add_function_test(
+    TestApic,
+    "test_capture_if_graph_branch_retains_inner_cpu",
+    test_capture_if_graph_branch_retains_inner_cpu,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_if_mixed_graph_and_callable_branches_cpu",
+    test_capture_if_mixed_graph_and_callable_branches_cpu,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_graph_branch_nested_cpu",
+    test_capture_graph_branch_nested_cpu,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_rejects_conditional_graph_branch_cpu",
+    test_capture_rejects_conditional_graph_branch_cpu,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_graph_branch_save_rejected_cpu",
+    test_capture_graph_branch_save_rejected_cpu,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_discarded_graph_branch_does_not_block_save_cpu",
+    test_discarded_graph_branch_does_not_block_save_cpu,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_if_rejects_unfinished_graph_branch_cpu",
+    test_capture_if_rejects_unfinished_graph_branch_cpu,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_if_rejects_loaded_graph_branch_cpu",
+    test_capture_if_rejects_loaded_graph_branch_cpu,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_if_rejects_cuda_graph_branch_cpu",
+    test_capture_if_rejects_cuda_graph_branch_cpu,
+    devices=[d for d in devices if d.is_cpu],
+)
 add_function_test(
     TestApic,
     "test_save_load_capture_if_cuda",

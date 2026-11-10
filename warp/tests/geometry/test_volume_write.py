@@ -1175,6 +1175,195 @@ def test_volume_rebuild_capacity_status(test, device):
     test.assertLessEqual(_device_voxel_count(initial_overflow_volume, device), 1)
 
 
+# Origins of the 20 upper nodes (4096^3 voxels each) that the upper-node tests fill, plus one whose points are all
+# masked out. Twenty upper nodes need five bits for their index in the builders' sort keys, and outnumber the 16 recent
+# upper keys that the host builder remembers.
+_UPPER_NODE_ORIGINS = 4096 * np.array(
+    [[i, j, k] for i in (-2, -1, 0, 1, 2) for j in (-1, 0) for k in (0, 1)], dtype=np.int32
+)
+_MASKED_UPPER_NODE_ORIGIN = np.array([-8192, -8192, -8192], dtype=np.int32)
+
+
+def _upper_node_points(local_coords, masked_only_coords):
+    """Return shuffled points and their mask for ``local_coords`` repeated in every upper node.
+
+    Every upper node holds the same local coordinates, so sort keys from different upper nodes differ only in their
+    upper-node bits. Each unmasked coordinate appears four times, one copy masked out. ``masked_only_coords`` and
+    every coordinate in the masked upper node appear only masked out.
+    """
+    active = (_UPPER_NODE_ORIGINS[:, None, :] + local_coords[None, :, :]).reshape(-1, 3)
+    masked_only = np.vstack((masked_only_coords, _MASKED_UPPER_NODE_ORIGIN + local_coords))
+    points = np.vstack((np.repeat(active, 4, axis=0), np.repeat(masked_only, 2, axis=0))).astype(np.int32)
+    mask = np.concatenate((np.tile([1, 1, 0, 1], len(active)), np.zeros(2 * len(masked_only)))).astype(np.int32)
+    order = np.random.default_rng(1793).permutation(len(points))
+    return points[order], mask[order]
+
+
+def _check_voxel_volume(test, volume, expected_voxels, absent_voxels, device):
+    leaf_count, lower_count, upper_count = _grid_parent_counts(expected_voxels)
+    test.assertEqual(
+        volume.get_active_stats(),
+        wp.Volume.ActiveStats(len(expected_voxels), leaf_count, lower_count, upper_count),
+    )
+    voxels = volume.get_voxels().numpy()
+    np.testing.assert_array_equal(_sort_rows(voxels), expected_voxels)
+    np.testing.assert_array_equal(_lookup_indices(volume, voxels, device), np.arange(len(expected_voxels)))
+    np.testing.assert_array_equal(_lookup_indices(volume, absent_voxels, device), np.full(len(absent_voxels), -1))
+
+
+def test_volume_build_voxels_upper_nodes(test, device):
+    """Verify voxel builds whose points span several upper nodes, repeat often, and are partly masked out.
+
+    Exact allocation, rebuildable allocation, and rebuild must all activate exactly the unmasked voxels, and looking
+    up each voxel returned by ``get_voxels()`` must return its position in that array.
+    """
+    local_voxels = np.array(
+        [[0, 0, 0], [1, 2, 3], [7, 7, 7], [8, 0, 0], [127, 5, 9], [128, 64, 3], [2000, 100, 3000], [4095, 4095, 4095]],
+        dtype=np.int32,
+    )
+    # One voxel in a leaf and lower node of its own, and one in a leaf shared with an unmasked voxel.
+    masked_only_voxels = np.array([[3000, 3000, 3000], [-4094, 0, 0]], dtype=np.int32)
+    points_np, mask_np = _upper_node_points(local_voxels, masked_only_voxels)
+    expected_voxels = _unique_rows(points_np[mask_np != 0])
+    absent_voxels = np.vstack((masked_only_voxels, _MASKED_UPPER_NODE_ORIGIN + local_voxels))
+    leaf_count, lower_count, upper_count = _grid_parent_counts(expected_voxels)
+    test.assertEqual(upper_count, 20)
+
+    points = wp.array(points_np, dtype=wp.int32, device=device)
+    mask = wp.array(mask_np, dtype=wp.int32, device=device)
+    capacities = {
+        "max_active_voxels": len(expected_voxels),
+        "max_leaf_nodes": leaf_count,
+        "max_lower_nodes": lower_count,
+        "max_upper_nodes": upper_count,
+    }
+
+    exact_volume = wp.Volume.allocate_by_voxels(points, voxel_size=1.0, device=device, point_mask=mask)
+    _check_voxel_volume(test, exact_volume, expected_voxels, absent_voxels, device)
+
+    status = wp.zeros(1, dtype=wp.uint32, device=device)
+    rebuildable_volume = wp.Volume.allocate_by_voxels(
+        points, voxel_size=1.0, device=device, rebuildable=True, status=status, point_mask=mask, **capacities
+    )
+    test.assertEqual(int(status.numpy()[0]), wp.Volume.REBUILD_SUCCESS)
+    _check_voxel_volume(test, rebuildable_volume, expected_voxels, absent_voxels, device)
+
+    rebuilt_volume = wp.Volume.allocate_by_voxels(
+        wp.array([[0, 0, 0]], dtype=wp.int32, device=device),
+        voxel_size=1.0,
+        device=device,
+        rebuildable=True,
+        **capacities,
+    )
+    rebuilt_volume.rebuild(points, status=status, point_mask=mask)
+    test.assertEqual(int(status.numpy()[0]), wp.Volume.REBUILD_SUCCESS)
+    _check_voxel_volume(test, rebuilt_volume, expected_voxels, absent_voxels, device)
+
+
+def _check_tile_volume(test, volume, expected_tiles, absent_tiles, device):
+    leaf_count, lower_count, upper_count = _grid_parent_counts(expected_tiles)
+    test.assertEqual(
+        volume.get_active_stats(),
+        wp.Volume.ActiveStats(len(expected_tiles) * 512, leaf_count, lower_count, upper_count),
+    )
+    tiles = volume.get_tiles().numpy()
+    np.testing.assert_array_equal(_sort_rows(tiles), expected_tiles)
+    np.testing.assert_array_equal(_lookup_indices(volume, tiles, device), np.arange(len(expected_tiles)) * 512)
+    np.testing.assert_array_equal(_lookup_indices(volume, absent_tiles, device), np.full(len(absent_tiles), -1))
+
+
+def test_volume_build_tiles_upper_nodes(test, device):
+    """Verify index tile builds whose points span several upper nodes, repeat often, and are partly masked out.
+
+    Exact allocation, rebuildable allocation, and rebuild must all activate exactly the unmasked tiles, and looking
+    up the origin of each tile returned by ``get_tiles()`` must return the first index of that tile.
+    """
+    local_tiles = np.array(
+        [[0, 0, 0], [8, 0, 0], [120, 0, 8], [128, 64, 0], [2000, 96, 3000], [4088, 4088, 4088]], dtype=np.int32
+    )
+    # A tile in a lower node of its own.
+    masked_only_tiles = np.array([[2992, 2992, 2992]], dtype=np.int32)
+    points_np, mask_np = _upper_node_points(local_tiles, masked_only_tiles)
+    expected_tiles = _unique_rows(points_np[mask_np != 0])
+    absent_tiles = np.vstack((masked_only_tiles, _MASKED_UPPER_NODE_ORIGIN + local_tiles))
+    leaf_count, lower_count, upper_count = _grid_parent_counts(expected_tiles)
+    test.assertEqual(upper_count, 20)
+
+    points = wp.array(points_np, dtype=wp.int32, device=device)
+    mask = wp.array(mask_np, dtype=wp.int32, device=device)
+    capacities = {"max_tiles": leaf_count, "max_lower_nodes": lower_count, "max_upper_nodes": upper_count}
+
+    exact_volume = wp.Volume.allocate_by_tiles(points, voxel_size=1.0, bg_value=None, device=device, point_mask=mask)
+    _check_tile_volume(test, exact_volume, expected_tiles, absent_tiles, device)
+
+    status = wp.zeros(1, dtype=wp.uint32, device=device)
+    rebuildable_volume = wp.Volume.allocate_by_tiles(
+        points,
+        voxel_size=1.0,
+        bg_value=None,
+        device=device,
+        rebuildable=True,
+        status=status,
+        point_mask=mask,
+        **capacities,
+    )
+    test.assertEqual(int(status.numpy()[0]), wp.Volume.REBUILD_SUCCESS)
+    _check_tile_volume(test, rebuildable_volume, expected_tiles, absent_tiles, device)
+
+    rebuilt_volume = wp.Volume.allocate_by_tiles(
+        wp.array([[0, 0, 0]], dtype=wp.int32, device=device),
+        voxel_size=1.0,
+        bg_value=None,
+        device=device,
+        rebuildable=True,
+        **capacities,
+    )
+    rebuilt_volume.rebuild(points, status=status, point_mask=mask)
+    test.assertEqual(int(status.numpy()[0]), wp.Volume.REBUILD_SUCCESS)
+    _check_tile_volume(test, rebuilt_volume, expected_tiles, absent_tiles, device)
+
+
+def _allocate_voxels(points_np, device):
+    return wp.Volume.allocate_by_voxels(
+        wp.array(points_np, dtype=wp.int32, device=device), voxel_size=1.0, device=device
+    )
+
+
+def test_volume_build_voxels_key_edges(test, device):
+    """Verify voxel builds whose sort keys sit at the edges of the host builder's key sort.
+
+    The host builder sorts each voxel's 64-bit key 11 bits at a time, up to the highest bit any key sets. In each of
+    the first three builds, two voxels share a leaf and a third sets key bit 11, 22, or 33, the first bit of a sort
+    pass, while its lower bits fall between theirs, so a pass too few would split the shared leaf. The last build
+    starts with points in the lowest upper node, whose key is 0.
+    """
+    lowest = np.iinfo(np.int32).min
+    key_bit_11_voxels = np.array([[0, 0, 0], [0, 0, 2], [0, 0, 33]], dtype=np.int32)
+    key_bit_22_voxels = np.array([[0, 0, 0], [0, 0, 2], [0, 0, 257]], dtype=np.int32)
+    key_bit_33_voxels = np.array([[0, 0, 0], [0, 0, 2], [512, 0, 1]], dtype=np.int32)
+    lowest_upper_node_voxels = np.array(
+        [[lowest, lowest, lowest], [lowest + 1, lowest + 2, lowest + 3], [0, 0, 0]], dtype=np.int32
+    )
+    absent_voxels = np.array([[0, 0, 1], [lowest, lowest, lowest + 1]], dtype=np.int32)
+
+    _check_voxel_volume(
+        test, _allocate_voxels(key_bit_11_voxels, device), _sort_rows(key_bit_11_voxels), absent_voxels, device
+    )
+    _check_voxel_volume(
+        test, _allocate_voxels(key_bit_22_voxels, device), _sort_rows(key_bit_22_voxels), absent_voxels, device
+    )
+    _check_voxel_volume(
+        test, _allocate_voxels(key_bit_33_voxels, device), _sort_rows(key_bit_33_voxels), absent_voxels, device
+    )
+    _check_voxel_volume(
+        test,
+        _allocate_voxels(lowest_upper_node_voxels, device),
+        _sort_rows(lowest_upper_node_voxels),
+        absent_voxels,
+        device,
+    )
+
+
 def test_volume_allocate_capture(test, device):
     voxel_points = wp.array([[1, 2, 3], [4, 5, 6]], dtype=wp.int32, device=device)
     tile_points = wp.array([[0, 0, 0], [8, 0, 0]], dtype=wp.int32, device=device)
@@ -1454,6 +1643,15 @@ add_function_test(
     "test_volume_rebuild_capacity_status",
     test_volume_rebuild_capacity_status,
     devices=devices,
+)
+add_function_test(
+    TestVolumeWrite, "test_volume_build_voxels_upper_nodes", test_volume_build_voxels_upper_nodes, devices=devices
+)
+add_function_test(
+    TestVolumeWrite, "test_volume_build_tiles_upper_nodes", test_volume_build_tiles_upper_nodes, devices=devices
+)
+add_function_test(
+    TestVolumeWrite, "test_volume_build_voxels_key_edges", test_volume_build_voxels_key_edges, devices=devices
 )
 add_function_test(
     TestVolumeWrite,

@@ -880,7 +880,11 @@ CUDA_CALLABLE_DEVICE T texture_cuda_sample(const TextureType& tex, float lod, Co
     // One float fetch for every format; see texture_cuda_decode().
     const int32 dtype = tex.get_dtype();
     const typename types::float_type bits = texture_cuda_fetch<typename types::float_type>::sample(tex, lod, coords...);
-    return types::decode(bits, dtype == WP_TEXTURE_DTYPE_INT32, dtype == WP_TEXTURE_DTYPE_UINT32);
+    // Branching after the fetch keeps the integer conversions out of the
+    // float path, which would otherwise pay for them in register pressure.
+    if (dtype == WP_TEXTURE_DTYPE_INT32 || dtype == WP_TEXTURE_DTYPE_UINT32)
+        return types::decode(bits, dtype == WP_TEXTURE_DTYPE_INT32, dtype == WP_TEXTURE_DTYPE_UINT32);
+    return types::decode(bits, false, false);
 }
 #endif
 

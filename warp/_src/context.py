@@ -3359,10 +3359,15 @@ class ModuleHasher:
         ch.update(bytes(func.native_func, "utf-8"))
 
         # Most Warp builtins rely on the versioned cache directory. Builtins
-        # with a templated adjoint also affect reverse-call codegen, so include
+        # with LTO dispatch or a templated adjoint affect reverse-call codegen, so include
         # their overload dispatch metadata in the module hash.
-        if any(overload.adjoint_uses_template_args for overload in func.overloads):
-            dispatch = tuple((overload.native_func, overload.adjoint_uses_template_args) for overload in func.overloads)
+        if any(
+            overload.adjoint_uses_template_args or overload.lto_dispatch_func is not None for overload in func.overloads
+        ):
+            dispatch = tuple(
+                (overload.native_func, overload.adjoint_uses_template_args, overload.is_differentiable)
+                for overload in func.overloads
+            )
             ch.update(repr(dispatch).encode("utf-8"))
 
         external_contracts = (
@@ -6563,6 +6568,9 @@ class Graph:
         self.apic_state: ctypes.c_void_p | None = None  # C++ APICState*
         self._apic_capture = None  # APICapture instance
         self._apic_recording_suspended: bool = False
+        # Graph branches recorded into this CPU graph; their APIC states must
+        # outlive this graph's replay.
+        self._apic_child_graphs: list[Graph] = []
 
         # APIC loaded graph (from .wrp file)
         self._native_graph: ctypes.c_void_p | None = None  # APICGraph*
@@ -7044,6 +7052,10 @@ class Runtime:
                 ctypes.c_void_p,  # branch_b (consumed)
             ]
             self.core.wp_apic_record_conditional.restype = None
+            self.core.wp_apic_state_has_conditional.argtypes = [ctypes.c_void_p]
+            self.core.wp_apic_state_has_conditional.restype = ctypes.c_bool
+            self.core.wp_apic_record_child_graph.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.wp_apic_record_child_graph.restype = ctypes.c_bool
             self.core.wp_apic_register_memory_region_by_ptr.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_uint64,
@@ -7326,8 +7338,16 @@ class Runtime:
                 ctypes.c_int,
                 ctypes.c_int,
                 ctypes.c_bool,
+                ctypes.c_uint64,
+                ctypes.c_size_t,
             ]
             self.core.wp_array_scan_int_device.restype = ctypes.c_bool
+            self.core.wp_array_scan_int_device_temp_storage_size.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.POINTER(ctypes.c_size_t),
+            ]
+            self.core.wp_array_scan_int_device_temp_storage_size.restype = ctypes.c_bool
             self.core.wp_array_scan_int64_device.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
@@ -7336,8 +7356,16 @@ class Runtime:
                 ctypes.c_int,
                 ctypes.c_int,
                 ctypes.c_bool,
+                ctypes.c_uint64,
+                ctypes.c_size_t,
             ]
             self.core.wp_array_scan_int64_device.restype = ctypes.c_bool
+            self.core.wp_array_scan_int64_device_temp_storage_size.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.POINTER(ctypes.c_size_t),
+            ]
+            self.core.wp_array_scan_int64_device_temp_storage_size.restype = ctypes.c_bool
             self.core.wp_array_scan_float_device.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
@@ -7346,8 +7374,16 @@ class Runtime:
                 ctypes.c_int,
                 ctypes.c_int,
                 ctypes.c_bool,
+                ctypes.c_uint64,
+                ctypes.c_size_t,
             ]
             self.core.wp_array_scan_float_device.restype = ctypes.c_bool
+            self.core.wp_array_scan_float_device_temp_storage_size.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.POINTER(ctypes.c_size_t),
+            ]
+            self.core.wp_array_scan_float_device_temp_storage_size.restype = ctypes.c_bool
             self.core.wp_array_scan_double_device.argtypes = [
                 ctypes.c_uint64,
                 ctypes.c_uint64,
@@ -7356,8 +7392,16 @@ class Runtime:
                 ctypes.c_int,
                 ctypes.c_int,
                 ctypes.c_bool,
+                ctypes.c_uint64,
+                ctypes.c_size_t,
             ]
             self.core.wp_array_scan_double_device.restype = ctypes.c_bool
+            self.core.wp_array_scan_double_device_temp_storage_size.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_int,
+                ctypes.POINTER(ctypes.c_size_t),
+            ]
+            self.core.wp_array_scan_double_device_temp_storage_size.restype = ctypes.c_bool
 
             self.core.wp_radix_sort_pairs_int_host.argtypes = [
                 ctypes.c_uint64,
@@ -13377,9 +13421,9 @@ def set_module_options(options: dict[str, Any], module: Any = None):
     * **max_unroll**: The maximum fixed-size loop to unroll, defaults to the value of ``warp.config.max_unroll``.
     * **enable_backward**: Whether to generate the backward pass for kernels, defaults to the value of ``warp.config.enable_backward``.
     * **enable_mathdx_gemm**: Use libmathdx (cuBLASDx) for ``tile_matmul`` on GPU. If ``None`` (the default), defers to ``warp.config.enable_mathdx_gemm`` at compile time.
-    * **enable_mathdx_solver**: Use libmathdx (cuSolverDx) for ``tile_cholesky``, ``tile_cholesky_solve``, ``tile_lower_solve``, and ``tile_upper_solve`` on GPU. If ``None`` (the default), defers to ``warp.config.enable_mathdx_solver`` at compile time.
+    * **enable_mathdx_solver**: Use libmathdx (cuSolverDx) for ``tile_lu``, ``tile_cholesky``, ``tile_cholesky_solve``, ``tile_lower_solve``, and ``tile_upper_solve`` on GPU. If ``None`` (the default), defers to ``warp.config.enable_mathdx_solver`` at compile time.
     * **enable_mathdx_fft**: Use libmathdx (cuFFTDx) for ``tile_fft`` / ``tile_ifft`` on GPU. If ``None`` (the default), defers to ``warp.config.enable_mathdx_fft`` at compile time.
-    * **fast_math**: Enable fast math for CUDA compilation, defaults to ``False``.
+    * **fast_math**: Enable fast math for CUDA compilation, defaults to ``False``. CPU compilation currently ignores this option.
     * **fuse_fp**: Enable floating-point contraction (FMA fusion) during compilation, defaults to ``True``.
     * **lineinfo**: Emit line-number debug info for CUDA kernels, defaults to the value of ``warp.config.lineinfo``.
     * **cuda_output**: CUDA compilation output format: ``"ptx"``, ``"cubin"``, or ``None`` (automatic), defaults to ``None``.
@@ -13676,13 +13720,28 @@ def capture_end(device: DeviceLike = None, stream: Stream | None = None) -> Grap
 
 
 def capture_debug_dot_print(graph: Graph, path: str, verbose: bool = True):
-    """Export a CUDA graph to a DOT file for visualization
+    """Export a CUDA graph to a DOT file for visualization.
 
     Args:
-        graph: A :class:`Graph` as returned by :func:`~warp.capture_end()`
-        path: Path to save the DOT file
-        verbose: Whether to include additional debug information in the output
+        graph: A CUDA :class:`Graph` as returned by :func:`~warp.capture_end()`,
+          :func:`~warp.capture_load()`, or :func:`~warp.capture_load_from_bytes()`.
+        path: Path to save the DOT file.
+        verbose: Whether to include additional debug information in the output.
+
+    Raises:
+        RuntimeError: If ``graph`` was captured on a CPU device, which isn't supported yet,
+          or if the DOT file can't be written.
     """
+    if not graph.device.is_cuda:
+        raise RuntimeError(f"capture_debug_dot_print() requires a CUDA graph, got a graph on device '{graph.device}'")
+
+    # A loaded graph builds its CUDA graph on first launch; build it now if needed.
+    if not graph.graph and graph._native_graph is not None:
+        cuda_graph = runtime.core.wp_apic_get_cuda_graph(graph._native_graph)
+        if not cuda_graph:
+            raise RuntimeError(f"Failed to build CUDA graph from APIC: {runtime.get_error_string()}")
+        graph.graph = ctypes.c_void_p(cuda_graph)
+
     if not runtime.core.wp_capture_debug_dot_print(graph.graph, path.encode(), 1 if verbose else 0):
         raise RuntimeError(f"Graph debug dot print error: {runtime.get_error_string()}")
 
@@ -13821,6 +13880,33 @@ def capture_resume(
 condition_host = None
 
 
+def _apic_record_child_graph(graph: Graph):
+    """Record a CPU ``Graph`` branch and retain it for replay."""
+    if graph._native_graph is not None:
+        raise NotImplementedError(
+            "A Graph loaded with capture_load() cannot be a capture_if()/capture_while() branch during CPU capture"
+        )
+    outer = runtime._apic_graph
+    if graph.device != outer.device:
+        raise RuntimeError(
+            f"A capture_if()/capture_while() branch Graph captured on device '{graph.device}' cannot run in a "
+            f"capture on device '{outer.device}'"
+        )
+    if graph is outer or graph._apic_recording_suspended or graph.apic_state is None:
+        raise RuntimeError("A capture_if()/capture_while() branch Graph is still being captured; end its capture first")
+    if runtime.core.wp_apic_state_has_conditional(graph.apic_state):
+        # CUDA child graph nodes cannot contain conditional nodes, and CPU capture
+        # should not compose graphs in ways CUDA capture cannot.
+        raise NotImplementedError(
+            "Using a Graph that contains capture_if() or capture_while() as a capture_if()/capture_while() branch "
+            "is not yet supported, as in CUDA graph capture; nest conditionals with callable branches instead."
+        )
+    if not runtime.core.wp_apic_record_child_graph(runtime._apic_capture.apic_state, graph.apic_state):
+        raise RuntimeError(runtime.get_error_string())
+    if graph not in outer._apic_child_graphs:
+        outer._apic_child_graphs.append(graph)
+
+
 def _apic_capture_branch(callback, **kwargs):
     """Run ``callback`` with the APIC byte stream redirected into a fresh
     sub-stream. Returns the branch body (an opaque void* owned by C++,
@@ -13830,18 +13916,18 @@ def _apic_capture_branch(callback, **kwargs):
     an active APIC capture (wp_cpu_launch_kernel / wp_memcpy_* skip the
     execute path when ``g_apic_state`` is set), so the branch body's
     side-effects on tracked arrays only land at replay time. This matches
-    CUDA graph capture semantics.
+    CUDA graph capture semantics. A :class:`Graph` branch records a single
+    child-graph operation that replays it.
     """
     apic_capture = runtime._apic_capture
     start = runtime.core.wp_apic_begin_branch(apic_capture.apic_state)
     try:
         if isinstance(callback, Graph):
-            raise NotImplementedError(
-                "APIC capture_if/capture_while with Graph branches is not yet implemented; pass a Callable instead"
-            )
-        if not isinstance(callback, Callable):
-            raise TypeError("branch must be a Callable")
-        callback(**kwargs)
+            _apic_record_child_graph(callback)
+        elif isinstance(callback, Callable):
+            callback(**kwargs)
+        else:
+            raise TypeError("branch must be a Callable or a Graph")
     except Exception:
         # Free the body we'd otherwise leak.
         body = runtime.core.wp_apic_end_branch(apic_capture.apic_state, start)
@@ -13905,10 +13991,12 @@ def capture_if(
 
     The condition value is retrieved from the first element of the ``condition`` array.
 
-    This function is particularly useful with CUDA graphs, but can be used without graph capture as well.
-    CUDA 12.4+ is required for CUDA graph conditional nodes. During APIC recording (all CPU captures and CUDA
-    captures with ``apic=True``), branch bodies must be callbacks; passing :class:`Graph` objects is not yet
-    supported. CUDA capture with ``apic=False`` supports either form.
+    This function is particularly useful during graph capture, but can be used without graph capture as well.
+    CUDA 12.4+ is required for CUDA graph conditional nodes. A :class:`Graph` branch must be a finished capture
+    on the same device as ``condition`` and must not itself contain :func:`capture_if` or :func:`capture_while`.
+    CUDA captures with ``apic=True`` do not yet support :class:`Graph` branches, and CPU captures do not yet
+    support a :class:`Graph` from :func:`capture_load`. :func:`capture_save` rejects a CPU graph that records a
+    :class:`Graph` branch.
 
     Args:
         condition: Warp array holding the condition value.
@@ -14137,10 +14225,12 @@ def capture_while(condition: warp.array[int], while_body: Callable | Graph, stre
 
     The ``while_body`` callback is responsible for updating the condition value so the loop can terminate.
 
-    This function is particularly useful with CUDA graphs, but can be used without graph capture as well.
-    CUDA 12.4+ is required for CUDA graph conditional nodes. During APIC recording (all CPU captures and CUDA
-    captures with ``apic=True``), the loop body must be a callback; passing a :class:`Graph` object is not yet
-    supported. CUDA capture with ``apic=False`` supports either form.
+    This function is particularly useful during graph capture, but can be used without graph capture as well.
+    CUDA 12.4+ is required for CUDA graph conditional nodes. A :class:`Graph` loop body must be a finished
+    capture on the same device as ``condition`` and must not itself contain :func:`capture_if` or
+    :func:`capture_while`. CUDA captures with ``apic=True`` do not yet support a :class:`Graph` loop body, and
+    CPU captures do not yet support a :class:`Graph` from :func:`capture_load`. :func:`capture_save` rejects a
+    CPU graph that records a :class:`Graph` loop body.
 
     Args:
         condition: Warp array holding the condition value.
@@ -17168,15 +17258,20 @@ def get_host_compiler_version() -> str:
     return runtime.get_host_compiler_version()
 
 
-def get_libmathdx_version() -> str:
+def get_libmathdx_version() -> tuple[int, int, int] | None:
     """Return the libmathdx version used by Warp.
 
     Returns:
-        Version string (e.g., ``"0.3.0"``), or empty string if MathDx is not enabled.
+        A tuple of ``(major, minor, patch)`` version numbers (e.g., ``(0, 3, 0)``),
+        or ``None`` if MathDx is not enabled or its version is unavailable.
     """
     if runtime is None:
         init()
-    return runtime.get_libmathdx_version()
+    version = runtime.get_libmathdx_version()
+    if not version:
+        return None
+    major, minor, patch = version.split(".")
+    return int(major), int(minor), int(patch)
 
 
 def get_nvrtc_version() -> tuple[int, int] | None:

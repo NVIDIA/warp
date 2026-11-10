@@ -816,7 +816,7 @@ def build_lto_solver(
     a_arrangement = cusolverdx_arrangement_map(alayout)
     b_arrangement = cusolverdx_arrangement_map(blayout)
 
-    lto_symbol = f"{solver}_{M}_{N}_{K}_{arch}_{num_threads}_{a_arrangement}_{b_arrangement}_{precision_enum}_{side_enum if side_enum >= 0 else 'x'}_{diag_enum if diag_enum >= 0 else 'x'}_{fill_mode}"
+    lto_symbol = f"{solver}_{M}_{N}_{K}_{arch}_{num_threads}_{a_arrangement}_{b_arrangement}_{precision_enum}_{side_enum if side_enum >= 0 else 'x'}_{diag_enum if diag_enum >= 0 else 'x'}_{fill_mode if fill_mode >= 0 else 'x'}"
 
     def compile_lto_solver(temp_paths):
         # compile LTO

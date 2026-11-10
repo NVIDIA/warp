@@ -7318,12 +7318,7 @@ class Adjoint:
                         # module dependency discovery because they have no module.
                         for callable_func in iter_call_callable_arg_targets(adj, func, node, callable_arg_values):
                             functions[callable_func] = None
-                    elif func._has_external_builtin_contract or any(
-                        overload.adjoint_uses_template_args for overload in func.overloads
-                    ):
-                        # External builtins and templated native adjoints can change
-                        # generated calls without changing the kernel source.
-                        # Other Warp builtins use the versioned cache directory.
+                    elif _builtin_affects_module_hash(func):
                         functions[func] = None
                 elif isinstance(func, Struct):
                     # calling struct constructor
@@ -7343,9 +7338,7 @@ class Adjoint:
                     if path and rhs_func is warp:
                         rhs_func = warp._src.context.builtin_functions.get(path[-1])
                     if isinstance(rhs_func, warp._src.context.Function) and (
-                        not rhs_func.is_builtin()
-                        or rhs_func._has_external_builtin_contract
-                        or any(overload.adjoint_uses_template_args for overload in rhs_func.overloads)
+                        not rhs_func.is_builtin() or _builtin_affects_module_hash(rhs_func)
                     ):
                         functions[rhs_func] = None
 
@@ -7356,6 +7349,18 @@ class Adjoint:
         # the coordinate limit pay for metadata-only code generation.
         adj.tid_extent_limit_candidate = _TID_MAX_EXTENT
         return constants, types, functions
+
+
+def _builtin_affects_module_hash(func) -> bool:
+    """Return whether a builtin's metadata must be part of the hash of modules that call it.
+
+    External builtins, LTO-dispatched calls, and templated native adjoints can change the
+    generated calls without changing the kernel source. Other Warp builtins rely on the
+    versioned cache directory instead.
+    """
+    return func._has_external_builtin_contract or any(
+        overload.adjoint_uses_template_args or overload.lto_dispatch_func is not None for overload in func.overloads
+    )
 
 
 # ----------------

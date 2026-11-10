@@ -287,6 +287,12 @@ struct APICState {
     // CPU kernel function pointers (registered during capture for replay)
     std::unordered_map<std::string, APICCPUKernel> cpu_kernels;
 
+    // Finished CPU captures referenced by APIC_OP_CHILD_GRAPH records, indexed by
+    // APICChildGraphRecord::child_index. Not owned: the Python Graph that owns this
+    // state retains the Graph objects that own the children. Only grows, so an
+    // index validated against an earlier size stays valid.
+    std::vector<APICState*> child_states;
+
     void append_bytes(const void* data, size_t sz)
     {
         size_t offset = operation_stream.size();
@@ -486,6 +492,32 @@ void apic_record_bsr_transpose(
     int32_t padded_capacity_offset_count
 );
 
+// Resolves a live pointer into a region address (apic_resolve_host_ptr or
+// apic_resolve_live_ptr).
+using APICResolvePtrFn = APICAddress (*)(APICState* state, uint64_t ptr, uint64_t access_size);
+
+// Records a wp_bsr_compress_inplace_host/device() call, resolving its arrays
+// with ``resolve``. Returns false without recording when the call has no rows
+// or lacks the storage its sizes require.
+bool apic_record_bsr_compress(
+    APICState* state,
+    APICResolvePtrFn resolve,
+    int32_t row_count,
+    int32_t col_count,
+    int32_t block_size,
+    int32_t scalar_size_in_bytes,
+    int32_t scalar_type,
+    int32_t nnz_upper_bound,
+    bool prune_numerical_zeros,
+    uint64_t scalar_zero_mask,
+    bool make_compact,
+    const int32_t* bsr_offsets,
+    const int32_t* bsr_row_counts,
+    const int32_t* bsr_columns,
+    const void* bsr_values,
+    bool compress_values
+);
+
 // Records a wp_bvh_refit_host() call. ``bvh_id`` is a live BVH handle, replayed
 // in-process by re-invoking wp_bvh_refit_host().
 void apic_record_bvh_refit(APICState* state, uint64_t bvh_id);
@@ -564,6 +596,12 @@ struct APICGraph {
 #endif
     std::string base_path;
 
+    // Device scratch shared by every scan op during graph rebuild, sized for the
+    // largest scan and allocated before capture begins. Replay is serial on one
+    // stream, so the scans can share it, and conditional bodies never allocate.
+    void* scan_temp_storage = nullptr;
+    size_t scan_temp_storage_bytes = 0;
+
     // Destructor defined in apic.cu (CUDA builds) / apic.cpp (non-CUDA builds)
     ~APICGraph();
 };
@@ -574,13 +612,16 @@ struct APICGraph {
 
 // Walk the operation byte stream once and verify that every record header,
 // variable-length payload, and op_type is within bounds. Prints a diagnostic
-// and returns false on first inconsistency. Defined in apic.cpp.
+// and returns false on first inconsistency. ``child_graph_count`` is the size of
+// the live state's child table that APIC_OP_CHILD_GRAPH records index; loaded
+// streams pass 0, so any child-graph record is rejected. Defined in apic.cpp.
 bool apic_validate_operation_stream(
     const uint8_t* data,
     size_t size,
     uint32_t operation_count,
     uint32_t depth = 0,
-    uint32_t format_version = APIC_FORMAT_VERSION
+    uint32_t format_version = APIC_FORMAT_VERSION,
+    size_t child_graph_count = 0
 );
 
 // ============================================================================

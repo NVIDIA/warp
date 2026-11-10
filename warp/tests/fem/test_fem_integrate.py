@@ -1225,7 +1225,7 @@ def test_triplet_assembly_unused_restriction_slots(test, device):
         assert_np_equal(values, np.array([0.125, 0.125, 0.25]))
 
 
-def test_capturability(test, device):
+def _check_integrate_capturability(device, bsr_options):
     A = bsr_zeros(0, 0, block_type=wp.float32, device=device)
 
     def test_body():
@@ -1252,6 +1252,7 @@ def test_capturability(test, device):
             fields={"v": test_field, "u": trial_field},
             kernel_options={"enable_backward": False},
             output=A,
+            bsr_options=bsr_options,
         )
 
     with wp.ScopedDevice(device):
@@ -1269,6 +1270,12 @@ def test_capturability(test, device):
         assert A.nnz_sync() == nnz_ref
         assert_np_equal(A.values.numpy()[:nnz_ref], values_ref)
         assert_np_equal(A.columns.numpy()[:nnz_ref], columns_ref)
+
+
+def test_capturability(test, device):
+    _check_integrate_capturability(device, bsr_options=None)
+    # Row compression assembles candidate blocks in place, then compresses them with bsr_compress().
+    _check_integrate_capturability(device, bsr_options={"construction": "row_compress"})
 
 
 def test_restriction_rebuild(test, device):
@@ -1312,7 +1319,7 @@ def test_restriction_rebuild(test, device):
 
 devices = get_test_devices()
 cuda_devices = get_selected_cuda_test_devices()
-cuda_devices_with_mempool = get_selected_cuda_test_devices_with_mempool()
+devices_with_graph_capture_allocation = get_test_devices_with_graph_capture_allocation()
 
 
 def test_integrate_scalar_output_layouts(test, device):
@@ -1497,7 +1504,9 @@ add_function_test(TestFemIntegrate, "test_interpolate_reduction", test_interpola
 add_function_test(
     TestFemIntegrate, "test_interpolate_first_row_compression", test_interpolate_first_row_compression, devices=devices
 )
-add_function_test(TestFemIntegrate, "test_capturability", test_capturability, devices=cuda_devices_with_mempool)
+add_function_test(
+    TestFemIntegrate, "test_capturability", test_capturability, devices=devices_with_graph_capture_allocation
+)
 add_function_test(TestFemIntegrate, "test_restriction_rebuild", test_restriction_rebuild, devices=devices)
 add_function_test(TestFemIntegrate, "test_at_node_test_field", test_at_node_test_field, devices=devices)
 add_function_test(TestFemIntegrate, "test_lookup_test_field", test_lookup_test_field, devices=devices)

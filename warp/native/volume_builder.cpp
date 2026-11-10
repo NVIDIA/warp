@@ -67,6 +67,43 @@ void rebuild_sort_unique(std::vector<uint64_t>& keys)
     keys.erase(std::unique(keys.begin(), keys.end()), keys.end());
 }
 
+// LSD radix sort of the keys by their low `bit_count` bits, 11 bits per pass.
+void rebuild_radix_sort_keys(std::vector<uint64_t>& keys, uint32_t bit_count)
+{
+    constexpr uint32_t digit_bits = 11u;
+    constexpr uint64_t digit_mask = (uint64_t(1) << digit_bits) - 1u;
+    std::vector<uint64_t> sorted_keys(keys.size());
+    std::vector<size_t> offsets(size_t(1) << digit_bits);
+    for (uint32_t shift = 0; shift < bit_count; shift += digit_bits) {
+        std::fill(offsets.begin(), offsets.end(), size_t(0));
+        for (const uint64_t key : keys) {
+            ++offsets[(key >> shift) & digit_mask];
+        }
+        size_t offset = 0;
+        for (size_t& bucket_offset : offsets) {
+            const size_t bucket_size = bucket_offset;
+            bucket_offset = offset;
+            offset += bucket_size;
+        }
+        for (const uint64_t key : keys) {
+            sorted_keys[offsets[(key >> shift) & digit_mask]++] = key;
+        }
+        keys.swap(sorted_keys);
+    }
+}
+
+// Shifting sorted keys keeps them sorted, so dropping consecutive repeats is enough to make them unique.
+void rebuild_unique_shifted(const std::vector<uint64_t>& sorted_keys, uint32_t shift, std::vector<uint64_t>& out)
+{
+    out.clear();
+    for (const uint64_t key : sorted_keys) {
+        const uint64_t shifted_key = key >> shift;
+        if (out.empty() || out.back() != shifted_key) {
+            out.push_back(shifted_key);
+        }
+    }
+}
+
 bool rebuild_count_points(
     HostRebuildScratch& scratch,
     const void* points,
@@ -84,57 +121,79 @@ bool rebuild_count_points(
     scratch = {};
     scratch.active_voxel_grid = active_voxel_grid;
 
-    std::vector<uint64_t> keys;
-    keys.reserve(num_points);
-    for (size_t i = 0; i < num_points; ++i) {
-        if (point_mask && point_mask[i] == 0) {
-            continue;
-        }
-
-        keys.push_back(rebuild_upper_key_from_coord(rebuild_point_to_coord(points, i, points_in_world_space, map)));
-    }
-    if (keys.empty()) {
-        return true;
-    }
-    scratch.upper_keys = keys;
-    rebuild_sort_unique(scratch.upper_keys);
-
-    keys.clear();
+    // Convert each unmasked point once. Points rarely span more than a few upper nodes, so skip upper keys that
+    // match one of the last few distinct ones; this keeps the sort below small even when the points are shuffled.
+    std::vector<nanovdb::Coord> coords;
+    coords.reserve(num_points);
+    constexpr size_t recent_capacity = 16;
+    uint64_t recent_keys[recent_capacity] = {};
+    size_t recent_count = 0;
+    size_t recent_next = 0;
+    uint64_t previous_key = REBUILD_INVALID_KEY;
     for (size_t i = 0; i < num_points; ++i) {
         if (point_mask && point_mask[i] == 0) {
             continue;
         }
 
         const nanovdb::Coord ijk = rebuild_point_to_coord(points, i, points_in_world_space, map);
+        coords.push_back(ijk);
         const uint64_t upper_key = rebuild_upper_key_from_coord(ijk);
-        const auto iter = std::lower_bound(scratch.upper_keys.begin(), scratch.upper_keys.end(), upper_key);
-        if (iter == scratch.upper_keys.end() || *iter != upper_key) {
-            keys.push_back(REBUILD_INVALID_KEY);
-        } else {
-            keys.push_back(rebuild_hierarchy_key(uint32_t(iter - scratch.upper_keys.begin()), ijk));
+        if (upper_key == previous_key) {
+            continue;
+        }
+        previous_key = upper_key;
+
+        bool recent = false;
+        for (size_t r = 0; r < recent_count; ++r) {
+            recent |= recent_keys[r] == upper_key;
+        }
+        if (!recent) {
+            scratch.upper_keys.push_back(upper_key);
+            recent_keys[recent_next] = upper_key;
+            recent_next = (recent_next + 1) % recent_capacity;
+            recent_count = std::min(recent_count + 1, recent_capacity);
         }
     }
-    std::sort(keys.begin(), keys.end());
-    while (!keys.empty() && keys.back() == REBUILD_INVALID_KEY) {
-        keys.pop_back();
+    if (coords.empty()) {
+        return true;
     }
-    if (keys.empty()) {
-        return false;
-    }
+    rebuild_sort_unique(scratch.upper_keys);
 
+    std::vector<uint64_t> keys;
+    keys.reserve(coords.size());
+    uint64_t key_bits = 0u;
+    uint64_t upper_key = REBUILD_INVALID_KEY;
+    uint32_t upper_id = 0u;
+    for (const nanovdb::Coord& ijk : coords) {
+        // Consecutive points usually share an upper node, so look its index up only when it changes.
+        const uint64_t point_upper_key = rebuild_upper_key_from_coord(ijk);
+        if (point_upper_key != upper_key) {
+            upper_key = point_upper_key;
+            upper_id = uint32_t(
+                std::lower_bound(scratch.upper_keys.begin(), scratch.upper_keys.end(), upper_key)
+                - scratch.upper_keys.begin()
+            );
+        }
+
+        const uint64_t key = rebuild_hierarchy_key(upper_id, ijk);
+        keys.push_back(key);
+        key_bits |= key;
+    }
+    std::vector<nanovdb::Coord>().swap(coords);
+
+    // Sort every bit that any key sets.
+    uint32_t bit_count = 0u;
+    while (bit_count < 64u && (key_bits >> bit_count) != 0u) {
+        ++bit_count;
+    }
+    rebuild_radix_sort_keys(keys, bit_count);
+    keys.erase(std::unique(keys.begin(), keys.end()), keys.end());
+
+    rebuild_unique_shifted(keys, 9u, scratch.leaf_keys);
+    rebuild_unique_shifted(scratch.leaf_keys, 12u, scratch.lower_keys);
     if (active_voxel_grid) {
-        scratch.voxel_keys = keys;
-        rebuild_sort_unique(scratch.voxel_keys);
+        scratch.voxel_keys.swap(keys);
     }
-
-    scratch.leaf_keys.resize(keys.size());
-    scratch.lower_keys.resize(keys.size());
-    for (size_t i = 0; i < keys.size(); ++i) {
-        scratch.leaf_keys[i] = keys[i] >> 9u;
-        scratch.lower_keys[i] = keys[i] >> 21u;
-    }
-    rebuild_sort_unique(scratch.leaf_keys);
-    rebuild_sort_unique(scratch.lower_keys);
 
     scratch.counts[REBUILD_COUNT_LEAF] = uint32_t(scratch.leaf_keys.size());
     scratch.counts[REBUILD_COUNT_LOWER] = uint32_t(scratch.lower_keys.size());
