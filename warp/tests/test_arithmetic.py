@@ -844,18 +844,22 @@ def test_float_to_int(test, device, dtype, register_kernels=False):
     assert_np_equal(outputs.numpy()[4], np.ceil(inputs.numpy()[4]))
     assert_np_equal(outputs.numpy()[5], np.modf(inputs.numpy()[5])[0])
 
-    # all the gradients should be zero as these functions are piecewise constant:
+    # round(), rint(), trunc(), floor() and ceil() are piecewise constant, so their gradients are zero.
+    # frac(x) = x - trunc(x), so its gradient is one between integers.
 
     out = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
     for i in range(10):
-        for j in range(5):
+        for j in range(6):
             tape = wp.Tape()
             with tape:
                 wp.launch(kernel, dim=1, inputs=[inputs], outputs=[outputs], device=device)
                 wp.launch(output_select_kernel, dim=1, inputs=[outputs, j, i], outputs=[out], device=device)
 
             tape.backward(loss=out)
-            assert_np_equal(tape.gradients[inputs].numpy(), np.zeros_like(inputs.numpy()), tol=tol)
+            expected = np.zeros_like(inputs.numpy())
+            if j == 5:
+                expected[j, i] = 1.0
+            assert_np_equal(tape.gradients[inputs].numpy(), expected, tol=tol)
             tape.zero()
 
 
