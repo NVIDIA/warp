@@ -72,6 +72,15 @@ class Quadrature:
         """
         return self.total_point_count()
 
+    def has_unique_evaluation_indices(self) -> bool:
+        """Whether every element-local point has a distinct evaluation index.
+
+        When ``True``, :meth:`point_evaluation_index` cannot return the same
+        index for different points, including points within one element.
+        The default is conservative for rules that do not provide this guarantee.
+        """
+        return False
+
     def max_points_per_element(self):
         """Maximum number of points per element if known, or ``None`` otherwise"""
         return None
@@ -228,6 +237,9 @@ class _QuadratureWithRegularEvaluationPoints(Quadrature):
 
     def evaluation_point_count(self):
         return self.domain.element_count() * self._EVALUATION_POINTS_PER_ELEMENT
+
+    def has_unique_evaluation_indices(self) -> bool:
+        return True
 
     def _make_regular_point_evaluation_index(self):
         N = self._EVALUATION_POINTS_PER_ELEMENT

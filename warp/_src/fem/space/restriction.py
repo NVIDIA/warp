@@ -63,9 +63,29 @@ class SpaceRestriction:
     def rebuild(self, device: Optional["wp.DeviceLike"] = None, temporary_store: cache.TemporaryStore | None = None):
         """Rebuild internal indices for the space restriction."""
         self.node_arg_value.invalidate(self)
+        device = wp.get_device(device)
+        # Both builders may reuse outputs; discard only incompatible device bindings.
+        # Retained arrays keep their storage until their last reference is released.
+        for name in (
+            "_dof_partition_element_offsets",
+            "_dof_partition_indices",
+            "_dof_element_indices",
+            "_dof_indices_in_element",
+            "_node_count_dev",
+        ):
+            array = getattr(self, name)
+            if array is not None and array.device != device:
+                setattr(self, name, None)
 
         # Cells enumerates each geometric cell once; arbitrary Subdomains may repeat cells.
-        if self.space_topology.has_unique_node_incidence() and type(self.domain) is Cells:
+        # The direct builder's two node-sized scratch arrays must fit within the
+        # incidence bound; small domains retain the incidence-sized general path.
+        incidence_count = self.domain.element_count() * self.space_topology.MAX_NODES_PER_ELEMENT
+        if (
+            self.space_topology.has_unique_node_incidence()
+            and type(self.domain) is Cells
+            and self.space_partition.node_count() <= incidence_count
+        ):
             self._rebuild_discontinuous_restriction(device, temporary_store)
             return
 
@@ -165,8 +185,6 @@ class SpaceRestriction:
         if array is None or array.shape != shape or array.device != device or array.dtype != wp.int32:
             replacement = cache.borrow_temporary(temporary_store, shape=shape, dtype=int, device=device)
             setattr(self, name, replacement)
-            if array is not None:
-                array.release()
             array = replacement
         return array
 

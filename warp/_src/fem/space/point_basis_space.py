@@ -67,7 +67,7 @@ class UnstructuredPointTopology(SpaceTopology):
             return self._quadrature.total_point_count()
 
     def has_unique_node_incidence(self) -> bool:
-        return self._use_evaluation_point_index
+        return self._use_evaluation_point_index and self._quadrature.has_unique_evaluation_indices()
 
     def _make_topology_arg(self):
         @cache.dynamic_struct(suffix=self.name)

@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import unittest
+from typing import Any
+from unittest.mock import patch
 
 import numpy as np
 
@@ -58,6 +60,47 @@ def _value_at_node(domain: fem.Domain, s: fem.Sample, f: fem.Field, values: wp.a
 def _test_node_index(s: fem.Sample, u: fem.Field):
     wp.expect_eq(fem.node_index(u, s), s.qp_index)
     return 0.0
+
+
+class _RepeatedLocalQuadrature(fem.Quadrature):
+    """A rule whose local points share an evaluation index within each cell."""
+
+    @property
+    def name(self):
+        return "RepeatedLocalQuadrature"
+
+    def fill_arg(self, arg, device):
+        pass
+
+    def total_point_count(self):
+        return self.domain.element_count()
+
+    def max_points_per_element(self):
+        return 2
+
+    @wp.func
+    def point_count(elt_arg: Any, qp_arg: Any, domain_element_index: int, geo_element_index: int):
+        return 2
+
+    @wp.func
+    def point_coords(
+        elt_arg: Any, qp_arg: Any, domain_element_index: int, geo_element_index: int, element_qp_index: int
+    ):
+        return wp.vec3(0.5)
+
+    @wp.func
+    def point_weight(
+        elt_arg: Any, qp_arg: Any, domain_element_index: int, geo_element_index: int, element_qp_index: int
+    ):
+        return 0.5
+
+    @wp.func
+    def point_index(
+        elt_arg: Any, qp_arg: Any, domain_element_index: int, geo_element_index: int, element_qp_index: int
+    ):
+        return domain_element_index
+
+    point_evaluation_index = point_index
 
 
 def test_regular_quadrature(test, device):
@@ -295,8 +338,28 @@ def test_point_basis_evaluation_restriction(test, device):
                     restriction.rebuild(device=device, temporary_store=store)
                     check_restriction(restriction, incidences)
 
-                if device.is_cuda and not partial and capacity == 8:
-                    # Rebuilding on another device must replace all persistent buffers.
+                    # Replacing restriction buffers must preserve arrays retained by callers.
+                    retained_store = fem.TemporaryStore()
+                    retained_restriction = fem.make_space_restriction(
+                        space_partition=partition, domain=domain, temporary_store=retained_store
+                    )
+                    retained = (
+                        retained_restriction.partition_element_offsets(),
+                        retained_restriction.node_partition_indices(),
+                    )
+                    snapshots = [array.numpy().copy() for array in retained]
+                    retained_restriction.space_partition = fem.make_space_partition(
+                        space_topology=basis.topology, environment_first=True, max_node_count=1
+                    )
+                    test.assertLess(retained_restriction.space_partition.node_count(), partition.node_count())
+                    retained_restriction.rebuild(device=device, temporary_store=retained_store)
+                    scratch = retained_store.borrow(shape=retained[0].shape, dtype=int, device=device)
+                    scratch.fill_(-1)
+                    for array, snapshot in zip(retained, snapshots, strict=True):
+                        np.testing.assert_array_equal(array.numpy(), snapshot)
+
+                if device.is_cuda and not partial and capacity in (8, 1):
+                    # Both builders must replace persistent buffers when the device changes.
                     for target in (wp.get_device("cpu"), device):
                         restriction.rebuild(device=target, temporary_store=store)
                         check_restriction(restriction, incidences)
@@ -343,10 +406,11 @@ def test_discontinuous_restriction(test, device):
         domain = fem.Cells(geometry)
         discontinuous = fem.make_polynomial_space(geometry, degree=1, discontinuous=True)
         continuous = fem.make_polynomial_space(geometry, degree=1)
-        # Quadrature point IDs may share nodes; evaluation-point IDs cannot.
+        # Built-in evaluation indices are unique; custom rules need not guarantee this.
         nodal = fem.NodalQuadrature(domain, continuous)
         point_basis = fem.PointBasisSpace(nodal)
         evaluation_basis = fem.PointBasisSpace(nodal, use_evaluation_point_index=True)
+        repeated_basis = fem.PointBasisSpace(_RepeatedLocalQuadrature(domain), use_evaluation_point_index=True)
         test.assertFalse(point_basis.topology.has_unique_node_incidence())
         test.assertTrue(evaluation_basis.topology.has_unique_node_incidence())
         test.assertTrue(discontinuous.topology.has_unique_node_incidence())
@@ -356,6 +420,7 @@ def test_discontinuous_restriction(test, device):
             (discontinuous.topology, [[0, 1, 2, 3], [4, 5, 6, 7]]),
             (evaluation_basis.topology, [[0, 1, 2, 3], [4, 5, 6, 7]]),
             (point_basis.topology, [[0, 1, 2, 3], [2, 3, 4, 5]]),
+            (repeated_basis.topology, [[0, 0], [1, 1]]),
         ):
             for cells in ([0, 1], [1, 1]):
                 # Explicit Subdomains can repeat cells and must retain every incidence.
@@ -382,6 +447,37 @@ def test_discontinuous_restriction(test, device):
                         )
                     )
                     test.assertEqual(sorted(actual), sorted(entries))
+
+        def workspace_bytes(cell_count):
+            large_geometry = fem.Grid2D(res=wp.vec2i(cell_count, 1))
+            space = fem.make_polynomial_space(large_geometry, degree=1, discontinuous=True)
+            partition = fem.make_space_partition(space_topology=space.topology)
+            small_domain = fem.Cells(
+                fem.LinearGeometryPartition(large_geometry, partition_rank=0, partition_count=cell_count)
+            )
+            # Exclude geometry and argument initialization from restriction workspace.
+            fem.make_space_restriction(space_partition=partition, domain=small_domain)
+            allocated = 0
+            allocator = wp.get_device(device).get_allocator()
+            allocate = allocator.allocate
+
+            def record_allocation(size):
+                nonlocal allocated
+                allocated += size
+                return allocate(size)
+
+            store = fem.TemporaryStore()
+            with patch.object(allocator, "allocate", record_allocation):
+                restriction = fem.make_space_restriction(
+                    space_partition=partition, domain=small_domain, temporary_store=store
+                )
+            test.assertEqual(restriction.node_count_sync(), 4)
+            return partition.node_count(), allocated
+
+        # For one selected cell, increasing the full partition only grows its offsets.
+        small_nodes, small_bytes = workspace_bytes(16)
+        large_nodes, large_bytes = workspace_bytes(32)
+        test.assertLessEqual(large_bytes - small_bytes, (large_nodes - small_nodes) * wp.types.type_size_in_bytes(int))
 
 
 def test_point_basis_gradient_identity(test, device):
