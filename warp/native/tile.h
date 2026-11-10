@@ -1979,7 +1979,7 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
     }
 
     // Store a tile from shared memory to global memory.
-    // Same three-tier path cascade as copy_from_global (see that function for details).
+    // Same three CUDA paths as copy_from_global; CPU always uses the scalar path.
     template <typename Global> inline CUDA_CALLABLE void copy_to_global(const Global& dest)
     {
 
@@ -2114,7 +2114,10 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
 
     // Load a tile from global memory into shared memory.
     //
-    // Three code paths are attempted in order (CUDA only; CPU always uses scalar):
+    // Single-lane CPU execution (WP_TILE_BLOCK_DIM == 1) loads one row at a time
+    // with independent per-element addresses, which LLVM may vectorize.
+    // Cooperative CPU execution uses the scalar fallback (path 3). CUDA execution
+    // attempts three paths in order:
     //
     //   1. Vectorized float4 (2D+ only)
     //      Reinterprets both global and shared memory as float4 arrays for 128-bit
@@ -2131,11 +2134,11 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
     //      Requires contiguous array, tile in-bounds, tile spans full inner dims,
     //      and non-transposed shared layout.
     //
-    //   3. Scalar fallback (universal)
+    //   3. Scalar fallback
     //      Per-element loads with bounds-checked zero-padding for OOB elements.
     //      Handles non-contiguous arrays, partial tiles, transposed layouts, and
-    //      CPU execution. Uses flat byte-offset indexing for 1D, incremental
-    //      coordinate iteration (tile_coord_iter_t) for N-D.
+    //      cooperative CPU execution. Uses flat byte-offset indexing for 1D,
+    //      incremental coordinate iteration (tile_coord_iter_t) for N-D.
     //
     template <typename Global> inline CUDA_CALLABLE void copy_from_global(const Global& src)
     {
