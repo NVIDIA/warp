@@ -2142,6 +2142,40 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
         if (initialized)
             WP_TILE_SYNC();
 
+#if !defined(__CUDA_ARCH__)
+        if constexpr (WP_TILE_BLOCK_DIM == 1) {
+            // Independent addresses let LLVM vectorize CPU loads without the
+            // coordinate dependencies carried by the cooperative iterator.
+            using Shape = typename Layout::Shape;
+            constexpr int last = Shape::N - 1;
+            constexpr int width = Shape::dim(last);
+            for (int row = 0; row < Layout::Size; row += width) {
+                auto c = Layout::coord_from_linear(row);
+                bool valid = true;
+                if constexpr (Global::bounds_check) {
+                    for (int d = 0; d < last; ++d) {
+                        if (src.offset[d] + c[d] >= src.data.shape[d])
+                            valid = false;
+                    }
+                }
+                const int64_t base = src.byte_offset_from_coord(c);
+                for (int col = 0; col < width; ++col) {
+                    c[last] = col;
+                    bool element_valid = valid;
+                    if constexpr (Global::bounds_check)
+                        element_valid = element_valid && src.offset[last] + col < src.data.shape[last];
+                    data(c) = element_valid ? *reinterpret_cast<const T*>(
+                                                  reinterpret_cast<const char*>(src.data.data) + base
+                                                  + int64_t(col) * src.data.strides[last]
+                                              )
+                                            : T {};
+                }
+            }
+            initialized = true;
+            return;
+        }
+#endif
+
 #if defined(__CUDA_ARCH__)
         if constexpr (Layout::Shape::N >= 2) {
             using Check = tile_vectorized_check_t<T, typename Layout::Shape>;
