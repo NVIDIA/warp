@@ -2938,6 +2938,7 @@ inline CUDA_CALLABLE void expect_near(const vec3& actual, const vec3& expected, 
 #include "tile_matmul.h"
 #include "tile_solve.h"
 #include "tile_cholesky.h"
+#include "tile_lu.h"
 #include "tile_reduce.h"
 #include "tile_scan.h"
 #include "tile_radix_sort.h"

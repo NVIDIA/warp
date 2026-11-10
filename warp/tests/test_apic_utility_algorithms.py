@@ -107,6 +107,77 @@ def test_save_load_array_scan_replay_with_updated_input(test, device):
     np.testing.assert_allclose(actual.numpy(), expected)
 
 
+@wp.kernel
+def decrement_counter_kernel(counter: wp.array[wp.int32]):
+    counter[0] = counter[0] - 1
+
+
+def _save_load_array_scan_temp_storage(test, device, conditional):
+    """Capture scans that use caller-provided storage, then replay live and after save/load."""
+    if conditional and device.is_cuda and not wp.is_conditional_graph_supported():
+        test.skipTest("Conditional graph nodes not supported")
+
+    sizes = (129, 4097)
+    original = [(np.arange(n) % 5).astype(np.int32) for n in sizes]
+    updated = [np.random.default_rng(n).integers(0, 9, size=n).astype(np.int32) for n in sizes]
+
+    srcs = [wp.array(v, dtype=wp.int32, device=device) for v in original]
+    dsts = [wp.zeros_like(src) for src in srcs]
+    # Held in a list so the buffer can be released before the loaded graph replays.
+    nbytes = wp.utils.array_scan_temp_storage_size(max(sizes), wp.int32, device)
+    temps = [wp.empty(nbytes, dtype=wp.uint8, device=device)]
+    counter = wp.zeros(1, dtype=wp.int32, device=device)
+
+    def scans():
+        for src, dst in zip(srcs, dsts, strict=True):
+            wp.utils.array_scan(src, dst, inclusive=False, temp_storage=temps[0])
+
+    def body():
+        scans()
+        wp.launch(decrement_counter_kernel, dim=1, inputs=[counter], device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        if conditional:
+            counter.fill_(1)
+            wp.capture_while(counter, while_body=body)
+        else:
+            scans()
+
+    wp.capture_launch(capture.graph)
+    for values, dst in zip(original, dsts, strict=True):
+        np.testing.assert_array_equal(dst.numpy(), np.cumsum(values) - values)
+
+    inputs = {f"src{i}": src for i, src in enumerate(srcs)}
+    outputs = {f"dst{i}": dst for i, dst in enumerate(dsts)}
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "scan_temp_storage")
+        wp.capture_save(capture.graph, path, inputs=inputs, outputs=outputs)
+
+        # The saved graph does not reference the caller's buffer, so replay
+        # must work after that buffer is gone.
+        temps.clear()
+
+        loaded = wp.capture_load(path, device=device)
+        for i, values in enumerate(updated):
+            loaded.set_param(f"src{i}", wp.array(values, dtype=wp.int32, device=device))
+        wp.capture_launch(loaded)
+
+        for i, values in enumerate(updated):
+            actual = wp.empty_like(dsts[i])
+            loaded.get_param(f"dst{i}", actual)
+            np.testing.assert_array_equal(actual.numpy(), np.cumsum(values) - values)
+
+
+def test_save_load_array_scan_temp_storage(test, device):
+    _save_load_array_scan_temp_storage(test, device, conditional=False)
+
+
+def test_save_load_array_scan_temp_storage_capture_while(test, device):
+    """Scans in a conditional body must not allocate when a loaded CUDA graph is rebuilt (GH-2247)."""
+    _save_load_array_scan_temp_storage(test, device, conditional=True)
+
+
 def test_capture_with_array_scan_extended_metadata(test, device):
     """Preserve dtype, vector lanes, and 1D strides in APIC scan records."""
     n = 6
@@ -509,6 +580,19 @@ add_function_test(
     "test_runlength_encode_host_return_rejected_during_cpu_apic_capture",
     test_runlength_encode_host_return_rejected_during_cpu_apic_capture,
     devices=[d for d in devices if d.is_cpu],
+)
+
+add_function_test(
+    TestApicUtilityAlgorithms,
+    "test_save_load_array_scan_temp_storage",
+    test_save_load_array_scan_temp_storage,
+    devices=devices,
+)
+add_function_test(
+    TestApicUtilityAlgorithms,
+    "test_save_load_array_scan_temp_storage_capture_while",
+    test_save_load_array_scan_temp_storage_capture_while,
+    devices=devices,
 )
 
 

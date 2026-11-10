@@ -7,8 +7,10 @@ import builtins
 import ctypes
 import enum
 import gc
+import os
 import shutil
 import subprocess
+import tempfile
 import time
 import unittest
 import weakref
@@ -95,6 +97,25 @@ class TestGraph(unittest.TestCase):
         self.assertIs(get_current.restype, ctypes.c_uint64)
         self.assertEqual(trim.argtypes, [ctypes.c_int])
         self.assertIsNone(trim.restype)
+
+    def test_capture_debug_dot_print_cpu_graph_raises(self):
+        """Reject a CPU graph in ``capture_debug_dot_print()``, which has no CUDA graph to export."""
+        device = wp.get_device("cpu")
+        a = wp.array(np.arange(4, dtype=np.float32), device=device)
+        b = wp.zeros(4, dtype=float, device=device)
+
+        wp.load_module(device=device)
+        with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+            wp.launch(scale_kernel, dim=4, inputs=[a, b, 2.0], device=device)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "graph.dot")
+            with self.assertRaisesRegex(
+                RuntimeError,
+                r"^capture_debug_dot_print\(\) requires a CUDA graph, got a graph on device 'cpu'$",
+            ):
+                wp.capture_debug_dot_print(capture.graph, path)
+            self.assertFalse(os.path.exists(path))
 
 
 def test_cuda_capture_apic_disabled_does_not_retain_caller(test, device):

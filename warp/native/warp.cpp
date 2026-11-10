@@ -1277,26 +1277,74 @@ WP_API void wp_cuda_set_context_restore_policy(bool always_restore) { }
 WP_API int wp_cuda_get_context_restore_policy() { return false; }
 
 WP_API bool wp_array_scan_int_device(
-    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
+    uint64_t in,
+    uint64_t out,
+    int len,
+    int in_stride,
+    int out_stride,
+    int type_len,
+    bool inclusive,
+    uint64_t temp_storage,
+    size_t temp_storage_bytes
 )
+{
+    return false;
+}
+WP_API bool wp_array_scan_int_device_temp_storage_size(void* context, int len, size_t* temp_storage_bytes)
 {
     return false;
 }
 WP_API bool wp_array_scan_int64_device(
-    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
+    uint64_t in,
+    uint64_t out,
+    int len,
+    int in_stride,
+    int out_stride,
+    int type_len,
+    bool inclusive,
+    uint64_t temp_storage,
+    size_t temp_storage_bytes
 )
+{
+    return false;
+}
+WP_API bool wp_array_scan_int64_device_temp_storage_size(void* context, int len, size_t* temp_storage_bytes)
 {
     return false;
 }
 WP_API bool wp_array_scan_float_device(
-    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
+    uint64_t in,
+    uint64_t out,
+    int len,
+    int in_stride,
+    int out_stride,
+    int type_len,
+    bool inclusive,
+    uint64_t temp_storage,
+    size_t temp_storage_bytes
 )
 {
     return false;
 }
+WP_API bool wp_array_scan_float_device_temp_storage_size(void* context, int len, size_t* temp_storage_bytes)
+{
+    return false;
+}
 WP_API bool wp_array_scan_double_device(
-    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
+    uint64_t in,
+    uint64_t out,
+    int len,
+    int in_stride,
+    int out_stride,
+    int type_len,
+    bool inclusive,
+    uint64_t temp_storage,
+    size_t temp_storage_bytes
 )
+{
+    return false;
+}
+WP_API bool wp_array_scan_double_device_temp_storage_size(void* context, int len, size_t* temp_storage_bytes)
 {
     return false;
 }
