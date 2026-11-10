@@ -1901,8 +1901,10 @@ CPU graph capture currently supports:
   :func:`wp.utils.array_scan() <warp.utils.array_scan>`,
   :func:`wp.utils.radix_sort_pairs() <warp.utils.radix_sort_pairs>`,
   :func:`wp.utils.segmented_sort_pairs() <warp.utils.segmented_sort_pairs>`,
-  :func:`wp.utils.runlength_encode() <warp.utils.runlength_encode>`, and the
-  ``warp.sparse`` BSR ``from_triplets`` / ``transpose`` topology builders.
+  :func:`wp.utils.runlength_encode() <warp.utils.runlength_encode>`, the
+  ``warp.sparse`` BSR ``from_triplets`` / ``transpose`` topology builders, and
+  :func:`wp.sparse.bsr_compress() <warp.sparse.bsr_compress>`, which replays on the
+  current offsets, row counts, columns, and values.
 - Bounding-volume-hierarchy updates (:meth:`wp.Bvh.refit() <warp.Bvh.refit>` and
   :meth:`wp.Bvh.rebuild() <warp.Bvh.rebuild>`), re-run on replay against the
   current ``lowers`` / ``uppers`` so a captured graph queries the updated tree.
@@ -1999,7 +2001,7 @@ API Capture: Saving and Loading Graphs
     surface, the C ``wp_apic_*`` API, and the recorded operation set are all
     subject to change without a formal deprecation cycle. The writer and loader
     must use the same Warp version. The current writer and reader use format
-    version 18, which stores explicit element counts for handle relocations.
+    version 19, which adds BSR compression records.
     Recapture graphs saved with earlier formats.
 
 The APIC operation stream lets Warp serialize a supported captured graph to
@@ -2034,7 +2036,8 @@ graphs replay them from current inputs: kernel launches (forward, adjoint, and r
 :func:`wp.sparse.bsr_assign() <warp.sparse.bsr_assign>`,
 :func:`wp.sparse.bsr_axpy() <warp.sparse.bsr_axpy>`,
 :func:`wp.sparse.bsr_mm() <warp.sparse.bsr_mm>` when no host count readback is required,
-:func:`wp.sparse.bsr_set_transpose() <warp.sparse.bsr_set_transpose>`, and
+:func:`wp.sparse.bsr_set_transpose() <warp.sparse.bsr_set_transpose>`,
+:func:`wp.sparse.bsr_compress() <warp.sparse.bsr_compress>`, and
 :func:`wp.capture_if() <warp.capture_if>` / :func:`wp.capture_while() <warp.capture_while>`
 conditionals. Unlike the CPU path, CUDA host code for these helper operations
 issues CUDA operations while CUDA stream capture is active so the driver

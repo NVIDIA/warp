@@ -234,7 +234,7 @@ The current operation families are summarized below; ``APICOpType`` in ``warp/na
 | Kernel dispatch | forward, backward, tiled, reusable launches | Record instead of execute; call resolved CPU function on replay | Driver captures launch and APIC records it when enabled | Resolve module symbol and reissue launch | Yes; requires companion module metadata and binaries |
 | Basic memory | contiguous copy, zero, contiguous fill | Record ``memcpy``, ``memset``, or ``memtile`` instead of executing | Driver captures supported same-device work and APIC records it | Reissue supported memory operation | Supported same-device contiguous forms only |
 | Array algorithms | reductions, scan, radix/segmented sort, run-length encode | Record a semantic host-helper operation | Execute helper under CUDA stream capture and record semantics | Reissue helper under reconstruction capture | Yes for supported forms |
-| Sparse topology | BSR from triplets and transpose | Record semantic topology operation | Supported CUDA forms run under stream capture; unsupported forms raise | Reissue supported form, including required capacity metadata | Yes, on both backends |
+| Sparse topology | BSR from triplets, transpose, and compression | Record semantic topology operation | Supported CUDA forms run under stream capture; unsupported forms raise | Reissue supported form, including required capacity metadata | Yes, on both backends |
 | Dynamic control flow | ``capture_if``, ``capture_while`` | Interpret nested operation streams | Driver creates conditional graph nodes and APIC stores nested streams | Reconstruct conditional nodes and child graphs | Yes when every nested operation is serializable |
 | In-process spatial updates | BVH refit/rebuild, HashGrid update | Replay against the live process-local object | Not a supported APIC CUDA path | Not reconstructed | No; CPU BVH fails at save, saveable HashGrid capture fails at build, and CUDA has no APIC update record |
 
@@ -342,7 +342,7 @@ CPU object files are tied to the platform, architecture, compiler ABI, and Warp 
 
 #### ``.wrp`` format
 
-The feature is experimental. The current constants in ``warp/native/apic_types.h`` define writer and reader version 18. Version 18 adds explicit element counts to memory handle relocations; graphs saved with earlier formats must be recaptured. The metadata also records the producer Warp version, and the loader requires both versions to match exactly before loading modules or allocating resources. These numbers describe the operation and metadata wire format, not the Python package version.
+The feature is experimental. The current constants in ``warp/native/apic_types.h`` define writer and reader version 19. Version 19 adds BSR compression records, and version 18 added explicit element counts to memory handle relocations; graphs saved with earlier formats must be recaptured. The metadata also records the producer Warp version, and the loader requires both versions to match exactly before loading modules or allocating resources. These numbers describe the operation and metadata wire format, not the Python package version.
 
 Contributors must follow these rules:
 

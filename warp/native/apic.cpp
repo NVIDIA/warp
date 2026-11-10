@@ -813,6 +813,80 @@ void apic_record_bsr_transpose(
     state->operation_count++;
 }
 
+bool apic_record_bsr_compress(
+    APICState* state,
+    APICResolvePtrFn resolve,
+    int32_t row_count,
+    int32_t col_count,
+    int32_t block_size,
+    int32_t scalar_size_in_bytes,
+    int32_t scalar_type,
+    int32_t nnz_upper_bound,
+    bool prune_numerical_zeros,
+    uint64_t scalar_zero_mask,
+    bool make_compact,
+    const int32_t* bsr_offsets,
+    const int32_t* bsr_row_counts,
+    const int32_t* bsr_columns,
+    const void* bsr_values,
+    bool compress_values
+)
+{
+    if (!state || row_count <= 0 || nnz_upper_bound < 0 || !bsr_offsets || (nnz_upper_bound > 0 && !bsr_columns))
+        return false;
+
+    APICBsrCompressRecord rec = {};
+    rec.header.op_type = APIC_OP_BSR_COMPRESS;
+    rec.header.total_size = static_cast<uint32_t>(sizeof(rec));
+    rec.row_count = row_count;
+    rec.col_count = col_count;
+    rec.block_size = block_size;
+    rec.scalar_size_in_bytes = scalar_size_in_bytes;
+    rec.scalar_type = scalar_type;
+    rec.nnz_upper_bound = nnz_upper_bound;
+    rec.prune_numerical_zeros = prune_numerical_zeros ? 1 : 0;
+    rec.make_compact = make_compact ? 1 : 0;
+    rec.compress_values = compress_values ? 1 : 0;
+    rec.scalar_zero_mask = scalar_zero_mask;
+
+    // Optional pointers keep region_id == -1 when null: resolving a null
+    // pointer would auto-register address 0 as a region.
+    const APICAddress offsets_addr = resolve(
+        state, reinterpret_cast<uint64_t>(bsr_offsets), (static_cast<uint64_t>(row_count) + 1) * sizeof(int32_t)
+    );
+    rec.offsets_region_id = offsets_addr.region_id;
+    rec.offsets_offset = offsets_addr.offset;
+
+    APICAddress row_counts_addr;
+    if (bsr_row_counts)
+        row_counts_addr = resolve(
+            state, reinterpret_cast<uint64_t>(bsr_row_counts), static_cast<uint64_t>(row_count) * sizeof(int32_t)
+        );
+    rec.row_counts_region_id = row_counts_addr.region_id;
+    rec.row_counts_offset = row_counts_addr.offset;
+
+    // Without block storage, compression only reads the offsets and row counts.
+    APICAddress columns_addr;
+    APICAddress values_addr;
+    if (nnz_upper_bound > 0) {
+        columns_addr = resolve(
+            state, reinterpret_cast<uint64_t>(bsr_columns), static_cast<uint64_t>(nnz_upper_bound) * sizeof(int32_t)
+        );
+        const uint64_t values_bytes = static_cast<uint64_t>(nnz_upper_bound) * static_cast<uint64_t>(block_size)
+            * static_cast<uint64_t>(scalar_size_in_bytes);
+        if (bsr_values && values_bytes > 0)
+            values_addr = resolve(state, reinterpret_cast<uint64_t>(bsr_values), values_bytes);
+    }
+    rec.columns_region_id = columns_addr.region_id;
+    rec.columns_offset = columns_addr.offset;
+    rec.values_region_id = values_addr.region_id;
+    rec.values_offset = values_addr.offset;
+
+    state->append_bytes(&rec, sizeof(rec));
+    state->operation_count++;
+    return true;
+}
+
 static void apic_record_bvh_op(APICState* state, APICOpType op_type, uint64_t bvh_id, int32_t constructor_type)
 {
     if (!state)
@@ -2127,6 +2201,37 @@ bool apic_validate_operation_stream(
             }
             break;
         }
+        case APIC_OP_BSR_COMPRESS: {
+            if (header->total_size != sizeof(APICBsrCompressRecord)) {
+                fprintf(stderr, "Warp APIC error: invalid bsr-compress record size at operation %u\n", i);
+                return false;
+            }
+            {
+                const APICBsrCompressRecord* rec = reinterpret_cast<const APICBsrCompressRecord*>(ptr);
+                const int32_t scalar_size = rec->scalar_size_in_bytes;
+                const bool valid_scalar_size
+                    = scalar_size == 0 || scalar_size == 1 || scalar_size == 2 || scalar_size == 4 || scalar_size == 8;
+                // Replay accesses (row_count + 1) offsets, nnz_upper_bound columns, and
+                // nnz_upper_bound * block_size * scalar_size bytes of values; the int32
+                // factors can overflow for a corrupt record.
+                uint64_t span_tmp;
+                // Padded compression writes the compressed counts back to the row counts.
+                const bool missing_row_counts = rec->make_compact == 0 && rec->row_counts_region_id < 0;
+                if (rec->row_count < 0 || rec->col_count < 0 || rec->block_size < 0 || rec->nnz_upper_bound < 0
+                    || !valid_scalar_size || rec->prune_numerical_zeros > 1 || rec->make_compact > 1
+                    || rec->compress_values > 1 || missing_row_counts
+                    || !apic_mul_check(static_cast<uint64_t>(rec->row_count) + 1u, sizeof(int32_t), &span_tmp)
+                    || !apic_mul_check(static_cast<uint64_t>(rec->nnz_upper_bound), sizeof(int32_t), &span_tmp)
+                    || !apic_mul_check(
+                        static_cast<uint64_t>(rec->nnz_upper_bound), static_cast<uint64_t>(rec->block_size), &span_tmp
+                    )
+                    || !apic_mul_check(span_tmp, static_cast<uint64_t>(scalar_size), &span_tmp)) {
+                    fprintf(stderr, "Warp APIC error: invalid bsr-compress record at operation %u\n", i);
+                    return false;
+                }
+            }
+            break;
+        }
         case APIC_OP_BVH_REFIT:
         case APIC_OP_BVH_REBUILD:
             if (op_end < op_start + sizeof(APICBvhRecord)) {
@@ -2421,6 +2526,27 @@ static void apic_execute_hash_grid_update(const APICHashGridUpdateRecord* rec, v
     wp_hash_grid_update_host(
         rec->grid_id, rec->grid_type, rec->cell_width, &points, rec->has_groups ? &groups : nullptr
     );
+}
+
+// Check that a BSR matrix's replay-time rows are disjoint and lie within its
+// first ``nnz_upper_bound`` block slots: offsets start at 0 or more, never
+// decrease, and end at most at ``nnz_upper_bound``, and each row count fits its
+// row's capacity. Compression indexes columns and values through these arrays,
+// and compact compression packs every active block from slot 0, so the
+// recorded region spans alone can't bound its accesses.
+static bool
+apic_check_bsr_rows(const int32_t* offsets, const int32_t* row_counts, int32_t row_count, int32_t nnz_upper_bound)
+{
+    if (offsets[0] < 0 || offsets[row_count] > nnz_upper_bound)
+        return false;
+    for (int32_t row = 0; row < row_count; ++row) {
+        const int64_t capacity = static_cast<int64_t>(offsets[row + 1]) - offsets[row];
+        if (capacity < 0)
+            return false;
+        if (row_counts && (row_counts[row] < 0 || row_counts[row] > capacity))
+            return false;
+    }
+    return true;
 }
 
 // Walk an APIC byte stream and execute CPU operations. Assumes the stream
@@ -2944,6 +3070,48 @@ static bool apic_cpu_replay_stream(
                 reinterpret_cast<const int*>(bsr_row_counts), reinterpret_cast<const int*>(bsr_columns),
                 reinterpret_cast<int*>(t_offsets), reinterpret_cast<int*>(t_row_counts),
                 reinterpret_cast<int*>(t_columns), reinterpret_cast<int*>(block_indices), reinterpret_cast<int*>(status)
+            );
+            break;
+        }
+
+        case APIC_OP_BSR_COMPRESS: {
+            const APICBsrCompressRecord* rec = reinterpret_cast<const APICBsrCompressRecord*>(ptr);
+            const size_t nnz = static_cast<size_t>(rec->nnz_upper_bound);
+            const size_t rowp1_bytes = (static_cast<size_t>(rec->row_count) + 1) * sizeof(int32_t);
+            const size_t values_bytes
+                = nnz * static_cast<size_t>(rec->block_size) * static_cast<size_t>(rec->scalar_size_in_bytes);
+            void* offsets = resolve_ptr(rec->offsets_region_id, rec->offsets_offset, rowp1_bytes);
+            void* row_counts = rec->row_counts_region_id >= 0
+                ? resolve_ptr(
+                      rec->row_counts_region_id, rec->row_counts_offset,
+                      static_cast<size_t>(rec->row_count) * sizeof(int32_t)
+                  )
+                : nullptr;
+            void* columns = rec->columns_region_id >= 0
+                ? resolve_ptr(rec->columns_region_id, rec->columns_offset, nnz * sizeof(int32_t))
+                : nullptr;
+            void* values = rec->values_region_id >= 0
+                ? resolve_ptr(rec->values_region_id, rec->values_offset, values_bytes)
+                : nullptr;
+            if (!offsets || (nnz > 0 && !columns) || (rec->row_counts_region_id >= 0 && !row_counts)
+                || (rec->values_region_id >= 0 && !values)) {
+                wp::set_error_string("Warp APIC error: bsr-compress pointer resolution failed at operation %u", i);
+                return false;
+            }
+            if (!apic_check_bsr_rows(
+                    reinterpret_cast<const int32_t*>(offsets), reinterpret_cast<const int32_t*>(row_counts),
+                    rec->row_count, rec->nnz_upper_bound
+                )) {
+                wp::set_error_string("Warp APIC error: bsr-compress row range out of bounds at operation %u", i);
+                return false;
+            }
+            // g_apic_state is null during replay, so this executes the real
+            // compression. Same entry point wp.sparse.bsr_compress uses.
+            wp_bsr_compress_inplace_host(
+                rec->row_count, rec->col_count, rec->block_size, rec->scalar_size_in_bytes, rec->scalar_type,
+                rec->nnz_upper_bound, rec->prune_numerical_zeros != 0, rec->scalar_zero_mask, rec->make_compact != 0,
+                reinterpret_cast<int*>(offsets), reinterpret_cast<int*>(row_counts), reinterpret_cast<int*>(columns),
+                values, rec->compress_values != 0
             );
             break;
         }

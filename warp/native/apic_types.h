@@ -10,9 +10,10 @@
 // APIC Format Constants
 // =============================================================================
 
-#define APIC_FORMAT_VERSION 18
-// Intentionally require recapture rather than decode unbounded legacy relocations.
-#define APIC_MIN_SUPPORTED_FORMAT_VERSION 18
+#define APIC_FORMAT_VERSION 19
+// The loader also requires the producing Warp version, so require recapture
+// rather than decode older layouts.
+#define APIC_MIN_SUPPORTED_FORMAT_VERSION 19
 #define APIC_UNSIGNED_LAUNCH_BOUNDS_VERSION 16
 #define APIC_MAGIC "WRP1"
 #define APIC_MAGIC_VALUE 0x31505257  // "WRP1" as little-endian uint32
@@ -48,6 +49,7 @@ enum APICOpType : uint32_t {
     APIC_OP_BVH_REFIT = 17,  // wp_bvh_refit_host
     APIC_OP_BVH_REBUILD = 18,  // wp_bvh_rebuild_host
     APIC_OP_HASH_GRID_UPDATE = 19,  // wp_hash_grid_update_host
+    APIC_OP_BSR_COMPRESS = 20,  // wp_bsr_compress_inplace_host/device
 };
 
 enum APICReductionKind : uint8_t {
@@ -511,6 +513,40 @@ struct APICBsrTransposeRecord {
     uint64_t block_indices_offset;
     uint64_t status_offset;
 };
+
+// BSR in-place compression op (format version >= 19). Records a
+// wp_bsr_compress_inplace_host/device() call so replay sorts and coalesces the
+// active row ranges of the current (replay-time) topology. The host function
+// would otherwise run once at capture time, and the CUDA kernels it launches
+// are invisible to a saved graph. ``compress_values`` selects whether
+// ``values`` is moved with the columns (in-place compression) or only read to
+// prune zero blocks (topology-only compression of an out-of-place compress).
+// Buffer sizes derive from ``row_count`` and ``nnz_upper_bound``. Region ids
+// are -1 for absent optional pointers (row_counts, values) and for columns
+// when ``nnz_upper_bound`` is 0.
+struct APICBsrCompressRecord {
+    APICOpHeader header;  // op_type = APIC_OP_BSR_COMPRESS
+    int32_t row_count;
+    int32_t col_count;
+    int32_t block_size;
+    int32_t scalar_size_in_bytes;
+    int32_t scalar_type;  // BSR_SCALAR_* code; used only when compress_values is set
+    int32_t nnz_upper_bound;
+    uint8_t prune_numerical_zeros;
+    uint8_t make_compact;
+    uint8_t compress_values;
+    uint8_t _pad[5];
+    uint64_t scalar_zero_mask;
+    int32_t offsets_region_id;
+    int32_t row_counts_region_id;  // -1 if absent
+    int32_t columns_region_id;  // -1 if nnz_upper_bound == 0
+    int32_t values_region_id;  // -1 if absent
+    uint64_t offsets_offset;
+    uint64_t row_counts_offset;
+    uint64_t columns_offset;
+    uint64_t values_offset;
+};
+static_assert(sizeof(APICBsrCompressRecord) == 96, "APICBsrCompressRecord must remain 96 bytes");
 
 // Same-process host BVH update (APIC_OP_BVH_REFIT or APIC_OP_BVH_REBUILD).
 // Records a wp_bvh_refit_host() / wp_bvh_rebuild_host() call so CPU graph

@@ -36,6 +36,7 @@ from warp.sparse import (
     bsr_assign,
     bsr_axpy,
     bsr_axpy_work_arrays,
+    bsr_compress,
     bsr_copy,
     bsr_from_triplets,
     bsr_mm,
@@ -893,6 +894,81 @@ class TestApic(unittest.TestCase):
                 finally:
                     wp_context.runtime.core.wp_apic_destroy_state(state)
 
+    def test_capture_launch_rejects_bsr_compress_out_of_range_rows(self):
+        """Reject replaying a compression whose current rows reach past the recorded block storage."""
+        device = wp.get_device("cpu")
+
+        compact = _make_apic_compress_matrix(device)
+        with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+            bsr_compress(compact, inplace=True)
+
+        compact.offsets.assign(np.array([0, 9], dtype=np.int32))
+        _assert_apic_launch_rejected(self, capture.graph, r"bsr-compress row range out of bounds")
+        np.testing.assert_array_equal(compact.columns.numpy(), np.array([1, 0, 1, 2]))
+
+        padded = _make_apic_compress_matrix(device)
+        padded.row_counts = wp.array([4], dtype=int, device=device)
+        with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+            bsr_compress(padded, inplace=True, topology="padded")
+
+        padded.row_counts.assign(np.array([9], dtype=np.int32))
+        _assert_apic_launch_rejected(self, capture.graph, r"bsr-compress row range out of bounds")
+        np.testing.assert_array_equal(padded.columns.numpy(), np.array([1, 0, 1, 2]))
+
+        # Rows that each stay within the storage but overlap: packing them to compact rows would write 12 blocks.
+        # The matrix storage is a view of larger arrays, so a write past it lands in visible sentinel slots.
+        columns_base = wp.array([0, 1, 2, 3, -7, -7, -7, -7, -7, -7, -7, -7], dtype=int, device=device)
+        values_base = wp.array(
+            [1.0, 2.0, 3.0, 4.0, -7.0, -7.0, -7.0, -7.0, -7.0, -7.0, -7.0, -7.0], dtype=wp.float32, device=device
+        )
+        overlapping = bsr_zeros(3, 4, wp.float32, device=device)
+        overlapping.nnz = 4
+        overlapping.offsets = wp.array([0, 4, 4, 4], dtype=int, device=device)
+        # Compact compression detaches the row counts from the matrix, but the replay still reads them.
+        row_counts = wp.array([4, 0, 0], dtype=int, device=device)
+        overlapping.row_counts = row_counts
+        overlapping.columns = columns_base[:4]
+        overlapping.values = values_base[:4]
+        with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+            bsr_compress(overlapping, inplace=True, prune_numerical_zeros=False)
+
+        overlapping.offsets.assign(np.array([0, 0, 0, 4], dtype=np.int32))
+        row_counts.assign(np.array([4, 4, 4], dtype=np.int32))
+        _assert_apic_launch_rejected(self, capture.graph, r"bsr-compress row range out of bounds")
+        np.testing.assert_array_equal(columns_base.numpy(), np.array([0, 1, 2, 3, -7, -7, -7, -7, -7, -7, -7, -7]))
+
+    def test_capture_load_rejects_bsr_compress_span_overflow(self):
+        """Reject loading a BSR compress record whose value span overflows."""
+        device = wp.get_device("cpu")
+        matrix = _make_apic_compress_matrix(device)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "bsr_compress_span_overflow.wrp")
+            with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+                bsr_compress(matrix, inplace=True)
+            wp.capture_save(capture.graph, path, outputs={"offsets": matrix.offsets})
+            # (2**31 - 1) blocks of (2**31 - 1) 8-byte scalars exceed 2**64 bytes.
+            _corrupt_apic_bsr_compress_record(
+                path, nnz_upper_bound=2**31 - 1, block_size=2**31 - 1, scalar_size_in_bytes=8
+            )
+
+            _assert_apic_load_rejected(self, path, device, r"operation stream failed validation")
+
+    def test_capture_load_rejects_padded_bsr_compress_without_row_counts(self):
+        """Reject loading a padded BSR compress record that has no row counts to write."""
+        device = wp.get_device("cpu")
+        matrix = _make_apic_compress_matrix(device)
+        matrix.row_counts = wp.array([4], dtype=int, device=device)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "bsr_compress_without_row_counts.wrp")
+            with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+                bsr_compress(matrix, inplace=True, topology="padded")
+            wp.capture_save(capture.graph, path, outputs={"offsets": matrix.offsets})
+            _corrupt_apic_bsr_compress_record(path, row_counts_region_id=-1)
+
+            _assert_apic_load_rejected(self, path, device, r"operation stream failed validation")
+
 
 def _mock_apic_cuda_export_module(directory, module_name, filename, source_data=b"// generated CUDA source\n"):
     """Create CUDA artifact metadata for save preflight without requiring a GPU."""
@@ -984,7 +1060,7 @@ def _mock_apic_cuda_export_graph(modules):
 _APIC_SECTION_METADATA = 1
 _APIC_SECTION_MEMORY = 2
 _APIC_SECTION_OPERATIONS = 3
-_APIC_FORMAT_VERSION = 18
+_APIC_FORMAT_VERSION = 19
 
 # These layouts mirror the packed structs in warp/native/apic_types.h. "<"
 # selects little-endian standard sizes without implicit alignment; "4s", "i",
@@ -1023,6 +1099,19 @@ _APIC_MODULE_RECORD_TAIL = struct.Struct("<BB16s")
 # Fixed-size fields that end a metadata kernel record: forward and backward
 # shared-memory bytes, then block dim.
 _APIC_KERNEL_RECORD_TAIL = struct.Struct("<3I")
+
+# APICBsrCompressRecord: operation type/size; row count, column count, block size,
+# scalar size, scalar type, and nnz upper bound; prune, compact, and value flags
+# with padding; zero mask; then the offsets, row-count, column, and value region
+# IDs followed by their byte offsets.
+_APIC_BSR_COMPRESS_RECORD = struct.Struct("<II6i3B5xQ4i4Q")
+_APIC_BSR_COMPRESS_FIELDS = {
+    "block_size": 4,
+    "scalar_size_in_bytes": 5,
+    "nnz_upper_bound": 7,
+    "row_counts_region_id": 13,
+}
+_APIC_OP_BSR_COMPRESS = 20
 
 
 def _find_apic_section(wrp_data, requested_section_type):
@@ -1198,6 +1287,46 @@ def _corrupt_apic_memtile_record(path, *, srcsize=None, count=None):
             memtile[5] = count
         wrp_file.seek(memtile_offset)
         wrp_file.write(_APIC_MEMTILE_RECORD.pack(*memtile))
+
+
+def _corrupt_apic_bsr_compress_record(path, **fields):
+    """Overwrite selected fields of the first BSR compress record in a saved WRP."""
+    operations = _read_apic_section(path, _APIC_SECTION_OPERATIONS)
+    operation_count = _APIC_UINT32.unpack_from(operations)[0]
+    offset = _APIC_UINT32.size
+    for _ in range(operation_count):
+        operation_type, operation_size = _APIC_OP_HEADER.unpack_from(operations, offset)
+        if operation_type == _APIC_OP_BSR_COMPRESS:
+            record = list(_APIC_BSR_COMPRESS_RECORD.unpack_from(operations, offset))
+            for name, value in fields.items():
+                record[_APIC_BSR_COMPRESS_FIELDS[name]] = value
+            _APIC_BSR_COMPRESS_RECORD.pack_into(operations, offset, *record)
+            _replace_apic_section(path, _APIC_SECTION_OPERATIONS, operations)
+            return
+        offset += operation_size
+
+    raise ValueError("Expected at least one APIC BSR compress operation")
+
+
+def _make_apic_compress_matrix(device):
+    """Create an uncompressed 1x3 matrix with a duplicate, unsorted column."""
+    matrix = bsr_zeros(1, 3, wp.float32, device=device)
+    matrix.nnz = 4
+    matrix.offsets = wp.array([0, 4], dtype=int, device=device)
+    matrix.columns = wp.array([1, 0, 1, 2], dtype=int, device=device)
+    matrix.values = wp.array([1.0, 2.0, 3.0, 4.0], dtype=wp.float32, device=device)
+    return matrix
+
+
+def _assert_apic_launch_rejected(test, graph, message_pattern):
+    """Assert that a CPU graph replay fails without noisy native stderr."""
+    saved_error_output_enabled = wp_context.runtime.core.wp_is_error_output_enabled()
+    try:
+        wp_context.runtime.core.wp_set_error_output_enabled(False)
+        with test.assertRaisesRegex(RuntimeError, message_pattern):
+            wp.capture_launch(graph)
+    finally:
+        wp_context.runtime.core.wp_set_error_output_enabled(saved_error_output_enabled)
 
 
 def _patch_apic_file_header(path, **fields):
@@ -4518,6 +4647,86 @@ def test_capture_with_bsr_transpose(test, device):
         np.testing.assert_array_equal(values_out.numpy()[:n], np.arange(1, n + 1, dtype=np.float32))
 
 
+def _check_save_load_bsr_compress(test, device, inplace):
+    """Check that a loaded graph compresses the data saved with it."""
+    if not inplace:
+        # Load the value-accumulation kernel before module loading is disabled for capture.
+        bsr_compress(_make_apic_compress_matrix(device), inplace=False)
+
+    matrix = bsr_zeros(2, 4, wp.float32, device=device)
+    matrix.nnz = 6
+    matrix.offsets = wp.array([0, 3, 6], dtype=int, device=device)
+    matrix.columns = wp.array([2, 0, 2, 1, 1, 3], dtype=int, device=device)
+    matrix.values = wp.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], dtype=wp.float32, device=device)
+
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        bsr_compress(matrix, inplace=inplace)
+
+    # Saving snapshots the current data, so the loaded graph must compress these blocks: row 0 has a duplicate
+    # and an out-of-range column, and row 1 has a zero block to prune.
+    matrix.offsets.assign(np.array([0, 4, 6], dtype=np.int32))
+    matrix.columns.assign(np.array([3, 1, 3, 7, 0, 2], dtype=np.int32))
+    matrix.values.assign(np.array([1.0, 2.0, 3.0, 9.0, 5.0, 0.0], dtype=np.float32))
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "bsr_compress")
+        wp.capture_save(
+            capture.graph, path, outputs={"offsets": matrix.offsets, "columns": matrix.columns, "values": matrix.values}
+        )
+        loaded = wp.capture_load(path, device=device)
+        wp.capture_launch(loaded)
+
+        offsets_out = wp.zeros_like(matrix.offsets)
+        columns_out = wp.zeros_like(matrix.columns)
+        values_out = wp.zeros_like(matrix.values)
+        loaded.get_param("offsets", offsets_out)
+        loaded.get_param("columns", columns_out)
+        loaded.get_param("values", values_out)
+
+        np.testing.assert_array_equal(offsets_out.numpy(), np.array([0, 2, 3]))
+        np.testing.assert_array_equal(columns_out.numpy()[:3], np.array([1, 3, 0]))
+        np.testing.assert_array_equal(values_out.numpy()[:3], np.array([2.0, 4.0, 5.0]))
+
+
+def test_capture_save_load_bsr_compress(test, device):
+    """Verify that saved graphs keep in-place and out-of-place BSR compression."""
+    _check_save_load_bsr_compress(test, device, inplace=True)
+    _check_save_load_bsr_compress(test, device, inplace=False)
+
+
+def test_capture_save_load_bsr_compress_skips_uncaptured_stream(test, device):
+    """Verify that compression on a stream outside the capture runs once and stays out of saved graphs."""
+    matrix = bsr_zeros(1, 2, wp.float32, device=device)
+    matrix.nnz = 2
+    matrix.offsets = wp.array([0, 2], dtype=int, device=device)
+    matrix.row_counts = wp.array([2], dtype=int, device=device)
+    matrix.columns = wp.array([1, 0], dtype=int, device=device)
+    matrix.values = wp.array([1.0, 2.0], dtype=wp.float32, device=device)
+
+    other_stream = wp.Stream(device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        with wp.ScopedStream(other_stream, sync_enter=False):
+            bsr_compress(matrix, inplace=True, topology="padded")
+    wp.synchronize_stream(other_stream)
+
+    # The compression ran immediately on the other stream, outside the live graph.
+    np.testing.assert_array_equal(matrix.columns.numpy(), np.array([0, 1]))
+
+    matrix.columns.assign(np.array([1, 0], dtype=np.int32))
+    wp.capture_launch(capture.graph)
+    np.testing.assert_array_equal(matrix.columns.numpy(), np.array([1, 0]))
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "bsr_compress_uncaptured_stream")
+        wp.capture_save(capture.graph, path, outputs={"columns": matrix.columns})
+        loaded = wp.capture_load(path, device=device)
+        wp.capture_launch(loaded)
+
+        columns_out = wp.zeros_like(matrix.columns)
+        loaded.get_param("columns", columns_out)
+        np.testing.assert_array_equal(columns_out.numpy(), np.array([1, 0]))
+
+
 def test_capture_with_padded_bsr_transpose(test, device):
     """Verify that padded BSR transpose replay must preserve row_counts and status pointers."""
     from warp.sparse import (  # noqa: PLC0415
@@ -5673,6 +5882,18 @@ add_function_test(
     "test_capture_with_padded_bsr_transpose",
     test_capture_with_padded_bsr_transpose,
     devices=devices,
+)
+add_function_test(
+    TestApic,
+    "test_capture_save_load_bsr_compress",
+    test_capture_save_load_bsr_compress,
+    devices=devices_with_graph_capture_allocation_and_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
+    "test_capture_save_load_bsr_compress_skips_uncaptured_stream",
+    test_capture_save_load_bsr_compress_skips_uncaptured_stream,
+    devices=cuda_devices_with_graph_capture_allocation_and_cuda_graph_module_load,
 )
 add_function_test(
     TestApic,

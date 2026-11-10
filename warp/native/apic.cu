@@ -867,6 +867,44 @@ static bool apic_replay_ops_into_cuda_capture(
             break;
         }
 
+        case APIC_OP_BSR_COMPRESS: {
+            const APICBsrCompressRecord* rec = reinterpret_cast<const APICBsrCompressRecord*>(ptr);
+            const size_t nnz = static_cast<size_t>(rec->nnz_upper_bound);
+            const size_t rowp1_bytes = (static_cast<size_t>(rec->row_count) + 1) * sizeof(int32_t);
+            const size_t values_bytes
+                = nnz * static_cast<size_t>(rec->block_size) * static_cast<size_t>(rec->scalar_size_in_bytes);
+            void* offsets = apic_resolve_region_ptr(graph, rec->offsets_region_id, rec->offsets_offset, rowp1_bytes);
+            void* row_counts = rec->row_counts_region_id >= 0
+                ? apic_resolve_region_ptr(
+                      graph, rec->row_counts_region_id, rec->row_counts_offset,
+                      static_cast<size_t>(rec->row_count) * sizeof(int32_t)
+                  )
+                : nullptr;
+            void* columns = rec->columns_region_id >= 0
+                ? apic_resolve_region_ptr(graph, rec->columns_region_id, rec->columns_offset, nnz * sizeof(int32_t))
+                : nullptr;
+            void* values = rec->values_region_id >= 0
+                ? apic_resolve_region_ptr(graph, rec->values_region_id, rec->values_offset, values_bytes)
+                : nullptr;
+            if (!offsets || (nnz > 0 && !columns) || (rec->row_counts_region_id >= 0 && !row_counts)
+                || (rec->values_region_id >= 0 && !values)) {
+                wp::set_error_string("Warp APIC error: bsr-compress failed to resolve region (op %u)", i);
+                success = false;
+                break;
+            }
+            // g_apic_state is null during rebuild, so this executes (not record)
+            // on the capture stream set as current above. Unlike the CPU replay,
+            // the row ranges are device memory that cannot be checked against
+            // the recorded storage here.
+            wp_bsr_compress_inplace_device(
+                rec->row_count, rec->col_count, rec->block_size, rec->scalar_size_in_bytes, rec->scalar_type,
+                rec->nnz_upper_bound, rec->prune_numerical_zeros != 0, rec->scalar_zero_mask, rec->make_compact != 0,
+                reinterpret_cast<int*>(offsets), reinterpret_cast<int*>(row_counts), reinterpret_cast<int*>(columns),
+                values, rec->compress_values != 0
+            );
+            break;
+        }
+
         case APIC_OP_IF: {
             const APICCondRecord* rec = reinterpret_cast<const APICCondRecord*>(ptr);
             const uint8_t* branch_a = ptr + sizeof(APICCondRecord);

@@ -1772,6 +1772,204 @@ def test_bsr_compress_compact_capturability(test, device):
     assert_np_equal(_bsr_to_dense(A), np.array([[2.0, 3.0, 4.0], [0.0, 0.0, 8.0]]))
 
 
+def _make_compress_capture_matrix(device, dtype):
+    """Create an uncompressed 2x4 matrix with unsorted, duplicate columns."""
+    matrix = bsr_zeros(2, 4, dtype, device=device)
+    matrix.nnz = 6
+    matrix.offsets = wp.array([0, 3, 6], dtype=int, device=device)
+    matrix.columns = wp.array([2, 0, 2, 1, 1, 3], dtype=int, device=device)
+    matrix.values = wp.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], dtype=dtype, device=device)
+    return matrix
+
+
+def _assign_bsr_arrays(matrix, offsets, columns, values, row_counts=None):
+    """Overwrite the matrix arrays in place, so a captured graph reads the new data."""
+    matrix.offsets.assign(np.array(offsets, dtype=np.int32))
+    matrix.columns.assign(np.array(columns, dtype=np.int32))
+    matrix.values.assign(np.array(values, dtype=wp.dtype_to_numpy(matrix.scalar_type)))
+    if row_counts is not None:
+        matrix.row_counts.assign(np.array(row_counts, dtype=np.int32))
+
+
+def _assert_compress_capture_inputs_unchanged(matrix):
+    """Assert that recording a compression did not run it."""
+    np.testing.assert_array_equal(matrix.offsets.numpy(), np.array([0, 3, 6]))
+    np.testing.assert_array_equal(matrix.columns.numpy(), np.array([2, 0, 2, 1, 1, 3]))
+    np.testing.assert_array_equal(matrix.values.numpy(), np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]))
+
+
+def test_bsr_compress_capture_inplace_compact(test, device):
+    """Test that a captured in-place compact compression runs on the current data at every replay."""
+
+    for dtype in (wp.float32, wp.float64):
+        with test.subTest(dtype=dtype):
+            matrix = _make_compress_capture_matrix(device, dtype)
+            with wp.ScopedDevice(device):
+                with wp.ScopedCapture(force_module_load=False) as capture:
+                    bsr_compress(matrix, prune_numerical_zeros=True, inplace=True)
+
+            _assert_compress_capture_inputs_unchanged(matrix)
+
+            # Row 0 has a duplicate and an out-of-range column; row 1 has a zero block to prune.
+            _assign_bsr_arrays(matrix, (0, 4, 6), (3, 1, 3, 7, 0, 2), (1.0, 2.0, 3.0, 9.0, 5.0, 0.0))
+            wp.capture_launch(capture.graph)
+
+            np.testing.assert_array_equal(matrix.offsets.numpy(), np.array([0, 2, 3]))
+            np.testing.assert_array_equal(matrix.columns.numpy()[:3], np.array([1, 3, 0]))
+            np.testing.assert_array_equal(matrix.values.numpy()[:3], np.array([2.0, 4.0, 5.0]))
+
+            _assign_bsr_arrays(matrix, (0, 1, 6), (2, 1, 1, 3, 0, 1), (4.0, 1.0, 2.0, 3.0, 6.0, 7.0))
+            wp.capture_launch(capture.graph)
+
+            np.testing.assert_array_equal(matrix.offsets.numpy(), np.array([0, 1, 4]))
+            np.testing.assert_array_equal(matrix.columns.numpy()[:4], np.array([2, 0, 1, 3]))
+            np.testing.assert_array_equal(matrix.values.numpy()[:4], np.array([4.0, 6.0, 10.0, 3.0]))
+
+
+def test_bsr_compress_capture_inplace_padded(test, device):
+    """Test that a captured in-place padded compression runs on the current data at every replay."""
+
+    matrix = _make_compress_capture_matrix(device, wp.float32)
+    matrix.row_counts = wp.array([3, 3], dtype=int, device=device)
+    with wp.ScopedDevice(device):
+        with wp.ScopedCapture(force_module_load=False) as capture:
+            bsr_compress(matrix, prune_numerical_zeros=False, inplace=True, topology="padded")
+
+    _assert_compress_capture_inputs_unchanged(matrix)
+    np.testing.assert_array_equal(matrix.row_counts.numpy(), np.array([3, 3]))
+
+    # The last slot of row 0 is outside its row count, so its block must be ignored.
+    _assign_bsr_arrays(matrix, (0, 4, 6), (3, 1, 3, 0, 0, 2), (1.0, 2.0, 3.0, 8.0, 5.0, 0.0), row_counts=(3, 2))
+    wp.capture_launch(capture.graph)
+
+    np.testing.assert_array_equal(matrix.offsets.numpy(), np.array([0, 4, 6]))
+    np.testing.assert_array_equal(matrix.row_counts.numpy(), np.array([2, 2]))
+    np.testing.assert_array_equal(matrix.columns.numpy()[0:2], np.array([1, 3]))
+    np.testing.assert_array_equal(matrix.columns.numpy()[4:6], np.array([0, 2]))
+    np.testing.assert_array_equal(matrix.values.numpy()[0:2], np.array([2.0, 4.0]))
+    np.testing.assert_array_equal(matrix.values.numpy()[4:6], np.array([5.0, 0.0]))
+
+    _assign_bsr_arrays(matrix, (0, 1, 6), (2, 1, 1, 3, 0, 1), (4.0, 1.0, 2.0, 3.0, 6.0, 7.0), row_counts=(1, 4))
+    wp.capture_launch(capture.graph)
+
+    np.testing.assert_array_equal(matrix.offsets.numpy(), np.array([0, 1, 6]))
+    np.testing.assert_array_equal(matrix.row_counts.numpy(), np.array([1, 3]))
+    np.testing.assert_array_equal(matrix.columns.numpy()[0:1], np.array([2]))
+    np.testing.assert_array_equal(matrix.columns.numpy()[1:4], np.array([0, 1, 3]))
+    np.testing.assert_array_equal(matrix.values.numpy()[0:1], np.array([4.0]))
+    np.testing.assert_array_equal(matrix.values.numpy()[1:4], np.array([6.0, 3.0, 3.0]))
+
+
+def test_bsr_compress_capture_out_of_place(test, device):
+    """Test that a captured out-of-place compression runs on the current data at every replay."""
+
+    for dtype in (wp.float32, wp.float64):
+        with test.subTest(dtype=dtype):
+            # Load the value-accumulation kernel before module loading is disabled for capture.
+            bsr_compress(_make_compress_capture_matrix(device, dtype), prune_numerical_zeros=False)
+
+            matrix = _make_compress_capture_matrix(device, dtype)
+            with wp.ScopedDevice(device):
+                with wp.ScopedCapture(force_module_load=False) as capture:
+                    bsr_compress(matrix, prune_numerical_zeros=False)
+
+            _assert_compress_capture_inputs_unchanged(matrix)
+
+            # Without pruning, the zero block of row 1 stays.
+            _assign_bsr_arrays(matrix, (0, 4, 6), (3, 1, 3, 7, 0, 2), (1.0, 2.0, 3.0, 9.0, 5.0, 0.0))
+            wp.capture_launch(capture.graph)
+
+            np.testing.assert_array_equal(matrix.offsets.numpy(), np.array([0, 2, 4]))
+            np.testing.assert_array_equal(matrix.columns.numpy()[:4], np.array([1, 3, 0, 2]))
+            np.testing.assert_array_equal(matrix.values.numpy()[:4], np.array([2.0, 4.0, 5.0, 0.0]))
+
+            _assign_bsr_arrays(matrix, (0, 1, 6), (2, 1, 1, 3, 0, 1), (4.0, 1.0, 2.0, 3.0, 6.0, 7.0))
+            wp.capture_launch(capture.graph)
+
+            np.testing.assert_array_equal(matrix.offsets.numpy(), np.array([0, 1, 4]))
+            np.testing.assert_array_equal(matrix.columns.numpy()[:4], np.array([2, 0, 1, 3]))
+            np.testing.assert_array_equal(matrix.values.numpy()[:4], np.array([4.0, 6.0, 10.0, 3.0]))
+
+
+def test_bsr_compress_capture_structure_only(test, device):
+    """Test that a captured structure-only compression runs on the current columns at every replay."""
+
+    matrix = _make_compress_capture_matrix(device, wp.float32)
+    with wp.ScopedDevice(device):
+        with wp.ScopedCapture(force_module_load=False) as capture:
+            bsr_compress(matrix, structure_only=True)
+
+    _assert_compress_capture_inputs_unchanged(matrix)
+
+    # Structure-only compression ignores values, so the zero block of row 1 stays.
+    _assign_bsr_arrays(matrix, (0, 4, 6), (3, 1, 3, 7, 0, 2), (1.0, 2.0, 3.0, 9.0, 5.0, 0.0))
+    wp.capture_launch(capture.graph)
+
+    np.testing.assert_array_equal(matrix.offsets.numpy(), np.array([0, 2, 4]))
+    np.testing.assert_array_equal(matrix.columns.numpy()[:4], np.array([1, 3, 0, 2]))
+
+    _assign_bsr_arrays(matrix, (0, 1, 6), (2, 1, 1, 3, 0, 1), (4.0, 1.0, 2.0, 3.0, 6.0, 7.0))
+    wp.capture_launch(capture.graph)
+
+    np.testing.assert_array_equal(matrix.offsets.numpy(), np.array([0, 1, 4]))
+    np.testing.assert_array_equal(matrix.columns.numpy()[:4], np.array([2, 0, 1, 3]))
+
+
+def test_bsr_compress_capture_empty(test, device):
+    """Test that captured compression of matrices without stored blocks runs on the offsets written before it."""
+
+    # Stale offsets of empty rows: compressing them now would rewrite them to zero.
+    compact = bsr_zeros(3, 4, wp.float32, device=device)
+    compact.offsets.fill_(2)
+    padded = bsr_zeros(3, 4, wp.float32, device=device)
+    padded.row_counts = wp.zeros(3, dtype=int, device=device)
+    with wp.ScopedDevice(device):
+        with wp.ScopedCapture(force_module_load=False) as capture:
+            compact.offsets.zero_()
+            bsr_compress(compact, inplace=True)
+            bsr_compress(padded, inplace=True, topology="padded")
+
+    np.testing.assert_array_equal(compact.offsets.numpy(), np.array([2, 2, 2, 2]))
+
+    wp.capture_launch(capture.graph)
+
+    np.testing.assert_array_equal(compact.offsets.numpy(), np.array([0, 0, 0, 0]))
+    np.testing.assert_array_equal(padded.offsets.numpy(), np.array([0, 0, 0, 0]))
+    np.testing.assert_array_equal(padded.row_counts.numpy(), np.array([0, 0, 0]))
+
+
+def test_bsr_compress_capture_blocks(test, device):
+    """Test that a captured in-place compression moves and sums whole 2x2 blocks at replay."""
+
+    block = np.array([[1.0, 2.0], [3.0, 4.0]])
+    matrix = bsr_zeros(2, 4, wp.mat22d, device=device)
+    matrix.nnz = 6
+    matrix.offsets = wp.array([0, 3, 6], dtype=int, device=device)
+    matrix.columns = wp.array([2, 0, 2, 1, 1, 3], dtype=int, device=device)
+    matrix.values = wp.array(
+        np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])[:, None, None] * block, dtype=wp.mat22d, device=device
+    )
+    with wp.ScopedDevice(device):
+        with wp.ScopedCapture(force_module_load=False) as capture:
+            bsr_compress(matrix, prune_numerical_zeros=True, inplace=True)
+
+    np.testing.assert_array_equal(matrix.offsets.numpy(), np.array([0, 3, 6]))
+    np.testing.assert_array_equal(matrix.columns.numpy(), np.array([2, 0, 2, 1, 1, 3]))
+
+    # Row 0 has a duplicate and an out-of-range column; row 1 has a zero block to prune.
+    _assign_bsr_arrays(
+        matrix,
+        (0, 4, 6),
+        (3, 1, 3, 7, 0, 2),
+        np.array([1.0, 2.0, 3.0, 9.0, 5.0, 0.0])[:, None, None] * block,
+    )
+    wp.capture_launch(capture.graph)
+
+    np.testing.assert_array_equal(matrix.offsets.numpy(), np.array([0, 2, 3]))
+    np.testing.assert_array_equal(matrix.columns.numpy()[:3], np.array([1, 3, 0]))
+    np.testing.assert_array_equal(matrix.values.numpy()[:3], np.array([2.0 * block, 4.0 * block, 5.0 * block]))
+
+
 def test_padded_bsr_capture_constructs_matrix(test, device):
     """Test that padded BSR matrices can be constructed during CUDA graph capture."""
 
@@ -2080,6 +2278,7 @@ def test_bsr_scaled_expression_add_sub(test, device):
 devices = get_test_devices()
 cuda_test_devices = get_selected_cuda_test_devices()
 cuda_test_devices_with_mempool = get_selected_cuda_test_devices_with_mempool()
+devices_with_graph_capture_allocation = get_test_devices_with_graph_capture_allocation()
 
 
 class TestSparse(unittest.TestCase):
@@ -2167,6 +2366,23 @@ class TestSparse(unittest.TestCase):
             bsr_mm(x, y, z, alpha=2.0, beta=0.5, tile_size=1)
             assert_np_equal(_bsr_to_dense(z), 2.0 * xy_dense + 0.5 * z0_dense, tol=1.0e-10)
 
+    def test_bsr_compress_cpu_capture_defers_nnz(self):
+        """Test that a recorded compact compression makes nnz_sync() raise inside a CPU capture."""
+        device = wp.get_device("cpu")
+
+        compact = _make_compress_capture_matrix(device, wp.float32)
+        with self.assertRaisesRegex(NotImplementedError, r"nnz_sync\(\) cannot read a topology update recorded"):
+            with wp.ScopedCapture(device=device, force_module_load=False):
+                bsr_compress(compact, inplace=True)
+                compact.nnz_sync()
+
+        # Padded compression keeps the row-capacity offsets, so the block count stays readable.
+        padded = _make_compress_capture_matrix(device, wp.float32)
+        padded.row_counts = wp.array([3, 3], dtype=int, device=device)
+        with wp.ScopedCapture(device=device, force_module_load=False):
+            bsr_compress(padded, inplace=True, topology="padded")
+            self.assertEqual(padded.nnz_sync(), 6)
+
 
 add_function_test(TestSparse, "test_csr_from_triplets", test_csr_from_triplets, devices=devices)
 add_function_test(TestSparse, "test_bsr_from_triplets", test_bsr_from_triplets, devices=devices)
@@ -2251,7 +2467,7 @@ add_function_test(
     TestSparse,
     "test_bsr_compress_trailing_capacity_capturability",
     test_bsr_compress_trailing_capacity_capturability,
-    devices=cuda_test_devices_with_mempool,
+    devices=devices_with_graph_capture_allocation,
 )
 add_function_test(
     TestSparse,
@@ -2263,7 +2479,43 @@ add_function_test(
     TestSparse,
     "test_bsr_compress_compact_capturability",
     test_bsr_compress_compact_capturability,
-    devices=cuda_test_devices_with_mempool,
+    devices=devices_with_graph_capture_allocation,
+)
+add_function_test(
+    TestSparse,
+    "test_bsr_compress_capture_inplace_compact",
+    test_bsr_compress_capture_inplace_compact,
+    devices=devices_with_graph_capture_allocation,
+)
+add_function_test(
+    TestSparse,
+    "test_bsr_compress_capture_inplace_padded",
+    test_bsr_compress_capture_inplace_padded,
+    devices=devices_with_graph_capture_allocation,
+)
+add_function_test(
+    TestSparse,
+    "test_bsr_compress_capture_out_of_place",
+    test_bsr_compress_capture_out_of_place,
+    devices=devices_with_graph_capture_allocation,
+)
+add_function_test(
+    TestSparse,
+    "test_bsr_compress_capture_structure_only",
+    test_bsr_compress_capture_structure_only,
+    devices=devices_with_graph_capture_allocation,
+)
+add_function_test(
+    TestSparse,
+    "test_bsr_compress_capture_empty",
+    test_bsr_compress_capture_empty,
+    devices=devices_with_graph_capture_allocation,
+)
+add_function_test(
+    TestSparse,
+    "test_bsr_compress_capture_blocks",
+    test_bsr_compress_capture_blocks,
+    devices=devices_with_graph_capture_allocation,
 )
 add_function_test(
     TestSparse,

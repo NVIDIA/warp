@@ -486,6 +486,32 @@ void apic_record_bsr_transpose(
     int32_t padded_capacity_offset_count
 );
 
+// Resolves a live pointer into a region address (apic_resolve_host_ptr or
+// apic_resolve_live_ptr).
+using APICResolvePtrFn = APICAddress (*)(APICState* state, uint64_t ptr, uint64_t access_size);
+
+// Records a wp_bsr_compress_inplace_host/device() call, resolving its arrays
+// with ``resolve``. Returns false without recording when the call has no rows
+// or lacks the storage its sizes require.
+bool apic_record_bsr_compress(
+    APICState* state,
+    APICResolvePtrFn resolve,
+    int32_t row_count,
+    int32_t col_count,
+    int32_t block_size,
+    int32_t scalar_size_in_bytes,
+    int32_t scalar_type,
+    int32_t nnz_upper_bound,
+    bool prune_numerical_zeros,
+    uint64_t scalar_zero_mask,
+    bool make_compact,
+    const int32_t* bsr_offsets,
+    const int32_t* bsr_row_counts,
+    const int32_t* bsr_columns,
+    const void* bsr_values,
+    bool compress_values
+);
+
 // Records a wp_bvh_refit_host() call. ``bvh_id`` is a live BVH handle, replayed
 // in-process by re-invoking wp_bvh_refit_host().
 void apic_record_bvh_refit(APICState* state, uint64_t bvh_id);
