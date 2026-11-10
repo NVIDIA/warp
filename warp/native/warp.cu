@@ -4359,7 +4359,10 @@ static const char* get_graph_node_type_name(CUgraphNodeType type)
 // check if a graph can be launched as a child graph
 static bool is_valid_child_graph(void* child_graph)
 {
-    // disallowed child graph nodes according to the documentation of cuGraphAddChildGraphNode()
+    // Node types that cudaGraphAddChildGraphNode() rejects because it clones the
+    // child graph. CUDA 12.9+ accepts alloc/free nodes if the child is moved into
+    // the parent instead, but moving consumes the caller's graph. Conditional
+    // nodes are rejected either way.
     static const std::unordered_set<CUgraphNodeType> disallowed_nodes {
         CU_GRAPH_NODE_TYPE_MEM_ALLOC,
         CU_GRAPH_NODE_TYPE_MEM_FREE,

@@ -186,10 +186,12 @@ WP_API void wp_apic_register_cpu_kernel(
     APICState* state, const char* kernel_key, const char* module_hash, void* forward_fn, void* backward_fn
 );
 
-// Replay CPU operations from a live capture's byte stream
+// Replay CPU operations from a live capture's byte stream. Returns false
+// without replaying anything while a CPU capture is recording.
 WP_API bool wp_apic_cpu_replay_state(APICState* state);
 
-// Replay CPU operations from a loaded graph's byte stream
+// Replay CPU operations from a loaded graph's byte stream. Returns false
+// without replaying anything while a CPU capture is recording.
 WP_API bool wp_apic_cpu_replay_graph(APICGraph* graph);
 
 // =============================================================================
