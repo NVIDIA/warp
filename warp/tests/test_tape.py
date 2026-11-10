@@ -17,6 +17,13 @@ def mul_constant(x: wp.array[float], y: wp.array[float]):
     y[tid] = x[tid] * 2.0
 
 
+@wp.kernel(enable_backward=False)
+def mul_constant_no_adjoint(x: wp.array[float], y: wp.array[float]):
+    tid = wp.tid()
+
+    y[tid] = x[tid] * 2.0
+
+
 @wp.struct
 class Multiplicands:
     x: wp.array[float]
@@ -1189,6 +1196,150 @@ class TestTape(unittest.TestCase):
         with wp.Tape() as tape:
             recurse(3)
             self.assertIs(wp.Tape.get_active(), tape)
+
+    def test_tape_launch_records(self):
+        x = wp.array([1.0, 2.0], dtype=float, requires_grad=True, device="cpu")
+        y = wp.zeros_like(x, requires_grad=True)
+        z = wp.zeros_like(x, requires_grad=True)
+
+        with wp.Tape() as tape:
+            wp.launch(mul_constant, dim=x.shape, inputs=[x], outputs=[y], device="cpu")
+            wp.copy(z, y)
+
+        launch, copy = tape.launches
+        self.assertIsInstance(launch, wp.TapeLaunch)
+        self.assertIsInstance(launch, list)  # index-based access stays supported
+        self.assertIs(launch.kernel, mul_constant)
+        self.assertIs(launch[0], launch.kernel)
+        self.assertEqual(launch.dim, (2,))
+        self.assertEqual(launch.inputs, [x])
+        self.assertEqual(launch.outputs, [y])
+        self.assertEqual(launch.device, wp.get_device("cpu"))
+        self.assertIsInstance(launch.block_dim, int)
+        self.assertEqual(launch.metadata["caller"]["func"], "test_tape_launch_records")
+        self.assertEqual(launch.arrays, [x, y])
+        self.assertTrue(launch.has_adjoint)
+
+        self.assertIsInstance(copy, wp.TapeFunc)
+        self.assertTrue(callable(copy))
+        self.assertEqual(len(copy.arrays), 2)
+        self.assertIs(copy.arrays[0], z)
+        self.assertIs(copy.arrays[1], y)
+
+        with wp.Tape() as tape:
+            wp.launch(mul_constant_no_adjoint, dim=x.shape, inputs=[x], outputs=[y], device="cpu")
+        self.assertFalse(tape.launches[0].has_adjoint)
+
+    def test_tape_record_func_records(self):
+        x = wp.zeros(2, dtype=float, requires_grad=True, device="cpu")
+        calls = []
+
+        def backward(*args):
+            calls.append(args)
+
+        tape = wp.Tape()
+        tape.record_func(backward, arrays=(x,))
+        (func,) = tape.launches
+        self.assertIsInstance(func, wp.TapeFunc)
+        self.assertIs(func.func, backward)
+        self.assertEqual(func.arrays, [x])
+        self.assertIs(tape.gradients[x], x.grad)
+
+        tape.backward()
+        self.assertEqual(calls, [()])
+
+        # an invalid array is rejected without recording the function
+        no_grad_array = wp.zeros(2, dtype=float, device="cpu")
+        with self.assertRaisesRegex(RuntimeError, "missing a gradient array"):
+            tape.record_func(backward, arrays=[x, no_grad_array])
+        self.assertEqual(len(tape.launches), 1)
+        self.assertNotIn(no_grad_array, tape.gradients)
+
+    def test_tape_reset_keep_grads(self):
+        x = wp.array([1.0, 2.0], dtype=float, requires_grad=True, device="cpu")
+        y = wp.zeros_like(x, requires_grad=True)
+        z = wp.zeros_like(x, requires_grad=True)
+
+        with wp.Tape() as tape:
+            wp.launch(mul_constant, dim=x.shape, inputs=[x], outputs=[y], device="cpu")
+            wp.copy(z, y)
+        x.grad.fill_(1.0)
+        z.grad.fill_(3.0)
+
+        tape.reset(zero_grads=False)
+        self.assertEqual(tape.launches, [])
+        self.assertEqual(tape.scopes, [])
+        self.assertEqual(tape.gradients, {})
+        assert_np_equal(x.grad.numpy(), np.full(2, 1.0))
+        assert_np_equal(z.grad.numpy(), np.full(2, 3.0))
+
+        # the default still zeroes the gradients
+        with tape:
+            wp.copy(z, y)
+        tape.reset()
+        self.assertEqual(tape.launches, [])
+        assert_np_equal(z.grad.numpy(), np.zeros(2))
+
+    def test_tape_reset_keep_grads_read_flags(self):
+        saved = wp.config.verify_autograd_array_access
+        wp.config.verify_autograd_array_access = True
+        try:
+            # wp.copy marks its source as read at runtime; kernel launches only do so
+            # when the kernel was compiled with verification enabled
+            y = wp.array([1.0, 2.0], dtype=float, requires_grad=True, device="cpu")
+            z = wp.zeros_like(y, requires_grad=True)
+
+            with wp.Tape() as tape:
+                wp.copy(z, y)
+            self.assertTrue(y._is_read)
+
+            y.grad.fill_(1.0)
+            tape.reset(zero_grads=False)
+            self.assertFalse(y._is_read)
+            assert_np_equal(y.grad.numpy(), np.full(2, 1.0))
+        finally:
+            wp.config.verify_autograd_array_access = saved
+
+    def test_tape_strict(self):
+        x = wp.array([1.0, 2.0], dtype=float, requires_grad=True, device="cpu")
+        y = wp.zeros_like(x, requires_grad=True)
+
+        with wp.Tape(strict=True) as tape:
+            self.assertTrue(tape.strict)
+            with self.assertRaisesRegex(RuntimeError, "mul_constant_no_adjoint.*strict=True"):
+                wp.launch(mul_constant_no_adjoint, dim=x.shape, inputs=[x], outputs=[y], device="cpu")
+            # rejected before running or recording
+            assert_np_equal(y.numpy(), np.zeros(2))
+            self.assertEqual(tape.launches, [])
+
+            # allowed when paused or not recorded
+            with wp.no_grad():
+                wp.launch(mul_constant_no_adjoint, dim=x.shape, inputs=[x], outputs=[y], device="cpu")
+            wp.launch(mul_constant_no_adjoint, dim=x.shape, inputs=[x], outputs=[y], device="cpu", record_tape=False)
+            self.assertEqual(tape.launches, [])
+
+            # kernels with an adjoint are recorded as usual
+            wp.launch(mul_constant, dim=x.shape, inputs=[x], outputs=[y], device="cpu")
+            self.assertEqual(len(tape.launches), 1)
+
+        tape.backward(grads={y: wp.ones_like(y)})
+        assert_np_equal(x.grad.numpy(), np.full(2, 2.0))
+        self.assertFalse(wp.Tape().strict)
+
+    def test_tape_strict_backward(self):
+        x = wp.array([1.0, 2.0], dtype=float, requires_grad=True, device="cpu")
+        y = wp.zeros_like(x, requires_grad=True)
+        calls = []
+
+        tape = wp.Tape(strict=True)
+        tape.record_func(lambda: calls.append(1), arrays=[x])
+        # records added without launching, e.g. copied from another tape
+        tape.record_launch(mul_constant_no_adjoint, (2,), 0, [x], [y], "cpu")
+        with self.assertRaisesRegex(RuntimeError, "mul_constant_no_adjoint.*strict=True"):
+            tape.backward(grads={y: wp.ones_like(y)})
+        # nothing ran
+        self.assertEqual(calls, [])
+        assert_np_equal(x.grad.numpy(), np.zeros(2))
 
     def test_tape_scope_end_without_matching_begin(self):
         tape = wp.Tape()
