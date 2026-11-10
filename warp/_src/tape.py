@@ -3,7 +3,11 @@
 
 from __future__ import annotations
 
+import contextlib
+import functools
 from collections import defaultdict, namedtuple
+from collections.abc import Callable
+from typing import TypeVar
 
 import warp as wp
 from warp._src.logger import log_warning
@@ -37,7 +41,18 @@ class Tape:
 
         print(tape.gradients[a])
 
+    Tapes can be nested. Operations are recorded only on the innermost active tape,
+    and the enclosing tape resumes recording when the inner ``with`` block exits.
+    To run operations without recording them on any tape, use :func:`warp.no_grad`.
+    A tape that is already active cannot be entered again until it exits.
+
     """
+
+    # Nesting state, as class-level defaults so that subclasses that don't call
+    # ``super().__init__()`` can still be entered. ``_outer`` is the tape that was
+    # active when this tape was entered and is restored on exit.
+    _outer: Tape | None = None
+    _entered: bool = False
 
     def __init__(self):
         self.gradients = {}
@@ -49,18 +64,42 @@ class Tape:
     def __enter__(self):
         wp._src.context.init()
 
-        if wp._src.context.runtime.tape is not None:
-            raise RuntimeError("Warp: Error, entering a tape while one is already active")
+        if self._entered:
+            raise RuntimeError("Warp: Error, entering a tape that is already active")
 
+        self._outer = wp._src.context.runtime.tape
+        self._entered = True
         wp._src.context.runtime.tape = self
 
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        if wp._src.context.runtime.tape is None:
+        if not self._entered or wp._src.context.runtime.tape is not self:
             raise RuntimeError("Warp: Error, ended tape capture, but tape not present")
 
-        wp._src.context.runtime.tape = None
+        wp._src.context.runtime.tape = self._outer
+        self._outer = None
+        self._entered = False
+
+    @staticmethod
+    def get_active() -> Tape | None:
+        """Return the tape that is currently recording, or ``None`` if no tape is recording.
+
+        Libraries can use this to check whether their functions are being called
+        inside a ``with wp.Tape():`` block without a reference to the tape.
+        Inside a :func:`warp.no_grad` scope, this returns ``None``.
+
+        Example:
+
+            >>> import warp as wp
+            >>> wp.Tape.get_active() is None
+            True
+            >>> with wp.Tape() as tape:
+            ...     wp.Tape.get_active() is tape
+            True
+        """
+        runtime = wp._src.context.runtime
+        return runtime.tape if runtime is not None else None
 
     # adj_outputs is a mapping from output tensor -> adjoint of the output
     # after running backward the gradients of tensors may be retrieved by:
@@ -432,6 +471,84 @@ class Tape:
             track_output_names,
             graph_direction,
         )
+
+
+_F = TypeVar("_F", bound=Callable)
+
+
+class _NoGrad(contextlib.ContextDecorator):
+    """Context manager and decorator returned by :func:`warp.no_grad`."""
+
+    def __init__(self):
+        # stack of paused tapes, so the same instance can be re-entered (e.g. by a recursive decorated function)
+        self._paused = []
+
+    def __enter__(self):
+        runtime = wp._src.context.runtime
+        tape = runtime.tape if runtime is not None else None
+        self._paused.append(tape)
+        if tape is not None:
+            runtime.tape = None
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        tape = self._paused.pop()
+        if tape is not None:
+            wp._src.context.runtime.tape = tape
+
+
+def no_grad(func: _F | None = None) -> _NoGrad | _F:
+    """Pause recording on the active :class:`Tape`.
+
+    Operations such as kernel launches and :func:`warp.copy` calls inside a
+    ``no_grad`` scope are not recorded, so they don't take part in
+    :meth:`Tape.backward`. The tape that was active when the scope was entered
+    resumes recording when the scope exits, also when an exception is raised.
+    If no tape is active, ``no_grad`` has no effect.
+
+    Use ``no_grad`` in code that may run inside a tape it did not create, such
+    as a library function called from a user's ``with wp.Tape():`` block, to
+    run work that should not be differentiated without a reference to the
+    tape.
+
+    ``no_grad`` can be used as a context manager or as a function decorator,
+    with or without parentheses.
+
+    Note:
+        Paused operations still run and may overwrite arrays that the tape has
+        already recorded as inputs. Gradients that depend on those arrays may
+        then be incorrect.
+
+    Args:
+        func: Function to decorate. Leave as ``None`` to use ``no_grad()`` as a
+            context manager or as a decorator with parentheses.
+
+    Returns:
+        A context manager that can also be used as a decorator, or ``func``
+        wrapped to run with recording paused.
+
+    Example:
+
+        >>> import warp as wp
+        >>> with wp.Tape() as tape:
+        ...     with wp.no_grad():
+        ...         wp.Tape.get_active() is None
+        ...     wp.Tape.get_active() is tape
+        True
+        True
+    """
+    if func is None:
+        return _NoGrad()
+
+    if not callable(func):
+        raise TypeError(f"no_grad() expects a callable or no argument, got {type(func).__name__}")
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        with _NoGrad():
+            return func(*args, **kwargs)
+
+    return wrapper
 
 
 class TapeVisitor:

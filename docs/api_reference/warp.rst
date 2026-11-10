@@ -318,6 +318,7 @@ Automatic Differentiation
    :toctree: _generated
 
    Tape
+   no_grad
    JetSpace
    JetSpace2
 
