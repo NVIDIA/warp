@@ -64,7 +64,7 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.utils.array_sum" href="warp.utils.array_sum.html" />
+    <link rel="next" title="warp.utils.array_scan_temp_storage_size" href="warp.utils.array_scan_temp_storage_size.html" />
     <link rel="prev" title="warp.utils.array_inner" href="warp.utils.array_inner.html" />
 
 
@@ -509,7 +509,7 @@
 <h1>warp.utils.array_scan<a class="headerlink" href="#warp-utils-array-scan" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.utils.array_scan">
-<span class="sig-prename descclassname"><span class="pre">warp.utils.</span></span><span class="sig-name descname"><span class="pre">array_scan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">in_array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inclusive</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L79-L177"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.utils.array_scan" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.utils.</span></span><span class="sig-name descname"><span class="pre">array_scan</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">in_array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out_array</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inclusive</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">temp_storage</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L158-L315"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.utils.array_scan" title="Link to this definition">#</a></dt>
 <dd><p>Perform a scan (prefix sum) operation on an array.</p>
 <p>This function computes the inclusive or exclusive scan of the input array and stores the result in the output array.
 The scan operation computes a running sum of elements in the array. Vector types are scanned component-wise.</p>
@@ -519,6 +519,18 @@ are recorded into the API Capture (APIC) operation stream, including
 positively-strided (non-contiguous) 1D arrays. Non-empty,
 negatively-strided arrays raise <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#NotImplementedError" title="(in Python v3.15)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>; run those scans
 outside the captured region.</p>
+<p>On CUDA devices, the scan allocates temporary storage and frees it before
+returning unless <code class="docutils literal notranslate"><span class="pre">temp_storage</span></code> is given. A caller-provided buffer is
+only accessed by work enqueued on the current stream of
+<code class="docutils literal notranslate"><span class="pre">in_array.device</span></code>, in stream order. Scans that run one after another on
+the same stream may share one buffer, but scans that can run concurrently,
+such as scans on different streams, need separate buffers. A CUDA graph
+that captures the scan refers to the buffer’s address, so keep the buffer
+alive and do not reallocate it for as long as the graph may be launched.
+A graph saved with <a class="reference internal" href="warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.capture_save()</span></code></a> does not
+store the buffer; <a class="reference internal" href="warp.capture_load.html#warp.capture_load" title="warp.capture_load"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.capture_load()</span></code></a> gives the
+loaded graph its own scan storage, including for scans in conditional
+bodies.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -527,11 +539,22 @@ outside the captured region.</p>
 <li><p><strong>out_array</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – Output array to store scan results. Must match input array type and size.</p></li>
 <li><p><strong>inclusive</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, performs an inclusive scan (includes current element in sum).
 If <code class="docutils literal notranslate"><span class="pre">False</span></code>, performs an exclusive scan (excludes current element).</p></li>
+<li><p><strong>temp_storage</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>) – Optional caller-provided temporary storage for CUDA scans.
+If <code class="docutils literal notranslate"><span class="pre">None</span></code>, the scan allocates its temporary storage and frees it
+before returning. Otherwise, this must be a contiguous array on the
+same device as <code class="docutils literal notranslate"><span class="pre">in_array</span></code> holding at least
+<a class="reference internal" href="warp.utils.array_scan_temp_storage_size.html#warp.utils.array_scan_temp_storage_size" title="warp.utils.array_scan_temp_storage_size"><code class="xref py py-func docutils literal notranslate"><span class="pre">array_scan_temp_storage_size()</span></code></a> bytes; its data type does not
+matter and its contents are overwritten. The scan then neither
+allocates nor frees memory, which makes it usable in
+<a class="reference internal" href="warp.capture_if.html#warp.capture_if" title="warp.capture_if"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.capture_if()</span></code></a> and
+<a class="reference internal" href="warp.capture_while.html#warp.capture_while" title="warp.capture_while"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.capture_while()</span></code></a> bodies and in CUDA
+graph captures that Warp did not start. CPU scans do not use it.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
 <dd class="field-even"><ul class="simple">
-<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#RuntimeError" title="(in Python v3.15)"><strong>RuntimeError</strong></a> – If array storage devices don’t match, if storage size is insufficient, or if data types are unsupported.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#RuntimeError" title="(in Python v3.15)"><strong>RuntimeError</strong></a> – If array storage devices don’t match, if storage size is insufficient, if data types
+    are unsupported, or if <code class="docutils literal notranslate"><span class="pre">temp_storage</span></code> is invalid or too small.</p></li>
 <li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#NotImplementedError" title="(in Python v3.15)"><strong>NotImplementedError</strong></a> – If called with a non-empty, negatively-strided
     array during CPU graph capture or CUDA graph capture with
     <code class="docutils literal notranslate"><span class="pre">apic=True</span></code>.</p></li>
@@ -565,11 +588,11 @@ If <code class="docutils literal notranslate"><span class="pre">False</span></co
       </div>
     </a>
     <a class="right-next"
-       href="warp.utils.array_sum.html"
+       href="warp.utils.array_scan_temp_storage_size.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.utils.array_sum</p>
+        <p class="prev-next-title">warp.utils.array_scan_temp_storage_size</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>

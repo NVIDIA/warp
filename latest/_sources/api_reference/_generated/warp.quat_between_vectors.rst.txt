@@ -9,7 +9,7 @@
       :kernel: true
       :python: unknown
       :differentiable: unknown
-      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L39-L64
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L40-L65
 
    Return the rotation quaternion that rotates the direction of ``a`` onto the direction of ``b``.
    

@@ -2339,6 +2339,32 @@ but not yet graphs loaded with <a class="reference internal" href="../api_refere
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
+<p>CUDA does not allow memory allocations inside conditional body graphs, so
+operations that allocate temporary storage on each call cannot be captured
+in a <a class="reference internal" href="../api_reference/_generated/warp.capture_if.html#warp.capture_if" title="warp.capture_if"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_if</span></code></a> or
+<a class="reference internal" href="../api_reference/_generated/warp.capture_while.html#warp.capture_while" title="warp.capture_while"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_while</span></code></a> body. For prefix sums, pass a
+preallocated buffer through the <code class="docutils literal notranslate"><span class="pre">temp_storage</span></code> argument of
+<a class="reference internal" href="../api_reference/_generated/warp.utils.array_scan.html#warp.utils.array_scan" title="warp.utils.array_scan"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_scan()</span></code></a>, sized with
+<a class="reference internal" href="../api_reference/_generated/warp.utils.array_scan_temp_storage_size.html#warp.utils.array_scan_temp_storage_size" title="warp.utils.array_scan_temp_storage_size"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_scan_temp_storage_size()</span></code></a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">n</span> <span class="o">=</span> <span class="n">counts</span><span class="o">.</span><span class="n">size</span>
+<span class="n">temp</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">array_scan_temp_storage_size</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">counts</span><span class="o">.</span><span class="n">dtype</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">body</span><span class="p">():</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">array_scan</span><span class="p">(</span><span class="n">counts</span><span class="p">,</span> <span class="n">offsets</span><span class="p">,</span> <span class="n">inclusive</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">temp_storage</span><span class="o">=</span><span class="n">temp</span><span class="p">)</span>
+    <span class="o">...</span>
+
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedCapture</span><span class="p">()</span> <span class="k">as</span> <span class="n">capture</span><span class="p">:</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">capture_while</span><span class="p">(</span><span class="n">cond</span><span class="p">,</span> <span class="n">while_body</span><span class="o">=</span><span class="n">body</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The same applies to CUDA graph captures that Warp did not start, such as a
+capture begun by another framework. Graphs saved with
+<a class="reference internal" href="../api_reference/_generated/warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_save()</span></code></a> do not store the buffer; a
+graph loaded on a CUDA device allocates its own scan storage once, when it
+is loaded.</p>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
 <p><a class="reference internal" href="../api_reference/_generated/warp.capture_if.html#warp.capture_if" title="warp.capture_if"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_if</span></code></a> and <a class="reference internal" href="../api_reference/_generated/warp.capture_while.html#warp.capture_while" title="warp.capture_while"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_while</span></code></a> will work even without graph capture on any device. If there is no active capture, the condition will be evaluated on the CPU and the correct branch will be executed immediately. This makes it possible to write code that works similarly with and without graph capture.</p>
 </div>
 </section>
