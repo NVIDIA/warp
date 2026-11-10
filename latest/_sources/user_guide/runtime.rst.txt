@@ -1611,7 +1611,8 @@ useful when the graph will be launched more than once.
 Conditional Execution
 #####################
 
-CUDA 12.4+ supports conditional graph nodes that enable dynamic control flow in CUDA graphs.
+Graph capture supports dynamic control flow on both CPU and CUDA devices.
+CUDA graph capture implements it with conditional graph nodes, which require CUDA 12.4+.
 
 :func:`wp.capture_if <warp.capture_if>` creates a dynamic branch based on a condition. The condition value is read from a single-element ``int`` array, where a non-zero value means that the condition is True.
 
@@ -1642,12 +1643,13 @@ The condition value can be updated by kernels launched prior to ``capture_if()``
     cond.fill_(0)
     wp.capture_launch(capture.graph)
 
-For CUDA graph capture with ``apic=False``, ``on_true`` and ``on_false`` can
-be previously captured graph objects or Python callback functions. Python
-callbacks are captured as child graphs of the enclosing graph.
+``on_true`` and ``on_false`` can be previously captured graph objects or Python callback functions,
+subject to the restrictions on graph objects in the notes at the end of this section.
+Python callbacks are captured as child graphs of the enclosing graph.
 It's possible to specify only one or both callbacks, as needed.
 When the parent graph is launched, the correct child graph is executed based on the value of the condition.
-This is done efficiently on the device without involving the CPU. 
+On CUDA devices, this is done efficiently on the GPU without involving the CPU.
+On CPU devices, graph replay evaluates the condition in native code without calling back into Python.
 
 Here is an example that uses previously captured graphs:
 
@@ -1774,9 +1776,10 @@ When using Python callback functions, any extra keyword arguments to :func:`wp.c
 
 The ``while_body`` callback will be executed as long as the condition is
 non-zero. The callback is responsible for updating the condition value so that
-the loop eventually terminates. For CUDA graph capture with ``apic=False``,
-``while_body`` can be a previously captured graph or a Python callback
-function. Here is an example that will run some number of iterations, using the
+the loop eventually terminates.
+``while_body`` can be a previously captured graph or a Python callback function,
+subject to the restrictions on graph objects in the notes at the end of this section.
+Here is an example that will run some number of iterations, using the
 condition value as a counter:
 
 .. code:: python
@@ -1833,13 +1836,15 @@ condition value as a counter:
     CUDA graph conditional nodes.
 
 .. note::
-    Due to a current CUDA limitation, graphs with conditional nodes cannot be
-    used as child graphs. It means that it's not possible to create nested
-    conditional constructs using previously captured graphs. If nesting is
-    required, use Python callback functions. APIC recording—all CPU captures
-    and CUDA captures with ``apic=True``—also requires Python callbacks for
-    ``capture_if()`` / ``capture_while()`` bodies; passing previously captured
-    :class:`Graph` objects is not yet implemented.
+    Due to a current CUDA limitation, CUDA graphs with conditional nodes cannot be used as child graphs.
+    A previously captured graph used as a branch or loop body therefore cannot itself contain conditionals,
+    and CPU capture enforces the same rule so that code behaves the same on both devices.
+    If nesting is required, use Python callback functions.
+    CUDA captures with ``apic=True`` also require Python callbacks
+    for ``capture_if()`` / ``capture_while()`` bodies.
+    CPU captures accept previously captured CPU :class:`Graph` objects as branches and loop bodies,
+    but not yet graphs loaded with :func:`wp.capture_load() <warp.capture_load>`.
+    :func:`wp.capture_save() <warp.capture_save>` rejects a CPU graph that records a :class:`Graph` branch.
 
 .. note::
     :func:`wp.capture_if <warp.capture_if>` and :func:`wp.capture_while <warp.capture_while>` will work even without graph capture on any device. If there is no active capture, the condition will be evaluated on the CPU and the correct branch will be executed immediately. This makes it possible to write code that works similarly with and without graph capture.

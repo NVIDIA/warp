@@ -2116,7 +2116,8 @@ depends on the capture path and is described in <a class="reference internal" hr
 useful when the graph will be launched more than once.</p>
 <section id="conditional-execution">
 <h3>Conditional Execution<a class="headerlink" href="#conditional-execution" title="Link to this heading">#</a></h3>
-<p>CUDA 12.4+ supports conditional graph nodes that enable dynamic control flow in CUDA graphs.</p>
+<p>Graph capture supports dynamic control flow on both CPU and CUDA devices.
+CUDA graph capture implements it with conditional graph nodes, which require CUDA 12.4+.</p>
 <p><a class="reference internal" href="../api_reference/_generated/warp.capture_if.html#warp.capture_if" title="warp.capture_if"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_if</span></code></a> creates a dynamic branch based on a condition. The condition value is read from a single-element <code class="docutils literal notranslate"><span class="pre">int</span></code> array, where a non-zero value means that the condition is True.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># create condition</span>
 <span class="n">cond</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">)</span>
@@ -2142,12 +2143,13 @@ useful when the graph will be launched more than once.</p>
 <span class="n">wp</span><span class="o">.</span><span class="n">capture_launch</span><span class="p">(</span><span class="n">capture</span><span class="o">.</span><span class="n">graph</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>For CUDA graph capture with <code class="docutils literal notranslate"><span class="pre">apic=False</span></code>, <code class="docutils literal notranslate"><span class="pre">on_true</span></code> and <code class="docutils literal notranslate"><span class="pre">on_false</span></code> can
-be previously captured graph objects or Python callback functions. Python
-callbacks are captured as child graphs of the enclosing graph.
+<p><code class="docutils literal notranslate"><span class="pre">on_true</span></code> and <code class="docutils literal notranslate"><span class="pre">on_false</span></code> can be previously captured graph objects or Python callback functions,
+subject to the restrictions on graph objects in the notes at the end of this section.
+Python callbacks are captured as child graphs of the enclosing graph.
 It’s possible to specify only one or both callbacks, as needed.
 When the parent graph is launched, the correct child graph is executed based on the value of the condition.
-This is done efficiently on the device without involving the CPU.</p>
+On CUDA devices, this is done efficiently on the GPU without involving the CPU.
+On CPU devices, graph replay evaluates the condition in native code without calling back into Python.</p>
 <p>Here is an example that uses previously captured graphs:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">hello_kernel</span><span class="p">():</span>
@@ -2266,9 +2268,10 @@ This is done efficiently on the device without involving the CPU.</p>
 </div>
 <p>The <code class="docutils literal notranslate"><span class="pre">while_body</span></code> callback will be executed as long as the condition is
 non-zero. The callback is responsible for updating the condition value so that
-the loop eventually terminates. For CUDA graph capture with <code class="docutils literal notranslate"><span class="pre">apic=False</span></code>,
-<code class="docutils literal notranslate"><span class="pre">while_body</span></code> can be a previously captured graph or a Python callback
-function. Here is an example that will run some number of iterations, using the
+the loop eventually terminates.
+<code class="docutils literal notranslate"><span class="pre">while_body</span></code> can be a previously captured graph or a Python callback function,
+subject to the restrictions on graph objects in the notes at the end of this section.
+Here is an example that will run some number of iterations, using the
 condition value as a counter:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">hello_kernel</span><span class="p">():</span>
@@ -2324,13 +2327,15 @@ CUDA graph conditional nodes.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Due to a current CUDA limitation, graphs with conditional nodes cannot be
-used as child graphs. It means that it’s not possible to create nested
-conditional constructs using previously captured graphs. If nesting is
-required, use Python callback functions. APIC recording—all CPU captures
-and CUDA captures with <code class="docutils literal notranslate"><span class="pre">apic=True</span></code>—also requires Python callbacks for
-<code class="docutils literal notranslate"><span class="pre">capture_if()</span></code> / <code class="docutils literal notranslate"><span class="pre">capture_while()</span></code> bodies; passing previously captured
-<a class="reference internal" href="../api_reference/_generated/warp.Graph.html#warp.Graph" title="warp.Graph"><code class="xref py py-class docutils literal notranslate"><span class="pre">Graph</span></code></a> objects is not yet implemented.</p>
+<p>Due to a current CUDA limitation, CUDA graphs with conditional nodes cannot be used as child graphs.
+A previously captured graph used as a branch or loop body therefore cannot itself contain conditionals,
+and CPU capture enforces the same rule so that code behaves the same on both devices.
+If nesting is required, use Python callback functions.
+CUDA captures with <code class="docutils literal notranslate"><span class="pre">apic=True</span></code> also require Python callbacks
+for <code class="docutils literal notranslate"><span class="pre">capture_if()</span></code> / <code class="docutils literal notranslate"><span class="pre">capture_while()</span></code> bodies.
+CPU captures accept previously captured CPU <a class="reference internal" href="../api_reference/_generated/warp.Graph.html#warp.Graph" title="warp.Graph"><code class="xref py py-class docutils literal notranslate"><span class="pre">Graph</span></code></a> objects as branches and loop bodies,
+but not yet graphs loaded with <a class="reference internal" href="../api_reference/_generated/warp.capture_load.html#warp.capture_load" title="warp.capture_load"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_load()</span></code></a>.
+<a class="reference internal" href="../api_reference/_generated/warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_save()</span></code></a> rejects a CPU graph that records a <a class="reference internal" href="../api_reference/_generated/warp.Graph.html#warp.Graph" title="warp.Graph"><code class="xref py py-class docutils literal notranslate"><span class="pre">Graph</span></code></a> branch.</p>
 </div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
