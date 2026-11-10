@@ -596,6 +596,12 @@ struct APICGraph {
 #endif
     std::string base_path;
 
+    // Device scratch shared by every scan op during graph rebuild, sized for the
+    // largest scan and allocated before capture begins. Replay is serial on one
+    // stream, so the scans can share it, and conditional bodies never allocate.
+    void* scan_temp_storage = nullptr;
+    size_t scan_temp_storage_bytes = 0;
+
     // Destructor defined in apic.cu (CUDA builds) / apic.cpp (non-CUDA builds)
     ~APICGraph();
 };

@@ -1847,6 +1847,33 @@ condition value as a counter:
     :func:`wp.capture_save() <warp.capture_save>` rejects a CPU graph that records a :class:`Graph` branch.
 
 .. note::
+    CUDA does not allow memory allocations inside conditional body graphs, so
+    operations that allocate temporary storage on each call cannot be captured
+    in a :func:`wp.capture_if <warp.capture_if>` or
+    :func:`wp.capture_while <warp.capture_while>` body. For prefix sums, pass a
+    preallocated buffer through the ``temp_storage`` argument of
+    :func:`wp.utils.array_scan() <warp.utils.array_scan>`, sized with
+    :func:`wp.utils.array_scan_temp_storage_size() <warp.utils.array_scan_temp_storage_size>`:
+
+    .. code:: python
+
+        n = counts.size
+        temp = wp.empty(wp.utils.array_scan_temp_storage_size(n, counts.dtype), dtype=wp.uint8)
+
+        def body():
+            wp.utils.array_scan(counts, offsets, inclusive=False, temp_storage=temp)
+            ...
+
+        with wp.ScopedCapture() as capture:
+            wp.capture_while(cond, while_body=body)
+
+    The same applies to CUDA graph captures that Warp did not start, such as a
+    capture begun by another framework. Graphs saved with
+    :func:`wp.capture_save() <warp.capture_save>` do not store the buffer; a
+    graph loaded on a CUDA device allocates its own scan storage once, when it
+    is loaded.
+
+.. note::
     :func:`wp.capture_if <warp.capture_if>` and :func:`wp.capture_while <warp.capture_while>` will work even without graph capture on any device. If there is no active capture, the condition will be evaluated on the CPU and the correct branch will be executed immediately. This makes it possible to write code that works similarly with and without graph capture.
 
 

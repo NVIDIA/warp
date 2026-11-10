@@ -2412,35 +2412,99 @@ static void apic_capture_array_scan_device(
 }
 
 bool wp_array_scan_int_device(
-    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
+    uint64_t in,
+    uint64_t out,
+    int len,
+    int in_stride,
+    int out_stride,
+    int type_len,
+    bool inclusive,
+    uint64_t temp_storage,
+    size_t temp_storage_bytes
 )
 {
     apic_capture_array_scan_device(in, out, len, in_stride, out_stride, type_len, APIC_TYPE_INT32, inclusive);
-    return scan_device((const int*)in, (int*)out, len, in_stride, out_stride, type_len, inclusive);
+    return scan_device(
+        (const int*)in, (int*)out, len, in_stride, out_stride, type_len, inclusive, (void*)temp_storage,
+        temp_storage_bytes
+    );
+}
+
+bool wp_array_scan_int_device_temp_storage_size(void* context, int len, size_t* temp_storage_bytes)
+{
+    return scan_device_temp_storage_size<int>(context, len, temp_storage_bytes);
 }
 
 bool wp_array_scan_int64_device(
-    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
+    uint64_t in,
+    uint64_t out,
+    int len,
+    int in_stride,
+    int out_stride,
+    int type_len,
+    bool inclusive,
+    uint64_t temp_storage,
+    size_t temp_storage_bytes
 )
 {
     apic_capture_array_scan_device(in, out, len, in_stride, out_stride, type_len, APIC_TYPE_INT64, inclusive);
-    return scan_device((const int64_t*)in, (int64_t*)out, len, in_stride, out_stride, type_len, inclusive);
+    return scan_device(
+        (const int64_t*)in, (int64_t*)out, len, in_stride, out_stride, type_len, inclusive, (void*)temp_storage,
+        temp_storage_bytes
+    );
+}
+
+bool wp_array_scan_int64_device_temp_storage_size(void* context, int len, size_t* temp_storage_bytes)
+{
+    return scan_device_temp_storage_size<int64_t>(context, len, temp_storage_bytes);
 }
 
 bool wp_array_scan_float_device(
-    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
+    uint64_t in,
+    uint64_t out,
+    int len,
+    int in_stride,
+    int out_stride,
+    int type_len,
+    bool inclusive,
+    uint64_t temp_storage,
+    size_t temp_storage_bytes
 )
 {
     apic_capture_array_scan_device(in, out, len, in_stride, out_stride, type_len, APIC_TYPE_FLOAT32, inclusive);
-    return scan_device((const float*)in, (float*)out, len, in_stride, out_stride, type_len, inclusive);
+    return scan_device(
+        (const float*)in, (float*)out, len, in_stride, out_stride, type_len, inclusive, (void*)temp_storage,
+        temp_storage_bytes
+    );
+}
+
+bool wp_array_scan_float_device_temp_storage_size(void* context, int len, size_t* temp_storage_bytes)
+{
+    return scan_device_temp_storage_size<float>(context, len, temp_storage_bytes);
 }
 
 bool wp_array_scan_double_device(
-    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
+    uint64_t in,
+    uint64_t out,
+    int len,
+    int in_stride,
+    int out_stride,
+    int type_len,
+    bool inclusive,
+    uint64_t temp_storage,
+    size_t temp_storage_bytes
 )
 {
     apic_capture_array_scan_device(in, out, len, in_stride, out_stride, type_len, APIC_TYPE_FLOAT64, inclusive);
-    return scan_device((const double*)in, (double*)out, len, in_stride, out_stride, type_len, inclusive);
+    return scan_device(
+        (const double*)in, (double*)out, len, in_stride, out_stride, type_len, inclusive, (void*)temp_storage,
+        temp_storage_bytes
+    );
+}
+
+bool wp_array_scan_double_device_temp_storage_size(void* context, int len, size_t* temp_storage_bytes)
+{
+    return scan_device_temp_storage_size<double>(context, len, temp_storage_bytes);
 }
 
 int wp_cuda_driver_version()
