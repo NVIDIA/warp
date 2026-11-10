@@ -1,0 +1,6 @@
+﻿warp.get\_libmathdx\_version
+============================
+
+.. currentmodule:: warp
+
+.. autofunction:: get_libmathdx_version
