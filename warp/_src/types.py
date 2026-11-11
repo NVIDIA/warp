@@ -403,10 +403,27 @@ class uint64(int_base):
 
 
 class handle(uint64):
-    """Type for object handles (Mesh, Volume, BVH) in kernel parameters, struct fields, and arrays.
+    """Object handle type for meshes, volumes, BVHs, and hash grids.
 
-    Behaves identically to ``uint64`` but allows APIC to detect which
-    values need pointer remapping during graph replay.
+    Use this type for scalar object IDs in kernel parameters and struct fields,
+    for example ``mesh: wp.handle``.
+
+    For arrays of object IDs, annotate kernel parameters as ``wp.array[wp.handle]``
+    and construct the arrays with ``dtype=wp.handle``. An annotation alone does not
+    change an array's dtype.
+    An existing Warp array of 64-bit integer IDs can be reinterpreted with
+    ``ids.view(wp.handle)`` without copying its storage.
+
+    Handles use the same native 64-bit representation as :class:`warp.uint64`.
+    See :ref:`object_handle_arrays` for legacy integer compatibility and
+    :ref:`apic_save_load` for resource serialization requirements and limitations.
+
+    A handle does not keep its object alive. Keep the corresponding
+    :class:`warp.Mesh`, :class:`warp.Volume`, :class:`warp.Bvh`, or
+    :class:`warp.HashGrid` alive while its handle is in use.
+
+    :func:`warp.tile_load` and :func:`warp.tile_store` do not yet support
+    arrays with ``dtype=wp.handle``. Handle arrays support ordinary kernel indexing.
     """
 
     _wp_native_name_ = "uint64"
@@ -3095,7 +3112,7 @@ def scalars_equal_generic(a, b, match_generic=True):
         if a is Float and b is Float:
             return True
 
-    # handle and uint64 are interchangeable (handle is a semantic alias for uint64)
+    # Preserve legacy uint64 object IDs while handle identifies resource references.
     if (a is handle and b is uint64) or (a is uint64 and b is handle):
         return True
 
@@ -4920,6 +4937,10 @@ class array(Array[DType, NDim]):
                 ai = wp.ones(10, dtype=wp.int32)
                 au = ai.view(wp.uint32)
 
+                # reinterpret legacy object ID storage (illustrative IDs, not valid resources)
+                ids = wp.array([1, 2], dtype=wp.uint64)
+                handles = ids.view(wp.handle)
+
                 # view an array of vec4 as quat or mat22
                 av = wp.ones(10, dtype=wp.vec4)
                 aq = av.view(wp.quat)
@@ -6186,7 +6207,8 @@ class Bvh:
         Depending on which device the input bounds live, it can be either a CPU tree or a GPU tree.
 
         Attributes:
-            id: Unique identifier for this BVH object, can be passed to kernels.
+            id: Object ID to pass to kernel parameters and struct fields of type :class:`warp.handle`.
+              Keep this BVH alive while its ID is in use.
             device: Device this object lives on, all buffers must live on the same device.
 
         Args:
@@ -6484,7 +6506,8 @@ class Mesh:
         """Class representing a triangle mesh.
 
         Attributes:
-            id: Unique identifier for this mesh object, can be passed to kernels.
+            id: Object ID to pass to kernel parameters and struct fields of type :class:`warp.handle`.
+              Keep this mesh alive while its ID is in use.
             device: Device this object lives on, all buffers must live on the same device.
 
         Args:
@@ -6742,6 +6765,10 @@ class Volume:
 
     def __init__(self, data: array, copy: builtins.bool = True):
         """Class representing a sparse grid.
+
+        Attributes:
+            id: Object ID to pass to kernel parameters and struct fields of type :class:`warp.handle`.
+              Keep this volume alive while its ID is in use.
 
         Args:
             data: Array of bytes representing the volume in NanoVDB format.
@@ -8327,7 +8354,8 @@ class HashGrid:
         """Class representing a hash grid object for accelerated point queries.
 
         Attributes:
-            id: Unique identifier for this hash grid object, can be passed to kernels.
+            id: Object ID to pass to kernel parameters and struct fields of type :class:`warp.handle`.
+              Keep this hash grid alive while its ID is in use.
             device: Device this object lives on, all buffers must live on the same device.
             dtype: Scalar data type (float16, float32, or float64).
 

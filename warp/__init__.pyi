@@ -6709,7 +6709,7 @@ def bvh_query_aabb(id: uint64, low: vec3f, high: vec3f, root: int32 | int = -1) 
         .. testcode::
 
             @wp.kernel
-            def query_region(bvh_id: wp.uint64, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
+            def query_region(bvh_id: wp.handle, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
                              lo: wp.vec3, hi: wp.vec3, centers: wp.array[wp.vec3]):
                 query = wp.bvh_query_aabb(bvh_id, lo, hi)
                 item = int(0)
@@ -6760,7 +6760,7 @@ def bvh_query_ray(id: uint64, start: vec3f, dir: vec3f, root: int32 | int = -1) 
         .. testcode::
 
             @wp.kernel
-            def cast_ray(bvh_id: wp.uint64, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
+            def cast_ray(bvh_id: wp.handle, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
                          origin: wp.vec3, dir: wp.vec3, centers: wp.array[wp.vec3]):
                 query = wp.bvh_query_ray(bvh_id, origin, dir)
                 item = int(0)
@@ -6814,7 +6814,7 @@ def bvh_query_capsule(
         .. testcode::
 
             @wp.kernel
-            def capsule_sweep(bvh_id: wp.uint64, p0: wp.vec3, p1: wp.vec3, radius: float,
+            def capsule_sweep(bvh_id: wp.handle, p0: wp.vec3, p1: wp.vec3, radius: float,
                                count: wp.array[wp.int32]):
                 query = wp.bvh_query_capsule(bvh_id, p0, p1 - p0, radius)
                 item = int(0)
@@ -6856,7 +6856,7 @@ def bvh_query_sphere(id: uint64, center: vec3f, radius: float32 | float, root: i
         .. testcode::
 
             @wp.kernel
-            def find_items_in_sphere(bvh_id: wp.uint64, center: wp.vec3, radius: float,
+            def find_items_in_sphere(bvh_id: wp.handle, center: wp.vec3, radius: float,
                                      hits: wp.array[wp.int32]):
                 query = wp.bvh_query_sphere(bvh_id, center, radius)
                 item = int(0)
@@ -6908,7 +6908,7 @@ def bvh_query_next(query: BvhQuery, index: int32 | int, max_dist: float32 | floa
         .. testcode::
 
             @wp.kernel
-            def query_region(bvh_id: wp.uint64, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
+            def query_region(bvh_id: wp.handle, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
                              lo: wp.vec3, hi: wp.vec3, centers: wp.array[wp.vec3]):
                 query = wp.bvh_query_aabb(bvh_id, lo, hi)
                 item = int(0)
@@ -7002,7 +7002,7 @@ def tile_bvh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> BvhQueryTiled:
         .. testcode::
 
             @wp.kernel
-            def overlapping_bounds(bvh_id: wp.uint64, lo: wp.vec3, hi: wp.vec3, counts: wp.array[wp.int32]):
+            def overlapping_bounds(bvh_id: wp.handle, lo: wp.vec3, hi: wp.vec3, counts: wp.array[wp.int32]):
                 query = wp.tile_bvh_query_aabb(bvh_id, lo, hi)
                 while wp.tile_query_valid(query):
                     # one bound index per thread, negative where this thread has no result
@@ -7050,7 +7050,7 @@ def tile_bvh_query_ray(id: uint64, start: vec3f, dir: vec3f) -> BvhQueryTiled:
         .. testcode::
 
             @wp.kernel
-            def bounds_along_ray(bvh_id: wp.uint64, start: wp.vec3, dir: wp.vec3, counts: wp.array[wp.int32]):
+            def bounds_along_ray(bvh_id: wp.handle, start: wp.vec3, dir: wp.vec3, counts: wp.array[wp.int32]):
                 query = wp.tile_bvh_query_ray(bvh_id, start, dir)
                 while wp.tile_query_valid(query):
                     bound = wp.untile(wp.tile_bvh_query_next(query))
@@ -7309,7 +7309,7 @@ def bvh_get_group_root(id: uint64, group: int32 | int) -> int:
         .. testcode::
 
             @wp.kernel
-            def query_group(bvh_id: wp.uint64, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
+            def query_group(bvh_id: wp.handle, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
                             lo: wp.vec3, hi: wp.vec3, centers: wp.array[wp.vec3]):
                 root = wp.bvh_get_group_root(bvh_id, 1)  # restrict the query to group 1
                 query = wp.bvh_query_aabb(bvh_id, lo, hi, root)
@@ -7347,7 +7347,7 @@ def mesh_get_group_root(id: uint64, group: int32 | int) -> int:
         .. testcode::
 
             @wp.kernel
-            def group1_only(mesh_id: wp.uint64, origin: wp.vec3, dir: wp.vec3, out_face: wp.array[wp.int32]):
+            def group1_only(mesh_id: wp.handle, origin: wp.vec3, dir: wp.vec3, out_face: wp.array[wp.int32]):
                 root = wp.mesh_get_group_root(mesh_id, 1)
                 hit = wp.mesh_query_ray(mesh_id, origin, dir, 1.0e6, root)
                 if hit.result:
@@ -7399,7 +7399,7 @@ def mesh_query_point(id: uint64, point: vec3f, max_dist: float32 | float) -> Mes
         .. testcode::
 
             @wp.kernel
-            def nearest(mesh_id: wp.uint64, p: wp.vec3, out_pos: wp.array[wp.vec3], out_inside: wp.array[wp.int32]):
+            def nearest(mesh_id: wp.handle, p: wp.vec3, out_pos: wp.array[wp.vec3], out_inside: wp.array[wp.int32]):
                 res = wp.mesh_query_point(mesh_id, p, 1.0e6)
                 if res.result:
                     out_pos[0] = wp.mesh_eval_position(mesh_id, res.face, res.u, res.v)
@@ -7466,7 +7466,7 @@ def mesh_query_point_sign_parity(
         .. testcode::
 
             @wp.kernel
-            def classify(mesh_id: wp.uint64, p: wp.vec3, out_inside: wp.array[wp.int32]):
+            def classify(mesh_id: wp.handle, p: wp.vec3, out_inside: wp.array[wp.int32]):
                 res = wp.mesh_query_point_sign_parity(mesh_id, p, 1.0e6)
                 if res.result:
                     out_inside[0] = wp.where(res.sign < 0.0, 1, 0)
@@ -7510,7 +7510,7 @@ def mesh_query_point_no_sign(id: uint64, point: vec3f, max_dist: float32 | float
         .. testcode::
 
             @wp.kernel
-            def nearest(mesh_id: wp.uint64, p: wp.vec3, out_pos: wp.array[wp.vec3]):
+            def nearest(mesh_id: wp.handle, p: wp.vec3, out_pos: wp.array[wp.vec3]):
                 res = wp.mesh_query_point_no_sign(mesh_id, p, 1.0e6)
                 if res.result:
                     out_pos[0] = wp.mesh_eval_position(mesh_id, res.face, res.u, res.v)
@@ -7555,7 +7555,7 @@ def mesh_query_furthest_point_no_sign(id: uint64, point: vec3f, min_dist: float3
         .. testcode::
 
             @wp.kernel
-            def farthest(mesh_id: wp.uint64, p: wp.vec3, out_pos: wp.array[wp.vec3]):
+            def farthest(mesh_id: wp.handle, p: wp.vec3, out_pos: wp.array[wp.vec3]):
                 res = wp.mesh_query_furthest_point_no_sign(mesh_id, p, 0.0)
                 if res.result:
                     out_pos[0] = wp.mesh_eval_position(mesh_id, res.face, res.u, res.v)
@@ -7609,7 +7609,7 @@ def mesh_query_point_sign_normal(
         .. testcode::
 
             @wp.kernel
-            def classify(mesh_id: wp.uint64, p: wp.vec3, out_inside: wp.array[wp.int32]):
+            def classify(mesh_id: wp.handle, p: wp.vec3, out_inside: wp.array[wp.int32]):
                 res = wp.mesh_query_point_sign_normal(mesh_id, p, 1.0e6)
                 if res.result:
                     out_inside[0] = wp.where(res.sign < 0.0, 1, 0)
@@ -7673,7 +7673,7 @@ def mesh_query_point_sign_winding_number(
         .. testcode::
 
             @wp.kernel
-            def classify(mesh_id: wp.uint64, p: wp.vec3, out_inside: wp.array[wp.int32]):
+            def classify(mesh_id: wp.handle, p: wp.vec3, out_inside: wp.array[wp.int32]):
                 res = wp.mesh_query_point_sign_winding_number(mesh_id, p, 1.0e6)
                 if res.result:
                     out_inside[0] = wp.where(res.sign < 0.0, 1, 0)
@@ -7728,7 +7728,7 @@ def mesh_query_ray(
         .. testcode::
 
             @wp.kernel
-            def cast(mesh_id: wp.uint64, origin: wp.vec3, dir: wp.vec3, out_t: wp.array[wp.float32], out_n: wp.array[wp.vec3]):
+            def cast(mesh_id: wp.handle, origin: wp.vec3, dir: wp.vec3, out_t: wp.array[wp.float32], out_n: wp.array[wp.vec3]):
                 hit = wp.mesh_query_ray(mesh_id, origin, dir, 1.0e6)
                 if hit.result:
                     out_t[0] = hit.t
@@ -7776,7 +7776,7 @@ def mesh_query_ray_anyhit(id: uint64, start: vec3f, dir: vec3f, max_t: float32 |
         .. testcode::
 
             @wp.kernel
-            def occluded(mesh_id: wp.uint64, origin: wp.vec3, dir: wp.vec3, out_hit: wp.array[wp.int32]):
+            def occluded(mesh_id: wp.handle, origin: wp.vec3, dir: wp.vec3, out_hit: wp.array[wp.int32]):
                 out_hit[0] = wp.where(wp.mesh_query_ray_anyhit(mesh_id, origin, dir, 1.0e6), 1, 0)
 
             points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
@@ -7821,7 +7821,7 @@ def mesh_query_ray_count_intersections(id: uint64, start: vec3f, dir: vec3f, roo
         .. testcode::
 
             @wp.kernel
-            def crossings(mesh_id: wp.uint64, origin: wp.vec3, dir: wp.vec3, out_n: wp.array[wp.int32]):
+            def crossings(mesh_id: wp.handle, origin: wp.vec3, dir: wp.vec3, out_n: wp.array[wp.int32]):
                 out_n[0] = wp.mesh_query_ray_count_intersections(mesh_id, origin, dir)
 
             points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
@@ -7873,7 +7873,7 @@ def mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABB:
         .. testcode::
 
             @wp.kernel
-            def count_faces(mesh_id: wp.uint64, lo: wp.vec3, hi: wp.vec3, out_count: wp.array[wp.int32]):
+            def count_faces(mesh_id: wp.handle, lo: wp.vec3, hi: wp.vec3, out_count: wp.array[wp.int32]):
                 query = wp.mesh_query_aabb(mesh_id, lo, hi)
                 face = int(0)
                 while wp.mesh_query_next(query, face):
@@ -7912,7 +7912,7 @@ def mesh_query_sphere(id: uint64, center: vec3f, radius: float32 | float) -> Mes
         .. testcode::
 
             @wp.kernel
-            def find_tris_in_sphere(mesh_id: wp.uint64, center: wp.vec3, radius: float,
+            def find_tris_in_sphere(mesh_id: wp.handle, center: wp.vec3, radius: float,
                                     hits: wp.array[wp.int32]):
                 query = wp.mesh_query_sphere(mesh_id, center, radius)
                 face = int(0)
@@ -7956,7 +7956,7 @@ def mesh_query_next(query: MeshQueryAABB | MeshQuery, index: int32 | int) -> boo
         .. testcode::
 
             @wp.kernel
-            def count_faces(mesh_id: wp.uint64, lo: wp.vec3, hi: wp.vec3, out_count: wp.array[wp.int32]):
+            def count_faces(mesh_id: wp.handle, lo: wp.vec3, hi: wp.vec3, out_count: wp.array[wp.int32]):
                 query = wp.mesh_query_aabb(mesh_id, lo, hi)
                 face = int(0)
                 while wp.mesh_query_next(query, face):
@@ -8051,7 +8051,7 @@ def tile_mesh_query_aabb(id: uint64, low: vec3f, high: vec3f) -> MeshQueryAABBTi
         .. testcode::
 
             @wp.kernel
-            def overlapping_faces(mesh_id: wp.uint64, lo: wp.vec3, hi: wp.vec3, counts: wp.array[wp.int32]):
+            def overlapping_faces(mesh_id: wp.handle, lo: wp.vec3, hi: wp.vec3, counts: wp.array[wp.int32]):
                 query = wp.tile_mesh_query_aabb(mesh_id, lo, hi)
                 while wp.tile_query_valid(query):
                     # one face index per thread, negative where this thread has no result
@@ -8114,7 +8114,7 @@ def mesh_eval_position(id: uint64, face: int32 | int, bary_u: float32 | float, b
         .. testcode::
 
             @wp.kernel
-            def centroid(mesh_id: wp.uint64, out: wp.array[wp.vec3]):
+            def centroid(mesh_id: wp.handle, out: wp.array[wp.vec3]):
                 out[0] = wp.mesh_eval_position(mesh_id, 0, 1.0 / 3.0, 1.0 / 3.0)
 
             points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
@@ -8154,7 +8154,7 @@ def mesh_eval_velocity(id: uint64, face: int32 | int, bary_u: float32 | float, b
         .. testcode::
 
             @wp.kernel
-            def vel_at(mesh_id: wp.uint64, out: wp.array[wp.vec3]):
+            def vel_at(mesh_id: wp.handle, out: wp.array[wp.vec3]):
                 out[0] = wp.mesh_eval_velocity(mesh_id, 0, 0.25, 0.25)
 
             points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
@@ -8390,7 +8390,7 @@ def hash_grid_point_id(id: uint64, index: int32 | int) -> int:
         .. testcode::
 
             @wp.kernel
-            def gather(grid_id: wp.uint64, pts: wp.array[wp.vec3], out: wp.array[wp.vec3]):
+            def gather(grid_id: wp.handle, pts: wp.array[wp.vec3], out: wp.array[wp.vec3]):
                 i = wp.tid()
                 # visit points in the grid's cell-sorted order for memory locality;
                 # hash_grid_point_id maps sorted position i -> the original point index
@@ -8481,7 +8481,7 @@ def mesh_get(id: uint64) -> Mesh:
         .. testcode::
 
             @wp.kernel
-            def first_face_vertex(mesh_id: wp.uint64, out: wp.array[wp.vec3]):
+            def first_face_vertex(mesh_id: wp.handle, out: wp.array[wp.vec3]):
                 m = wp.mesh_get(mesh_id)
                 # the returned struct exposes the mesh arrays (points, indices, velocities)
                 out[0] = m.points[m.indices[0]]  # position of the first face's first vertex
@@ -8519,7 +8519,7 @@ def mesh_eval_face_normal(id: uint64, face: int32 | int) -> vec3f:
         .. testcode::
 
             @wp.kernel
-            def face0_normal(mesh_id: wp.uint64, out: wp.array[wp.vec3]):
+            def face0_normal(mesh_id: wp.handle, out: wp.array[wp.vec3]):
                 out[0] = wp.mesh_eval_face_normal(mesh_id, 0)
 
             points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
@@ -8556,7 +8556,7 @@ def mesh_get_point(id: uint64, index: int32 | int) -> vec3f:
         .. testcode::
 
             @wp.kernel
-            def slot0(mesh_id: wp.uint64, out: wp.array[wp.vec3]):
+            def slot0(mesh_id: wp.handle, out: wp.array[wp.vec3]):
                 out[0] = wp.mesh_get_point(mesh_id, 0)
 
             points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
@@ -8593,7 +8593,7 @@ def mesh_get_velocity(id: uint64, index: int32 | int) -> vec3f:
         .. testcode::
 
             @wp.kernel
-            def slot0(mesh_id: wp.uint64, out: wp.array[wp.vec3]):
+            def slot0(mesh_id: wp.handle, out: wp.array[wp.vec3]):
                 out[0] = wp.mesh_get_velocity(mesh_id, 0)
 
             points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
@@ -8629,7 +8629,7 @@ def mesh_get_index(id: uint64, index: int32 | int) -> int:
         .. testcode::
 
             @wp.kernel
-            def face0_verts(mesh_id: wp.uint64, out: wp.array[wp.int32]):
+            def face0_verts(mesh_id: wp.handle, out: wp.array[wp.int32]):
                 out[0] = wp.mesh_get_index(mesh_id, 0)
                 out[1] = wp.mesh_get_index(mesh_id, 1)
                 out[2] = wp.mesh_get_index(mesh_id, 2)
@@ -8725,7 +8725,7 @@ def volume_sample(id: uint64, uvw: vec3f, sampling_mode: int32 | int, dtype: Any
         .. testcode::
 
             @wp.kernel
-            def sample(vid: wp.uint64, out: wp.array[wp.float32]):
+            def sample(vid: wp.handle, out: wp.array[wp.float32]):
                 p = wp.volume_world_to_index(vid, wp.vec3(0.5, 0.0, 0.0))
                 out[0] = wp.volume_sample(vid, p, wp.Volume.LINEAR, dtype=float)
 
@@ -8773,7 +8773,7 @@ def volume_sample_grad(id: uint64, uvw: vec3f, sampling_mode: int32 | int, grad:
         .. testcode::
 
             @wp.kernel
-            def sample_grad(vid: wp.uint64, out: wp.array[wp.float32]):
+            def sample_grad(vid: wp.handle, out: wp.array[wp.float32]):
                 grad = wp.vec3()
                 out[0] = wp.volume_sample_grad(vid, wp.vec3(0.5, 0.0, 0.0), wp.Volume.LINEAR, grad, dtype=float)
                 out[1] = grad[0]
@@ -8813,7 +8813,7 @@ def volume_lookup(id: uint64, i: int32 | int, j: int32 | int, k: int32 | int, dt
         .. testcode::
 
             @wp.kernel
-            def lookup(vid: wp.uint64, out: wp.array[wp.float32]):
+            def lookup(vid: wp.handle, out: wp.array[wp.float32]):
                 out[0] = wp.volume_lookup(vid, 1, 0, 0, dtype=float)
 
             values = np.zeros((2, 2, 2), dtype=np.float32)
@@ -8847,11 +8847,11 @@ def volume_store(id: uint64, i: int32 | int, j: int32 | int, k: int32 | int, val
         .. testcode::
 
             @wp.kernel
-            def store(vid: wp.uint64):
+            def store(vid: wp.handle):
                 wp.volume_store(vid, 1, 2, 3, 4.0)
 
             @wp.kernel
-            def lookup(vid: wp.uint64, out: wp.array[wp.float32]):
+            def lookup(vid: wp.handle, out: wp.array[wp.float32]):
                 out[0] = wp.volume_lookup(vid, 1, 2, 3, dtype=float)
 
             volume = wp.Volume.load_from_numpy(np.zeros((2, 2, 2), dtype=np.float32), voxel_size=1.0, bg_value=0.0)
@@ -9036,14 +9036,14 @@ def volume_sample_index(
         .. testcode::
 
             @wp.kernel
-            def fill(vid: wp.uint64, d: wp.array[wp.float32]):
+            def fill(vid: wp.handle, d: wp.array[wp.float32]):
                 i, j, k = wp.tid()
                 idx = wp.volume_lookup_index(vid, i, j, k)
                 if idx >= 0:
                     d[idx] = wp.float32(i) * 10.0
 
             @wp.kernel
-            def sample(vid: wp.uint64, d: wp.array[wp.float32], out: wp.array[wp.float32]):
+            def sample(vid: wp.handle, d: wp.array[wp.float32], out: wp.array[wp.float32]):
                 out[0] = wp.volume_sample_index(vid, wp.vec3(0.5, 0.0, 0.0), wp.Volume.LINEAR, d, 0.0)
 
             voxels = wp.array([[0, 0, 0], [1, 0, 0]], dtype=wp.vec3i)
@@ -9101,14 +9101,14 @@ def volume_sample_grad_index(
         .. testcode::
 
             @wp.kernel
-            def fill(vid: wp.uint64, d: wp.array[wp.float32]):
+            def fill(vid: wp.handle, d: wp.array[wp.float32]):
                 i, j, k = wp.tid()
                 idx = wp.volume_lookup_index(vid, i, j, k)
                 if idx >= 0:
                     d[idx] = wp.float32(i) * 10.0
 
             @wp.kernel
-            def sample_grad(vid: wp.uint64, d: wp.array[wp.float32], out: wp.array[wp.float32]):
+            def sample_grad(vid: wp.handle, d: wp.array[wp.float32], out: wp.array[wp.float32]):
                 grad = wp.vec3()
                 out[0] = wp.volume_sample_grad_index(vid, wp.vec3(0.5, 0.0, 0.0), wp.Volume.LINEAR, d, 0.0, grad)
                 out[1] = grad[0]
@@ -9146,7 +9146,7 @@ def volume_lookup_index(id: uint64, i: int32 | int, j: int32 | int, k: int32 | i
         .. testcode::
 
             @wp.kernel
-            def lookup_index(vid: wp.uint64, out: wp.array[wp.int32]):
+            def lookup_index(vid: wp.handle, out: wp.array[wp.int32]):
                 out[0] = wp.volume_lookup_index(vid, 1, 0, 0)
 
             voxels = wp.array([[0, 0, 0], [1, 0, 0]], dtype=wp.vec3i)
@@ -9179,7 +9179,7 @@ def volume_voxel_count(id: uint64) -> int32:
         .. testcode::
 
             @wp.kernel
-            def count(vid: wp.uint64, out: wp.array[wp.int32]):
+            def count(vid: wp.handle, out: wp.array[wp.int32]):
                 out[0] = wp.volume_voxel_count(vid)
 
             voxels = wp.array([[0, 0, 0], [1, 0, 0]], dtype=wp.vec3i)
@@ -9213,7 +9213,7 @@ def volume_index_to_world(id: uint64, uvw: vec3f) -> vec3f:
         .. testcode::
 
             @wp.kernel
-            def to_world(vid: wp.uint64, out: wp.array[wp.vec3]):
+            def to_world(vid: wp.handle, out: wp.array[wp.vec3]):
                 out[0] = wp.volume_index_to_world(vid, wp.vec3(2.0, 0.0, 0.0))
 
             volume = wp.Volume.load_from_numpy(

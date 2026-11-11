@@ -348,10 +348,10 @@ class APICapture:
             out.append(self._make_reloc(base_offset, APIC_RELOC_HANDLE, -1, handle_value))
             if original_value:
                 # TODO(apic): APIC_RELOC_HANDLE is generic but the save path only
-                # registers meshes. wp.Volume and wp.Bvh handles flow through this
-                # branch as raw uint64 ids, and capture_save rejects them during
-                # mesh registration. Add kind-aware serialization so non-mesh
-                # handles round-trip too.
+                # registers meshes. Volume, BVH, and HashGrid references flow
+                # through this branch as wp.handle values with 64-bit storage,
+                # and capture_save rejects them during mesh registration.
+                # Add kind-aware serialization so non-mesh handles round-trip too.
                 self.collected_mesh_ids.add(handle_value)
 
         elif isinstance(arg_type, warp._src.codegen.Struct):
