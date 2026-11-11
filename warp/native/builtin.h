@@ -1840,7 +1840,10 @@ inline CUDA_CALLABLE void adj_tanh(T x, T ret, T& adj_x, T adj_ret)\
 }\
 inline CUDA_CALLABLE void adj_sqrt(T x, T ret, T& adj_x, T adj_ret)\
 {\
-    adj_x += T(0.5)*(T(1)/ret)*adj_ret;\
+    /* Skip the singular gradient at x == 0, as adj_length() does below kEps. */\
+    /* Written as !(ret <= kEps) so NaN results from x < 0 still propagate. */\
+    if (!(ret <= T(kEps)))\
+        adj_x += T(0.5)*(T(1)/ret)*adj_ret;\
     DO_IF_FPCHECK(if (!isfinite(adj_x))\
     {\
         printf("%s:%d - adj_sqrt(%f, %f, %f)\n", __FILE__, __LINE__, float(x), float(adj_x), float(adj_ret));\
