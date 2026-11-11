@@ -1047,22 +1047,28 @@ using <code class="docutils literal notranslate"><span class="pre">wp.zeros(shap
 <tr class="row-odd"><td><p>uint64</p></td>
 <td><p>unsigned long integer</p></td>
 </tr>
-<tr class="row-even"><td><p>float16</p></td>
+<tr class="row-even"><td><p>handle</p></td>
+<td><p>64-bit Warp object reference</p></td>
+</tr>
+<tr class="row-odd"><td><p>float16</p></td>
 <td><p>half-precision float</p></td>
 </tr>
-<tr class="row-odd"><td><p>bfloat16</p></td>
+<tr class="row-even"><td><p>bfloat16</p></td>
 <td><p>Brain Floating Point (16-bit)</p></td>
 </tr>
-<tr class="row-even"><td><p>float32</p></td>
+<tr class="row-odd"><td><p>float32</p></td>
 <td><p>single-precision float</p></td>
 </tr>
-<tr class="row-odd"><td><p>float64</p></td>
+<tr class="row-even"><td><p>float64</p></td>
 <td><p>double-precision float</p></td>
 </tr>
 </tbody>
 </table>
 </div>
 <p>Warp supports <code class="docutils literal notranslate"><span class="pre">float</span></code> and <code class="docutils literal notranslate"><span class="pre">int</span></code> as aliases for <a class="reference internal" href="../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.float32</span></code></a> and <a class="reference internal" href="../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.int32</span></code></a> respectively.</p>
+<p>Use <a class="reference internal" href="../api_reference/_generated/warp.handle.html#warp.handle" title="warp.handle"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.handle</span></code></a> for object IDs, such as those of meshes, volumes, BVHs, and hash grids.
+It shares the native unsigned 64-bit representation of <code class="docutils literal notranslate"><span class="pre">wp.uint64</span></code> while identifying an object reference.
+Use <code class="docutils literal notranslate"><span class="pre">wp.uint64</span></code> for ordinary unsigned integers and raw pointers.</p>
 <p>Use <a class="reference internal" href="../api_reference/_generated/warp.dtype_to_numpy.html#warp.dtype_to_numpy" title="warp.dtype_to_numpy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.dtype_to_numpy()</span></code></a> to convert Warp scalar types to NumPy dtype specifications. See <a class="reference internal" href="interoperability.html#numpy-scalar-dtypes"><span class="std std-ref">Scalar data types</span></a> for examples and behavior across NumPy versions.</p>
 <section id="bfloat16-and-numpy-interop">
 <h4>bfloat16 and NumPy Interop<a class="headerlink" href="#bfloat16-and-numpy-interop" title="Link to this heading">#</a></h4>
@@ -2938,14 +2944,22 @@ options, controls, and platform-specific notes.</p>
 <p>Current limitations of API Capture:</p>
 <ul class="simple">
 <li><p>Only <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Mesh</span></code></a> object handles are serialized.
-<a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Volume</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Bvh</span></code></a>, and
-<a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.HashGrid</span></code></a> handles are not yet supported.</p></li>
+Serialization of <a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Volume</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Bvh</span></code></a>, and
+<a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.HashGrid</span></code></a> resources is not yet supported.
+Passing a nonzero ID for one of these resources as a scalar <code class="docutils literal notranslate"><span class="pre">wp.handle</span></code> argument
+or a <code class="docutils literal notranslate"><span class="pre">wp.handle</span></code> struct field makes <a class="reference internal" href="../api_reference/_generated/warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_save()</span></code></a>
+attempt to register it as a mesh and raise <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#RuntimeError" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">RuntimeError</span></code></a>.
+Non-mesh IDs in arrays with <code class="docutils literal notranslate"><span class="pre">dtype=wp.handle</span></code>, including views created with
+<code class="docutils literal notranslate"><span class="pre">.view(wp.handle)</span></code>, are not rejected by <a class="reference internal" href="../api_reference/_generated/warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_save()</span></code></a>.
+The referenced resources are not serialized, and their IDs are not remapped.
+A successful save does not imply that loading or replaying the graph will work.</p></li>
 <li><p>A mesh ID is remapped to the reloaded mesh only when its type is
 <a class="reference internal" href="../api_reference/_generated/warp.handle.html#warp.handle" title="warp.handle"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.handle</span></code></a>:
 a <code class="docutils literal notranslate"><span class="pre">wp.handle</span></code> kernel parameter or struct field,
-or an element of an array whose dtype is <code class="docutils literal notranslate"><span class="pre">wp.handle</span></code> or a struct with <code class="docutils literal notranslate"><span class="pre">wp.handle</span></code> fields.
-A mesh ID passed as <code class="docutils literal notranslate"><span class="pre">wp.uint64</span></code> is saved as a plain integer
-and is not valid when the graph is loaded in another process.</p></li>
+or an element of an array whose dtype is <code class="docutils literal notranslate"><span class="pre">wp.handle</span></code> or a struct with <code class="docutils literal notranslate"><span class="pre">wp.handle</span></code> fields
+(see <a class="reference internal" href="#object-handle-arrays"><span class="std std-ref">Object Handles</span></a> for creating handle arrays and views).
+Object IDs passed as <code class="docutils literal notranslate"><span class="pre">wp.uint64</span></code> are saved as plain integers, are not remapped,
+and are not valid when the graph is loaded in another process.</p></li>
 <li><p>Mesh IDs written into an array by <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a> during a capture
 are not remapped when the graph is loaded.
 Write them with a kernel that takes the mesh as a <code class="docutils literal notranslate"><span class="pre">wp.handle</span></code> argument instead.</p></li>
@@ -2999,6 +3013,51 @@ but if the Python object is garbage collected, the memory allocated for the prim
 freed, causing crashes and undefined behavior.</p>
 <p>See the <a class="reference internal" href="#object-lifetime-pitfall"><span class="std std-ref">Object Lifetime Pitfall</span></a> section below for more information.</p>
 </div>
+<section id="object-handles">
+<span id="object-handle-arrays"></span><h3>Object Handles<a class="headerlink" href="#object-handles" title="Link to this heading">#</a></h3>
+<p>Pass a spatial computing object’s <code class="docutils literal notranslate"><span class="pre">id</span></code> to kernels as <a class="reference internal" href="../api_reference/_generated/warp.handle.html#warp.handle" title="warp.handle"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.handle</span></code></a>.
+Use this type for scalar parameters, struct fields, and array elements.
+The example below passes an array of Mesh IDs:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">mesh_points</span><span class="p">(</span><span class="n">mesh_ids</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">handle</span><span class="p">],</span> <span class="n">points</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">]):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">points</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">mesh_get_point</span><span class="p">(</span><span class="n">mesh_ids</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="mi">0</span><span class="p">)</span>
+
+
+<span class="c1"># Keep the Mesh objects alive while their IDs are used.</span>
+<span class="n">meshes</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">Mesh</span><span class="p">(</span>
+        <span class="n">points</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cpu"</span><span class="p">),</span>
+        <span class="n">indices</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cpu"</span><span class="p">),</span>
+    <span class="p">)</span>
+<span class="p">]</span>
+<span class="n">mesh_ids</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">mesh</span><span class="o">.</span><span class="n">id</span> <span class="k">for</span> <span class="n">mesh</span> <span class="ow">in</span> <span class="n">meshes</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">handle</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cpu"</span><span class="p">)</span>
+<span class="n">points</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">meshes</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cpu"</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">mesh_points</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">meshes</span><span class="p">),</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">mesh_ids</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">points</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cpu"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">points</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[[1.0, 2.0, 3.0]]
+</pre></div>
+</div>
+<p>Both the array’s <code class="docutils literal notranslate"><span class="pre">dtype=wp.handle</span></code> and the kernel’s <code class="docutils literal notranslate"><span class="pre">wp.array[wp.handle]</span></code> annotation matter.
+Changing a kernel annotation does not change an existing array’s dtype.
+For an existing array of 64-bit integer IDs, <code class="docutils literal notranslate"><span class="pre">mesh_ids</span> <span class="pre">=</span> <span class="pre">integer_ids.view(wp.handle)</span></code>
+creates a zero-copy view with the handle dtype.
+See <a class="reference internal" href="interoperability.html#object-handle-interop"><span class="std std-ref">Object Handle Arrays</span></a> for external arrays.</p>
+<p>Existing <code class="docutils literal notranslate"><span class="pre">wp.uint64</span></code> object IDs continue to work without warnings outside APIC,
+including ordinary CUDA graph capture and replay.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">wp.handle</span></code> does not keep the referenced object alive (see <a class="reference internal" href="#object-lifetime-pitfall"><span class="std std-ref">Object Lifetime Pitfall</span></a>).
+See <a class="reference internal" href="#apic-save-load"><span class="std std-ref">API Capture: Saving and Loading Graphs</span></a> for resource serialization requirements and limitations.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p><a class="reference internal" href="../language_reference/_generated/warp.tile_load.html#warp._src.lang.tile_load" title="warp._src.lang.tile_load"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_load()</span></code></a> and <a class="reference internal" href="../language_reference/_generated/warp.tile_store.html#warp._src.lang.tile_store" title="warp._src.lang.tile_store"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_store()</span></code></a>
+do not yet support arrays with <code class="docutils literal notranslate"><span class="pre">dtype=wp.handle</span></code>.
+Handle arrays work with ordinary kernel array indexing, as shown above.</p>
+</div>
+</section>
 <section id="meshes">
 <h3>Meshes<a class="headerlink" href="#meshes" title="Link to this heading">#</a></h3>
 <p>Warp provides a <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Mesh</span></code></a> class to manage triangle mesh data. To create a mesh, users provide points, indices, and optionally a velocity array:</p>
@@ -3009,10 +3068,8 @@ freed, causing crashes and undefined behavior.</p>
 <p class="admonition-title">Note</p>
 <p>Mesh objects maintain references to their input geometry buffers. All buffers should live on the same device.</p>
 </div>
-<p>Meshes can be passed to kernels using their <code class="docutils literal notranslate"><span class="pre">id</span></code> attribute, which is a <code class="docutils literal notranslate"><span class="pre">uint64</span></code> value that uniquely identifies
-the mesh.
-To save a captured graph that uses a mesh with <a class="reference internal" href="../api_reference/_generated/warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_save()</span></code></a>,
-type the ID as <a class="reference internal" href="../api_reference/_generated/warp.handle.html#warp.handle" title="warp.handle"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.handle</span></code></a> instead (see <a class="reference internal" href="#apic-save-load"><span class="std std-ref">API Capture: Saving and Loading Graphs</span></a>).
+<p>Meshes can be passed to kernels using their <code class="docutils literal notranslate"><span class="pre">id</span></code> attribute, which uniquely identifies the mesh.
+Annotate the kernel parameter as <a class="reference internal" href="../api_reference/_generated/warp.handle.html#warp.handle" title="warp.handle"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.handle</span></code></a>.
 Once inside a kernel, you can perform geometric queries against the mesh such as ray-casts or closest-point lookups.
 For example, the result object returned by <a class="reference internal" href="../language_reference/_generated/warp.mesh_query_point.html#warp._src.lang.mesh_query_point" title="warp._src.lang.mesh_query_point"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.mesh_query_point()</span></code></a> stores the
 hit face and barycentric coordinates, which can be passed to
@@ -3028,7 +3085,7 @@ hit face and barycentric coordinates, which can be passed to
 <span class="n">closest</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="n">query_points</span><span class="p">)</span>
 
 <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">closest_point_example</span><span class="p">(</span><span class="n">mesh</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">uint64</span><span class="p">,</span> <span class="n">query_points</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span> <span class="n">closest</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">]):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">closest_point_example</span><span class="p">(</span><span class="n">mesh</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">handle</span><span class="p">,</span> <span class="n">query_points</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span> <span class="n">closest</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">]):</span>
     <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
     <span class="n">query</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">mesh_query_point</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">query_points</span><span class="p">[</span><span class="n">tid</span><span class="p">],</span> <span class="n">max_dist</span><span class="o">=</span><span class="mf">10.0</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">query</span><span class="o">.</span><span class="n">result</span><span class="p">:</span>
@@ -3055,7 +3112,7 @@ face normal, face index, and barycentric coordinates:</p>
 
 <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">raycast_example</span><span class="p">(</span>
-    <span class="n">mesh</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">uint64</span><span class="p">,</span>
+    <span class="n">mesh</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">handle</span><span class="p">,</span>
     <span class="n">ray_origins</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
     <span class="n">ray_dirs</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
     <span class="n">hit_normals</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
@@ -3107,7 +3164,7 @@ structure and ensure that queries work correctly.</p>
 
 <span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">count_neighbors_example</span><span class="p">(</span>
-    <span class="n">grid</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">uint64</span><span class="p">,</span>
+    <span class="n">grid</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">handle</span><span class="p">,</span>
     <span class="n">points</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
     <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
     <span class="n">neighbor_count</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span>
@@ -3172,7 +3229,7 @@ filtering.</p>
 <p>Inside kernels, pass the desired group id directly to <a class="reference internal" href="../language_reference/_generated/warp.hash_grid_query.html#warp._src.lang.hash_grid_query" title="warp._src.lang.hash_grid_query"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.hash_grid_query()</span></code></a>:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">count_group_neighbors</span><span class="p">(</span>
-    <span class="n">grid</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">uint64</span><span class="p">,</span>
+    <span class="n">grid</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">handle</span><span class="p">,</span>
     <span class="n">points</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
     <span class="n">groups</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">],</span>
     <span class="n">radius</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span>
@@ -3242,7 +3299,7 @@ the <cite>blosc</cite> Python package to be installed.</p>
 </div>
 <p>To sample the volume inside a kernel we pass a reference to it by ID, and use the built-in sampling modes:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">sample_grid</span><span class="p">(</span><span class="n">volume</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">uint64</span><span class="p">,</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">sample_grid</span><span class="p">(</span><span class="n">volume</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">handle</span><span class="p">,</span>
                 <span class="n">points</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
                 <span class="n">samples</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
 
@@ -3264,7 +3321,7 @@ the <cite>blosc</cite> Python package to be installed.</p>
 <p>Warp also supports NanoVDB index grids, which provide a memory-efficient linearization of voxel indices that can refer
 to values in arbitrarily shaped arrays:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">sample_index_grid</span><span class="p">(</span><span class="n">volume</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">uint64</span><span class="p">,</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">sample_index_grid</span><span class="p">(</span><span class="n">volume</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">handle</span><span class="p">,</span>
                      <span class="n">points</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
                      <span class="n">voxel_values</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">Any</span><span class="p">]):</span>
 
@@ -3380,7 +3437,7 @@ with a certain bounding volume using <a class="reference internal" href="../lang
 <p>An example of performing a ray traversal on the data structure is as follows:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">bvh_query_ray</span><span class="p">(</span>
-    <span class="n">bvh_id</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">uint64</span><span class="p">,</span>
+    <span class="n">bvh_id</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">handle</span><span class="p">,</span>
     <span class="n">start</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span>
     <span class="nb">dir</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span>
     <span class="n">bounds_intersected</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">bool</span><span class="p">],</span>
@@ -3405,7 +3462,7 @@ with a certain bounding volume using <a class="reference internal" href="../lang
 <span class="p">)</span>
 </pre></div>
 </div>
-<p>The Warp kernel <code class="docutils literal notranslate"><span class="pre">bvh_query_ray</span></code> is launched with a single thread, provided the unique <a class="reference internal" href="../api_reference/_generated/warp.uint64.html#warp.uint64" title="warp.uint64"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.uint64</span></code></a>
+<p>The Warp kernel <code class="docutils literal notranslate"><span class="pre">bvh_query_ray</span></code> is launched with a single thread, provided the unique <a class="reference internal" href="../api_reference/_generated/warp.handle.html#warp.handle" title="warp.handle"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.handle</span></code></a>
 identifier of the <a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Bvh</span></code></a> object, parameters describing the ray, and an array to store the results.
 In <code class="docutils literal notranslate"><span class="pre">bvh_query_ray</span></code>, <a class="reference internal" href="../language_reference/_generated/warp.bvh_query_ray.html#warp._src.lang.bvh_query_ray" title="warp._src.lang.bvh_query_ray"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.bvh_query_ray()</span></code></a> is called once to obtain an object that is stored in the
 variable <code class="docutils literal notranslate"><span class="pre">query</span></code>. An integer is also allocated as <code class="docutils literal notranslate"><span class="pre">bounds_nr</span></code> to store the volume index of the traversal.
@@ -3418,7 +3475,7 @@ which returns <code class="docutils literal notranslate"><span class="pre">True<
 a specified bounding box.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">bvh_query_aabb</span><span class="p">(</span>
-    <span class="n">bvh_id</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">uint64</span><span class="p">,</span>
+    <span class="n">bvh_id</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">handle</span><span class="p">,</span>
     <span class="n">lower</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span>
     <span class="n">upper</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span>
     <span class="n">bounds_intersected</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">bool</span><span class="p">],</span>
@@ -3452,7 +3509,7 @@ a specified bounding box.</p>
 <span id="id9"></span><h3>Object Lifetime Pitfall<a class="headerlink" href="#object-lifetime-pitfall" title="Link to this heading">#</a></h3>
 <p>When working with spatial computing primitives like <a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.HashGrid</span></code></a> and <a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Bvh</span></code></a>,
 it’s crucial to understand how Python’s garbage collection interacts with these objects.
-The following example demonstrate a common mistake and how to avoid it.</p>
+The following example shows a common mistake and how to avoid it.</p>
 <p><strong>Common Pitfall</strong>: Creating objects in loops and only storing their IDs</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># WRONG - objects may be garbage collected</span>
 <span class="n">hash_grids</span> <span class="o">=</span> <span class="p">[]</span>
@@ -3469,12 +3526,12 @@ The following example demonstrate a common mistake and how to avoid it.</p>
     <span class="n">hash_grid_objects</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">grid</span><span class="p">)</span>  <span class="c1"># Keep the object alive</span>
 
 <span class="c1"># Create Warp array for kernel execution when needed</span>
-<span class="n">grid_ids_array</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">x</span><span class="o">.</span><span class="n">id</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">hash_grid_objects</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">uint64</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">)</span>
+<span class="n">grid_ids_array</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">x</span><span class="o">.</span><span class="n">id</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">hash_grid_objects</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">handle</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cuda"</span><span class="p">)</span>
 
 <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">my_kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">grid_ids_array</span><span class="p">])</span>
 </pre></div>
 </div>
-<p><strong>Why This Happens</strong>: When you only store the <code class="docutils literal notranslate"><span class="pre">id</span></code> attribute (which is a <a class="reference internal" href="../api_reference/_generated/warp.uint64.html#warp.uint64" title="warp.uint64"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.uint64</span></code></a> pointer),
+<p><strong>Why This Happens</strong>: When you only store the <code class="docutils literal notranslate"><span class="pre">id</span></code> attribute (an object reference represented by <a class="reference internal" href="../api_reference/_generated/warp.handle.html#warp.handle" title="warp.handle"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.handle</span></code></a>),
 Python’s garbage collector may free the original object if no other references exist. This leads to
 undefined behavior when the kernel tries to access the freed memory.</p>
 <p><strong>Common Problematic Scenarios</strong>:</p>
@@ -3483,10 +3540,7 @@ undefined behavior when the kernel tries to access the freed memory.</p>
 <li><p><strong>Creating objects in functions</strong> and returning only the ID</p></li>
 <li><p><strong>Creating objects as temporary variables</strong> that get overwritten</p></li>
 </ol>
-<p>Always maintain references to spatial computing primitive objects
-(like <a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.HashGrid</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Bvh</span></code></a>, etc.) rather than just their ID values.
-This is especially important in loops, functions, and temporary variables where object scope might be unclear.</p>
-<p>When a graph captures a <a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.HashGrid</span></code></a> ID, the caller must
+<p><strong>Graph capture</strong>: When a graph captures a <a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.HashGrid</span></code></a> ID, the caller must
 keep the <code class="docutils literal notranslate"><span class="pre">HashGrid</span></code> alive until every graph that captures its ID is destroyed.
 This caller-ownership contract is the same for live CPU and CUDA graphs. The
 graph retains the array inputs captured by <code class="docutils literal notranslate"><span class="pre">HashGrid.build()</span></code>, including
@@ -4175,6 +4229,7 @@ Journal of Computer Graphics Techniques (JCGT), vol. 9, no. 3, 20–38, 2020.</p
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#spatial-computing-primitives">Spatial Computing Primitives</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#object-handles">Object Handles</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#meshes">Meshes</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#hash-grids">Hash Grids</a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#grouped-hash-grids">Grouped Hash Grids</a></li>

@@ -29,7 +29,7 @@
    .. testcode::
    
        @wp.kernel
-       def overlapping_bounds(bvh_id: wp.uint64, lo: wp.vec3, hi: wp.vec3, counts: wp.array[wp.int32]):
+       def overlapping_bounds(bvh_id: wp.handle, lo: wp.vec3, hi: wp.vec3, counts: wp.array[wp.int32]):
            query = wp.tile_bvh_query_aabb(bvh_id, lo, hi)
            while wp.tile_query_valid(query):
                # one bound index per thread, negative where this thread has no result

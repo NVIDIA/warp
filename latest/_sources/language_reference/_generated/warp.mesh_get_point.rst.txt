@@ -27,7 +27,7 @@
    .. testcode::
    
        @wp.kernel
-       def slot0(mesh_id: wp.uint64, out: wp.array[wp.vec3]):
+       def slot0(mesh_id: wp.handle, out: wp.array[wp.vec3]):
            out[0] = wp.mesh_get_point(mesh_id, 0)
    
        points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)

@@ -32,7 +32,7 @@
    .. testcode::
    
        @wp.kernel
-       def bounds_along_ray(bvh_id: wp.uint64, start: wp.vec3, dir: wp.vec3, counts: wp.array[wp.int32]):
+       def bounds_along_ray(bvh_id: wp.handle, start: wp.vec3, dir: wp.vec3, counts: wp.array[wp.int32]):
            query = wp.tile_bvh_query_ray(bvh_id, start, dir)
            while wp.tile_query_valid(query):
                bound = wp.untile(wp.tile_bvh_query_next(query))

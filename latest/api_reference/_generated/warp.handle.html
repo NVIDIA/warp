@@ -509,10 +509,23 @@
 <h1>warp.handle<a class="headerlink" href="#warp-handle" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.handle">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">handle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L405-L412"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.handle" title="Link to this definition">#</a></dt>
-<dd><p>Type for object handles (Mesh, Volume, BVH) in kernel parameters, struct fields, and arrays.</p>
-<p>Behaves identically to <code class="docutils literal notranslate"><span class="pre">uint64</span></code> but allows APIC to detect which
-values need pointer remapping during graph replay.</p>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">handle</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L405-L429"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.handle" title="Link to this definition">#</a></dt>
+<dd><p>Object handle type for meshes, volumes, BVHs, and hash grids.</p>
+<p>Use this type for scalar object IDs in kernel parameters and struct fields,
+for example <code class="docutils literal notranslate"><span class="pre">mesh:</span> <span class="pre">warp.handle</span></code>.</p>
+<p>For arrays of object IDs, annotate kernel parameters as <code class="docutils literal notranslate"><span class="pre">warp.array[warp.handle]</span></code>
+and construct the arrays with <code class="docutils literal notranslate"><span class="pre">dtype=warp.handle</span></code>. An annotation alone does not
+change an array’s dtype.
+An existing Warp array of 64-bit integer IDs can be reinterpreted with
+<code class="docutils literal notranslate"><span class="pre">ids.view(warp.handle)</span></code> without copying its storage.</p>
+<p>Handles use the same native 64-bit representation as <a class="reference internal" href="warp.uint64.html#warp.uint64" title="warp.uint64"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.uint64</span></code></a>.
+See <a class="reference internal" href="../../user_guide/runtime.html#object-handle-arrays"><span class="std std-ref">Object Handles</span></a> for legacy integer compatibility and
+<a class="reference internal" href="../../user_guide/runtime.html#apic-save-load"><span class="std std-ref">API Capture: Saving and Loading Graphs</span></a> for resource serialization requirements and limitations.</p>
+<p>A handle does not keep its object alive. Keep the corresponding
+<a class="reference internal" href="warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a>, <a class="reference internal" href="warp.Volume.html#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Volume</span></code></a>, <a class="reference internal" href="warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Bvh</span></code></a>, or
+<a class="reference internal" href="warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.HashGrid</span></code></a> alive while its handle is in use.</p>
+<p><a class="reference internal" href="../../language_reference/_generated/warp.tile_load.html#warp._src.lang.tile_load" title="warp._src.lang.tile_load"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.tile_load()</span></code></a> and <a class="reference internal" href="../../language_reference/_generated/warp.tile_store.html#warp._src.lang.tile_store" title="warp._src.lang.tile_store"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.tile_store()</span></code></a> do not yet support
+arrays with <code class="docutils literal notranslate"><span class="pre">dtype=warp.handle</span></code>. Handle arrays support ordinary kernel indexing.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>x</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a><em> | </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.15)"><em>float</em></a>)</p>

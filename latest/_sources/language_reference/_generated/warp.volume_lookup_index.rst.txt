@@ -27,7 +27,7 @@
    .. testcode::
    
        @wp.kernel
-       def lookup_index(vid: wp.uint64, out: wp.array[wp.int32]):
+       def lookup_index(vid: wp.handle, out: wp.array[wp.int32]):
            out[0] = wp.volume_lookup_index(vid, 1, 0, 0)
    
        voxels = wp.array([[0, 0, 0], [1, 0, 0]], dtype=wp.vec3i)

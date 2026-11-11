@@ -42,14 +42,14 @@
    .. testcode::
    
        @wp.kernel
-       def fill(vid: wp.uint64, d: wp.array[wp.float32]):
+       def fill(vid: wp.handle, d: wp.array[wp.float32]):
            i, j, k = wp.tid()
            idx = wp.volume_lookup_index(vid, i, j, k)
            if idx >= 0:
                d[idx] = wp.float32(i) * 10.0
    
        @wp.kernel
-       def sample_grad(vid: wp.uint64, d: wp.array[wp.float32], out: wp.array[wp.float32]):
+       def sample_grad(vid: wp.handle, d: wp.array[wp.float32], out: wp.array[wp.float32]):
            grad = wp.vec3()
            out[0] = wp.volume_sample_grad_index(vid, wp.vec3(0.5, 0.0, 0.0), wp.Volume.LINEAR, d, 0.0, grad)
            out[1] = grad[0]

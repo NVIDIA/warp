@@ -705,6 +705,74 @@ native Warp storage instead.</p>
 </div>
 <p>When passing CUDA arrays, ensure the device on which the arrays reside matches the device on which the kernel is launched.</p>
 </section>
+<section id="object-handle-arrays">
+<span id="object-handle-interop"></span><h2>Object Handle Arrays<a class="headerlink" href="#object-handle-arrays" title="Link to this heading">#</a></h2>
+<p>External integer arrays do not carry Warp object-reference metadata.
+When sharing <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">Mesh</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">Volume</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-class docutils literal notranslate"><span class="pre">Bvh</span></code></a>, or
+<a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">HashGrid</span></code></a> IDs, create a Warp array with
+<code class="docutils literal notranslate"><span class="pre">dtype=wp.handle</span></code> or an explicit <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.view" title="warp.array.view"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.view(wp.handle)</span></code></a>
+before passing it to a kernel annotated with <code class="docutils literal notranslate"><span class="pre">wp.array[wp.handle]</span></code>.</p>
+<p>For example, construct a handle array from NumPy data with an explicit dtype:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Keep the Mesh objects alive while these IDs are used.</span>
+<span class="n">numpy_ids</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">mesh</span><span class="o">.</span><span class="n">id</span> <span class="k">for</span> <span class="n">mesh</span> <span class="ow">in</span> <span class="n">meshes</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint64</span><span class="p">)</span>
+<span class="n">mesh_ids</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">numpy_ids</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">handle</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cpu"</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>For an existing Warp array of 64-bit integer IDs, <code class="docutils literal notranslate"><span class="pre">mesh_ids</span> <span class="pre">=</span> <span class="pre">integer_ids.view(wp.handle)</span></code>
+returns a zero-copy view; the original array keeps its dtype.</p>
+<p>Warp’s NumPy imports accept <code class="docutils literal notranslate"><span class="pre">dtype=wp.handle</span></code> directly. PyTorch, JAX, Paddle, and DLPack imports
+require an integer dtype followed by a handle view. The table uses <code class="docutils literal notranslate"><span class="pre">source</span></code> for
+the external array and <code class="docutils literal notranslate"><span class="pre">handles</span></code> for a Warp array with <code class="docutils literal notranslate"><span class="pre">dtype=wp.handle</span></code>.
+Use <code class="docutils literal notranslate"><span class="pre">np.uint64</span></code> storage for the NumPy row and signed 64-bit integer storage for
+the other rows. Call <code class="docutils literal notranslate"><span class="pre">jax.config.update(&quot;jax_enable_x64&quot;,</span> <span class="pre">True)</span></code> before
+creating JAX arrays to preserve all 64 bits of each ID. The integer views
+reinterpret the bits without a numeric cast.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<colgroup>
+<col style="width: 12.0%" />
+<col style="width: 48.0%" />
+<col style="width: 40.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Interface</p></th>
+<th class="head"><p>Import into Warp</p></th>
+<th class="head"><p>Export from Warp</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>NumPy</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">wp.from_numpy(source,</span> <span class="pre">dtype=wp.handle)</span></code> or
+<code class="docutils literal notranslate"><span class="pre">wp.array(source,</span> <span class="pre">dtype=wp.handle,</span> <span class="pre">device=&quot;cpu&quot;)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">handles.numpy()</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>PyTorch</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">wp.from_torch(source,</span> <span class="pre">dtype=wp.int64).view(wp.handle)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">wp.to_torch(handles.view(wp.int64))</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>JAX</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">wp.from_jax(source,</span> <span class="pre">dtype=wp.int64).view(wp.handle)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">wp.to_jax(handles.view(wp.int64))</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Paddle</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">wp.from_paddle(source,</span> <span class="pre">dtype=wp.int64).view(wp.handle)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">wp.to_paddle(handles.view(wp.int64))</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>DLPack</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">wp.from_dlpack(source,</span> <span class="pre">dtype=wp.int64).view(wp.handle)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">wp.to_dlpack(handles.view(wp.int64))</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The DLPack export returns a single-use capsule for the receiving framework’s
+consumer. Consult each converter’s dtype, device, and ownership rules.
+Direct handle support in the converters is tracked in
+<a class="reference external" href="https://github.com/NVIDIA/warp/issues/2292">GH-2292</a>.</p>
+<p>External integer storage does not identify referenced objects or keep them alive, and sharing
+an ID does not make it valid in another process.
+See <a class="reference internal" href="runtime.html#object-handle-arrays"><span class="std std-ref">Object Handles</span></a> for kernel and struct declarations and <a class="reference internal" href="runtime.html#apic-save-load"><span class="std std-ref">API Capture: Saving and Loading Graphs</span></a>
+for the mesh-only resource serialization currently supported by API Capture.</p>
+</section>
 <section id="numpy">
 <h2>NumPy<a class="headerlink" href="#numpy" title="Link to this heading">#</a></h2>
 <p>Warp arrays may be converted to a NumPy array through the <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.numpy" title="warp.array.numpy"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.numpy()</span></code></a> method. When the Warp array lives on the <code class="docutils literal notranslate"><span class="pre">cpu</span></code> device, this returns a zero-copy view onto the underlying Warp allocation. When the array lives on a <code class="docutils literal notranslate"><span class="pre">cuda</span></code> device, this method synchronously copies the data to a temporary CPU allocation and returns a NumPy view of that allocation.</p>
@@ -889,6 +957,7 @@ native Warp storage instead.</p>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#guides-in-this-section">Guides in this section</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quick-reference">Quick Reference</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pass-arrays-directly">Pass Arrays Directly</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#object-handle-arrays">Object Handle Arrays</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#numpy">NumPy</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#scalar-data-types">Scalar data types</a></li>
 </ul>

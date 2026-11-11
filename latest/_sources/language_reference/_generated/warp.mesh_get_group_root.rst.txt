@@ -25,7 +25,7 @@
    .. testcode::
    
        @wp.kernel
-       def group1_only(mesh_id: wp.uint64, origin: wp.vec3, dir: wp.vec3, out_face: wp.array[wp.int32]):
+       def group1_only(mesh_id: wp.handle, origin: wp.vec3, dir: wp.vec3, out_face: wp.array[wp.int32]):
            root = wp.mesh_get_group_root(mesh_id, 1)
            hit = wp.mesh_query_ray(mesh_id, origin, dir, 1.0e6, root)
            if hit.result:

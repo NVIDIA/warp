@@ -45,7 +45,7 @@
    .. testcode::
    
        @wp.kernel
-       def sample(vid: wp.uint64, out: wp.array[wp.float32]):
+       def sample(vid: wp.handle, out: wp.array[wp.float32]):
            p = wp.volume_world_to_index(vid, wp.vec3(0.5, 0.0, 0.0))
            out[0] = wp.volume_sample(vid, p, wp.Volume.LINEAR, dtype=float)
    

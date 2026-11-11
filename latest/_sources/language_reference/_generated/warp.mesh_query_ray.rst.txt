@@ -37,7 +37,7 @@
    .. testcode::
    
        @wp.kernel
-       def cast(mesh_id: wp.uint64, origin: wp.vec3, dir: wp.vec3, out_t: wp.array[wp.float32], out_n: wp.array[wp.vec3]):
+       def cast(mesh_id: wp.handle, origin: wp.vec3, dir: wp.vec3, out_t: wp.array[wp.float32], out_n: wp.array[wp.vec3]):
            hit = wp.mesh_query_ray(mesh_id, origin, dir, 1.0e6)
            if hit.result:
                out_t[0] = hit.t

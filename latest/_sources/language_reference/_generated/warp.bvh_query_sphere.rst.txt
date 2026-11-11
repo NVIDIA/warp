@@ -29,7 +29,7 @@
    .. testcode::
    
        @wp.kernel
-       def find_items_in_sphere(bvh_id: wp.uint64, center: wp.vec3, radius: float,
+       def find_items_in_sphere(bvh_id: wp.handle, center: wp.vec3, radius: float,
                                 hits: wp.array[wp.int32]):
            query = wp.bvh_query_sphere(bvh_id, center, radius)
            item = int(0)

@@ -26,7 +26,7 @@
    .. testcode::
    
        @wp.kernel
-       def face0_normal(mesh_id: wp.uint64, out: wp.array[wp.vec3]):
+       def face0_normal(mesh_id: wp.handle, out: wp.array[wp.vec3]):
            out[0] = wp.mesh_eval_face_normal(mesh_id, 0)
    
        points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)

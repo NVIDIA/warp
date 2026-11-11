@@ -31,7 +31,7 @@
    .. testcode::
    
        @wp.kernel
-       def lookup(vid: wp.uint64, out: wp.array[wp.float32]):
+       def lookup(vid: wp.handle, out: wp.array[wp.float32]):
            out[0] = wp.volume_lookup(vid, 1, 0, 0, dtype=float)
    
        values = np.zeros((2, 2, 2), dtype=np.float32)

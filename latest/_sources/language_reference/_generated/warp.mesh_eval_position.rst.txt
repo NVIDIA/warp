@@ -29,7 +29,7 @@
    .. testcode::
    
        @wp.kernel
-       def centroid(mesh_id: wp.uint64, out: wp.array[wp.vec3]):
+       def centroid(mesh_id: wp.handle, out: wp.array[wp.vec3]):
            out[0] = wp.mesh_eval_position(mesh_id, 0, 1.0 / 3.0, 1.0 / 3.0)
    
        points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)

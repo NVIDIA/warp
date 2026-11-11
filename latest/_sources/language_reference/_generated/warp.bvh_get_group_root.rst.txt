@@ -25,7 +25,7 @@
    .. testcode::
    
        @wp.kernel
-       def query_group(bvh_id: wp.uint64, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
+       def query_group(bvh_id: wp.handle, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
                        lo: wp.vec3, hi: wp.vec3, centers: wp.array[wp.vec3]):
            root = wp.bvh_get_group_root(bvh_id, 1)  # restrict the query to group 1
            query = wp.bvh_query_aabb(bvh_id, lo, hi, root)

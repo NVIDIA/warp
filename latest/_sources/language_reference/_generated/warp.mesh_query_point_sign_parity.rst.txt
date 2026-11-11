@@ -47,7 +47,7 @@
    .. testcode::
    
        @wp.kernel
-       def classify(mesh_id: wp.uint64, p: wp.vec3, out_inside: wp.array[wp.int32]):
+       def classify(mesh_id: wp.handle, p: wp.vec3, out_inside: wp.array[wp.int32]):
            res = wp.mesh_query_point_sign_parity(mesh_id, p, 1.0e6)
            if res.result:
                out_inside[0] = wp.where(res.sign < 0.0, 1, 0)

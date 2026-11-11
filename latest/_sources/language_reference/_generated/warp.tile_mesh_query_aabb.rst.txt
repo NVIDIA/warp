@@ -34,7 +34,7 @@
    .. testcode::
    
        @wp.kernel
-       def overlapping_faces(mesh_id: wp.uint64, lo: wp.vec3, hi: wp.vec3, counts: wp.array[wp.int32]):
+       def overlapping_faces(mesh_id: wp.handle, lo: wp.vec3, hi: wp.vec3, counts: wp.array[wp.int32]):
            query = wp.tile_mesh_query_aabb(mesh_id, lo, hi)
            while wp.tile_query_valid(query):
                # one face index per thread, negative where this thread has no result

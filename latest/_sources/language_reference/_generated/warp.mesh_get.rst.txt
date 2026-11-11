@@ -17,7 +17,7 @@
    .. testcode::
    
        @wp.kernel
-       def first_face_vertex(mesh_id: wp.uint64, out: wp.array[wp.vec3]):
+       def first_face_vertex(mesh_id: wp.handle, out: wp.array[wp.vec3]):
            m = wp.mesh_get(mesh_id)
            # the returned struct exposes the mesh arrays (points, indices, velocities)
            out[0] = m.points[m.indices[0]]  # position of the first face's first vertex

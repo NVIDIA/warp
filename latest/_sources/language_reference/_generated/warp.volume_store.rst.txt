@@ -27,11 +27,11 @@
    .. testcode::
    
        @wp.kernel
-       def store(vid: wp.uint64):
+       def store(vid: wp.handle):
            wp.volume_store(vid, 1, 2, 3, 4.0)
    
        @wp.kernel
-       def lookup(vid: wp.uint64, out: wp.array[wp.float32]):
+       def lookup(vid: wp.handle, out: wp.array[wp.float32]):
            out[0] = wp.volume_lookup(vid, 1, 2, 3, dtype=float)
    
        volume = wp.Volume.load_from_numpy(np.zeros((2, 2, 2), dtype=np.float32), voxel_size=1.0, bg_value=0.0)

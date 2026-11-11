@@ -34,7 +34,7 @@
    .. testcode::
    
        @wp.kernel
-       def occluded(mesh_id: wp.uint64, origin: wp.vec3, dir: wp.vec3, out_hit: wp.array[wp.int32]):
+       def occluded(mesh_id: wp.handle, origin: wp.vec3, dir: wp.vec3, out_hit: wp.array[wp.int32]):
            out_hit[0] = wp.where(wp.mesh_query_ray_anyhit(mesh_id, origin, dir, 1.0e6), 1, 0)
    
        points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)

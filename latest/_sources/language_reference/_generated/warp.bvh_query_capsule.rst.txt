@@ -35,7 +35,7 @@
    .. testcode::
    
        @wp.kernel
-       def capsule_sweep(bvh_id: wp.uint64, p0: wp.vec3, p1: wp.vec3, radius: float,
+       def capsule_sweep(bvh_id: wp.handle, p0: wp.vec3, p1: wp.vec3, radius: float,
                           count: wp.array[wp.int32]):
            query = wp.bvh_query_capsule(bvh_id, p0, p1 - p0, radius)
            item = int(0)

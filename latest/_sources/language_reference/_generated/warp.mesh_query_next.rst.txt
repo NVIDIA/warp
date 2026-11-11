@@ -31,7 +31,7 @@
    .. testcode::
    
        @wp.kernel
-       def count_faces(mesh_id: wp.uint64, lo: wp.vec3, hi: wp.vec3, out_count: wp.array[wp.int32]):
+       def count_faces(mesh_id: wp.handle, lo: wp.vec3, hi: wp.vec3, out_count: wp.array[wp.int32]):
            query = wp.mesh_query_aabb(mesh_id, lo, hi)
            face = int(0)
            while wp.mesh_query_next(query, face):

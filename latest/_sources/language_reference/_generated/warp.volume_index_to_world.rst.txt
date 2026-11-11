@@ -26,7 +26,7 @@
    .. testcode::
    
        @wp.kernel
-       def to_world(vid: wp.uint64, out: wp.array[wp.vec3]):
+       def to_world(vid: wp.handle, out: wp.array[wp.vec3]):
            out[0] = wp.volume_index_to_world(vid, wp.vec3(2.0, 0.0, 0.0))
    
        volume = wp.Volume.load_from_numpy(

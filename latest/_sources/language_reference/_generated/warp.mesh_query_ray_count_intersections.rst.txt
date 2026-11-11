@@ -35,7 +35,7 @@
    .. testcode::
    
        @wp.kernel
-       def crossings(mesh_id: wp.uint64, origin: wp.vec3, dir: wp.vec3, out_n: wp.array[wp.int32]):
+       def crossings(mesh_id: wp.handle, origin: wp.vec3, dir: wp.vec3, out_n: wp.array[wp.int32]):
            out_n[0] = wp.mesh_query_ray_count_intersections(mesh_id, origin, dir)
    
        points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)

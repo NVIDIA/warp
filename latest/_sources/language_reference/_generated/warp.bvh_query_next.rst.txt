@@ -39,7 +39,7 @@
    .. testcode::
    
        @wp.kernel
-       def query_region(bvh_id: wp.uint64, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
+       def query_region(bvh_id: wp.handle, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
                         lo: wp.vec3, hi: wp.vec3, centers: wp.array[wp.vec3]):
            query = wp.bvh_query_aabb(bvh_id, lo, hi)
            item = int(0)

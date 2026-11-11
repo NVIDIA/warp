@@ -27,7 +27,7 @@
    .. testcode::
    
        @wp.kernel
-       def find_tris_in_sphere(mesh_id: wp.uint64, center: wp.vec3, radius: float,
+       def find_tris_in_sphere(mesh_id: wp.handle, center: wp.vec3, radius: float,
                                hits: wp.array[wp.int32]):
            query = wp.mesh_query_sphere(mesh_id, center, radius)
            face = int(0)

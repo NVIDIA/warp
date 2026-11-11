@@ -25,7 +25,7 @@
    .. testcode::
    
        @wp.kernel
-       def face0_verts(mesh_id: wp.uint64, out: wp.array[wp.int32]):
+       def face0_verts(mesh_id: wp.handle, out: wp.array[wp.int32]):
            out[0] = wp.mesh_get_index(mesh_id, 0)
            out[1] = wp.mesh_get_index(mesh_id, 1)
            out[2] = wp.mesh_get_index(mesh_id, 2)

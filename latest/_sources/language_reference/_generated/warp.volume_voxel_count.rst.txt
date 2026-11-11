@@ -26,7 +26,7 @@
    .. testcode::
    
        @wp.kernel
-       def count(vid: wp.uint64, out: wp.array[wp.int32]):
+       def count(vid: wp.handle, out: wp.array[wp.int32]):
            out[0] = wp.volume_voxel_count(vid)
    
        voxels = wp.array([[0, 0, 0], [1, 0, 0]], dtype=wp.vec3i)

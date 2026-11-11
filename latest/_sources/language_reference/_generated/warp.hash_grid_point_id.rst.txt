@@ -28,7 +28,7 @@
    .. testcode::
    
        @wp.kernel
-       def gather(grid_id: wp.uint64, pts: wp.array[wp.vec3], out: wp.array[wp.vec3]):
+       def gather(grid_id: wp.handle, pts: wp.array[wp.vec3], out: wp.array[wp.vec3]):
            i = wp.tid()
            # visit points in the grid's cell-sorted order for memory locality;
            # hash_grid_point_id maps sorted position i -> the original point index

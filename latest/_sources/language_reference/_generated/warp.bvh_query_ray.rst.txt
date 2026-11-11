@@ -38,7 +38,7 @@
    .. testcode::
    
        @wp.kernel
-       def cast_ray(bvh_id: wp.uint64, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
+       def cast_ray(bvh_id: wp.handle, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
                     origin: wp.vec3, dir: wp.vec3, centers: wp.array[wp.vec3]):
            query = wp.bvh_query_ray(bvh_id, origin, dir)
            item = int(0)
