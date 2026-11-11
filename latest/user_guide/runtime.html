@@ -2410,9 +2410,10 @@ and the adjoint launches emitted by <a class="reference internal" href="../api_r
 <a class="reference internal" href="../api_reference/_generated/warp.Tape.html#warp.Tape.backward" title="warp.Tape.backward"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Tape.backward()</span></code></a>).</p></li>
 <li><p>Reusable launches created with <code class="docutils literal notranslate"><span class="pre">wp.launch(...,</span> <span class="pre">record_cmd=True)</span></code> when they
 are replayed with <a class="reference internal" href="../api_reference/_generated/warp.Launch.html#warp.Launch.launch" title="warp.Launch.launch"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Launch.launch()</span></code></a>.</p></li>
-<li><p>Memory copies (<a class="reference internal" href="../api_reference/_generated/warp.copy.html#warp.copy" title="warp.copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.copy()</span></code></a>) and zero-initialization
-(<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.zero_" title="warp.array.zero_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.zero_()</span></code></a>), plus contiguous
-<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a>.</p></li>
+<li><p>Memory copies (<a class="reference internal" href="../api_reference/_generated/warp.copy.html#warp.copy" title="warp.copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.copy()</span></code></a>), and <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.zero_" title="warp.array.zero_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.zero_()</span></code></a>
+and <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a> on contiguous arrays, strided views, and
+<a class="reference internal" href="../api_reference/_generated/warp.indexedarray.html#warp.indexedarray" title="warp.indexedarray"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.indexedarray</span></code></a>. Indexed fills read the index arrays on each
+replay.</p></li>
 <li><p>Host library helpers including
 <a class="reference internal" href="../api_reference/_generated/warp.utils.array_sum.html#warp.utils.array_sum" title="warp.utils.array_sum"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_sum()</span></code></a>,
 <a class="reference internal" href="../api_reference/_generated/warp.utils.array_inner.html#warp.utils.array_inner" title="warp.utils.array_inner"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_inner()</span></code></a>,
@@ -2462,10 +2463,11 @@ addresses and layout strides must be aligned to the reduction’s scalar type.</
 <code class="docutils literal notranslate"><span class="pre">run_count</span></code> array during CPU graph capture; the host-return form (<code class="docutils literal notranslate"><span class="pre">run_count=None</span></code>)
 raises <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#NotImplementedError" title="(in Python v3.15)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>, because its capture-time host integer cannot
 represent the replay-time result.</p></li>
-<li><p>Non-contiguous <a class="reference internal" href="../api_reference/_generated/warp.copy.html#warp.copy" title="warp.copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.copy()</span></code></a>, non-contiguous
-<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a>, and fills on
-<a class="reference internal" href="../api_reference/_generated/warp.indexedarray.html#warp.indexedarray" title="warp.indexedarray"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.indexedarray</span></code></a> / <code class="docutils literal notranslate"><span class="pre">wp.fabricarray</span></code> raise
-<a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#NotImplementedError" title="(in Python v3.15)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a> inside a CPU <a class="reference internal" href="../api_reference/_generated/warp.ScopedCapture.html#warp.ScopedCapture" title="warp.ScopedCapture"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScopedCapture</span></code></a>.</p></li>
+<li><p>Non-contiguous <a class="reference internal" href="../api_reference/_generated/warp.copy.html#warp.copy" title="warp.copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.copy()</span></code></a>, and <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a>
+or <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.zero_" title="warp.array.zero_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.zero_()</span></code></a> on arrays with negative strides or on
+<code class="docutils literal notranslate"><span class="pre">wp.fabricarray</span></code> / <code class="docutils literal notranslate"><span class="pre">wp.indexedfabricarray</span></code>, raise <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#NotImplementedError" title="(in Python v3.15)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a> inside a CPU
+<a class="reference internal" href="../api_reference/_generated/warp.ScopedCapture.html#warp.ScopedCapture" title="warp.ScopedCapture"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScopedCapture</span></code></a>. So do strided and indexed fills with a value that holds an array, a
+non-zero <code class="docutils literal notranslate"><span class="pre">wp.handle</span></code>, or a texture, directly or in a struct field.</p></li>
 <li><p>Reusable launches with array parameters must be updated through Warp-level
 setters such as <a class="reference internal" href="../api_reference/_generated/warp.Launch.html#warp.Launch.set_param_at_index" title="warp.Launch.set_param_at_index"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Launch.set_param_at_index()</span></code></a>.
 Raw ctype array parameters passed through
@@ -2514,7 +2516,7 @@ undefined behavior.</p></li>
 surface, the C <code class="docutils literal notranslate"><span class="pre">wp_apic_*</span></code> API, and the recorded operation set are all
 subject to change without a formal deprecation cycle. The writer and loader
 must use the same Warp version. The current writer and reader use format
-version 19, which adds BSR compression records.
+version 20, which adds records for strided and indexed array fills.
 Recapture graphs saved with earlier formats.</p>
 </div>
 <p>The APIC operation stream lets Warp serialize a supported captured graph to
@@ -2533,8 +2535,9 @@ mechanism), and <code class="docutils literal notranslate"><span class="pre">api
 <a class="reference internal" href="../api_reference/_generated/warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_save()</span></code></a>.</p>
 <p>On CUDA, <code class="docutils literal notranslate"><span class="pre">apic=True</span></code> records the following supported operations so saved
 graphs replay them from current inputs: kernel launches (forward, adjoint, and reusable
-<code class="docutils literal notranslate"><span class="pre">record_cmd=True</span></code> launches), contiguous same-device memory copies and memsets, contiguous
-<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a>,
+<code class="docutils literal notranslate"><span class="pre">record_cmd=True</span></code> launches), contiguous same-device memory copies and memsets,
+<a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a> on contiguous arrays, strided views, and
+<a class="reference internal" href="../api_reference/_generated/warp.indexedarray.html#warp.indexedarray" title="warp.indexedarray"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.indexedarray</span></code></a>,
 <a class="reference internal" href="../api_reference/_generated/warp.utils.array_sum.html#warp.utils.array_sum" title="warp.utils.array_sum"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_sum()</span></code></a>,
 <a class="reference internal" href="../api_reference/_generated/warp.utils.array_inner.html#warp.utils.array_inner" title="warp.utils.array_inner"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_inner()</span></code></a>,
 <a class="reference internal" href="../api_reference/_generated/warp.utils.array_scan.html#warp.utils.array_scan" title="warp.utils.array_scan"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.array_scan()</span></code></a>,
@@ -2573,8 +2576,10 @@ region:</p>
 <li><p><a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid.build" title="warp.HashGrid.build"><code class="xref py py-meth docutils literal notranslate"><span class="pre">HashGrid.build()</span></code></a>, because <code class="docutils literal notranslate"><span class="pre">HashGrid</span></code>
 resources and their process-local IDs cannot yet be serialized. Use
 <code class="docutils literal notranslate"><span class="pre">apic=False</span></code> for live CUDA graph capture.</p></li>
-<li><p>Non-contiguous <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a>, indexed/Fabric <code class="docutils literal notranslate"><span class="pre">fill_()</span></code>, and
-contiguous fills whose value is larger than 3968 bytes.</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array.fill_" title="warp.array.fill_"><code class="xref py py-meth docutils literal notranslate"><span class="pre">array.fill_()</span></code></a> on arrays with negative strides or on Fabric
+arrays, fills whose value is larger than 3968 bytes, and strided and indexed fills with a
+value that holds an array, a non-zero <code class="docutils literal notranslate"><span class="pre">wp.handle</span></code>, or a texture, directly or in a struct
+field.</p></li>
 <li><p>The host-return form of <a class="reference internal" href="../api_reference/_generated/warp.utils.runlength_encode.html#warp.utils.runlength_encode" title="warp.utils.runlength_encode"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.utils.runlength_encode()</span></code></a>
 (<code class="docutils literal notranslate"><span class="pre">run_count=None</span></code>).</p></li>
 <li><p><a class="reference internal" href="../api_reference/_generated/warp.copy.html#warp.copy" title="warp.copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.copy()</span></code></a> other than a contiguous same-device copy: cross-device copies
