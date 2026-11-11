@@ -3897,6 +3897,8 @@ class ModuleBuilder:
         # Detect whether this module uses bfloat16; if not, define WP_NO_BFLOAT16
         # to skip compiling bfloat16 overloads in builtin.h (significant LLVM speedup).
         type_defines = "" if "bfloat16" in source else "#define WP_NO_BFLOAT16\n"
+        if not self.options.get("enable_wide_array_access", True):
+            type_defines += "#define WP_NO_WIDE_ARRAY_ACCESS\n"
 
         # add headers
         #
@@ -4346,6 +4348,7 @@ class Module:
         options["verify_fp"] = config.verify_fp
         options["line_directives"] = config.line_directives
         options["enable_vector_component_overwrites"] = config.enable_vector_component_overwrites
+        options["enable_wide_array_access"] = config.enable_wide_array_access
         options["llvm_cuda"] = config.llvm_cuda
         options["use_precompiled_headers"] = config.use_precompiled_headers
         options["verify_autograd_array_access"] = config.verify_autograd_array_access

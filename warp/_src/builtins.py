@@ -15188,6 +15188,25 @@ add_builtin(
 )
 
 
+def load_element_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    func_args = (Reference(args["address"]), args["source"], args["ndim"])
+    template_args = ()
+    return (func_args, template_args)
+
+
+# Loads an array element whose address was taken from ``source`` with ``ndim`` indices, so that it can
+# be loaded as wide words when the array is aligned.
+add_builtin(
+    "load",
+    input_types={"address": Any, "source": Any, "ndim": int},
+    value_func=lambda arg_types, arg_values: arg_types["address"],
+    dispatch_func=load_element_dispatch_func,
+    hidden=True,
+    group="Utility",
+    is_differentiable=False,
+)
+
+
 SUPPORTED_ATOMIC_TYPES = (
     warp.int32,
     warp.int64,

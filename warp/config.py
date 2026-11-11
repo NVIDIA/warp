@@ -158,6 +158,14 @@ enable_vector_component_overwrites: bool = False
 Note: Enabling this may significantly increase kernel compilation time.
 """
 
+enable_wide_array_access: bool = True
+"""Load and store array elements as 8- or 16-byte words on CUDA devices when the array is aligned.
+
+Applies to stores of 16-byte and larger elements, such as ``wp.vec4`` and ``wp.mat44``, and loads of
+16-byte elements with 4-byte components, such as ``wp.vec4`` and ``wp.quat``. Set to ``False`` to use
+plain element accesses instead.
+"""
+
 legacy_scalar_return_types: bool = False
 """Use legacy scalar return types from built-in functions and indexing.
 

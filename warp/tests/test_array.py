@@ -4125,6 +4125,240 @@ def test_graph_fill_vecmat(test, device):
         _run_tests(indexed_arrays)
 
 
+@wp.struct
+class WideAccessStruct:
+    a: wp.vec3
+    b: float
+
+
+@wp.struct
+class WideAccessStructU64:
+    a: wp.uint64
+    b: wp.uint64
+
+
+WIDE_ACCESS_TYPES = (
+    wp.vec2,
+    wp.vec4,
+    wp.quat,
+    wp.mat44,
+    wp.spatial_vector,
+    wp.vec2d,
+    wp.vec2h,
+    wp.vec4h,
+    wp.vec4ub,
+    wp.vec2ul,
+    wp.vec3,
+    wp.types.vector(10, wp.float16),
+    wp.types.matrix((3, 3), wp.float16),
+    WideAccessStruct,
+    WideAccessStructU64,
+)
+WIDE_ACCESS_SCALARS = {WideAccessStruct: wp.float32, WideAccessStructU64: wp.uint64}
+
+
+@wp.kernel
+def copy_elements(src: wp.array[Any], dst: wp.array[Any]):
+    i = wp.tid()
+    dst[i] = src[i]
+
+
+@wp.kernel
+def copy_elements_loop(src: wp.array[Any], dst: wp.array[Any], count: int):
+    i = wp.tid()
+    for j in range(i * count, wp.min((i + 1) * count, dst.shape[0])):
+        dst[j] = src[j]
+
+
+@wp.kernel
+def copy_elements_2d(src: wp.array2d[Any], dst: wp.array2d[Any]):
+    i, j = wp.tid()
+    dst[i, j] = src[i, j]
+
+
+@wp.kernel
+def copy_elements_indexed(src: wp.indexedarray[Any], dst: wp.indexedarray[Any]):
+    i = wp.tid()
+    dst[i] = src[i]
+
+
+for _dtype in WIDE_ACCESS_TYPES:
+    wp.overload(copy_elements, {"src": wp.array[_dtype], "dst": wp.array[_dtype]})
+    wp.overload(copy_elements_loop, {"src": wp.array[_dtype], "dst": wp.array[_dtype], "count": int})
+    wp.overload(copy_elements_2d, {"src": wp.array2d[_dtype], "dst": wp.array2d[_dtype]})
+    if _dtype not in WIDE_ACCESS_SCALARS:
+        wp.overload(copy_elements_indexed, {"src": wp.indexedarray[_dtype], "dst": wp.indexedarray[_dtype]})
+
+
+def _wide_access_case(dtype, device, nbytes):
+    """Return the element and scalar sizes, source bytes, and source and destination buffers."""
+    size = wp._src.types.type_size_in_bytes(dtype)
+    scalar_type = WIDE_ACCESS_SCALARS.get(dtype) or dtype._wp_scalar_type_
+    scalar_size = wp._src.types.type_size_in_bytes(scalar_type)
+    count = nbytes // scalar_size + 1
+    src_bytes = (np.arange(count) % 251).astype(wp.dtype_to_numpy(scalar_type)).view(np.uint8)[:nbytes]
+    src_buf = wp.array(src_bytes, dtype=wp.uint8, device=device)
+    dst_buf = wp.zeros(nbytes, dtype=wp.uint8, device=device)
+    return size, scalar_size, src_bytes, src_buf, dst_buf
+
+
+def test_array_wide_access(test, device):
+    # Elements are loaded and stored as wide words only where the alignment allows it, so aligned,
+    # misaligned and irregularly strided arrays must all be copied exactly.
+    n = 100
+    count = 4
+    for dtype in WIDE_ACCESS_TYPES:
+        size, scalar_size, *_ = _wide_access_case(dtype, device, 0)
+        layouts = {
+            "aligned": (0, 0, size),
+            "offset": (scalar_size, scalar_size, size),
+            "odd stride": (0, 0, size + scalar_size),
+            "padded stride": (0, 0, size + 16),
+            "aligned to offset": (0, scalar_size, size),
+            "offset to aligned": (scalar_size, 0, size),
+        }
+        for layout, (src_offset, dst_offset, stride) in layouts.items():
+            nbytes = max(src_offset, dst_offset) + n * stride
+            for kernel, dim, extra in ((copy_elements, n, []), (copy_elements_loop, (n + count - 1) // count, [count])):
+                with test.subTest(dtype=dtype.__name__, layout=layout, kernel=kernel.key):
+                    _, _, src_bytes, src_buf, dst_buf = _wide_access_case(dtype, device, nbytes)
+                    src = wp.array(ptr=src_buf.ptr + src_offset, dtype=dtype, shape=n, strides=(stride,), device=device)
+                    dst = wp.array(ptr=dst_buf.ptr + dst_offset, dtype=dtype, shape=n, strides=(stride,), device=device)
+                    wp.launch(kernel, dim=dim, inputs=[src, dst, *extra], device=device)
+
+                    expected = np.zeros(nbytes, dtype=np.uint8)
+                    for i in range(n):
+                        s, d = src_offset + i * stride, dst_offset + i * stride
+                        expected[d : d + size] = src_bytes[s : s + size]
+                    assert_np_equal(dst_buf.numpy(), expected)
+
+
+def test_array_wide_access_2d(test, device):
+    # The row stride decides whether all elements of a 2D array are aligned.
+    rows, cols = 7, 5
+    for dtype in WIDE_ACCESS_TYPES:
+        size, scalar_size, *_ = _wide_access_case(dtype, device, 0)
+        layouts = {
+            "packed": (cols * size, size),
+            "padded rows": (cols * size + scalar_size, size),
+            "aligned padded rows": (cols * size + 16, size),
+            "transposed": (size, rows * size),
+        }
+        for layout, strides in layouts.items():
+            with test.subTest(dtype=dtype.__name__, layout=layout):
+                nbytes = (rows - 1) * strides[0] + (cols - 1) * strides[1] + size
+                _, _, src_bytes, src_buf, dst_buf = _wide_access_case(dtype, device, nbytes)
+                src = wp.array(ptr=src_buf.ptr, dtype=dtype, shape=(rows, cols), strides=strides, device=device)
+                dst = wp.array(ptr=dst_buf.ptr, dtype=dtype, shape=(rows, cols), strides=strides, device=device)
+                wp.launch(copy_elements_2d, dim=(rows, cols), inputs=[src, dst], device=device)
+
+                expected = np.zeros(nbytes, dtype=np.uint8)
+                for i in range(rows):
+                    for j in range(cols):
+                        o = i * strides[0] + j * strides[1]
+                        expected[o : o + size] = src_bytes[o : o + size]
+                assert_np_equal(dst_buf.numpy(), expected)
+
+
+def test_array_wide_access_indexed(test, device):
+    # Indexed arrays take the wide path based on the alignment of the array they index.
+    n = 20
+    indices = np.arange(0, n, 2, dtype=np.int32)[::-1].copy()
+    for dtype in WIDE_ACCESS_TYPES:
+        if dtype in WIDE_ACCESS_SCALARS:
+            continue
+        size, scalar_size, *_ = _wide_access_case(dtype, device, 0)
+        for layout, offset in {"aligned": 0, "offset": scalar_size}.items():
+            with test.subTest(dtype=dtype.__name__, layout=layout):
+                nbytes = offset + n * size
+                _, _, src_bytes, src_buf, dst_buf = _wide_access_case(dtype, device, nbytes)
+                src = wp.array(ptr=src_buf.ptr + offset, dtype=dtype, shape=n, device=device)
+                dst = wp.array(ptr=dst_buf.ptr + offset, dtype=dtype, shape=n, device=device)
+                index_array = wp.array(indices, dtype=int, device=device)
+                wp.launch(
+                    copy_elements_indexed,
+                    dim=len(indices),
+                    inputs=[wp.indexedarray(src, [index_array]), wp.indexedarray(dst, [index_array])],
+                    device=device,
+                )
+
+                expected = np.zeros(nbytes, dtype=np.uint8)
+                for i in indices:
+                    o = offset + i * size
+                    expected[o : o + size] = src_bytes[o : o + size]
+                assert_np_equal(dst_buf.numpy(), expected)
+
+
+@wp.struct
+class WideAccessHolder:
+    src: wp.array[wp.vec4]
+    dst: wp.array[wp.vec4]
+
+
+@wp.kernel
+def copy_elements_per_thread_arrays(holders: wp.array[WideAccessHolder], n: int):
+    i = wp.tid()
+    h = holders[i % holders.shape[0]]
+    j = i // holders.shape[0]
+    if j < n:
+        h.dst[j] = h.src[j]
+
+
+def test_array_wide_access_per_thread_arrays(test, device):
+    # Threads of a warp access different arrays, some aligned and some not.
+    n = 16
+    offsets = (0, 4, 0, 8, 4, 0, 12, 0)
+    holders, cases = [], []
+    for offset in offsets:
+        nbytes = offset + n * 16
+        _, _, src_bytes, src_buf, dst_buf = _wide_access_case(wp.vec4, device, nbytes)
+        holder = WideAccessHolder()
+        holder.src = wp.array(ptr=src_buf.ptr + offset, dtype=wp.vec4, shape=n, device=device)
+        holder.dst = wp.array(ptr=dst_buf.ptr + offset, dtype=wp.vec4, shape=n, device=device)
+        holders.append(holder)
+        cases.append((offset, nbytes, src_bytes, src_buf, dst_buf))
+
+    holder_array = wp.array(holders, dtype=WideAccessHolder, device=device)
+    wp.launch(copy_elements_per_thread_arrays, dim=len(offsets) * n, inputs=[holder_array, n], device=device)
+
+    for offset, nbytes, src_bytes, _, dst_buf in cases:
+        with test.subTest(offset=offset):
+            expected = np.zeros(nbytes, dtype=np.uint8)
+            expected[offset:] = src_bytes[offset:]
+            assert_np_equal(dst_buf.numpy(), expected)
+
+
+@wp.kernel(module="unique")
+def copy_vec4_wide_access_disabled(src: wp.array[wp.vec4], dst: wp.array[wp.vec4]):
+    i = wp.tid()
+    dst[i] = src[i]
+
+
+def test_array_wide_access_disabled(test, device):
+    # Arrays must still be copied exactly with wide accesses disabled. The kernel has its own module so
+    # that rehashing it for the flag leaves other tests' modules unaffected.
+    n = 64
+    module = copy_vec4_wide_access_disabled.module
+    saved = wp.config.enable_wide_array_access
+    wp.config.enable_wide_array_access = False
+    module.mark_modified()
+    try:
+        for offset in (0, 4):
+            with test.subTest(offset=offset):
+                nbytes = offset + n * 16
+                _, _, src_bytes, src_buf, dst_buf = _wide_access_case(wp.vec4, device, nbytes)
+                src = wp.array(ptr=src_buf.ptr + offset, dtype=wp.vec4, shape=n, device=device)
+                dst = wp.array(ptr=dst_buf.ptr + offset, dtype=wp.vec4, shape=n, device=device)
+                wp.launch(copy_vec4_wide_access_disabled, dim=n, inputs=[src, dst], device=device)
+
+                expected = np.zeros(nbytes, dtype=np.uint8)
+                expected[offset:] = src_bytes[offset:]
+                assert_np_equal(dst_buf.numpy(), expected)
+    finally:
+        wp.config.enable_wide_array_access = saved
+        module.mark_modified()
+
+
 devices = get_test_devices()
 cuda_devices = get_cuda_test_devices()
 
@@ -4321,6 +4555,13 @@ add_function_test(TestArray, "test_dynamic_array_slice", test_dynamic_array_slic
 add_function_test(TestArray, "test_array_runtime_zero_step", test_array_runtime_zero_step, devices=devices)
 
 add_function_test(TestArray, "test_graph_fill_vecmat", test_graph_fill_vecmat, devices=cuda_devices)
+add_function_test(TestArray, "test_array_wide_access", test_array_wide_access, devices=devices)
+add_function_test(TestArray, "test_array_wide_access_2d", test_array_wide_access_2d, devices=devices)
+add_function_test(TestArray, "test_array_wide_access_indexed", test_array_wide_access_indexed, devices=devices)
+add_function_test(
+    TestArray, "test_array_wide_access_per_thread_arrays", test_array_wide_access_per_thread_arrays, devices=devices
+)
+add_function_test(TestArray, "test_array_wide_access_disabled", test_array_wide_access_disabled, devices=devices)
 
 try:
     import torch

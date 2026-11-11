@@ -1183,6 +1183,8 @@ class Var:
         # the adjoint storage pointer on demand.
         self.ref_origin: _LValueOrigin | None = None
         self.array_slot: _ArraySlot | None = None
+        # Array and index count of an array element reference, so that loading it can use the array.
+        self.element_source: tuple[Var, int] | None = None
 
         # Used to associate the variable with the Python statement that resulted in it being created.
         self.relative_lineno = relative_lineno
@@ -2765,7 +2767,11 @@ class Adjoint:
 
     def load(adj, var):
         if is_reference(var.type):
-            var = adj.add_builtin_call("load", [var])
+            if var.element_source is None:
+                var = adj.add_builtin_call("load", [var])
+            else:
+                array, ndim = var.element_source
+                var = adj.add_builtin_call("load", [var, array, adj.add_constant(ndim)])
         return var
 
     def add_comp(adj, op_strings, left, comps):
@@ -5031,7 +5037,9 @@ class Adjoint:
                         origin.extend_array(indices) if origin is not None else None,
                     )
                 # handles array loads (where each dimension has an index specified)
-                out = adj.add_builtin_call("address", [target, *indices])
+                array = adj.load(target)
+                out = adj.add_builtin_call("address", [array, *indices])
+                out.element_source = (array, len(indices))
                 adj.deterministic.track_array_reference(out, target)
                 if origin := adj.reference_origin_for_var(target):
                     out.ref_origin = origin.extend_array(indices)

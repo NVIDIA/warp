@@ -94,6 +94,29 @@ def test_conditional_kernel(test, device):
 
 
 @wp.kernel
+def vec4_copy_kernel(src: wp.array[wp.vec4], dst: wp.array[wp.vec4], count: int):
+    i = wp.tid()
+    for j in range(i * count, wp.min((i + 1) * count, dst.shape[0])):
+        dst[j] = src[j]
+
+
+def test_vec4_copy_kernel(test, device):
+    # Elements are loaded and stored as 16-byte words only when aligned, so an array that
+    # starts one float off must be copied as well.
+    n = 64
+    for offset in (0, 4):
+        with test.subTest(offset=offset):
+            src_buf = wp.array(np.arange(4 * n + 1, dtype=np.float32), device=device)
+            dst_buf = wp.zeros(4 * n + 1, dtype=float, device=device)
+            src = wp.array(ptr=src_buf.ptr + offset, dtype=wp.vec4, shape=n, device=device)
+            dst = wp.array(ptr=dst_buf.ptr + offset, dtype=wp.vec4, shape=n, device=device)
+            wp.launch(vec4_copy_kernel, dim=n // 4, inputs=[src, dst, 4], device=device)
+            expected = np.zeros(4 * n + 1, dtype=np.float32)
+            expected[offset // 4 : offset // 4 + 4 * n] = src_buf.numpy()[offset // 4 : offset // 4 + 4 * n]
+            np.testing.assert_array_equal(dst_buf.numpy(), expected)
+
+
+@wp.kernel
 def bf16_round_trip_kernel(input: wp.array[wp.float32], output: wp.array[wp.float32]):
     i = wp.tid()
     bf = wp.bfloat16(input[i])
@@ -222,6 +245,7 @@ add_function_test(TestClangCUDA, "test_trivial_kernel", test_trivial_kernel, dev
 add_function_test(TestClangCUDA, "test_math_kernel", test_math_kernel, devices=devices)
 add_function_test(TestClangCUDA, "test_vec_kernel", test_vec_kernel, devices=devices)
 add_function_test(TestClangCUDA, "test_conditional_kernel", test_conditional_kernel, devices=devices)
+add_function_test(TestClangCUDA, "test_vec4_copy_kernel", test_vec4_copy_kernel, devices=devices)
 add_function_test(TestClangCUDA, "test_slice_kernel", test_slice_kernel, devices=devices)
 add_function_test(TestClangCUDA, "test_launch_bounds_kernel", test_launch_bounds_kernel, devices=devices)
 bf16_devices = [d for d in devices if d.arch >= 80]
