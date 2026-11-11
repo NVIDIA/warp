@@ -1924,9 +1924,10 @@ CPU graph capture currently supports:
   :meth:`Tape.backward() <warp.Tape.backward>`).
 - Reusable launches created with ``wp.launch(..., record_cmd=True)`` when they
   are replayed with :meth:`Launch.launch() <warp.Launch.launch>`.
-- Memory copies (:func:`wp.copy() <warp.copy>`) and zero-initialization
-  (:meth:`array.zero_() <warp.array.zero_>`), plus contiguous
-  :meth:`array.fill_() <warp.array.fill_>`.
+- Memory copies (:func:`wp.copy() <warp.copy>`), and :meth:`array.zero_() <warp.array.zero_>`
+  and :meth:`array.fill_() <warp.array.fill_>` on contiguous arrays, strided views, and
+  :class:`wp.indexedarray <warp.indexedarray>`. Indexed fills read the index arrays on each
+  replay.
 - Host library helpers including
   :func:`wp.utils.array_sum() <warp.utils.array_sum>`,
   :func:`wp.utils.array_inner() <warp.utils.array_inner>`,
@@ -1978,10 +1979,11 @@ Important CPU graph behavior and current limitations:
   ``run_count`` array during CPU graph capture; the host-return form (``run_count=None``)
   raises :exc:`NotImplementedError`, because its capture-time host integer cannot
   represent the replay-time result.
-- Non-contiguous :func:`wp.copy() <warp.copy>`, non-contiguous
-  :meth:`array.fill_() <warp.array.fill_>`, and fills on
-  :class:`wp.indexedarray <warp.indexedarray>` / ``wp.fabricarray`` raise
-  :exc:`NotImplementedError` inside a CPU :class:`ScopedCapture`.
+- Non-contiguous :func:`wp.copy() <warp.copy>`, and :meth:`array.fill_() <warp.array.fill_>`
+  or :meth:`array.zero_() <warp.array.zero_>` on arrays with negative strides or on
+  ``wp.fabricarray`` / ``wp.indexedfabricarray``, raise :exc:`NotImplementedError` inside a CPU
+  :class:`ScopedCapture`. So do strided and indexed fills with a value that holds an array, a
+  non-zero ``wp.handle``, or a texture, directly or in a struct field.
 - Reusable launches with array parameters must be updated through Warp-level
   setters such as :meth:`Launch.set_param_at_index() <warp.Launch.set_param_at_index>`.
   Raw ctype array parameters passed through
@@ -2033,7 +2035,7 @@ API Capture: Saving and Loading Graphs
     surface, the C ``wp_apic_*`` API, and the recorded operation set are all
     subject to change without a formal deprecation cycle. The writer and loader
     must use the same Warp version. The current writer and reader use format
-    version 19, which adds BSR compression records.
+    version 20, which adds records for strided and indexed array fills.
     Recapture graphs saved with earlier formats.
 
 The APIC operation stream lets Warp serialize a supported captured graph to
@@ -2055,8 +2057,9 @@ mechanism), and ``apic=True`` simply enables
 
 On CUDA, ``apic=True`` records the following supported operations so saved
 graphs replay them from current inputs: kernel launches (forward, adjoint, and reusable
-``record_cmd=True`` launches), contiguous same-device memory copies and memsets, contiguous
-:meth:`array.fill_() <warp.array.fill_>`,
+``record_cmd=True`` launches), contiguous same-device memory copies and memsets,
+:meth:`array.fill_() <warp.array.fill_>` on contiguous arrays, strided views, and
+:class:`wp.indexedarray <warp.indexedarray>`,
 :func:`wp.utils.array_sum() <warp.utils.array_sum>`,
 :func:`wp.utils.array_inner() <warp.utils.array_inner>`,
 :func:`wp.utils.array_scan() <warp.utils.array_scan>`,
@@ -2098,8 +2101,10 @@ region:
 - :meth:`HashGrid.build() <warp.HashGrid.build>`, because ``HashGrid``
   resources and their process-local IDs cannot yet be serialized. Use
   ``apic=False`` for live CUDA graph capture.
-- Non-contiguous :meth:`array.fill_() <warp.array.fill_>`, indexed/Fabric ``fill_()``, and
-  contiguous fills whose value is larger than 3968 bytes.
+- :meth:`array.fill_() <warp.array.fill_>` on arrays with negative strides or on Fabric
+  arrays, fills whose value is larger than 3968 bytes, and strided and indexed fills with a
+  value that holds an array, a non-zero ``wp.handle``, or a texture, directly or in a struct
+  field.
 - The host-return form of :func:`wp.utils.runlength_encode() <warp.utils.runlength_encode>`
   (``run_count=None``).
 - :func:`wp.copy() <warp.copy>` other than a contiguous same-device copy: cross-device copies

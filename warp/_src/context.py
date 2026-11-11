@@ -7031,6 +7031,8 @@ class Runtime:
             self.core.wp_apic_begin_recording.restype = None
             self.core.wp_apic_end_recording.argtypes = [ctypes.c_void_p]
             self.core.wp_apic_end_recording.restype = None
+            self.core.wp_apic_set_cuda_context.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.wp_apic_set_cuda_context.restype = None
             self.core.wp_apic_get_recording_state.argtypes = []
             self.core.wp_apic_get_recording_state.restype = ctypes.c_void_p
             self.core.wp_apic_get_cuda_recording_state.argtypes = []

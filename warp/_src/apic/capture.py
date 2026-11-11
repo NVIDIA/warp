@@ -41,6 +41,8 @@ class APICapture:
 
         # C++ APICState*
         self.apic_state: ctypes.c_void_p = runtime.core.wp_apic_create_state()
+        if device.is_cuda:
+            runtime.core.wp_apic_set_cuda_context(self.apic_state, device.context)
 
         # Region tracking: region key -> (region_id, base_ptr, capacity, base_array).
         # The base array is retained so Python cannot recycle its id() (which would

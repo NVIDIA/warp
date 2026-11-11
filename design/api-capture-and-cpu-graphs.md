@@ -234,7 +234,7 @@ The current operation families are summarized below; ``APICOpType`` in ``warp/na
 | Family | Examples | CPU capture/replay | Live CUDA capture | Loaded CUDA reconstruction | Save/load |
 | --- | --- | --- | --- | --- | --- |
 | Kernel dispatch | forward, backward, tiled, reusable launches | Record instead of execute; call resolved CPU function on replay | Driver captures launch and APIC records it when enabled | Resolve module symbol and reissue launch | Yes; requires companion module metadata and binaries |
-| Basic memory | contiguous copy, zero, contiguous fill | Record ``memcpy``, ``memset``, or ``memtile`` instead of executing | Driver captures supported same-device work and APIC records it | Reissue supported memory operation | Supported same-device contiguous forms only |
+| Basic memory | contiguous copy, zero, fill of contiguous, strided, and indexed arrays | Record ``memcpy``, ``memset``, ``memtile``, or an array fill (layout, index regions, inline value) instead of executing | Driver captures supported same-device work and APIC records it | Reissue supported memory operation; array fills read the index arrays at replay | Contiguous same-device copies; fills except negative strides and Fabric arrays. Values holding arrays, non-zero handles, or textures: strided and indexed fills raise, and contiguous fills keep the capturing process's pointers |
 | Array algorithms | reductions, scan, radix/segmented sort, run-length encode | Record a semantic host-helper operation | Execute helper under CUDA stream capture and record semantics | Reissue helper under reconstruction capture | Yes for supported forms |
 | Sparse topology | BSR from triplets, transpose, and compression | Record semantic topology operation | Supported CUDA forms run under stream capture; unsupported forms raise | Reissue supported form, including required capacity metadata | Yes, on both backends |
 | Dynamic control flow | ``capture_if``, ``capture_while`` | Interpret nested operation streams | Driver creates conditional graph nodes and APIC stores nested streams | Reconstruct conditional nodes and child graphs | Yes when every nested operation is serializable |
@@ -345,7 +345,7 @@ CPU object files are tied to the platform, architecture, compiler ABI, and Warp 
 
 #### ``.wrp`` format
 
-The feature is experimental. The current constants in ``warp/native/apic_types.h`` define writer and reader version 19. Version 19 adds BSR compression records, and version 18 added explicit element counts to memory handle relocations; graphs saved with earlier formats must be recaptured. The metadata also records the producer Warp version, and the loader requires both versions to match exactly before loading modules or allocating resources. These numbers describe the operation and metadata wire format, not the Python package version.
+The feature is experimental. The current constants in ``warp/native/apic_types.h`` define writer and reader version 20. Version 20 adds records for strided and indexed array fills, version 19 added BSR compression records, and version 18 added explicit element counts to memory handle relocations; graphs saved with earlier formats must be recaptured. The metadata also records the producer Warp version, and the loader requires both versions to match exactly before loading modules or allocating resources. These numbers describe the operation and metadata wire format, not the Python package version.
 
 Contributors must follow these rules:
 
@@ -415,7 +415,7 @@ Earlier iterations of this design made assumptions that no longer describe the i
 
 - Kernel arguments no longer use a special array record plus a 64-byte scalar payload. All arguments use aligned value blobs and relocation tables.
 - Forward-only launch recording has been extended to backward launches with a parallel adjoint binding block.
-- CPU capture covers contiguous fill, reductions, scans, sorts, run-length encoding, sparse topology helpers, BVH updates, HashGrid updates, and dynamic control flow in addition to launches, copies, and memsets.
+- CPU capture covers contiguous, strided, and indexed fills, reductions, scans, sorts, run-length encoding, sparse topology helpers, BVH updates, HashGrid updates, and dynamic control flow in addition to launches, copies, and memsets.
 - Unknown native pointers are auto-registered and grown instead of being silently dropped.
 - CPU replay interprets the operation stream directly; it does not build an intermediate ``wp_cpu_graph_op_t`` graph.
 - CUDA ``.wrp`` loading reconstructs extended helpers and conditional graphs; it is no longer limited to basic launch/memory records.
@@ -429,7 +429,7 @@ These are limitations, not implied future commitments:
 
 - APIC does not record stream-event nodes or texture-array copies.
 - Cross-device CUDA copies, CUDA device-to-host bindings, and non-contiguous or indexed/Fabric copies do not yet have a serializable region model.
-- Non-contiguous and indexed/Fabric fills are unsupported. CUDA also bounds the largest inline fill value supported by its reconstruction path.
+- Fills of negative-stride and Fabric arrays are unsupported, and so are strided and indexed fills of values holding arrays, non-zero handles, or textures, directly or in struct fields, because the inline value is not relocated on load. Contiguous fills of such values are not rejected: their ``memtile`` record keeps the raw bytes, so a loaded graph uses the capturing process's pointers and handles, and can crash in another process. CUDA also bounds the largest inline fill value supported by its reconstruction path.
 - ``wp.fixedarray``, ``wp.fabricarray``, and ``wp.indexedfabricarray`` kernel arguments do not have relocation rules.
 - Mesh is the only object type reconstructed across save/load. Volume, BVH, and HashGrid serialization require typed object registries and reconstruction metadata.
 - Loaded replay does not reject a handle relocation that is absent from ``handle_ptr_remap``. It preserves the captured integer, which may be stale when mesh metadata is missing or the handle belongs to an unsupported object type.

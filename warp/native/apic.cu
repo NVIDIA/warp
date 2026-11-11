@@ -543,6 +543,36 @@ static bool apic_replay_ops_into_cuda_capture(
             break;
         }
 
+        case APIC_OP_ARRAY_FILL: {
+            const APICArrayFillRecord* rec = reinterpret_cast<const APICArrayFillRecord*>(ptr);
+            // Larger values need capturable_tmp_alloc staging, which a rebuild cannot
+            // reproduce; capture never records them.
+            if (rec->value_size > WP_FILL_VALUE_INLINE_BYTES_2) {
+                wp::set_error_string(
+                    "Warp APIC error: array fill value of %u bytes exceeds the CUDA inline limit (op %u)",
+                    rec->value_size, i
+                );
+                success = false;
+                break;
+            }
+            auto resolve = [graph](int32_t region_id, uint64_t offset, uint64_t access_bytes) {
+                return apic_resolve_region_ptr(graph, region_id, offset, access_bytes);
+            };
+            wp::indexedarray_t<void> ia;
+            if (!apic_array_fill_descriptor(*rec, resolve, &ia)) {
+                wp::set_error_string("Warp APIC error: array fill failed to resolve region (op %u)", i);
+                success = false;
+                break;
+            }
+            // g_apic_state is null during rebuild, so this executes (not record)
+            // on the capture stream set as current above.
+            wp_array_fill_device(
+                graph->cuda_context, &ia, wp::ARRAY_TYPE_INDEXED, ptr + sizeof(APICArrayFillRecord),
+                static_cast<int>(rec->value_size)
+            );
+            break;
+        }
+
         case APIC_OP_SCAN: {
             const APICScanRecord* rec = reinterpret_cast<const APICScanRecord*>(ptr);
             size_t scalar_size = apic_type_size(rec->dtype);

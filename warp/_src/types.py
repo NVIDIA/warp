@@ -4611,8 +4611,6 @@ class array(Array[DType, NDim]):
         if self.size == 0:
             return
 
-        self._apic_ensure_tracked()
-
         # try to convert the given value to the array dtype
         try:
             if isinstance(self.dtype, warp._src.codegen.Struct):
@@ -4653,38 +4651,18 @@ class array(Array[DType, NDim]):
         cvalue_ptr = ctypes.pointer(cvalue)
         cvalue_size = ctypes.sizeof(cvalue)
 
+        if self.is_contiguous:
+            _check_fill_capturable(self.device, cvalue_size)
+        else:
+            _check_fill_capturable(self.device, cvalue_size, self.strides, self.dtype, value)
+        self._apic_ensure_tracked()
+
         # prefer using memtile for contiguous arrays, because it should be faster than generic fill
         if self.is_contiguous:
-            # Large multi-byte fills (> WP_FILL_VALUE_INLINE_BYTES_2 = 3968 bytes,
-            # defined in warp/native/warp.cu -- keep the literal below in sync)
-            # take a capturable_tmp_alloc fallback in wp_memtile_device (pause/resume
-            # + device staging) that the APIC byte-stream rebuild cannot reproduce,
-            # so a saved CUDA graph could not replay them. Surface the limitation
-            # instead of recording an unreplayable op. Small fills embed the value
-            # inline in the byte stream and replay fine.
-            apic_capture = warp._src.context._get_apic_capture_for_device(self.device)
-            if (
-                cvalue_size > 3968  # WP_FILL_VALUE_INLINE_BYTES_2 (warp/native/warp.cu)
-                and self.device.is_cuda
-                and apic_capture is not None
-            ):
-                raise NotImplementedError(
-                    "APIC capture does not yet support fill_() with values larger than 3968 bytes on CUDA arrays; "
-                    "use a smaller element type or move the fill outside the capture."
-                )
             self.device.memtile(self.ptr, cvalue_ptr, cvalue_size, self.size)
         else:
-            # The non-contiguous fill path (wp_array_fill_host / wp_array_fill_device)
-            # does not record into the APIC byte stream, so it would silently execute
-            # once at capture time and never replay. Surface the limitation now
-            # instead of producing wrong output at replay. Applies to both CPU
-            # (record-only) and CUDA (record-and-execute) captures.
-            apic_capture = warp._src.context._get_apic_capture_for_device(self.device)
-            if apic_capture is not None:
-                raise NotImplementedError(
-                    "APIC capture does not yet support fill_() on non-contiguous arrays; "
-                    "fill the underlying contiguous array first or move the fill outside the capture."
-                )
+            # During an APIC capture on this device, the native fill records an array-fill
+            # operation: record-only on CPU, record-and-execute on CUDA.
             carr = self.__ctype__()
             carr_ptr = ctypes.pointer(carr)
 
@@ -5420,16 +5398,21 @@ class noncontiguous_array_base(Array[DType, NDim]):
         except Exception as e:
             raise ValueError(f"Failed to convert the value to the array data type: {e}") from e
 
-        # The indexed/fabric fill path (wp_array_fill_host / wp_array_fill_device)
-        # does not record into the APIC byte stream yet, so it would silently
-        # execute once at capture time and never replay. Surface the limitation
-        # now instead of producing wrong output at replay.
         apic_capture = warp._src.context._get_apic_capture_for_device(self.device)
         if apic_capture is not None:
-            raise NotImplementedError(
-                "APIC capture does not yet support fill_() on wp.indexedarray / wp.fabricarray; "
-                "fill the underlying contiguous array first or move the fill outside the capture."
-            )
+            # During an APIC capture on this device, the native fill records an indexed
+            # array as an array-fill operation. Fabric buckets are raw pointers outside the
+            # APIC region model, so a Fabric fill would run once at capture time and never
+            # replay. Surface that limitation instead of producing wrong output at replay.
+            if self.type_id != ARRAY_TYPE_INDEXED:
+                raise NotImplementedError(
+                    "APIC capture does not yet support fill_() on wp.fabricarray / wp.indexedfabricarray; "
+                    "fill the underlying contiguous array first or move the fill outside the capture."
+                )
+            _check_fill_capturable(self.device, ctypes.sizeof(cvalue), self.data.strides, self.dtype, value)
+            apic_capture.track_array(self.data)
+            for indices in self.indices:
+                apic_capture.track_array(indices)
 
         cvalue_ptr = ctypes.pointer(cvalue)
         cvalue_size = ctypes.sizeof(cvalue)
@@ -5443,6 +5426,89 @@ class noncontiguous_array_base(Array[DType, NDim]):
             )
         else:
             warp._src.context.runtime.core.wp_array_fill_host(ctype_ptr, self.type_id, cvalue_ptr, cvalue_size)
+
+
+# Largest fill value, in bytes, that CUDA fills pass to their kernels by value.
+# Must match WP_FILL_VALUE_INLINE_BYTES_2 in warp/native/warp.cu.
+_FILL_VALUE_INLINE_BYTES = 3968
+
+
+def _fill_value_references_memory(dtype, value) -> builtins.bool:
+    """Return whether a fill value holds a non-null array, a non-zero ``wp.handle``, or a texture.
+
+    The value can be a handle itself, or a struct with such fields. Fill records store the
+    value's bytes, which a saved graph doesn't relocate, so a loaded graph would keep the
+    capturing process's pointers and handles.
+
+    Args:
+        dtype: The data type of the filled array.
+        value: The value passed to ``fill_()``.
+    """
+    if dtype is handle:
+        return builtins.bool(dtype._type_(getattr(value, "value", value)).value)
+    if not isinstance(dtype, warp._src.codegen.Struct) or not isinstance(value, dtype.cls):
+        return False
+    cvalue = value.__ctype__()
+    for name, var in dtype.vars.items():
+        if isinstance(var.type, warp._src.codegen.Struct):
+            if _fill_value_references_memory(var.type, getattr(value, name)):
+                return True
+        elif matches_array_class(var.type, array):
+            if getattr(cvalue, name).data:
+                return True
+        elif matches_array_class(var.type, indexedarray):
+            descriptor = getattr(cvalue, name)
+            if descriptor.data.data or any(descriptor.indices):
+                return True
+        elif is_array(var.type):
+            # Fabric arrays hold bucket pointers.
+            if getattr(value, name) is not None:
+                return True
+        elif var.type is handle:
+            if getattr(cvalue, name):
+                return True
+        elif warp._src.codegen._is_texture_type(var.type):
+            if getattr(cvalue, name).tex:
+                return True
+    return False
+
+
+def _check_fill_capturable(
+    device, value_size: int, strides: Sequence[int] = (), dtype: type | None = None, value: Any = None
+) -> None:
+    """Raise :exc:`NotImplementedError` if an APIC capture on ``device`` cannot record a fill.
+
+    A CUDA fill of a larger value stages it through ``capturable_tmp_alloc`` (pause/resume
+    plus device staging), which the APIC byte-stream rebuild cannot reproduce, so a saved
+    graph could not replay it. Smaller values are embedded in the byte stream. Strided and
+    indexed fills record their layout with non-negative strides only, and their value only
+    if it holds no array, non-zero handle, or texture, which a saved graph would not relocate.
+
+    Args:
+        device: The device of the filled array.
+        value_size: Size of the fill value in bytes.
+        strides: Byte strides of the filled memory, empty for a contiguous fill.
+        dtype: Data type of a strided or indexed fill, ``None`` for a contiguous fill.
+        value: Value of a strided or indexed fill, ``None`` for a contiguous fill.
+    """
+    if warp._src.context._get_apic_capture_for_device(device) is None:
+        return
+    if any(stride < 0 for stride in strides):
+        raise NotImplementedError(
+            "APIC capture does not yet support fill_() on arrays with negative strides; "
+            "move the fill outside the capture."
+        )
+    if _fill_value_references_memory(dtype, value):
+        raise NotImplementedError(
+            "APIC capture does not yet support fill_() on strided or indexed arrays with values that hold "
+            "arrays, non-zero wp.handle values, or textures; write the values with a kernel or move the fill "
+            "outside the capture."
+        )
+    if device.is_cuda and value_size > _FILL_VALUE_INLINE_BYTES:
+        raise NotImplementedError(
+            f"APIC capture does not yet support fill_() with values larger than {_FILL_VALUE_INLINE_BYTES} bytes "
+            "on CUDA arrays; use a smaller element type or move the fill outside the capture."
+        )
 
 
 # helper to check index array properties

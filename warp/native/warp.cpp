@@ -930,16 +930,55 @@ WP_API bool wp_array_copy_host(void* dst, void* src, int dst_type, int src_type,
 }
 
 
+template <typename T> static void array_fill_1d_value(char* data, int n, size_t stride, const int* indices, T value)
+{
+    if (indices) {
+        for (int i = 0; i < n; i++)
+            *reinterpret_cast<T*>(data + size_t(indices[i]) * stride) = value;
+    } else {
+        for (int i = 0; i < n; i++, data += stride)
+            *reinterpret_cast<T*>(data) = value;
+    }
+}
+
+// Fill the innermost dimension: ``n`` elements ``stride`` bytes apart, or at the
+// multiples of ``stride`` that ``indices`` selects. Values of 1, 2, 4, or 8 bytes
+// use typed stores when every element is aligned, which is much faster than a
+// variable-size memcpy per element.
+static void array_fill_1d(char* data, int n, size_t stride, const int* indices, const void* value, size_t value_size)
+{
+    size_t alignment = reinterpret_cast<size_t>(data) | stride;
+    if (value_size == 8 && alignment % 8 == 0) {
+        int64_t v;
+        memcpy(&v, value, sizeof(v));
+        array_fill_1d_value(data, n, stride, indices, v);
+    } else if (value_size == 4 && alignment % 4 == 0) {
+        int32_t v;
+        memcpy(&v, value, sizeof(v));
+        array_fill_1d_value(data, n, stride, indices, v);
+    } else if (value_size == 2 && alignment % 2 == 0) {
+        int16_t v;
+        memcpy(&v, value, sizeof(v));
+        array_fill_1d_value(data, n, stride, indices, v);
+    } else if (value_size == 1) {
+        int8_t v;
+        memcpy(&v, value, sizeof(v));
+        array_fill_1d_value(data, n, stride, indices, v);
+    } else {
+        for (int i = 0; i < n; i++) {
+            size_t idx = indices ? size_t(indices[i]) : size_t(i);
+            memcpy(data + idx * stride, value, value_size);
+        }
+    }
+}
+
+
 static void
 array_fill_strided(void* data, const int* shape, const int* strides, int ndim, const void* value, size_t value_size)
 {
     size_t stride = strides[0];
     if (ndim == 1) {
-        char* p = (char*)data;
-        for (int i = 0; i < shape[0]; i++) {
-            memcpy(p, value, value_size);
-            p += stride;
-        }
+        array_fill_1d((char*)data, shape[0], stride, nullptr, value, value_size);
     } else {
         for (int i = 0; i < shape[0]; i++) {
             char* p = (char*)data + i * stride;
@@ -962,11 +1001,7 @@ static void array_fill_indexed(
 {
     size_t stride = strides[0];
     if (ndim == 1) {
-        for (int i = 0; i < shape[0]; i++) {
-            size_t idx = indices[0] ? indices[0][i] : i;
-            char* p = (char*)data + idx * stride;
-            memcpy(p, value, value_size);
-        }
+        array_fill_1d((char*)data, shape[0], stride, indices[0], value, value_size);
     } else {
         for (int i = 0; i < shape[0]; i++) {
             size_t idx = indices[0] ? indices[0][i] : i;
@@ -1004,6 +1039,18 @@ WP_API void wp_array_fill_host(void* arr_ptr, int arr_type, const void* value_pt
 {
     if (!arr_ptr || !value_ptr)
         return;
+
+    // During capture, record only — don't execute (matches CUDA graph semantics).
+    // Python rejects the layouts the record cannot express before calling here.
+    APICState* state = wp_apic_get_recording_state();
+    if (state && (arr_type == wp::ARRAY_TYPE_REGULAR || arr_type == wp::ARRAY_TYPE_INDEXED)) {
+        if (value_size <= 0
+            || !apic_record_array_fill(
+                state, /*live=*/false, arr_ptr, arr_type, value_ptr, static_cast<uint32_t>(value_size)
+            ))
+            fprintf(stderr, "Warp fill error: cannot record this fill during CPU graph capture\n");
+        return;
+    }
 
     if (arr_type == wp::ARRAY_TYPE_REGULAR) {
         wp::array_t<void>& arr = *static_cast<wp::array_t<void>*>(arr_ptr);

@@ -2311,6 +2311,19 @@ WP_API void wp_array_fill_device(void* context, void* arr_ptr, int arr_type, con
 
     ContextGuard guard(context);
 
+    // Record-and-execute a strided or indexed fill under CUDA APIC capture: record the
+    // layout and value into the byte stream, then fall through so the live fill issues
+    // onto the captured stream. Only values the by-value kernels take are recordable;
+    // the Python fill_() path rejects larger ones under CUDA APIC capture. Recording
+    // runs under the fill's context, so a fill on another device is not recorded.
+    APICState* apic_state = wp_apic_get_cuda_recording_state();
+    if (apic_state && (arr_type == wp::ARRAY_TYPE_REGULAR || arr_type == wp::ARRAY_TYPE_INDEXED) && value_size > 0
+        && static_cast<size_t>(value_size) <= WP_FILL_VALUE_INLINE_BYTES_2) {
+        apic_record_array_fill(
+            apic_state, /*live=*/true, arr_ptr, arr_type, value_ptr, static_cast<uint32_t>(value_size)
+        );
+    }
+
     void* value_devptr = NULL;
     bool free_devptr = true;
 
