@@ -1337,9 +1337,94 @@ class TestTape(unittest.TestCase):
         tape.record_launch(mul_constant_no_adjoint, (2,), 0, [x], [y], "cpu")
         with self.assertRaisesRegex(RuntimeError, "mul_constant_no_adjoint.*strict=True"):
             tape.backward(grads={y: wp.ones_like(y)})
-        # nothing ran
+        # nothing ran, and the incoming gradients were not written
         self.assertEqual(calls, [])
         assert_np_equal(x.grad.numpy(), np.zeros(2))
+        assert_np_equal(y.grad.numpy(), np.zeros(2))
+
+        # the loss seed is not written either
+        loss = wp.zeros(1, dtype=float, requires_grad=True, device="cpu")
+        tape.record_launch(mul_constant_no_adjoint, (1,), 0, [x], [loss], "cpu")
+        with self.assertRaisesRegex(RuntimeError, "mul_constant_no_adjoint.*strict=True"):
+            tape.backward(loss=loss)
+        assert_np_equal(loss.grad.numpy(), np.zeros(1))
+
+    def test_tape_launch_records_struct_arrays(self):
+        x = wp.array([1.0, 2.0], dtype=float, requires_grad=True, device="cpu")
+        y = wp.array([3.0, 4.0], dtype=float, requires_grad=True, device="cpu")
+        z = wp.zeros_like(x, requires_grad=True)
+        loss = wp.zeros(1, dtype=float, requires_grad=True, device="cpu")
+
+        multiplicands = Multiplicands()
+        multiplicands.x = x
+        multiplicands.y = y
+
+        nested = NestedStruct()
+        nested.arr = x
+        wrapper = WrapperStruct()
+        wrapper.nested = nested
+
+        with wp.Tape() as tape:
+            wp.launch(mul_variable, dim=x.shape, inputs=[multiplicands], outputs=[z], device="cpu")
+            wp.launch(nested_loss_kernel, dim=x.shape, inputs=[wrapper], outputs=[loss], device="cpu")
+
+        struct_launch, nested_launch = tape.launches
+        self.assertEqual([id(a) for a in struct_launch.arrays], [id(x), id(y), id(z)])
+        self.assertEqual([id(a) for a in nested_launch.arrays], [id(x), id(loss)])
+
+        # unset struct array fields are skipped
+        empty = Multiplicands()
+        record = wp.TapeLaunch([mul_variable, (2,), 0, [empty], [z], None, 0, {}])
+        self.assertEqual([id(a) for a in record.arrays], [id(z)])
+
+    def test_tape_launch_records_indexed_arrays(self):
+        x = wp.array([1.0, 2.0, 3.0], dtype=float, device="cpu")
+        indices = wp.array([0, 2], dtype=int, device="cpu")
+        x_indexed = wp.indexedarray(x, [indices])
+        record = wp.TapeLaunch([mul_constant, (2,), 0, [x_indexed], [x], None, 0, {}])
+        self.assertEqual([id(a) for a in record.arrays], [id(x_indexed), id(x)])
+
+    def test_tape_nested_backward_not_recorded(self):
+        x = wp.array([1.0, 2.0], dtype=float, requires_grad=True, device="cpu")
+        y = wp.zeros_like(x, requires_grad=True)
+        z = wp.zeros_like(x, requires_grad=True)
+        u = wp.zeros_like(x, requires_grad=True)
+        scratch = wp.zeros_like(x)
+
+        def custom_backward():
+            # launches from recorded functions are not recorded either
+            wp.launch(mul_constant, dim=x.shape, inputs=[x], outputs=[scratch], device="cpu")
+
+        with wp.Tape() as outer:
+            wp.launch(mul_constant, dim=x.shape, inputs=[x], outputs=[y], device="cpu")
+            with wp.Tape() as inner:
+                wp.launch(mul_constant, dim=y.shape, inputs=[y], outputs=[z], device="cpu")
+                inner.record_func(custom_backward, arrays=[x])
+            launches = list(outer.launches)
+
+            inner.backward(grads={z: wp.ones_like(z)})
+            self.assertIs(wp.Tape.get_active(), outer)
+            self.assertEqual(outer.launches, launches)
+            assert_np_equal(y.grad.numpy(), np.full(2, 2.0))
+            assert_np_equal(scratch.numpy(), np.array([2.0, 4.0]))
+            inner.zero()
+
+            wp.launch(mul_constant, dim=y.shape, inputs=[y], outputs=[u], device="cpu")
+
+        self.assertEqual(len(outer.launches), 2)
+        outer.backward(grads={u: wp.ones_like(u)})
+        assert_np_equal(x.grad.numpy(), np.full(2, 4.0))
+
+    def test_tape_backward_inside_own_scope_not_recorded(self):
+        x = wp.array([1.0, 2.0], dtype=float, requires_grad=True, device="cpu")
+        y = wp.zeros_like(x, requires_grad=True)
+
+        with wp.Tape() as tape:
+            wp.launch(mul_constant, dim=x.shape, inputs=[x], outputs=[y], device="cpu")
+            tape.backward(grads={y: wp.ones_like(y)})
+            self.assertEqual(len(tape.launches), 1)
+            self.assertIs(wp.Tape.get_active(), tape)
+        assert_np_equal(x.grad.numpy(), np.full(2, 2.0))
 
     def test_tape_scope_end_without_matching_begin(self):
         tape = wp.Tape()
