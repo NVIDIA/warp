@@ -263,6 +263,13 @@ or convert to NumPy with :meth:`array.numpy <warp.array.numpy>` when reading
 individual values on the host. Inside kernels, arrays still support element-wise
 indexing.
 
+Inside kernels, a negative signed subscript counts from the end of its
+dimension, so ``a[-1]`` is the last element. Unsigned subscripts
+(``wp.uint32``, ``wp.uint64``) cannot be negative, so Warp skips this wrap for
+them. Where the compiler cannot prove a signed index is non-negative, such as an
+index read from another array, an unsigned subscript saves a few instructions
+per access.
+
 This keeps host-side behavior consistent across CPU and GPU arrays and avoids
 encouraging per-element device synchronization or copies.
 

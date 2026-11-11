@@ -1,10 +1,12 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import re
 import sys
+import tempfile
 import unittest
 from functools import cache
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 
@@ -4125,6 +4127,135 @@ def test_graph_fill_vecmat(test, device):
         _run_tests(indexed_arrays)
 
 
+@wp.kernel
+def unsigned_index_kernel(
+    a1: wp.array[float],
+    a2: wp.array2d[float],
+    a3: wp.array3d[float],
+    a4: wp.array4d[float],
+    b1: wp.array[float],
+    b2: wp.array2d[float],
+    b3: wp.array3d[float],
+    b4: wp.array4d[float],
+):
+    i, j, k, l = wp.tid()
+    # Mix unsigned, signed (including negative), and other integer subscripts in every dimension.
+    b1[wp.uint32(i)] = a1[wp.uint64(i)]
+    b2[wp.uint32(i), j - b2.shape[1]] = a2[i - a2.shape[0], wp.uint64(j)]
+    b3[wp.uint32(i), j, wp.int64(k)] = a3[wp.uint64(i), wp.uint32(j), k - a3.shape[2]]
+    b4[i, wp.uint32(j), k - b4.shape[2], wp.uint64(l)] = a4[wp.uint64(i), j, wp.uint32(k), l - a4.shape[3]]
+
+
+def test_unsigned_index(test, device):
+    """Unsigned subscripts address the same elements as signed ones, in 1-4D."""
+    shape = (5, 4, 3, 2)
+    src = [np.arange(np.prod(shape[:n]), dtype=np.float32).reshape(shape[:n]) for n in range(1, 5)]
+    a = [wp.array(s, dtype=float, device=device) for s in src]
+    b = [wp.zeros_like(x) for x in a]
+
+    wp.launch(unsigned_index_kernel, dim=shape, inputs=a + b, device=device)
+
+    for s, out in zip(src, b, strict=True):
+        assert_np_equal(out.numpy(), s)
+
+
+@wp.kernel
+def unsigned_index_view_kernel(
+    src: wp.array3d[float],
+    src_indexed: wp.indexedarray[float, Literal[2]],
+    dst: wp.array3d[float],
+    dst_indexed: wp.array2d[float],
+):
+    i, j, k = wp.tid()
+    plane = dst[wp.uint32(i)]
+    row = src[wp.uint32(i), wp.uint64(j)]
+    plane[j, wp.uint32(k)] = row[wp.uint32(k)]
+
+    row_indexed = src_indexed[wp.uint32(j)]
+    dst_indexed[wp.uint32(j), k] = src_indexed[j, wp.uint64(k)] + row_indexed[wp.uint64(k)]
+
+
+def test_unsigned_index_view(test, device):
+    """Unsigned subscripts index and form views of arrays and indexed arrays."""
+    src_np = np.arange(24, dtype=np.float32).reshape(2, 3, 4)
+    src = wp.array(src_np, dtype=float, device=device)
+    rows = wp.array([4, 0, 2], dtype=int, device=device)
+    base_np = np.arange(20, dtype=np.float32).reshape(5, 4)
+    src_indexed = wp.indexedarray(wp.array(base_np, dtype=float, device=device), [rows, None])
+    dst = wp.zeros_like(src)
+    dst_indexed = wp.zeros(src_indexed.shape, dtype=float, device=device)
+
+    wp.launch(unsigned_index_view_kernel, dim=src.shape, inputs=[src, src_indexed, dst, dst_indexed], device=device)
+
+    assert_np_equal(dst.numpy(), src_np)
+    assert_np_equal(dst_indexed.numpy(), 2.0 * base_np[[4, 0, 2]])
+
+
+@wp.kernel
+def unsigned_index_atomic_kernel(counts: wp.array2d[int], maxima: wp.array[int]):
+    i, j = wp.tid()
+    counts[wp.uint32(i), wp.uint64(j)] += 1
+    counts[wp.uint32(i), j - 4] += 10
+    wp.atomic_max(maxima, wp.uint32(i), j)
+
+
+def test_unsigned_index_atomic(test, device):
+    """Augmented assignment and atomics accept unsigned and mixed subscripts."""
+    counts = wp.zeros((3, 4), dtype=int, device=device)
+    maxima = wp.zeros(3, dtype=int, device=device)
+
+    wp.launch(unsigned_index_atomic_kernel, dim=counts.shape, inputs=[counts, maxima], device=device)
+
+    assert_np_equal(counts.numpy(), np.full((3, 4), 11))
+    assert_np_equal(maxima.numpy(), np.full(3, 3))
+
+
+@wp.kernel
+def unsigned_index_grad_kernel(x: wp.array2d[float], y: wp.array2d[float]):
+    i, j = wp.tid()
+    y[wp.uint32(i), wp.uint64(j)] = 3.0 * x[wp.uint32(i), wp.uint64(j)]
+
+
+def test_unsigned_index_grad(test, device):
+    """Adjoints of unsigned-indexed loads and stores accumulate into the right elements."""
+    x = wp.array(np.arange(6, dtype=np.float32).reshape(2, 3), dtype=float, device=device, requires_grad=True)
+    y = wp.zeros_like(x, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(unsigned_index_grad_kernel, dim=x.shape, inputs=[x, y], device=device)
+
+    tape.backward(grads={y: wp.full_like(y, 1.0)})
+
+    assert_np_equal(x.grad.numpy(), np.full((2, 3), 3.0, dtype=np.float32))
+
+
+@wp.kernel(enable_backward=False, module="unique")
+def signed_index_ptx_kernel(src: wp.array[float], idx: wp.array[wp.int32], dst: wp.array[float]):
+    # Index ``idx`` unsigned in both kernels so that ``src`` and ``dst`` are the only subscripts that differ.
+    i = idx[wp.uint32(wp.tid())]
+    dst[i] = src[i]
+
+
+@wp.kernel(enable_backward=False, module="unique")
+def unsigned_index_ptx_kernel(src: wp.array[float], idx: wp.array[wp.uint32], dst: wp.array[float]):
+    i = idx[wp.uint32(wp.tid())]
+    dst[i] = src[i]
+
+
+def test_unsigned_index_ptx(test, device):
+    """Unsigned subscripts compile without the negative-index wrap."""
+    # ``if (i < 0) i += n`` lowers either to a sign mask (``(i >> 31) & n``) or to a compare against zero.
+    wrap = re.compile(r"shr\.s32\s+%r\d+,\s*%r\d+,\s*31;|setp\.lt\.s32\s+%p\d+,\s*%r\d+,\s*0;")
+    for kernel, wraps in ((signed_index_ptx_kernel, True), (unsigned_index_ptx_kernel, False)):
+        with tempfile.TemporaryDirectory() as module_dir:
+            artifacts = wp.compile_aot_module(kernel.module, device=device, module_dir=module_dir, use_ptx=True)
+            (ptx_file,) = (p for p in artifacts if str(p).endswith(".ptx"))
+            with open(ptx_file) as f:
+                ptx = f.read()
+        test.assertEqual(wrap.search(ptx) is not None, wraps, kernel.key)
+
+
 devices = get_test_devices()
 cuda_devices = get_cuda_test_devices()
 
@@ -4321,6 +4452,11 @@ add_function_test(TestArray, "test_dynamic_array_slice", test_dynamic_array_slic
 add_function_test(TestArray, "test_array_runtime_zero_step", test_array_runtime_zero_step, devices=devices)
 
 add_function_test(TestArray, "test_graph_fill_vecmat", test_graph_fill_vecmat, devices=cuda_devices)
+add_function_test(TestArray, "test_unsigned_index", test_unsigned_index, devices=devices)
+add_function_test(TestArray, "test_unsigned_index_view", test_unsigned_index_view, devices=devices)
+add_function_test(TestArray, "test_unsigned_index_atomic", test_unsigned_index_atomic, devices=devices)
+add_function_test(TestArray, "test_unsigned_index_grad", test_unsigned_index_grad, devices=devices)
+add_function_test(TestArray, "test_unsigned_index_ptx", test_unsigned_index_ptx, devices=cuda_devices)
 
 try:
     import torch
