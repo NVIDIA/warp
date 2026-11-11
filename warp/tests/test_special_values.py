@@ -768,6 +768,43 @@ def test_copysign_adjoint(test, device, dtype, register_kernels=False):
         assert_float_eq(test, actual_grad_y[i], 0.0, f"adj_copysign d/dy ({xi}, {yi})")
 
 
+def test_sqrt_adjoint(test, device, dtype, register_kernels=False):
+    """Compute ``adj_sqrt`` as ``0.5 / sqrt(x)`` for ``x > 0`` and 0 at ``x == 0`` instead of ``inf``.
+
+    Negative inputs still produce a NaN gradient, matching the NaN forward result.
+    """
+
+    def kern(
+        x: wp.array[dtype],
+        out: wp.array[dtype],
+    ):
+        i = wp.tid()
+        out[i] = wp.sqrt(x[i])
+
+    kernel = getkernel(kern, suffix="sqrt_adj_" + dtype.__name__)
+
+    if register_kernels:
+        return
+
+    inputs = [4.0, 0.25, 0.0, -0.0, -1.0]
+    n = len(inputs)
+    x = wp.array(inputs, dtype=dtype, device=device, requires_grad=True)
+    out = wp.zeros(n, dtype=dtype, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(kernel, dim=n, inputs=[x], outputs=[out], device=device)
+    out.grad.fill_(dtype(1.0))
+    tape.backward()
+    grad = x.grad.numpy()
+
+    assert_float_eq(test, grad[0], 0.25, "adj_sqrt(4)")
+    assert_float_eq(test, grad[1], 1.0, "adj_sqrt(0.25)")
+    assert_float_eq(test, grad[2], 0.0, "adj_sqrt(0)")
+    assert_float_eq(test, grad[3], 0.0, "adj_sqrt(-0)")
+    assert_float_eq(test, grad[4], float("nan"), "adj_sqrt(-1)")
+
+
 devices = get_test_devices()
 
 
@@ -830,6 +867,13 @@ for dtype in [wp.float16, wp.float32, wp.float64]:
         TestSpecialValues,
         f"test_copysign_adjoint_{dtype.__name__}",
         test_copysign_adjoint,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestSpecialValues,
+        f"test_sqrt_adjoint_{dtype.__name__}",
+        test_sqrt_adjoint,
         devices=devices,
         dtype=dtype,
     )

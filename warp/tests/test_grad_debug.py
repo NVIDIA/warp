@@ -100,8 +100,9 @@ def vec_length_kernel(a: wp.array[wp.vec3], out: wp.array[float]):
     tid = wp.tid()
     v = a[tid]
     # instead of wp.length(v), we use a trivial implementation that
-    # fails when a division by zero occurs in the backward pass of sqrt
-    out[tid] = wp.sqrt(v[0] ** 2.0 + v[1] ** 2.0 + v[2] ** 2.0)
+    # fails when a division by zero occurs in the backward pass of pow
+    # (unlike wp.sqrt(), whose adjoint is guarded at zero)
+    out[tid] = (v[0] ** 2.0 + v[1] ** 2.0 + v[2] ** 2.0) ** 0.5
 
 
 @wp.func
