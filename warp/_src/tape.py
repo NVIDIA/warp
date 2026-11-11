@@ -7,7 +7,7 @@ import contextlib
 import functools
 from collections import defaultdict, namedtuple
 from collections.abc import Callable
-from typing import TypeVar
+from typing import TypeVar, overload
 
 import warp as wp
 from warp._src.logger import log_warning
@@ -19,6 +19,15 @@ def _kernel_has_adjoint(kernel) -> bool:
     if enable_backward is None:
         enable_backward = kernel.module.options.get("enable_backward", True)
     return bool(enable_backward)
+
+
+def _collect_arrays(value, out: list):
+    """Append the arrays in kernel argument ``value`` to ``out``, walking struct fields recursively."""
+    if wp._src.types.is_array(value):
+        out.append(value)
+    elif wp._src.types.is_struct(value):
+        for name in value._cls.vars:
+            _collect_arrays(getattr(value, name), out)
 
 
 class TapeLaunch(list):
@@ -73,9 +82,16 @@ class TapeLaunch(list):
         return self[7]
 
     @property
-    def arrays(self) -> list[wp.array]:
-        """The :class:`warp.array` arguments of the launch, inputs first."""
-        return [a for a in (*self[3], *self[4]) if isinstance(a, wp.array)]
+    def arrays(self) -> list:
+        """The array arguments of the launch, inputs first.
+
+        Includes arrays stored in fields of :func:`warp.struct` arguments, including
+        nested structs, and array types such as :class:`warp.indexedarray`.
+        """
+        arrays = []
+        for arg in (*self[3], *self[4]):
+            _collect_arrays(arg, arrays)
+        return arrays
 
     @property
     def has_adjoint(self) -> bool:
@@ -235,7 +251,23 @@ class Tape:
             per array, so writes are then also no longer flagged against another tape that read
             the same arrays and has not yet run its own backward pass, or against a second
             ``backward()`` call on this tape.
+
+        Operations run by the backward pass, including functions recorded with
+        :meth:`record_func`, are not recorded on any tape, even if a tape is active.
         """
+        # in strict mode, fail before changing any gradients
+        if self.strict:
+            for launch in self.launches:
+                if not callable(launch):
+                    self._check_kernel_has_adjoint(launch[0])
+
+        # don't record adjoint launches or seed writes on an active tape, such as an
+        # enclosing tape when this is a nested tape
+        with _NoGrad():
+            self._backward(loss, grads)
+
+    def _backward(self, loss: wp.array | None, grads: dict[wp.array, wp.array] | None):
+        """Run the backward pass; see :meth:`backward`."""
         # if scalar loss is specified then initialize
         # a 'seed' array for it, with gradient of one
         if loss:
@@ -260,12 +292,6 @@ class Tape:
                 else:
                     # ensure we can capture this backward pass in a CUDA graph
                     a.grad.assign(g)
-
-        # in strict mode, fail before running any part of the backward pass
-        if self.strict:
-            for launch in self.launches:
-                if not callable(launch):
-                    self._check_kernel_has_adjoint(launch[0])
 
         # run launches backwards
         for launch in reversed(self.launches):
@@ -637,6 +663,14 @@ class _NoGrad(contextlib.ContextDecorator):
         tape = self._paused.pop()
         if tape is not None:
             wp._src.context.runtime.tape = tape
+
+
+@overload
+def no_grad(func: None = None) -> _NoGrad: ...
+
+
+@overload
+def no_grad(func: _F) -> _F: ...
 
 
 def no_grad(func: _F | None = None) -> _NoGrad | _F:
