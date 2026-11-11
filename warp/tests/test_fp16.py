@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import struct
+import sys
 import unittest
 
 import numpy as np
@@ -104,7 +106,40 @@ def test_fp16_grad(test, device):
 
 
 class TestFp16(unittest.TestCase):
-    pass
+    @unittest.skipUnless(sys.version_info >= (3, 12), "Python 3.12 is the first to let a type define its buffer")
+    def test_fp16_numpy_reads_composite_values(self):
+        """NumPy reads float16 vectors, matrices, quaternions, and transforms as their values, not their stored bits."""
+        vec = np.asarray(wp.vec3h(1.0, -2.0, 0.25))
+        np.testing.assert_array_equal(vec, np.array((1.0, -2.0, 0.25), dtype=np.float16), strict=True)
+
+        mat = np.asarray(wp.mat22h(1.0, 2.0, -3.0, 0.5))
+        np.testing.assert_array_equal(mat, np.array((1.0, 2.0, -3.0, 0.5), dtype=np.float16), strict=True)
+
+        quat = np.asarray(wp.quath(0.5, -0.5, 0.25, 1.0))
+        np.testing.assert_array_equal(quat, np.array((0.5, -0.5, 0.25, 1.0), dtype=np.float16), strict=True)
+
+        xform = np.asarray(wp.transformh(wp.vec3h(1.0, 2.0, 3.0), wp.quath(0.0, 0.0, 0.0, 1.0)))
+        np.testing.assert_array_equal(
+            xform, np.array((1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 1.0), dtype=np.float16), strict=True
+        )
+
+    @unittest.skipUnless(sys.version_info >= (3, 12), "Python 3.12 is the first to let a type define its buffer")
+    def test_fp16_numpy_reads_mixed_sequence(self):
+        """NumPy reads a float16 vector next to values of another type, where only the vector knows its format."""
+        result = np.asarray([(1.0, 2.0, 3.0), wp.vec3h(4.0, -5.0, 0.25)])
+        np.testing.assert_array_equal(result, np.array(((1.0, 2.0, 3.0), (4.0, -5.0, 0.25))), strict=True)
+
+    @unittest.skipUnless(sys.version_info >= (3, 12), "Python 3.12 is the first to let a type define its buffer")
+    def test_fp16_numpy_view_shares_memory(self):
+        """A NumPy view of a float16 vector shares its memory, as one of a float32 vector does."""
+        value = wp.vec3h(1.0, 2.0, 3.0)
+        view = np.asarray(value)
+        view[1] = -4.0
+        self.assertEqual(value[1], -4.0)
+
+    def test_fp16_composite_bytes(self):
+        """The bytes of a float16 vector are the float16 encodings of its values."""
+        self.assertEqual(bytes(wp.vec3h(1.0, -2.0, 0.25)), struct.pack("=3e", 1.0, -2.0, 0.25))
 
 
 devices = []

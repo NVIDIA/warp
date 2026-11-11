@@ -3454,7 +3454,8 @@ class ModuleHasher:
         elif isinstance(value, tuple(warp._src.types.scalar_and_bool_types)):
             return bytes(value._type_(value.value))
         elif hasattr(value, "_wp_scalar_type_"):
-            return bytes(value)
+            # Read the stored bytes, which bfloat16 composite values don't export as a buffer.
+            return ctypes.string_at(ctypes.addressof(value), ctypes.sizeof(value))
         elif warp._src.types.is_struct(value):
             return bytes(value._ctype)
         elif warp._src.types.is_native_type(type(value)):

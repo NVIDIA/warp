@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import ctypes
 import unittest
 from unittest import mock
 
@@ -145,9 +146,14 @@ def test_identity_builtins_match_kernel_scope(test, device):
 
         wp.launch(identity_kernels[dtype], dim=1, outputs=[quats, transforms], device=device)
 
-        # Compare the raw bytes so that every scalar type is checked bit for bit.
-        test.assertEqual(bytes(wp.quat_identity(dtype=dtype)), quats.numpy()[0].tobytes())
-        test.assertEqual(bytes(wp.transform_identity(dtype=dtype)), transforms.numpy()[0].tobytes())
+        # Compare the stored bytes so that every scalar type is checked bit for bit. bfloat16 values
+        # export no buffer from Python 3.12, so read them directly.
+        quat = wp.quat_identity(dtype=dtype)
+        transform = wp.transform_identity(dtype=dtype)
+        test.assertEqual(ctypes.string_at(ctypes.addressof(quat), ctypes.sizeof(quat)), quats.numpy()[0].tobytes())
+        test.assertEqual(
+            ctypes.string_at(ctypes.addressof(transform), ctypes.sizeof(transform)), transforms.numpy()[0].tobytes()
+        )
 
 
 class TestBuiltinsResolution(unittest.TestCase):

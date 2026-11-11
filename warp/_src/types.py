@@ -8,9 +8,11 @@ import ctypes
 import enum
 import functools
 import inspect
+import itertools
 import math
 import operator
 import struct
+import sys
 import types
 import zlib
 from collections.abc import Callable, Mapping, Sequence
@@ -817,6 +819,260 @@ def _is_bit_converted_float(dtype):
     return dtype is float16 or dtype is bfloat16
 
 
+def _decode_bit_converted_floats(bits: np.ndarray, scalar_type: type) -> np.ndarray:
+    """Return the values of float16 or bfloat16 bits as a NumPy array."""
+    if scalar_type is float16:
+        return bits.view(np.float16)
+    return _np_bfloat16_bits_to_float32(bits)
+
+
+# Whether NumPy reads float16 and bfloat16 composite values as their values rather than
+# their stored bits. Python 3.12 is the first to let these types export a buffer of their own.
+_NUMPY_READS_BIT_CONVERTED_FLOATS = sys.version_info >= (3, 12)
+
+
+def _export_float16_composite_buffer(self, flags):
+    """Export the stored bits of a float16 composite value as the float16 values that they encode."""
+    return ctypes.Array.__buffer__(self, flags).cast("B").cast("e")
+
+
+def _refuse_bfloat16_composite_buffer(self, flags):
+    """Refuse to export a bfloat16 composite value as a buffer, so that NumPy reads it through ``__array__()``."""
+    raise BufferError("No buffer format describes bfloat16 values")
+
+
+def _read_bfloat16_composite_array(self, dtype=None, copy=None):
+    """Return the values of a bfloat16 composite value as a new float32 NumPy array."""
+    if copy is False:
+        raise ValueError("bfloat16 values can only be read into a new array")
+    values = _np_bfloat16_bits_to_float32(np.frombuffer(ctypes.Array.__buffer__(self, 0), dtype=np.uint16))
+    return values if dtype is None else values.astype(dtype, copy=False)
+
+
+# Types that NumPy reads as scalars even though some of them are sequences.
+_NUMPY_SCALAR_TYPES = (float, int, complex, str, bytes, np.generic)
+
+# Types that NumPy never reads as sequences of items.
+_NUMPY_NON_SEQUENCE_TYPES = (*_NUMPY_SCALAR_TYPES, np.ndarray, ctypes.Array)
+
+_PySequence_Check = ctypes.pythonapi.PySequence_Check
+_PySequence_Check.argtypes = (ctypes.py_object,)
+_PySequence_Check.restype = ctypes.c_int
+
+_PyObject_CheckBuffer = ctypes.pythonapi.PyObject_CheckBuffer
+_PyObject_CheckBuffer.argtypes = (ctypes.py_object,)
+_PyObject_CheckBuffer.restype = ctypes.c_int
+
+# Most dimensions NumPy allows in an array (32 before NumPy 2). Deeper inputs are left
+# for NumPy to reject, which also stops the walk through sequences that contain themselves.
+_NUMPY_MAX_DIMS = 64
+
+# How many composite values have their bytes joined at a time. A join holds memory for
+# every value that it joins until it returns, which slows down longer joins.
+_COMPOSITE_JOIN_BATCH_COUNT = 65_536
+
+
+def _is_numpy_sequence(value) -> builtins.bool:
+    """Check if NumPy reads a value as a sequence of items, like a list, rather than as a scalar or an array.
+
+    NumPy reads strings as scalars, and objects with a buffer or an array interface as
+    arrays. It reads other objects as sequences when they support indexing and ``len()``.
+    """
+    if (
+        isinstance(value, (str, bytes))
+        or _PyObject_CheckBuffer(value)
+        or hasattr(value, "__array__")
+        or hasattr(value, "__array_interface__")
+        or hasattr(value, "__array_struct__")
+        or not _PySequence_Check(value)
+    ):
+        return False
+    try:
+        len(value)
+    except Exception:
+        return False
+    return True
+
+
+def _read_numpy_sequences(value, max_depth):
+    """Read every sequence in ``value`` that NumPy would read, down to ``max_depth`` levels, into a tuple."""
+    if max_depth >= 0 and (type(value) in (list, tuple) or _is_numpy_sequence(value)):
+        return tuple(map(_read_numpy_sequences, value, itertools.repeat(max_depth - 1)))
+    return value
+
+
+@functools.cache
+def _get_composite_buffer_dtypes(composite_type: type) -> tuple[np.dtype, np.dtype]:
+    """Return the NumPy dtypes of a composite value's raw bytes and of its stored scalars."""
+    return np.dtype((np.void, ctypes.sizeof(composite_type))), np.dtype(composite_type._type_)
+
+
+def _is_composite_cast_left_to_numpy(composite_type: type, dtype) -> builtins.bool:
+    """Check if NumPy must read composite values of a type one at a time to cast them to ``dtype``.
+
+    NumPy's results for NaN, infinite, and out-of-range float32 and float64 values cast to an
+    integer type depend on how it splits the cast, so these casts stay as NumPy does them.
+    """
+    return dtype is not None and composite_type._wp_scalar_type_ in (float32, float64) and np.dtype(dtype).kind in "iu"
+
+
+def _copy_composite_values(values, count: int, composite_type: type) -> np.ndarray:
+    """Copy ``count`` composite values of one type into a NumPy array of their values, one row per value."""
+    bytes_dtype, scalar_dtype = _get_composite_buffer_dtypes(composite_type)
+    if composite_type._wp_is_bit_converted_ and _NUMPY_READS_BIT_CONVERTED_FLOATS:
+        # These values don't export their stored bits, so read them through the base type.
+        result = np.fromiter(map(ctypes.Array.__buffer__, values, itertools.repeat(0)), dtype=bytes_dtype, count=count)
+        result = result.view(scalar_dtype).reshape(count, -1)
+    else:
+        if count <= _COMPOSITE_JOIN_BATCH_COUNT:
+            buffer = bytearray().join(values)
+        else:
+            # Join slices of a list, which take less time to join than batches read from an iterator.
+            if type(values) not in (list, tuple):
+                values = list(values)
+            buffer = bytearray()
+            for start in range(0, count, _COMPOSITE_JOIN_BATCH_COUNT):
+                buffer += b"".join(values[start : start + _COMPOSITE_JOIN_BATCH_COUNT])
+        result = np.ndarray((count, composite_type._length_), scalar_dtype, buffer)
+    if composite_type._wp_is_bit_converted_:
+        return _decode_bit_converted_floats(result, composite_type._wp_scalar_type_)
+    return result
+
+
+def _convert_composites_to_numpy(data, dtype=None, max_depth=_NUMPY_MAX_DIMS):
+    """Replace the composite values (vectors, matrices, quaternions, transformations) in ``data`` with NumPy arrays.
+
+    NumPy reads composite values one at a time, which is much slower than copying a whole
+    sequence of them at once. Before Python 3.12, it also reads float16 and bfloat16 ones
+    through their raw ``uint16`` bits, as if the bits were the values.
+
+    Args:
+        data: The data to convert.
+        dtype: The NumPy type that the result gets cast to, if any.
+        max_depth: How many levels of sequences NumPy still allows inside ``data``.
+            Anything deeper is left as is.
+    """
+    # Only plain lists and tuples skip NumPy's array protocols: it reads their subclasses
+    # through them when they define one, like any other object.
+    if type(data) not in (list, tuple):
+        if not _NUMPY_READS_BIT_CONVERTED_FLOATS and getattr(data, "_wp_is_bit_converted_", False):
+            return _decode_bit_converted_floats(np.frombuffer(data, dtype=np.uint16), data._wp_scalar_type_)
+        if isinstance(data, np.ndarray) or not _is_numpy_sequence(data):
+            return data
+        # Another sequence, which gets read once into a tuple, as NumPy would.
+        data = tuple(data)
+
+    # A flat sequence of one composite type, the usual case.
+    if data:
+        item_type = type(data[0])
+        if hasattr(item_type, "_wp_generic_type_hint_") and operator.countOf(map(type, data), item_type) == len(data):
+            if _is_composite_cast_left_to_numpy(item_type, dtype):
+                return data
+            return _copy_composite_values(data, len(data), item_type)
+
+    # NumPy only accepts nested sequences whose items at each depth have the same shape,
+    # and reads a composite value as one dimension of scalars, so composite values can
+    # only sit at the one depth that the first item of each sequence reveals.
+    depth = 0
+    first = data
+    while True:
+        while type(first) in (list, tuple):
+            if not first or depth == max_depth:
+                return data
+            first = first[0]
+            depth += 1
+
+        if isinstance(first, _NUMPY_SCALAR_TYPES):
+            # A scalar, so the sequences one depth up hold the scalars.
+            depth -= 1
+        elif isinstance(first, ctypes.Array):
+            pass
+        elif isinstance(first, np.ndarray):
+            depth += first.ndim - 1
+        elif isinstance(first, scalar_and_bool_types):
+            depth -= 1
+        elif _is_numpy_sequence(first):
+            if isinstance(first, (list, tuple)):
+                # A list or tuple subclass, like a named tuple, which gets probed in place
+                # rather than read into a tuple.
+                if not first or depth == max_depth:
+                    return data
+                first = first[0]
+                depth += 1
+                continue
+            # Another sequence: read each one once into a tuple, as NumPy would, and start over.
+            return _convert_composites_to_numpy(_read_numpy_sequences(data, max_depth), dtype, max_depth)
+        else:
+            # Another scalar, or an array-like that NumPy reads as an array.
+            depth += np.ndim(first) - 1
+        break
+
+    if depth <= 0 or (_NUMPY_READS_BIT_CONVERTED_FLOATS and not isinstance(first, ctypes.Array)):
+        # No composite values, or from Python 3.12, no sequence of them to copy in a single pass.
+        return data
+
+    # Gather the sequences that hold the items at that depth, descending only through
+    # lists and tuples so that no other iterable gets consumed.
+    rows = data
+    levels = []
+    for i in range(depth - 1):
+        if i:
+            rows = tuple(itertools.chain.from_iterable(rows))
+        row_types = set(map(type, rows))
+        if not row_types.issubset((list, tuple)):
+            if not all(issubclass(t, _NUMPY_NON_SEQUENCE_TYPES) for t in row_types.difference((list, tuple))):
+                others = itertools.compress(rows, map(operator.not_, map((list, tuple).__contains__, map(type, rows))))
+                if any(map(_is_numpy_sequence, others)):
+                    # Another sequence: read each one once into a tuple, as NumPy would, and start over.
+                    return _convert_composites_to_numpy(_read_numpy_sequences(data, max_depth), dtype, max_depth)
+            if row_types.isdisjoint((list, tuple)):
+                # No list or tuple to hold composite values at the next depth.
+                return data
+            levels = None
+            rows = tuple(itertools.compress(rows, map((list, tuple).__contains__, map(type, rows))))
+        if levels is not None:
+            levels.append(rows)
+
+    # The shape of the sequences while every one at each depth has the same length.
+    shape = [len(data)]
+    for level in levels or ():
+        lengths = set(map(len, level))
+        if len(lengths) != 1:
+            levels = None
+            break
+        shape.append(lengths.pop())
+    count = math.prod(shape) if levels is not None else sum(map(len, rows))
+
+    # The type of the items at that depth, if they all have the same one.
+    item_type = None
+    if count:
+        if depth == 1:
+            first_type = type(data[0])
+        else:
+            first_type = type(rows[0][0] if rows[0] else next(itertools.chain.from_iterable(rows)))
+        items = data if depth == 1 else itertools.chain.from_iterable(rows)
+        if operator.countOf(map(type, items), first_type) == count:
+            item_type = first_type
+
+    if item_type is not None:
+        if not type_is_composite(item_type) or _is_composite_cast_left_to_numpy(item_type, dtype):
+            return data
+        if levels is not None:
+            values = data if depth == 1 else itertools.chain.from_iterable(rows)
+            return _copy_composite_values(values, count, item_type).reshape(*shape, -1)
+        if _NUMPY_READS_BIT_CONVERTED_FLOATS or not item_type._wp_is_bit_converted_:
+            return data
+    elif _NUMPY_READS_BIT_CONVERTED_FLOATS or not any(
+        getattr(t, "_wp_is_bit_converted_", False)
+        for t in set(map(type, data if depth == 1 else itertools.chain.from_iterable(rows)))
+    ):
+        return data
+
+    # Before Python 3.12, float16 and bfloat16 values that NumPy can't take in a single pass
+    # get replaced one sequence at a time.
+    return tuple(map(_convert_composites_to_numpy, data, itertools.repeat(dtype), itertools.repeat(max_depth - 1)))
+
+
 def safe_len(obj):
     try:
         return len(obj)
@@ -1012,6 +1268,15 @@ def vector(length, dtype):
                 return x
 
         _wp_is_bit_converted_ = _is_bit_converted_float(_wp_scalar_type_)
+
+        # NumPy reads composite values through the buffer that they export, which would
+        # otherwise hold the stored bits of float16 and bfloat16 values.
+        if _wp_is_bit_converted_ and _NUMPY_READS_BIT_CONVERTED_FLOATS:
+            if _wp_scalar_type_ is float16:
+                __buffer__ = _export_float16_composite_buffer
+            else:
+                __buffer__ = _refuse_bfloat16_composite_buffer
+                __array__ = _read_bfloat16_composite_array
 
         def __init__(self, *args):
             num_args = len(args)
@@ -1261,6 +1526,15 @@ def matrix(shape, dtype):
                 return x
 
         _wp_is_bit_converted_ = _is_bit_converted_float(_wp_scalar_type_)
+
+        # NumPy reads composite values through the buffer that they export, which would
+        # otherwise hold the stored bits of float16 and bfloat16 values.
+        if _wp_is_bit_converted_ and _NUMPY_READS_BIT_CONVERTED_FLOATS:
+            if _wp_scalar_type_ is float16:
+                __buffer__ = _export_float16_composite_buffer
+            else:
+                __buffer__ = _refuse_bfloat16_composite_buffer
+                __array__ = _read_bfloat16_composite_array
 
         def __init__(self, *args):
             num_args = len(args)
@@ -3776,11 +4050,25 @@ class array(Array[DType, NDim]):
             self._ref = data
             return
 
+        # Whether to convert the composite values in the data before NumPy reads it: always
+        # before Python 3.12, where NumPy would read float16 and bfloat16 ones as their stored
+        # bits, and from then on only for sequences of them, which get copied in a single pass.
+        if isinstance(data, np.ndarray):
+            convert_composites = False
+        elif _NUMPY_READS_BIT_CONVERTED_FLOATS and (type(data) is list or type(data) is tuple):
+            # Sequences of composite values start with one, or with a nested sequence.
+            first = data[0] if data else None
+            if isinstance(first, (list, tuple)):
+                first = first[0] if first else None
+            convert_composites = isinstance(first, (ctypes.Array, list, tuple))
+        else:
+            convert_composites = True
+
         # convert input data to ndarray (handles lists, tuples, etc.) and determine dtype
         if dtype is Any:
             # infer dtype from data
             try:
-                arr = np.asarray(data)
+                arr = np.asarray(_convert_composites_to_numpy(data) if convert_composites else data)
             except Exception as e:
                 raise RuntimeError(f"Failed to convert input data to an array: {e}") from e
             dtype = np_dtype_to_warp_type.get(arr.dtype)
@@ -3888,9 +4176,16 @@ class array(Array[DType, NDim]):
                     elif ml_bf16 is not None and isinstance(data, np.ndarray) and data.dtype == ml_bf16:
                         arr = data.view(np.uint16)
                     else:
-                        arr = _np_float32_to_bfloat16_bits(np.asarray(data, dtype=np.float32))
+                        arr = _np_float32_to_bfloat16_bits(
+                            np.asarray(
+                                _convert_composites_to_numpy(data, np.float32) if convert_composites else data,
+                                dtype=np.float32,
+                            )
+                        )
                 else:
-                    arr = np.asarray(data, dtype=npdtype)
+                    arr = np.asarray(
+                        _convert_composites_to_numpy(data, npdtype) if convert_composites else data, dtype=npdtype
+                    )
             except Exception as e:
                 raise RuntimeError(f"Failed to convert input data to an array with type {npdtype}: {e}") from e
 
@@ -3959,15 +4254,29 @@ class array(Array[DType, NDim]):
         else:
             # copy data into a new array
             self._init_new(dtype, shape, None, device, pinned)
-            src = array(
-                ptr=arr.ctypes.data,
-                dtype=dtype,
-                shape=shape,
-                strides=strides,
-                device="cpu",
-                copy=False,
-            )
-            warp.copy(self, src)
+            runtime = warp._src.context.runtime
+            if arr.flags.c_contiguous and runtime._apic_capture is None:
+                # The new array is contiguous too, so copy the bytes directly rather than
+                # through a temporary source array and the general-purpose copy.
+                if self.capacity:
+                    if device.is_cuda:
+                        result = runtime.core.wp_memcpy_h2d(
+                            device.context, self.ptr, arr.ctypes.data, self.capacity, device.stream.cuda_stream
+                        )
+                    else:
+                        result = runtime.core.wp_memcpy_h2h(self.ptr, arr.ctypes.data, self.capacity)
+                    if not result:
+                        raise RuntimeError(f"Warp copy error: {runtime.get_error_string()}")
+            else:
+                src = array(
+                    ptr=arr.ctypes.data,
+                    dtype=dtype,
+                    shape=shape,
+                    strides=strides,
+                    device="cpu",
+                    copy=False,
+                )
+                warp.copy(self, src)
 
     def _init_from_ptr(self, ptr, dtype, shape, strides, capacity, device, pinned, deleter):
         try:
