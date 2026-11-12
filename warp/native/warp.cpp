@@ -930,14 +930,19 @@ WP_API bool wp_array_copy_host(void* dst, void* src, int dst_type, int src_type,
 }
 
 
+// Compute each store's offset from the element index. Do not rewrite the
+// non-indexed loop as a pointer that advances by ``stride``: MSVC 14.51 for
+// ARM64 unrolls that loop with all stores addressed from one base register and
+// drops the second of every four 2-byte stores (the Windows ARM64 fill tests in
+// test_array.py and test_indexedarray.py catch it).
 template <typename T> static void array_fill_1d_value(char* data, int n, size_t stride, const int* indices, T value)
 {
     if (indices) {
         for (int i = 0; i < n; i++)
             *reinterpret_cast<T*>(data + size_t(indices[i]) * stride) = value;
     } else {
-        for (int i = 0; i < n; i++, data += stride)
-            *reinterpret_cast<T*>(data) = value;
+        for (int i = 0; i < n; i++)
+            *reinterpret_cast<T*>(data + size_t(i) * stride) = value;
     }
 }
 
