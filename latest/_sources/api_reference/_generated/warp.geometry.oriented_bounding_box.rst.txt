@@ -1,0 +1,6 @@
+﻿warp.geometry.oriented\_bounding\_box
+=====================================
+
+.. currentmodule:: warp.geometry
+
+.. autofunction:: oriented_bounding_box

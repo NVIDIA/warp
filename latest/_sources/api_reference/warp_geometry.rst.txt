@@ -16,9 +16,12 @@ Python API
    IsoSurfaceBase
    IsoSurfaceMarchingCubes
    IsoSurfaceNets
+   OBBMeasureType
    SweptVolumeSignMode
    delaunay_edge_flip
    lipschitz_octree
+   oriented_bounding_box
+   oriented_bounding_boxes
    sparse_marching_cubes
    sparse_marching_cubes_from_cells
    swept_volume_bounds
@@ -34,4 +37,5 @@ Kernel API
    :toctree: _generated
 
    find_triangle_neighbor_edge_index
+   super_fibonacci
    swept_volume_sdf

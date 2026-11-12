@@ -586,31 +586,40 @@ be called from your own <a class="reference internal" href="_generated/warp.kern
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.geometry.IsoSurfaceNets.html#warp.geometry.IsoSurfaceNets" title="warp.geometry.IsoSurfaceNets"><code class="xref py py-obj docutils literal notranslate"><span class="pre">IsoSurfaceNets</span></code></a></p></td>
 <td><p>A reusable isosurface extractor using Surface Nets.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.geometry.SweptVolumeSignMode.html#warp.geometry.SweptVolumeSignMode" title="warp.geometry.SweptVolumeSignMode"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SweptVolumeSignMode</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.geometry.OBBMeasureType.html#warp.geometry.OBBMeasureType" title="warp.geometry.OBBMeasureType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">OBBMeasureType</span></code></a></p></td>
+<td><p>Objective minimized when searching for an oriented bounding box.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.geometry.SweptVolumeSignMode.html#warp.geometry.SweptVolumeSignMode" title="warp.geometry.SweptVolumeSignMode"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SweptVolumeSignMode</span></code></a></p></td>
 <td><p>Method used to classify inside/outside when evaluating the per-mesh SDF.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.geometry.delaunay_edge_flip.html#warp.geometry.delaunay_edge_flip" title="warp.geometry.delaunay_edge_flip"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delaunay_edge_flip</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.geometry.delaunay_edge_flip.html#warp.geometry.delaunay_edge_flip" title="warp.geometry.delaunay_edge_flip"><code class="xref py py-obj docutils literal notranslate"><span class="pre">delaunay_edge_flip</span></code></a></p></td>
 <td><p>Flip non-Delaunay interior edges in place until all are Delaunay or max passes is reached.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.geometry.lipschitz_octree.html#warp.geometry.lipschitz_octree" title="warp.geometry.lipschitz_octree"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lipschitz_octree</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.geometry.lipschitz_octree.html#warp.geometry.lipschitz_octree" title="warp.geometry.lipschitz_octree"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lipschitz_octree</span></code></a></p></td>
 <td><p>Return max-depth octree cells that may intersect a level set of a Lipschitz-bounded implicit field.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.geometry.sparse_marching_cubes.html#warp.geometry.sparse_marching_cubes" title="warp.geometry.sparse_marching_cubes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sparse_marching_cubes</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.geometry.oriented_bounding_box.html#warp.geometry.oriented_bounding_box" title="warp.geometry.oriented_bounding_box"><code class="xref py py-obj docutils literal notranslate"><span class="pre">oriented_bounding_box</span></code></a></p></td>
+<td><p>Approximate an oriented bounding box (OBB) of a point set by sampling orientations.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.geometry.oriented_bounding_boxes.html#warp.geometry.oriented_bounding_boxes" title="warp.geometry.oriented_bounding_boxes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">oriented_bounding_boxes</span></code></a></p></td>
+<td><p>Approximate an oriented bounding box (OBB) of each of several point sets in one pass.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.geometry.sparse_marching_cubes.html#warp.geometry.sparse_marching_cubes" title="warp.geometry.sparse_marching_cubes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sparse_marching_cubes</span></code></a></p></td>
 <td><p>Extract an isosurface from an implicit function using a Lipschitz octree.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.geometry.sparse_marching_cubes_from_cells.html#warp.geometry.sparse_marching_cubes_from_cells" title="warp.geometry.sparse_marching_cubes_from_cells"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sparse_marching_cubes_from_cells</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.geometry.sparse_marching_cubes_from_cells.html#warp.geometry.sparse_marching_cubes_from_cells" title="warp.geometry.sparse_marching_cubes_from_cells"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sparse_marching_cubes_from_cells</span></code></a></p></td>
 <td><p>Extract an isosurface from an explicit set of occupied cells and corner values.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.geometry.swept_volume_bounds.html#warp.geometry.swept_volume_bounds" title="warp.geometry.swept_volume_bounds"><code class="xref py py-obj docutils literal notranslate"><span class="pre">swept_volume_bounds</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.geometry.swept_volume_bounds.html#warp.geometry.swept_volume_bounds" title="warp.geometry.swept_volume_bounds"><code class="xref py py-obj docutils literal notranslate"><span class="pre">swept_volume_bounds</span></code></a></p></td>
 <td><p>Return the world-space axis-aligned bounds of every mesh over every pose.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.geometry.swept_volume_field.html#warp.geometry.swept_volume_field" title="warp.geometry.swept_volume_field"><code class="xref py py-obj docutils literal notranslate"><span class="pre">swept_volume_field</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.geometry.swept_volume_field.html#warp.geometry.swept_volume_field" title="warp.geometry.swept_volume_field"><code class="xref py py-obj docutils literal notranslate"><span class="pre">swept_volume_field</span></code></a></p></td>
 <td><p>Compute a dense regular-grid discretization of the swept-volume pseudo signed-distance function.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.geometry.swept_volume_mesh.html#warp.geometry.swept_volume_mesh" title="warp.geometry.swept_volume_mesh"><code class="xref py py-obj docutils literal notranslate"><span class="pre">swept_volume_mesh</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.geometry.swept_volume_mesh.html#warp.geometry.swept_volume_mesh" title="warp.geometry.swept_volume_mesh"><code class="xref py py-obj docutils literal notranslate"><span class="pre">swept_volume_mesh</span></code></a></p></td>
 <td><p>Extract the swept volume (motion envelope) of animated rigid meshes.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.geometry.tri_tri_adjacency.html#warp.geometry.tri_tri_adjacency" title="warp.geometry.tri_tri_adjacency"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tri_tri_adjacency</span></code></a></p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.geometry.tri_tri_adjacency.html#warp.geometry.tri_tri_adjacency" title="warp.geometry.tri_tri_adjacency"><code class="xref py py-obj docutils literal notranslate"><span class="pre">tri_tri_adjacency</span></code></a></p></td>
 <td><p>Build triangle-triangle adjacency for a triangle mesh.</p></td>
 </tr>
 </tbody>
@@ -624,7 +633,10 @@ be called from your own <a class="reference internal" href="_generated/warp.kern
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.geometry.find_triangle_neighbor_edge_index.html#warp.geometry.find_triangle_neighbor_edge_index" title="warp.geometry.find_triangle_neighbor_edge_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">find_triangle_neighbor_edge_index</span></code></a></p></td>
 <td><p>Return the local edge of <code class="docutils literal notranslate"><span class="pre">triangle</span></code> shared with <code class="docutils literal notranslate"><span class="pre">neighbor</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.geometry.swept_volume_sdf.html#warp.geometry.swept_volume_sdf" title="warp.geometry.swept_volume_sdf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">swept_volume_sdf</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.geometry.super_fibonacci.html#warp.geometry.super_fibonacci" title="warp.geometry.super_fibonacci"><code class="xref py py-obj docutils literal notranslate"><span class="pre">super_fibonacci</span></code></a></p></td>
+<td><p>Return the <code class="docutils literal notranslate"><span class="pre">i</span></code>-th of <code class="docutils literal notranslate"><span class="pre">n</span></code> rotations spread near-uniformly over SO(3).</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.geometry.swept_volume_sdf.html#warp.geometry.swept_volume_sdf" title="warp.geometry.swept_volume_sdf"><code class="xref py py-obj docutils literal notranslate"><span class="pre">swept_volume_sdf</span></code></a></p></td>
 <td><p>Evaluate the swept-volume pseudo signed distance at a single point.</p></td>
 </tr>
 </tbody>

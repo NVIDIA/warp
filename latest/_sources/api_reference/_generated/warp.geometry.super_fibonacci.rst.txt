@@ -1,0 +1,29 @@
+﻿warp.geometry.super\_fibonacci
+==============================
+
+.. currentmodule:: warp.geometry
+
+.. function:: super_fibonacci(i: int, n: int) -> quatf
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: unknown
+      :differentiable: unknown
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/oriented_bounding_box.py#L26-L60
+
+   Return the ``i``-th of ``n`` rotations spread near-uniformly over SO(3).
+   
+   The rotations follow the Super-Fibonacci spiral of Alexa, "Super-Fibonacci Spirals: Fast,
+   Low-Discrepancy Sampling of SO(3)", CVPR 2022. Together, the ``n`` rotations form a
+   low-discrepancy sample of SO(3), so ``n`` rotations evaluated in parallel, one per thread,
+   cover the rotations evenly without any random state. The sequence is deterministic: the
+   same ``i`` and ``n`` always give the same rotation.
+   
+   This function can be called from kernels and other Warp functions.
+   
+   :param i: Sample index, in ``[0, n)``.
+   :param n: Total number of samples. The spread is near-uniform over the ``n`` samples taken
+             together, so changing ``n`` changes every sample.
+   
+   :returns: The rotation as a unit quaternion.
+   
