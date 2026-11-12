@@ -1013,8 +1013,236 @@ their members and captured constants are not exposed. Warp does not manage
 resources referenced by opaque values; the external package remains
 responsible for their ownership and lifetime.</p>
 <p>Native value types do not automatically gain arithmetic or differentiation.
-Register operations explicitly with <a class="reference internal" href="../../api_reference/_generated/warp.build_experimental.add_builtin.html#warp.build_experimental.add_builtin" title="warp.build_experimental.add_builtin"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.build_experimental.add_builtin()</span></code></a>, and use
-arrays without <code class="docutils literal notranslate"><span class="pre">requires_grad</span></code>.</p>
+Register operations explicitly with <a class="reference internal" href="../../api_reference/_generated/warp.build_experimental.add_builtin.html#warp.build_experimental.add_builtin" title="warp.build_experimental.add_builtin"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.build_experimental.add_builtin()</span></code></a>,
+and leave <code class="docutils literal notranslate"><span class="pre">requires_grad</span></code> disabled on Warp arrays containing native value types.</p>
+<p>A native value can provide context to a Warp function. For example, this helper
+uses a native <code class="docutils literal notranslate"><span class="pre">Color</span></code> without differentiating the color itself:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">scale_with_context</span><span class="p">(</span><span class="n">color</span><span class="p">:</span> <span class="n">Color</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Scale a differentiable value using a C++ Color."""</span>
+    <span class="k">return</span> <span class="n">color</span><span class="o">.</span><span class="n">r</span> <span class="o">*</span> <span class="n">value</span>
+</pre></div>
+</div>
+<p>Warp computes the derivative with respect to <code class="docutils literal notranslate"><span class="pre">value</span></code>; <code class="docutils literal notranslate"><span class="pre">color.r</span></code> has no
+gradient. This also works with Warp arrays of <code class="docutils literal notranslate"><span class="pre">Color</span></code> values and native value
+fields inside Warp structs. Ordinary floating-point fields in those Warp structs remain
+differentiable.</p>
+</section>
+<section id="external-function-signatures">
+<h2>External Function Signatures<a class="headerlink" href="#external-function-signatures" title="Link to this heading">#</a></h2>
+<p>Use <a class="reference internal" href="../../api_reference/_generated/warp.build_experimental.add_builtin.html#warp.build_experimental.add_builtin" title="warp.build_experimental.add_builtin"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.build_experimental.add_builtin()</span></code></a> to give an external C++ function
+a Python name, ordered argument types, and a return type. Omit the return type
+for C++ <code class="docutils literal notranslate"><span class="pre">void</span></code>. The returned handle supports positional and keyword calls.</p>
+<p>Use <code class="docutils literal notranslate"><span class="pre">wp.ref[T]</span></code> for a mutable C++ <code class="docutils literal notranslate"><span class="pre">T&amp;</span></code> argument. Given this header declaration:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="k">namespace</span><span class="w"> </span><span class="nn">my_addon</span><span class="w"> </span><span class="p">{</span>
+<span class="n">CUDA_CALLABLE</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">write</span><span class="p">(</span><span class="kt">float</span><span class="o">&amp;</span><span class="w"> </span><span class="n">output</span><span class="p">,</span><span class="w"> </span><span class="kt">float</span><span class="w"> </span><span class="n">value</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">output</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">value</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Register it in Python:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">write</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">build_experimental</span><span class="o">.</span><span class="n">add_builtin</span><span class="p">(</span>
+    <span class="s2">"my_addon_write"</span><span class="p">,</span>
+    <span class="p">{</span><span class="s2">"output"</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">ref</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span> <span class="s2">"value"</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">},</span>
+    <span class="n">native_name</span><span class="o">=</span><span class="s2">"my_addon::write"</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Inside a kernel, pass an array element or a mutable local:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">write</span><span class="p">(</span><span class="n">output</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">value</span><span class="p">)</span>
+<span class="n">local</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+<span class="n">write</span><span class="p">(</span><span class="n">local</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>These calls update the original storage. If two reference arguments point to the
+same element, they see each other’s writes. A literal or temporary expression,
+such as <code class="docutils literal notranslate"><span class="pre">write(0.0,</span> <span class="pre">value)</span></code>, is rejected. Calls with mutable reference parameters require
+<code class="docutils literal notranslate"><span class="pre">enable_backward=False</span></code> unless protected by custom gradient and replay functions,
+as shown below.</p>
+<p>Overloads must differ in their ordered argument types. Changing only parameter
+names, return types, or reference qualifiers cannot distinguish a call and is
+rejected. Repeating an identical registration is allowed; changing an existing
+registration’s derivative settings is a conflict.</p>
+<section id="external-function-gradients">
+<h3>External Function Gradients<a class="headerlink" href="#external-function-gradients" title="Link to this heading">#</a></h3>
+<p>Warp does not infer derivatives from C++ headers. Choose one of these approaches:</p>
+<ul class="simple">
+<li><p>Supply a C++ adjoint and register the operation with <code class="docutils literal notranslate"><span class="pre">is_differentiable=True</span></code>.
+The example below uses a <code class="docutils literal notranslate"><span class="pre">float</span></code> input and return value.</p></li>
+<li><p>Wrap the operation in <a class="reference internal" href="../../api_reference/_generated/warp.func.html#warp.func" title="warp.func"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.func()</span></code></a> and supply <a class="reference internal" href="../../api_reference/_generated/warp.func_grad.html#warp.func_grad" title="warp.func_grad"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.func_grad()</span></code></a>
+to write the derivative in Warp. This also lets you pass native value types
+while differentiating ordinary Warp arguments.</p></li>
+</ul>
+<p>By default, external registrations are non-differentiable: no gradient flows
+through the call. The call can still run during backward replay. If it changes
+state, follow the replay guidance below.</p>
+<section id="supply-a-c-adjoint">
+<h4>Supply a C++ adjoint<a class="headerlink" href="#supply-a-c-adjoint" title="Link to this heading">#</a></h4>
+<p>Save the following header as <code class="docutils literal notranslate"><span class="pre">external_framework.h</span></code>. It supplies the forward
+operation and its derivative:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#pragma once</span>
+
+<span class="k">namespace</span><span class="w"> </span><span class="nn">external_framework</span><span class="w"> </span><span class="p">{</span>
+
+<span class="n">CUDA_CALLABLE</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="kt">float</span><span class="w"> </span><span class="n">square</span><span class="p">(</span><span class="kt">float</span><span class="w"> </span><span class="n">x</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">x</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="n">CUDA_CALLABLE</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">adj_square</span><span class="p">(</span><span class="kt">float</span><span class="w"> </span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="kt">float</span><span class="o">&amp;</span><span class="w"> </span><span class="n">adj_x</span><span class="p">,</span><span class="w"> </span><span class="kt">float</span><span class="w"> </span><span class="n">adj_result</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">adj_x</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="mf">2.0f</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">x</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">adj_result</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Save this Python script as <code class="docutils literal notranslate"><span class="pre">external_framework_example.py</span></code> beside the header.
+Start by registering the C++ operation. Warp finds its derivative by adding
+<code class="docutils literal notranslate"><span class="pre">adj_</span></code> to the function name in the same C++ namespace:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+<span class="n">square</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">build_experimental</span><span class="o">.</span><span class="n">add_builtin</span><span class="p">(</span>
+    <span class="s2">"external_framework_square"</span><span class="p">,</span>
+    <span class="n">input_types</span><span class="o">=</span><span class="p">{</span><span class="s2">"x"</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">},</span>
+    <span class="n">value_type</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+    <span class="n">native_name</span><span class="o">=</span><span class="s2">"external_framework::square"</span><span class="p">,</span>
+    <span class="n">is_differentiable</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Call it from a kernel:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">compute_loss</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span> <span class="n">loss</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">]):</span>
+<span class="w">    </span><span class="sd">"""Compute a scalar loss with the external square operation."""</span>
+    <span class="n">loss</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">square</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>Include the header in this kernel’s module:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">header</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span><span class="o">.</span><span class="n">with_name</span><span class="p">(</span><span class="s2">"external_framework.h"</span><span class="p">)</span>
+<span class="n">build_options</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">ModuleBuildOptions</span><span class="p">(</span>
+    <span class="n">extra_cpu_include_dirs</span><span class="o">=</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">header</span><span class="o">.</span><span class="n">parent</span><span class="p">)],</span>
+    <span class="n">extra_cuda_include_dirs</span><span class="o">=</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">header</span><span class="o">.</span><span class="n">parent</span><span class="p">)],</span>
+    <span class="n">extra_cpu_preamble</span><span class="o">=</span><span class="s1">'#include "external_framework.h"'</span><span class="p">,</span>
+    <span class="n">extra_cuda_preamble</span><span class="o">=</span><span class="s1">'#include "external_framework.h"'</span><span class="p">,</span>
+    <span class="n">extra_build_dependencies</span><span class="o">=</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">header</span><span class="p">)],</span>
+<span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">set_module_options</span><span class="p">({</span><span class="s2">"extra_build_options"</span><span class="p">:</span> <span class="n">build_options</span><span class="p">},</span> <span class="n">module</span><span class="o">=</span><span class="n">compute_loss</span><span class="o">.</span><span class="n">module</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Record a launch and run backward. Append each of these blocks to the same script:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">device</span> <span class="o">=</span> <span class="s2">"cpu"</span>  <span class="c1"># Use "cuda:0" to run on a GPU.</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">3.0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">loss</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">requires_grad</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">Tape</span><span class="p">()</span> <span class="k">as</span> <span class="n">tape</span><span class="p">:</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">compute_loss</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">x</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">loss</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+
+<span class="n">tape</span><span class="o">.</span><span class="n">backward</span><span class="p">(</span><span class="n">loss</span><span class="o">=</span><span class="n">loss</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Run <code class="docutils literal notranslate"><span class="pre">uv</span> <span class="pre">run</span> <span class="pre">python</span> <span class="pre">-i</span> <span class="pre">external_framework_example.py</span></code>, then inspect the forward
+result and gradient in the same Python session:</p>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">loss</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+<span class="go">[9.]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="nb">print</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">grad</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+<span class="go">[6.]</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">tape.backward()</span></code> calls <code class="docutils literal notranslate"><span class="pre">external_framework::adj_square</span></code> automatically. Its
+arguments are the original inputs, references to their gradients, and the
+return-value gradient (omitted for a <code class="docutils literal notranslate"><span class="pre">void</span></code> return). Use <code class="docutils literal notranslate"><span class="pre">+=</span></code> to accumulate
+into input gradients. Here the loss gradient is one, giving <code class="docutils literal notranslate"><span class="pre">dx</span> <span class="pre">=</span> <span class="pre">2</span> <span class="pre">*</span> <span class="pre">3</span> <span class="pre">=</span> <span class="pre">6</span></code>.
+<code class="docutils literal notranslate"><span class="pre">CUDA_CALLABLE</span></code> makes the same header usable on CPU and CUDA.</p>
+</section>
+<section id="use-the-forward-result-in-an-adjoint">
+<h4>Use the forward result in an adjoint<a class="headerlink" href="#use-the-forward-result-in-an-adjoint" title="Link to this heading">#</a></h4>
+<p>Some C++ adjoints use the forward result. For example, the derivative of
+<code class="docutils literal notranslate"><span class="pre">sqrt(x)</span></code> is <code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">/</span> <span class="pre">(2</span> <span class="pre">*</span> <span class="pre">result)</span></code>. Register such a function with both
+<code class="docutils literal notranslate"><span class="pre">is_differentiable=True</span></code> and <code class="docutils literal notranslate"><span class="pre">adjoint_uses_forward_output=True</span></code>:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">CUDA_CALLABLE</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="kt">float</span><span class="w"> </span><span class="n">root</span><span class="p">(</span><span class="kt">float</span><span class="w"> </span><span class="n">x</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="n">wp</span><span class="o">::</span><span class="n">sqrt</span><span class="p">(</span><span class="n">x</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="n">CUDA_CALLABLE</span><span class="w"> </span><span class="kr">inline</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">adj_root</span><span class="p">(</span><span class="kt">float</span><span class="w"> </span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="kt">float</span><span class="w"> </span><span class="n">result</span><span class="p">,</span><span class="w"> </span><span class="kt">float</span><span class="o">&amp;</span><span class="w"> </span><span class="n">adj_x</span><span class="p">,</span><span class="w"> </span><span class="kt">float</span><span class="w"> </span><span class="n">adj_result</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="n">adj_x</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="n">adj_result</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="p">(</span><span class="mf">2.0f</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">result</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">root</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">build_experimental</span><span class="o">.</span><span class="n">add_builtin</span><span class="p">(</span>
+    <span class="s2">"external_framework_root"</span><span class="p">,</span>
+    <span class="p">{</span><span class="s2">"x"</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">},</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
+    <span class="n">native_name</span><span class="o">=</span><span class="s2">"external_framework::root"</span><span class="p">,</span>
+    <span class="n">is_differentiable</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">adjoint_uses_forward_output</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>Place these definitions in the same <code class="docutils literal notranslate"><span class="pre">external_framework</span></code> namespace as the
+previous example. Warp recomputes <code class="docutils literal notranslate"><span class="pre">root(x)</span></code> during backward replay and passes
+that result after the original inputs, before the gradient arguments. It does
+not save the original forward result. The same rule applies to <a class="reference internal" href="../../api_reference/_generated/warp.grad.html#warp.grad" title="warp.grad"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.grad()</span></code></a>.
+This option requires a differentiable registration with a non-void return.</p>
+</section>
+<section id="provide-a-warp-gradient-and-safe-replay">
+<h4>Provide a Warp gradient and safe replay<a class="headerlink" href="#provide-a-warp-gradient-and-safe-replay" title="Link to this heading">#</a></h4>
+<p>Use <a class="reference internal" href="../../api_reference/_generated/warp.func_grad.html#warp.func_grad" title="warp.func_grad"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.func_grad()</span></code></a> to define a wrapper’s derivative in Warp. The wrapper
+can accept native value types, such as <code class="docutils literal notranslate"><span class="pre">Color</span></code>, and differentiate ordinary Warp
+arguments, such as <code class="docutils literal notranslate"><span class="pre">float</span></code>. The native value itself has no gradient.</p>
+<p>For a wrapper that calls an external reference operation, also provide
+<a class="reference internal" href="../../api_reference/_generated/warp.func_replay.html#warp.func_replay" title="warp.func_replay"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.func_replay()</span></code></a>. Backward execution may need to recompute forward values;
+repeating the original mutation could change data twice.</p>
+<p>Using <code class="docutils literal notranslate"><span class="pre">write</span></code> from above, define the forward operation, its derivative, and a
+replay that recomputes the result without the reference write:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">square_with_native_write</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Square a value through an external reference write."""</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">write</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">x</span> <span class="o">*</span> <span class="n">x</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">func_grad</span><span class="p">(</span><span class="n">square_with_native_write</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">square_grad</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">adj_ret</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Accumulate the square gradient."""</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">adjoint</span><span class="p">[</span><span class="n">x</span><span class="p">]</span> <span class="o">+=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">x</span> <span class="o">*</span> <span class="n">adj_ret</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">func_replay</span><span class="p">(</span><span class="n">square_with_native_write</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">square_replay</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Recompute the square without repeating the forward reference write."""</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">*</span> <span class="n">x</span>
+</pre></div>
+</div>
+<p>Put these callbacks on the function that contains the complete mutating
+operation. A callback on an inner function does not protect the ordinary forward
+body of an outer wrapper. A direct <a class="reference internal" href="../../api_reference/_generated/warp.grad.html#warp.grad" title="warp.grad"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.grad()</span></code></a> call uses the custom gradient
+without replaying the original function.</p>
+<p>Your wrapper must preserve any values needed to compute gradients and avoid
+unintended writes during replay. Custom callbacks may call external operations,
+but passing an array or a native value containing a pointer by value does not
+make the referenced data immutable. Warp rejects unprotected <code class="docutils literal notranslate"><span class="pre">wp.ref</span></code> replay; it cannot detect
+hidden writes through a C++ pointer.</p>
+</section>
+<section id="limits-when-differentiating-native-value-types">
+<h4>Limits when differentiating native value types<a class="headerlink" href="#limits-when-differentiating-native-value-types" title="Link to this heading">#</a></h4>
+<ul class="simple">
+<li><p>Registered C++ adjoints support ordinary Warp types. Mutable reference inputs,
+native value inputs or outputs, and Warp arrays containing native values require
+a <a class="reference internal" href="../../api_reference/_generated/warp.func_grad.html#warp.func_grad" title="warp.func_grad"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.func_grad()</span></code></a> wrapper instead.</p></li>
+<li><p>A Warp function returning a native value can still propagate gradients through
+writes to ordinary Warp arrays. The native return value has no gradient.</p></li>
+<li><p>A function returning both native values and ordinary Warp values requires a
+custom <a class="reference internal" href="../../api_reference/_generated/warp.func_grad.html#warp.func_grad" title="warp.func_grad"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.func_grad()</span></code></a>. For <a class="reference internal" href="../../api_reference/_generated/warp.grad.html#warp.grad" title="warp.grad"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.grad()</span></code></a>, expose ordinary Warp
+outputs through a wrapper; native outputs cannot receive gradient seeds.</p></li>
+<li><p>A native snippet that takes or returns native value types needs an explicit
+C++ adjoint to participate in backward execution. This includes native values
+nested inside Warp structs or arrays, and snippets that return nothing but
+write to differentiable arrays. Use a no-op adjoint only when no derivative
+contribution is needed.</p></li>
+</ul>
+</section>
+</section>
 </section>
 <section id="complete-addon-example">
 <h2>Complete Addon Example<a class="headerlink" href="#complete-addon-example" title="Link to this heading">#</a></h2>
@@ -1097,7 +1325,8 @@ configure each kernel module before its first launch or AOT compilation:</p>
 <p>Registered built-in names share Warp’s global kernel namespace. Addons should
 use a package-specific prefix unless they intentionally add an overload to an
 existing Warp operation. Registrations are process-global and equivalent
-registrations are idempotent, which makes normal module reloads safe.</p>
+registrations are idempotent. Recreating a ctypes class on module reload does
+not make instances of the old and new Python classes interchangeable.</p>
 </section>
 <section id="ahead-of-time-c-cuda-workflows">
 <h2>Ahead-of-Time C++/CUDA Workflows<a class="headerlink" href="#ahead-of-time-c-cuda-workflows" title="Link to this heading">#</a></h2>
@@ -1305,6 +1534,16 @@ compilation.</p></li>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#external-build-inputs">External Build Inputs</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#external-native-value-types">External Native Value Types</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#external-function-signatures">External Function Signatures</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#external-function-gradients">External Function Gradients</a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#supply-a-c-adjoint">Supply a C++ adjoint</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#use-the-forward-result-in-an-adjoint">Use the forward result in an adjoint</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#provide-a-warp-gradient-and-safe-replay">Provide a Warp gradient and safe replay</a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#limits-when-differentiating-native-value-types">Limits when differentiating native value types</a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#complete-addon-example">Complete Addon Example</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ahead-of-time-c-cuda-workflows">Ahead-of-Time C++/CUDA Workflows</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#api-capture-replay-from-c">API Capture Replay from C++</a></li>

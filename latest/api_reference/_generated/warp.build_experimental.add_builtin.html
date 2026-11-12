@@ -517,23 +517,51 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">value_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">native_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">is_differentiable</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">adjoint_uses_forward_output</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">doc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">''</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/external_build.py#L80-L168"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.build_experimental.add_builtin" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/external_build.py#L82-L216"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.build_experimental.add_builtin" title="Link to this definition">#</a></dt>
 <dd><p>Register an external C++ function for use in Warp kernels.</p>
 <p>Experimental: this API may change without deprecation in future releases.</p>
-<p>The registered function is available in kernels as <code class="docutils literal notranslate"><span class="pre">warp.&lt;name&gt;</span></code>. Calling
-it directly from Python is not supported.</p>
+<p>The registered function is available in kernels as <code class="docutils literal notranslate"><span class="pre">warp.&lt;name&gt;</span></code> or through
+the returned function handle. Calling it directly from Python is not supported.
+Overloads must differ in their parameter types or the order of those types.
+Changing only parameter names, return types, or reference qualifiers does
+not distinguish overloads. Exact duplicate registrations return the existing handle.</p>
+<p>External calls may run again during backward replay, even with
+<code class="docutils literal notranslate"><span class="pre">is_differentiable=False</span></code>. Stateful operations need replay-safe behavior;
+calls to external functions with mutable reference parameters (<code class="docutils literal notranslate"><span class="pre">warp.ref[T]</span></code>)
+require <code class="docutils literal notranslate"><span class="pre">enable_backward=False</span></code> or a wrapper with both
+<a class="reference internal" href="warp.func_grad.html#warp.func_grad" title="warp.func_grad"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.func_grad()</span></code></a> and <a class="reference internal" href="warp.func_replay.html#warp.func_replay" title="warp.func_replay"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.func_replay()</span></code></a>.</p>
+<p>See <a class="reference internal" href="../../user_guide/programming_model/cpp_cuda_workflows.html"><span class="doc">External Function Gradients</span></a>
+for C++ adjoint signatures and custom gradient/replay examples.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>name</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a>) – Name used to call the function from Warp kernels.</p></li>
-<li><p><strong>input_types</strong> (<a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping" title="(in Python v3.15)"><em>Mapping</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><em>type</em></a><em>] </em><em>| </em><em>None</em>) – Ordered mapping from parameter names to Warp types.</p></li>
+<li><p><strong>input_types</strong> (<a class="reference external" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Mapping" title="(in Python v3.15)"><em>Mapping</em></a><em>[</em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a><em>, </em><a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><em>type</em></a><em>] </em><em>| </em><em>None</em>) – Ordered mapping from parameter names to Warp types.
+Use <code class="docutils literal notranslate"><span class="pre">warp.ref[T]</span></code> for C++ <code class="docutils literal notranslate"><span class="pre">T&amp;</span></code> parameters; callers must pass
+addressable storage, such as an array element or mutable local.</p></li>
 <li><p><strong>value_type</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><em>type</em></a><em> | </em><em>None</em>) – Warp return type, or <code class="docutils literal notranslate"><span class="pre">None</span></code> for a function returning
 <code class="docutils literal notranslate"><span class="pre">void</span></code>.</p></li>
 <li><p><strong>native_name</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a><em> | </em><em>None</em>) – Exact qualified C++ function name. When omitted,
 <code class="docutils literal notranslate"><span class="pre">wp::&lt;name&gt;</span></code> is used.</p></li>
+<li><p><strong>is_differentiable</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether the external header provides a C++ adjoint.
+Warp does not infer derivatives from C++ code. Reference inputs
+require a custom gradient/replay wrapper instead.</p></li>
+<li><p><strong>adjoint_uses_forward_output</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – <p>Whether the C++ adjoint takes an extra
+argument containing the forward result, after the original inputs.
+Warp recomputes this result during backward execution. Requires
+<code class="docutils literal notranslate"><span class="pre">is_differentiable=True</span></code> and a non-void return type. For example:</p>
+<div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// False</span>
+<span class="kt">void</span><span class="w"> </span><span class="nf">adj_root</span><span class="p">(</span><span class="kt">float</span><span class="w"> </span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="kt">float</span><span class="o">&amp;</span><span class="w"> </span><span class="n">adj_x</span><span class="p">,</span><span class="w"> </span><span class="kt">float</span><span class="w"> </span><span class="n">adj_result</span><span class="p">);</span>
+<span class="c1">// True</span>
+<span class="kt">void</span><span class="w"> </span><span class="nf">adj_root</span><span class="p">(</span><span class="kt">float</span><span class="w"> </span><span class="n">x</span><span class="p">,</span><span class="w"> </span><span class="kt">float</span><span class="w"> </span><span class="n">result</span><span class="p">,</span><span class="w"> </span><span class="kt">float</span><span class="o">&amp;</span><span class="w"> </span><span class="n">adj_x</span><span class="p">,</span><span class="w"> </span><span class="kt">float</span><span class="w"> </span><span class="n">adj_result</span><span class="p">);</span>
+</pre></div>
+</div>
+</p></li>
 <li><p><strong>doc</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a>) – Description of the function.</p></li>
 </ul>
 </dd>
