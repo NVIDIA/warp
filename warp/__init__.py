@@ -344,6 +344,9 @@ from warp._src.context import synchronize as synchronize
 # category: Automatic Differentiation
 
 from warp._src.tape import Tape as Tape
+from warp._src.tape import TapeFunc as TapeFunc
+from warp._src.tape import TapeLaunch as TapeLaunch
+from warp._src.tape import no_grad as no_grad
 
 
 # category: Device Management

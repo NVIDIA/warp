@@ -3,10 +3,122 @@
 
 from __future__ import annotations
 
+import contextlib
+import functools
 from collections import defaultdict, namedtuple
+from collections.abc import Callable
+from typing import TypeVar, overload
 
 import warp as wp
 from warp._src.logger import log_warning
+
+
+def _kernel_has_adjoint(kernel) -> bool:
+    """Return whether ``kernel`` is compiled with an adjoint (kernel option takes precedence over module option)."""
+    enable_backward = kernel.options.get("enable_backward")
+    if enable_backward is None:
+        enable_backward = kernel.module.options.get("enable_backward", True)
+    return bool(enable_backward)
+
+
+def _collect_arrays(value, out: list):
+    """Append the arrays in kernel argument ``value`` to ``out``, walking struct fields recursively."""
+    if wp._src.types.is_array(value):
+        out.append(value)
+    elif wp._src.types.is_struct(value):
+        for name in value._cls.vars:
+            _collect_arrays(getattr(value, name), out)
+
+
+class TapeLaunch(list):
+    """A kernel launch recorded on a :class:`Tape`.
+
+    Entries of ``Tape.launches`` that record kernel launches are instances of this class.
+    It is a :class:`list` of ``[kernel, dim, max_blocks, inputs, outputs, device, block_dim, metadata]``
+    for compatibility with code that indexes launch records, and exposes these entries as
+    read-only properties.
+    """
+
+    __slots__ = ()
+
+    @property
+    def kernel(self) -> wp.Kernel:
+        """The launched kernel."""
+        return self[0]
+
+    @property
+    def dim(self) -> tuple[int, ...]:
+        """The launch dimensions."""
+        return self[1]
+
+    @property
+    def max_blocks(self) -> int:
+        """The maximum number of CUDA thread blocks of the launch."""
+        return self[2]
+
+    @property
+    def inputs(self) -> list:
+        """The input arguments of the launch."""
+        return self[3]
+
+    @property
+    def outputs(self) -> list:
+        """The output arguments of the launch."""
+        return self[4]
+
+    @property
+    def device(self) -> wp.Device:
+        """The device the kernel was launched on."""
+        return self[5]
+
+    @property
+    def block_dim(self) -> int:
+        """The number of threads per block of the launch."""
+        return self[6]
+
+    @property
+    def metadata(self) -> dict:
+        """Metadata recorded with the launch, such as the calling file and line."""
+        return self[7]
+
+    @property
+    def arrays(self) -> list:
+        """The array arguments of the launch, inputs first.
+
+        Includes arrays stored in fields of :func:`warp.struct` arguments, including
+        nested structs, and array types such as :class:`warp.indexedarray`.
+        """
+        arrays = []
+        for arg in (*self[3], *self[4]):
+            _collect_arrays(arg, arrays)
+        return arrays
+
+    @property
+    def has_adjoint(self) -> bool:
+        """Whether the kernel was compiled with an adjoint (``enable_backward``)."""
+        return _kernel_has_adjoint(self[0])
+
+
+class TapeFunc:
+    """A function recorded on a :class:`Tape` with :meth:`Tape.record_func`.
+
+    Entries of ``Tape.launches`` that record functions, including the backward
+    pass of :func:`warp.copy`, are instances of this class. Calling it calls :attr:`func`.
+    """
+
+    __slots__ = ("arrays", "func")
+
+    def __init__(self, func: Callable, arrays: list):
+        self.func = func
+        """The function to call in the backward pass."""
+        self.arrays = arrays
+        """The arrays that the function reads or writes gradients of."""
+
+    def __call__(self, *args, **kwargs):
+        return self.func(*args, **kwargs)
+
+    def __repr__(self):
+        return f"TapeFunc({self.func!r})"
 
 
 class Tape:
@@ -37,30 +149,77 @@ class Tape:
 
         print(tape.gradients[a])
 
+    Tapes can be nested. Operations are recorded only on the innermost active tape,
+    and the enclosing tape resumes recording when the inner ``with`` block exits.
+    To run operations without recording them on any tape, use :func:`warp.no_grad`.
+    A tape that is already active cannot be entered again until it exits.
+
+    Recorded operations are stored in ``tape.launches`` as :class:`TapeLaunch`
+    entries for kernel launches and :class:`TapeFunc` entries for functions
+    recorded with :meth:`record_func`.
+
+    Args:
+        strict: If ``True``, launching a kernel that was compiled without an adjoint
+            (``enable_backward=False``) while this tape is recording raises a
+            :class:`RuntimeError` before the kernel runs, and :meth:`backward` raises
+            instead of warning when such a launch is on the tape.
+
     """
 
-    def __init__(self):
+    # Nesting state, as class-level defaults so that subclasses that don't call
+    # ``super().__init__()`` can still be entered. ``_outer`` is the tape that was
+    # active when this tape was entered and is restored on exit.
+    _outer: Tape | None = None
+    _entered: bool = False
+    strict: bool = False
+
+    def __init__(self, strict: bool = False):
         self.gradients = {}
         self.launches = []
         self.scopes = []
 
         self.loss = None
+        self.strict = strict
 
     def __enter__(self):
         wp._src.context.init()
 
-        if wp._src.context.runtime.tape is not None:
-            raise RuntimeError("Warp: Error, entering a tape while one is already active")
+        if self._entered:
+            raise RuntimeError("Warp: Error, entering a tape that is already active")
 
+        self._outer = wp._src.context.runtime.tape
+        self._entered = True
         wp._src.context.runtime.tape = self
 
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        if wp._src.context.runtime.tape is None:
+        if not self._entered or wp._src.context.runtime.tape is not self:
             raise RuntimeError("Warp: Error, ended tape capture, but tape not present")
 
-        wp._src.context.runtime.tape = None
+        wp._src.context.runtime.tape = self._outer
+        self._outer = None
+        self._entered = False
+
+    @staticmethod
+    def get_active() -> Tape | None:
+        """Return the tape that is currently recording, or ``None`` if no tape is recording.
+
+        Libraries can use this to check whether their functions are being called
+        inside a ``with wp.Tape():`` block without a reference to the tape.
+        Inside a :func:`warp.no_grad` scope, this returns ``None``.
+
+        Example:
+
+            >>> import warp as wp
+            >>> wp.Tape.get_active() is None
+            True
+            >>> with wp.Tape() as tape:
+            ...     wp.Tape.get_active() is tape
+            True
+        """
+        runtime = wp._src.context.runtime
+        return runtime.tape if runtime is not None else None
 
     # adj_outputs is a mapping from output tensor -> adjoint of the output
     # after running backward the gradients of tensors may be retrieved by:
@@ -92,7 +251,23 @@ class Tape:
             per array, so writes are then also no longer flagged against another tape that read
             the same arrays and has not yet run its own backward pass, or against a second
             ``backward()`` call on this tape.
+
+        Operations run by the backward pass, including functions recorded with
+        :meth:`record_func`, are not recorded on any tape, even if a tape is active.
         """
+        # in strict mode, fail before changing any gradients
+        if self.strict:
+            for launch in self.launches:
+                if not callable(launch):
+                    self._check_kernel_has_adjoint(launch[0])
+
+        # don't record adjoint launches or seed writes on an active tape, such as an
+        # enclosing tape when this is a nested tape
+        with _NoGrad():
+            self._backward(loss, grads)
+
+    def _backward(self, loss: wp.array | None, grads: dict[wp.array, wp.array] | None):
+        """Run the backward pass; see :meth:`backward`."""
         # if scalar loss is specified then initialize
         # a 'seed' array for it, with gradient of one
         if loss:
@@ -130,7 +305,7 @@ class Tape:
                     msg = f"Running the tape backwards may produce incorrect gradients because recorded kernel {launch[0].key} is configured with the option 'enable_backward=False'."
                     log_warning(msg)
                 elif enable_backward is None:
-                    enable_backward = launch[0].module.options.get("enable_backward")
+                    enable_backward = launch[0].module.options.get("enable_backward", True)
                     if enable_backward is False:
                         msg = f"Running the tape backwards may produce incorrect gradients because recorded kernel {launch[0].key} is defined in a module with the option 'enable_backward=False' set."
                         log_warning(msg)
@@ -182,7 +357,16 @@ class Tape:
         block_dim = _resolve_launch_block_dim(device, block_dim)
         if metadata is None:
             metadata = {}
-        self.launches.append([kernel, dim, max_blocks, inputs, outputs, device, block_dim, metadata])
+        self.launches.append(TapeLaunch([kernel, dim, max_blocks, inputs, outputs, device, block_dim, metadata]))
+
+    def _check_kernel_has_adjoint(self, kernel):
+        """Raise if ``kernel`` has no adjoint; used in strict mode."""
+        if not _kernel_has_adjoint(kernel):
+            raise RuntimeError(
+                f"Warp: Kernel '{kernel.key}' was compiled with 'enable_backward=False' and cannot be "
+                "recorded on a tape created with strict=True. Run it inside a wp.no_grad() scope if it "
+                "should not be differentiated, or compile it with 'enable_backward=True'."
+            )
 
     def record_func(self, backward, arrays):
         """
@@ -191,16 +375,21 @@ class Tape:
         Args:
             backward (Callable): A callable Python object (can be any function) that will be executed in the backward pass.
             arrays (list): A list of arrays that are used by the backward function. The tape keeps track of these to be able to zero their gradients in Tape.zero()
-        """
-        self.launches.append(backward)
 
+        The function is stored in ``launches`` as a :class:`TapeFunc`, which
+        also records ``arrays``.
+        """
+        arrays = list(arrays)
         for a in arrays:
-            if isinstance(a, wp.array) and a.grad:
-                self.gradients[a] = a.grad
-            else:
+            if not (isinstance(a, wp.array) and a.grad):
                 raise RuntimeError(
                     f"Array {a} is not of type wp.array or is missing a gradient array. Set array parameter requires_grad=True during instantiation."
                 )
+
+        self.launches.append(TapeFunc(backward, arrays))
+
+        for a in arrays:
+            self.gradients[a] = a.grad
 
     def record_scope_begin(self, scope_name, metadata=None):
         """
@@ -306,16 +495,29 @@ class Tape:
 
         return None
 
-    def reset(self):
-        """
-        Clear all operations recorded on the tape and zero out all gradients.
+    def reset(self, zero_grads: bool = True):
+        """Clear all operations recorded on the tape and zero out all gradients.
+
+        When ``wp.config.verify_autograd_array_access`` is enabled, the read flags of
+        the arrays recorded on the tape are also reset.
+
+        Args:
+            zero_grads: If ``False``, discard the recorded operations and stop tracking
+                their gradients without zeroing the gradient buffers. Use this to throw
+                away a tape whose operations were recorded only for inspection, for
+                example to check which arrays a function accesses, while the gradient
+                buffers are still in use by another tape. Read flags are shared by all
+                tapes, so this also resets them for arrays that another tape has read.
         """
         # must run before the launches are cleared: the flag reset walks self.launches
         if wp.config.verify_autograd_array_access:
             self._reset_array_read_flags()
         self.launches = []
         self.scopes = []
-        self.zero()
+        if zero_grads:
+            self.zero()
+        else:
+            self.gradients = {}
 
     def zero(self):
         """
@@ -351,6 +553,11 @@ class Tape:
                         if isinstance(a, wp.array):
                             clear_read_flags(a)
         # arrays used by copies and functions recorded with record_func()
+        for launch in self.launches:
+            if isinstance(launch, TapeFunc):
+                for a in launch.arrays:
+                    if isinstance(a, wp.array):
+                        clear_read_flags(a)
         for a in self.gradients:
             if isinstance(a, wp.array):
                 clear_read_flags(a)
@@ -432,6 +639,92 @@ class Tape:
             track_output_names,
             graph_direction,
         )
+
+
+_F = TypeVar("_F", bound=Callable)
+
+
+class _NoGrad(contextlib.ContextDecorator):
+    """Context manager and decorator returned by :func:`warp.no_grad`."""
+
+    def __init__(self):
+        # stack of paused tapes, so the same instance can be re-entered (e.g. by a recursive decorated function)
+        self._paused = []
+
+    def __enter__(self):
+        runtime = wp._src.context.runtime
+        tape = runtime.tape if runtime is not None else None
+        self._paused.append(tape)
+        if tape is not None:
+            runtime.tape = None
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        tape = self._paused.pop()
+        if tape is not None:
+            wp._src.context.runtime.tape = tape
+
+
+@overload
+def no_grad(func: None = None) -> _NoGrad: ...
+
+
+@overload
+def no_grad(func: _F) -> _F: ...
+
+
+def no_grad(func: _F | None = None) -> _NoGrad | _F:
+    """Pause recording on the active :class:`Tape`.
+
+    Operations such as kernel launches and :func:`warp.copy` calls inside a
+    ``no_grad`` scope are not recorded, so they don't take part in
+    :meth:`Tape.backward`. The tape that was active when the scope was entered
+    resumes recording when the scope exits, also when an exception is raised.
+    If no tape is active, ``no_grad`` has no effect.
+
+    Use ``no_grad`` in code that may run inside a tape it did not create, such
+    as a library function called from a user's ``with wp.Tape():`` block, to
+    run work that should not be differentiated without a reference to the
+    tape.
+
+    ``no_grad`` can be used as a context manager or as a function decorator,
+    with or without parentheses.
+
+    Note:
+        Paused operations still run and may overwrite arrays that the tape has
+        already recorded as inputs. Gradients that depend on those arrays may
+        then be incorrect.
+
+    Args:
+        func: Function to decorate. Leave as ``None`` to use ``no_grad()`` as a
+            context manager or as a decorator with parentheses.
+
+    Returns:
+        A context manager that can also be used as a decorator, or ``func``
+        wrapped to run with recording paused.
+
+    Example:
+
+        >>> import warp as wp
+        >>> with wp.Tape() as tape:
+        ...     with wp.no_grad():
+        ...         wp.Tape.get_active() is None
+        ...     wp.Tape.get_active() is tape
+        True
+        True
+    """
+    if func is None:
+        return _NoGrad()
+
+    if not callable(func):
+        raise TypeError(f"no_grad() expects a callable or no argument, got {type(func).__name__}")
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        with _NoGrad():
+            return func(*args, **kwargs)
+
+    return wrapper
 
 
 class TapeVisitor:

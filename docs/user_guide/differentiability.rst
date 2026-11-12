@@ -47,6 +47,64 @@ create it with ``retain_grad=True``::
 If you wish to reuse the same buffers for multiple backward passes,
 you should first zero the input gradients using :meth:`Tape.zero()`.
 
+Pausing and Nesting Tapes
+#########################
+
+Use :func:`no_grad` to run operations inside a tape's scope without recording them.
+The tape resumes recording when the ``no_grad`` scope exits::
+
+    with wp.Tape() as tape:
+        wp.launch(kernel=policy, inputs=[obs, params], outputs=[action])
+
+        with wp.no_grad():
+            # not recorded: e.g., resetting finished environments
+            wp.launch(kernel=reset_done, inputs=[done], outputs=[state])
+
+        wp.launch(kernel=loss, inputs=[action], outputs=[l])
+
+This is useful in library code that may be called from inside a tape it did not create
+and therefore has no reference to. :func:`no_grad` can also decorate a function.
+:meth:`Tape.get_active` returns the tape that is currently recording, or ``None``,
+so library code can check whether it is being differentiated.
+
+Operations inside ``no_grad`` still run. If they overwrite arrays that the tape has
+already recorded as inputs, gradients that depend on those arrays may be incorrect.
+
+Tapes can also be nested. Operations are recorded only on the innermost tape, and the
+enclosing tape resumes recording when the inner ``with`` block exits::
+
+    with wp.Tape() as outer:
+        wp.launch(kernel=compute1, inputs=[a], outputs=[b])  # recorded on outer
+
+        with wp.Tape() as inner:
+            wp.launch(kernel=compute2, inputs=[b], outputs=[c])  # recorded on inner only
+
+        wp.launch(kernel=compute3, inputs=[b], outputs=[d])  # recorded on outer
+
+Each tape runs only its own recorded operations in :meth:`Tape.backward`.
+
+A library can use an inner tape to inspect what a function does before deciding what to
+record on the enclosing tape. Recorded operations are available in ``tape.launches`` as
+:class:`TapeLaunch` entries for kernel launches, with the launched kernel, its inputs and outputs,
+and :class:`TapeFunc` entries for functions recorded with :meth:`Tape.record_func`, such as the
+backward pass of :func:`copy`, with the arrays they access::
+
+    with wp.Tape() as scratch:
+        simulate(state)
+
+    accessed = set()
+    for launch in scratch.launches:
+        accessed.update(id(a) for a in launch.arrays)
+
+    # discard the recording without zeroing gradients that other tapes still use
+    scratch.reset(zero_grads=False)
+
+Kernels compiled with ``enable_backward=False`` have no adjoint, so recording them on a tape
+produces incorrect gradients. By default, :meth:`Tape.backward` logs a warning for such kernels.
+Create the tape with ``wp.Tape(strict=True)`` to raise an error instead, as soon as such a kernel
+is launched while the tape is recording and before the kernel runs. Launch these kernels inside
+:func:`no_grad` if they should not be differentiated.
+
 
 Array Overwrites
 ################

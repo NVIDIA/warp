@@ -318,6 +318,9 @@ Automatic Differentiation
    :toctree: _generated
 
    Tape
+   TapeFunc
+   TapeLaunch
+   no_grad
 
 Device Management
 -----------------
