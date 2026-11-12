@@ -371,6 +371,10 @@ CUDA_CALLABLE TileC& tile_matmul(
     T alphaT = T(alpha);
     T betaT = T(beta);
 
+    // C is reused across iterations of a dynamic loop, so threads may still be reading the
+    // previous product; wait for them before overwriting it
+    WP_TILE_SYNC();
+
 #if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
     partitioned_gemm::scalar_matmul<false, typename TileA::Layout, typename TileB::Layout, typename TileC::Layout>(
         A.data, B.data, C.data, alphaT, betaT
@@ -385,6 +389,8 @@ CUDA_CALLABLE TileC& tile_matmul(
     }
 #endif
 
+    // tile_shared_t's writers only synchronize before overwriting a tile that has this flag set
+    C.initialized = true;
     WP_TILE_SYNC();
 
     return C;
@@ -421,6 +427,10 @@ CUDA_CALLABLE TileC& tile_matmul_acc(
     T alphaT = T(alpha);
     T betaT = T(beta);
 
+    // threads may still be reading C from an earlier statement (e.g. tile_astype(C) or C[i, j]);
+    // wait for them before overwriting it
+    WP_TILE_SYNC();
+
 #if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
     partitioned_gemm::scalar_matmul<true, typename TileA::Layout, typename TileB::Layout, typename TileC::Layout>(
         A.data, B.data, C.data, alphaT, betaT
@@ -435,6 +445,8 @@ CUDA_CALLABLE TileC& tile_matmul_acc(
     }
 #endif
 
+    // tile_shared_t's writers only synchronize before overwriting a tile that has this flag set
+    C.initialized = true;
     WP_TILE_SYNC();
 
     return C;

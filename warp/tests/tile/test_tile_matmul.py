@@ -418,6 +418,78 @@ def test_tile_matmul_beta_zero_ignores_out(test, device):
     assert_np_equal(C.numpy(), np.full((TILE_M, TILE_N), TILE_K, dtype=np.float32))
 
 
+# Square tile with more entries than lanes, so each lane reads entries of the product that other lanes write.
+TILE_ACCUM = 32
+
+
+# Tiles carried across the dynamic loops below are not differentiable.
+@wp.kernel(enable_backward=False)
+def tile_matmul_out_accumulate_kernel(A: wp.array2d[float], B: wp.array2d[float], iters: int, out: wp.array3d[float]):
+    i = wp.tid()
+    a = wp.tile_load(A, shape=(TILE_ACCUM, TILE_ACCUM))
+    b = wp.tile_load(B, shape=(TILE_ACCUM, TILE_ACCUM))
+    c = wp.tile_zeros(shape=(TILE_ACCUM, TILE_ACCUM), dtype=float)
+    acc = wp.tile_zeros(shape=(TILE_ACCUM, TILE_ACCUM), dtype=float)
+
+    for it in range(iters):
+        wp.tile_matmul(a, b, c, alpha=float(it + 1), beta=0.0)
+        acc += c
+
+    wp.tile_store(out[i], acc)
+
+
+@wp.kernel(enable_backward=False)
+def tile_matmul_return_accumulate_kernel(
+    A: wp.array2d[float], B: wp.array2d[float], iters: int, out: wp.array3d[float]
+):
+    i = wp.tid()
+    a = wp.tile_load(A, shape=(TILE_ACCUM, TILE_ACCUM))
+    b = wp.tile_load(B, shape=(TILE_ACCUM, TILE_ACCUM))
+    acc = wp.tile_zeros(shape=(TILE_ACCUM, TILE_ACCUM), dtype=float)
+
+    for it in range(iters):
+        # the dynamic loop reuses one shared tile for c in every iteration
+        c = wp.tile_matmul(a, b, alpha=float(it + 1))
+        acc += c
+
+    wp.tile_store(out[i], acc)
+
+
+def test_tile_matmul_overwrite_after_read(test, device):
+    """Finish every read of a shared tile before ``tile_matmul()`` overwrites it.
+
+    Each iteration overwrites ``c`` with ``(it + 1) * a @ b`` and adds it to ``acc``, so ``acc`` must end as
+    ``a @ b`` scaled by ``1 + 2 + ... + iters``. A lane that starts the next product while others are still
+    reading ``c`` makes them add entries of the wrong product. With CPU blocks, lanes switch only at barriers,
+    so a missing barrier before the product always corrupts ``acc``; on CUDA, it depends on how the warps are
+    scheduled. Covers the ``out=`` form and the returning form, which reuses one tile across a dynamic loop.
+    """
+    num_blocks = 8
+    iters = 4
+
+    rng = np.random.default_rng(42)
+    # small integers keep every product and sum exact
+    A = rng.integers(0, 2, size=(TILE_ACCUM, TILE_ACCUM)).astype(np.float32)
+    B = rng.integers(0, 2, size=(TILE_ACCUM, TILE_ACCUM)).astype(np.float32)
+    expected = np.broadcast_to((A @ B) * (iters * (iters + 1) // 2), (num_blocks, TILE_ACCUM, TILE_ACCUM))
+
+    A_wp = wp.array(A, device=device)
+    B_wp = wp.array(B, device=device)
+
+    for kernel in (tile_matmul_out_accumulate_kernel, tile_matmul_return_accumulate_kernel):
+        with test.subTest(kernel=kernel.key):
+            out = wp.zeros((num_blocks, TILE_ACCUM, TILE_ACCUM), dtype=float, device=device)
+            wp.launch_tiled(
+                kernel,
+                dim=num_blocks,
+                inputs=[A_wp, B_wp, iters],
+                outputs=[out],
+                block_dim=TILE_DIM,
+                device=device,
+            )
+            np.testing.assert_array_equal(out.numpy(), expected)
+
+
 @wp.kernel(module="unique")
 def f32_to_bf16_kernel(input: wp.array2d[wp.float32], output: wp.array2d[wp.bfloat16]):
     i, j = wp.tid()
@@ -1401,6 +1473,9 @@ add_function_test(TestTileMatmul, "test_tile_matmul_return_form", test_tile_matm
 add_function_test(
     TestTileMatmul, "test_tile_matmul_beta_zero_ignores_out", test_tile_matmul_beta_zero_ignores_out, devices=devices
 )
+add_function_test(
+    TestTileMatmul, "test_tile_matmul_overwrite_after_read", test_tile_matmul_overwrite_after_read, devices=devices
+)
 
 cpu_devices = get_cpu_test_devices()
 for name, func in (
@@ -1409,6 +1484,7 @@ for name, func in (
     ("test_tile_matmul_mixed_precision_cpu_blocks", test_tile_matmul_mixed_precision),
     ("test_tile_transpose_matmul_cpu_blocks", test_tile_transpose_matmul),
     ("test_tile_matmul_return_form_cpu_blocks", test_tile_matmul_return_form),
+    ("test_tile_matmul_overwrite_after_read_cpu_blocks", test_tile_matmul_overwrite_after_read),
 ):
     add_function_test(TestTileMatmul, name, func, devices=cpu_devices, enable_cpu_blocks=True)
 
