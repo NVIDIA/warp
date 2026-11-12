@@ -2932,6 +2932,68 @@ class TestSpatial(unittest.TestCase):
             ):
                 transform_type(*components, pos=(8.0, 9.0, 10.0))
 
+    def test_transform_component_dtype(self):
+        """Reading `p`/`q` must carry the transform's own dtype instead of always narrowing to float32."""
+        component_types = {
+            wp.transformh: (wp.vec3h, wp.quath),
+            wp.transformf: (wp.vec3f, wp.quatf),
+            wp.transformd: (wp.vec3d, wp.quatd),
+        }
+
+        # Each row builds its own transform so that one dtype failing to construct
+        # is reported against its own subtest instead of ending the whole test.
+        for transform_type, (vec3_type, quat_type) in component_types.items():
+            type_name = transform_type.__name__
+
+            # The named types are handed back as they are, so `isinstance` checks
+            # against them keep working for callers.
+            with self.subTest(type=type_name, component="p"):
+                p = transform_type((1.0, 2.0, 3.0), (0.0, 0.0, 0.0, 1.0)).p
+                self.assertIs(type(p), vec3_type)
+                self.assertIsInstance(p, vec3_type)
+                self.assertEqual([float(x) for x in p], [1.0, 2.0, 3.0])
+
+            with self.subTest(type=type_name, component="q"):
+                q = transform_type((1.0, 2.0, 3.0), (0.0, 0.0, 0.0, 1.0)).q
+                self.assertIs(type(q), quat_type)
+                self.assertIsInstance(q, quat_type)
+                self.assertEqual([float(x) for x in q], [0.0, 0.0, 0.0, 1.0])
+
+        # Types built through `transformation(dtype=...)` resolve to the same
+        # named components as the named transform types do.
+        with self.subTest(type="generic"):
+            generic_type = wp.types.transformation(dtype=wp.float64)
+            t = generic_type((1.0, 2.0, 3.0), (0.0, 0.0, 0.0, 1.0))
+            self.assertIs(type(t.p), wp.vec3d)
+            self.assertIs(type(t.q), wp.quatd)
+
+        # A dtype with no named quaternion counterpart takes the fallback, so one
+        # transform covers both halves: `p` resolves to the named `vec3i` and `q`
+        # comes back as the base class `quaternion()` builds.
+        with self.subTest(type="generic", dtype="int32"):
+            generic_type = wp.types.transformation(dtype=wp.int32)
+            t = generic_type((1, 2, 3), (0, 0, 0, 1))
+            self.assertIs(type(t.p), wp.vec3i)
+            self.assertIs(type(t.q), wp.types.quaternion(dtype=wp.int32))
+            self.assertEqual([int(x) for x in t.p], [1, 2, 3])
+            self.assertEqual([int(x) for x in t.q], [0, 0, 0, 1])
+
+        # A value that survives float64 but not float32, so a component read that
+        # narrowed to float32 rounded it away, and writing the component back
+        # persisted that loss into the transform.
+        value = 1.0000000000009095
+
+        with self.subTest(type="transformd", form="read"):
+            t = wp.transformd((value, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0))
+            self.assertEqual(t.p[0], value)
+
+        with self.subTest(type="transformd", form="read/modify/write"):
+            t = wp.transformd((value, 0.0, 0.0), (0.0, 0.0, 0.0, 1.0))
+            t.p = t.p
+            t.q = t.q
+            self.assertEqual(t[0], value)
+            self.assertEqual(t[6], 1.0)
+
     def test_transform_constructor_invalid_kernel_arity(self):
         """Verify that unsupported argument counts must be reported, not reach an internal error."""
 
