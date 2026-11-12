@@ -503,12 +503,36 @@ intersphinx_timeout = 2
 linkcheck_anchors_ignore_for_url = [r"https://docs\.pytorch\.org/docs/stable/.*"]
 
 _sphinx_logger = sphinx.util.logging.getLogger(__name__)
+
+
+def _with_fallback_inventories(mapping, fallback_dir):
+    """Add cached inventories from ``fallback_dir`` as second locations.
+
+    CI can provide cached copies of the inventories, named ``<name>.inv``, so
+    that a slow or unreachable docs site does not fail a warnings-as-errors
+    build. Sphinx tries the URL first and reads the cached copy only if that
+    fails, which it reports at INFO level. The names must match the files CI
+    provides (``fetch-intersphinx-fallback`` in ``.gitlab/ci/common.yml``).
+    """
+    if not fallback_dir:
+        return mapping
+    result = {}
+    for name, (target_uri, inventory) in mapping.items():
+        cached = os.path.join(fallback_dir, f"{name}.inv")
+        result[name] = (target_uri, (inventory, cached)) if os.path.isfile(cached) else (target_uri, inventory)
+    with_fallback = sorted(name for name, (_, inventory) in result.items() if isinstance(inventory, tuple))
+    _sphinx_logger.info(f"intersphinx: cached fallback inventories for {', '.join(with_fallback) or 'none'}")
+    return result
+
+
 # WARP_DOCS_OFFLINE=1 skips external resolution entirely for known-offline builds.
 if os.environ.get("WARP_DOCS_OFFLINE") == "1":
     _sphinx_logger.info("intersphinx: WARP_DOCS_OFFLINE=1 set; skipping external cross-reference resolution.")
     intersphinx_mapping = {}
 else:
-    intersphinx_mapping = _intersphinx_mapping
+    intersphinx_mapping = _with_fallback_inventories(
+        _intersphinx_mapping, os.environ.get("WARP_INTERSPHINX_FALLBACK_DIR")
+    )
 
 
 # -- sphinx.ext.linkcode -----------------------------------------------------

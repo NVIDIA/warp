@@ -119,7 +119,25 @@ default:
   # platform folders and before VERSION.md is rewritten.
   check-wheel-version-files:
     - uv run --no-project python tools/ci/publishing/check_wheel_version_files.py
-  
+
+  # Download cached copies of the intersphinx inventories from this project's
+  # generic package registry, so docs builds can fall back to them when an
+  # upstream docs site is slow or down (see WARP_INTERSPHINX_FALLBACK_DIR in
+  # docs/conf.py; `refresh intersphinx inventories` uploads them). Best effort:
+  # a missing file only drops that project's fallback. The names must match
+  # _intersphinx_mapping in docs/conf.py.
+  fetch-intersphinx-fallback:
+    - |
+      export WARP_INTERSPHINX_FALLBACK_DIR="$CI_PROJECT_DIR/.cache/intersphinx"
+      mkdir -p "$WARP_INTERSPHINX_FALLBACK_DIR"
+      for name in jax numpy python pytorch; do
+        curl --fail --silent --show-error --location --retry 2 --max-time 10 \
+          --header "JOB-TOKEN: $CI_JOB_TOKEN" \
+          --output "$WARP_INTERSPHINX_FALLBACK_DIR/$name.inv" \
+          "$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/intersphinx-inventories/latest/$name.inv" \
+          || { echo "No cached $name inventory; building without a fallback for it."; rm -f "$WARP_INTERSPHINX_FALLBACK_DIR/$name.inv"; }
+      done
+
   # GitLab collapsible section wrappers for cleaner CI logs
   section-start-install-deps:
     - echo -e "\\e[0Ksection_start:`date +%s`:install_dependencies[collapsed=true]\\r\\e[0KInstalling dependencies"
