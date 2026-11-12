@@ -726,9 +726,12 @@ module string replaces the global string; include <code class="docutils literal 
 module should detect host CPU features. The global default uses host CPU
 features and sets <code class="docutils literal notranslate"><span class="pre">-inline-threshold=9000</span></code> and
 <code class="docutils literal notranslate"><span class="pre">-inline-cold-callsite-threshold=3000</span></code> to make LLVM more eager to inline CPU
-helpers, and limits SLP recursion depth to four. Set the global value to
-<code class="docutils literal notranslate"><span class="pre">None</span></code> before a module is first hashed to keep host CPU detection with
-LLVM’s default inlining thresholds and SLP recursion depth. For one module,
+helpers, and limits SLP recursion depth to four. On x86-64 it also sets
+<code class="docutils literal notranslate"><span class="pre">-undef-reg-clearance=4294967295</span></code> to favor clearing unused scalar-conversion
+operands and avoid denormal penalties in unused SIMD lanes. This changes
+code generation without flushing valid subnormal values. Set the global value
+to <code class="docutils literal notranslate"><span class="pre">None</span></code> before a module is first hashed to keep host CPU detection with
+LLVM’s default optimization settings. For one module,
 use <code class="docutils literal notranslate"><span class="pre">&quot;-march=native&quot;</span></code>; a module-level <code class="docutils literal notranslate"><span class="pre">None</span></code> inherits the global setting.
 Warp enables the loop and SLP vectorizers for CPU modules at effective
 optimization levels 2 and 3. Include <code class="docutils literal notranslate"><span class="pre">-fno-vectorize</span></code> or
