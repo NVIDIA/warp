@@ -93,6 +93,18 @@ def test_components(test, device, dtype):
     test.assertEqual(m[1, 1], 17)
     test.assertEqual(m[1, 2], 18)
 
+    # negative component indices count from the end
+    test.assertEqual(m[-1, -1], 18)
+    test.assertEqual(m[-2, -3], 13)
+
+    # out of range component indices are rejected rather than folding into a
+    # neighbouring component, matching get_row(), get_col() and vector indexing
+    for row, col in ((0, 3), (0, -4), (2, 0), (-3, 0)):
+        with test.assertRaises(IndexError):
+            m[row, col]
+        with test.assertRaises(IndexError):
+            m[row, col] = 0
+
 
 def test_indexing(test, device, dtype, register_kernels=False):
     tol = {
