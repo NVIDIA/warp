@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # EXPERIMENT BRANCH ONLY: do not merge. Replaces the full PR pipeline with one
-# Windows ARM64 job that probes MSVC codegen for the strided fill loop.
+# Windows ARM64 job: a CPU-only Warp build plus the fill tests.
 
 name: Pull Request
 
@@ -16,26 +16,48 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  msvc-arm64-fill-probe:
+  windows-arm64-cpu-fill:
     runs-on: windows-11-arm
-    timeout-minutes: 20
+    timeout-minutes: 60
     permissions:
       contents: read
+    env:
+      UV_PYTHON: cpython-3.12-windows-aarch64-none
+      PYTHONFAULTHANDLER: "1"
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
         with:
           persist-credentials: false
-          sparse-checkout: tools/msvc_arm64_fill_probe
+          lfs: true
 
-      - name: Build and run the probe with each MSVC toolset
-        shell: pwsh
-        run: tools/msvc_arm64_fill_probe/run.ps1
+      - name: Install uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
+        with:
+          version: "0.13.6"
 
-      - name: Upload assembly listings
+      - name: Set up Python
+        run: uv python install
+
+      - name: Build Warp (CPU only)
+        env:
+          WARP_CACHE_PATH: ${{ runner.temp }}/warp-cache
+        run: uv run build_lib.py --no-cuda
+
+      - name: Run fill tests
+        env:
+          WARP_CACHE_PATH: ${{ runner.temp }}/warp-cache
+        run: |
+          $PSNativeCommandUseErrorActionPreference = $true
+          $ErrorActionPreference = 'Stop'
+          uv run warp/tests/test_array.py -k fill -v
+          uv run warp/tests/test_indexedarray.py -k fill -v
+          uv run warp/tests/test_apic.py -k fill -v
+
+      - name: Upload warp.dll
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
         with:
-          name: msvc-arm64-fill-probe
-          path: probe-out/*.asm
+          name: warp-dll-windows-arm64-cpu
+          path: warp/bin/warp.dll
           retention-days: 3
