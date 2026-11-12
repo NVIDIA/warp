@@ -63,7 +63,7 @@ class TestCpuBlockCodegen(unittest.TestCase):
         name = cpu_block_codegen_kernel.get_mangled_name()
         one_lane_source = _generate_source(1)
         self.assertIn("#define WP_TILE_BLOCK_DIM 1", one_lane_source)
-        self.assertIn("for (size_t task_index = 0; task_index < dim->size; ++task_index)", one_lane_source)
+        self.assertIn("for (size_t task_index = 0; task_index < bounds.size; ++task_index)", one_lane_source)
         self.assertIn("template <bool wp_linear_contiguous>", one_lane_source)
         self.assertIn(f"{name}_cpu_forward_dispatch(dim, _wp_args)", one_lane_source)
         self.assertIn(f"{name}_cpu_backward_dispatch(dim, _wp_args, _wp_adj_args)", one_lane_source)

@@ -46,7 +46,7 @@ For example, `-march=native -mllvm -inline-threshold=1000` and
 per-module flag string replaces the global string, so it must include
 `-march=native` if host CPU detection is wanted.
 
-An explicit global `None` supplies `-march=native` and leaves LLVM's defaults untouched. Warp's [CPU helper inlining policy](cpu-kernel-helper-inlining.md) uses two `-mllvm` arguments in the default string, and [CPU SLP vectorization](cpu-slp-vectorization.md) adds a third for recursion depth. A per-module string omitting those arguments selects LLVM's original defaults. Option availability and behavior depend on the bundled LLVM version.
+An explicit global `None` supplies `-march=native` and leaves LLVM's defaults untouched. Warp's [CPU helper inlining policy](cpu-kernel-helper-inlining.md) uses two `-mllvm` arguments in the default string, and [CPU SLP vectorization](cpu-slp-vectorization.md) adds a third for recursion depth. On x86-64, the default also sets `-undef-reg-clearance=4294967295` to favor zeroing unused scalar-conversion operands. This avoids processing inherited denormals in unused SIMD lanes without changing floating-point modes or valid subnormal arithmetic. A per-module string omitting these arguments selects LLVM's original defaults. Option availability and behavior depend on the bundled LLVM version.
 
 The native lease coordinator keys requests by the ordered LLVM argument vector;
 ordinary Clang flags do not affect the key. The empty vector requests the

@@ -35,6 +35,18 @@ def vec4_component_kernel(a: wp.array[wp.vec4f], b: wp.array[wp.vec4f], output: 
     output[i] = value
 
 
+# Scalar arrays keep aggregate ABI lowering from introducing vector operations
+# before LLVM can vectorize the loop across tasks.
+@wp.kernel(enable_backward=False)
+def scalar_task_loop_kernel(a: wp.array[float], b: wp.array[float], output: wp.array[float]):
+    i = wp.tid()
+    value = a[i]
+    factor = b[i]
+    for _ in range(ARITHMETIC_ITERATIONS):
+        value = value * factor + a[i]
+    output[i] = value
+
+
 @wp.kernel(enable_backward=False)
 def linear_array_loop_kernel(a: wp.array[float], b: wp.array[float], output: wp.array[float]):
     row = wp.tid()
@@ -75,6 +87,19 @@ class CpuVectorization:
             record_cmd=True,
         )
 
+        self.scalar_a = wp.array(vec4_values.reshape(-1), dtype=float, device=device)
+        self.scalar_b = wp.array(vec4_factors.reshape(-1), dtype=float, device=device)
+        self.scalar_output = wp.empty_like(self.scalar_a)
+        self.scalar_command = wp.launch(
+            scalar_task_loop_kernel,
+            dim=VEC4_ELEMENTS * 4,
+            inputs=[self.scalar_a, self.scalar_b],
+            outputs=[self.scalar_output],
+            device=device,
+            block_dim=1,
+            record_cmd=True,
+        )
+
         element_count = LOOP_ROWS * LOOP_COLUMNS
         loop_values = np.linspace(-1.0, 1.0, element_count, dtype=np.float32)
         loop_factors = np.linspace(0.25, 1.75, element_count, dtype=np.float32)
@@ -105,6 +130,7 @@ class CpuVectorization:
 
         for _ in range(5):
             self.vec4_command.launch()
+            self.scalar_command.launch()
             self.loop_command.launch()
 
         vec4_expected = vec4_values.copy()
@@ -113,11 +139,16 @@ class CpuVectorization:
             vec4_expected = vec4_expected * vec4_factors + vec4_values
             loop_expected = loop_expected * loop_factors + loop_values
         np.testing.assert_allclose(self.vec4_output.numpy(), vec4_expected, rtol=1.0e-5, atol=1.0e-5)
+        np.testing.assert_allclose(self.scalar_output.numpy(), vec4_expected.reshape(-1), rtol=1.0e-5, atol=1.0e-5)
         np.testing.assert_allclose(self.loop_output.numpy(), loop_expected, rtol=1.0e-5, atol=1.0e-5)
 
     def time_vec4_component_arithmetic(self):
         """Measure the full CPU pipeline; this case alone does not isolate SLP."""
         self.vec4_command.launch()
+
+    def time_scalar_task_loop_arithmetic(self):
+        """Measure arithmetic across CPU tasks with scalar array elements."""
+        self.scalar_command.launch()
 
     def time_linear_array_loop_arithmetic(self):
         self.loop_command.launch()

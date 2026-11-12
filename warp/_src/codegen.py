@@ -7746,9 +7746,23 @@ static WP_FORCEINLINE void {name}_cpu_forward_tasks(
     wp::launch_bounds_t<{launch_ndim}> *dim,
     wp_args_{name} *_wp_args)
 {{
-    for (size_t task_index = 0; task_index < dim->size; ++task_index)
+    // Private launch state cannot alias stores through kernel array arguments.
+    const auto bounds = *dim;
+    auto args = *_wp_args;
+    if constexpr (wp_linear_contiguous)
     {{
-        {name}_cpu_kernel_forward<wp_linear_contiguous>(*dim, task_index, _wp_args);
+        // A signed counter keeps array addresses affine after wp.tid() casts to int.
+        for (int task_index = 0; task_index < (int)bounds.size; ++task_index)
+        {{
+            {name}_cpu_kernel_forward<wp_linear_contiguous>(bounds, (size_t)task_index, &args);
+        }}
+    }}
+    else
+    {{
+        for (size_t task_index = 0; task_index < bounds.size; ++task_index)
+        {{
+            {name}_cpu_kernel_forward<wp_linear_contiguous>(bounds, task_index, &args);
+        }}
     }}
 }}
 
@@ -7830,10 +7844,25 @@ static WP_FORCEINLINE void {name}_cpu_backward_tasks(
     wp_args_{name} *_wp_args,
     wp_args_{name} *_wp_adj_args)
 {{
-    for (size_t task_index = 0; task_index < dim->size; ++task_index)
+    // Hoist both primal and adjoint descriptors out of the task loop.
+    const auto bounds = *dim;
+    auto args = *_wp_args;
+    auto adj_args = *_wp_adj_args;
+    if constexpr (wp_linear_contiguous)
     {{
-        {name}_cpu_kernel_backward<wp_linear_contiguous>(
-            *dim, task_index, _wp_args, _wp_adj_args);
+        for (int task_index = 0; task_index < (int)bounds.size; ++task_index)
+        {{
+            {name}_cpu_kernel_backward<wp_linear_contiguous>(
+                bounds, (size_t)task_index, &args, &adj_args);
+        }}
+    }}
+    else
+    {{
+        for (size_t task_index = 0; task_index < bounds.size; ++task_index)
+        {{
+            {name}_cpu_kernel_backward<wp_linear_contiguous>(
+                bounds, task_index, &args, &adj_args);
+        }}
     }}
 }}
 
@@ -8902,18 +8931,21 @@ def codegen_module(kernel, device, options):
 
             # Read independent packed stride checks eagerly. A short-circuit chain can
             # make LLVM classify the contiguous task loop as cold and prevent inlining.
-            # Retain the outer coordinate short circuit.
+            # Retain the outer coordinate short circuit and keep launches larger than
+            # INT_MAX on the size_t task loop.
             forward_condition = " & ".join(f"({condition})" for condition in forward_conditions)
             backward_condition = " & ".join(f"({condition})" for condition in backward_conditions)
             template_fmt_args["forward_dispatch"] = (
-                f"    const bool wp_linear_contiguous = dim->coord_mult == 1 && ({forward_condition});\n"
+                "    const bool wp_linear_contiguous = dim->coord_mult == 1 && dim->size <= 0x7fffffff\n"
+                f"        && ({forward_condition});\n"
                 "    if (wp_linear_contiguous)\n"
                 f"        {name}_cpu_forward_tasks<true>(dim, _wp_args);\n"
                 "    else\n"
                 f"        {name}_cpu_forward_tasks<false>(dim, _wp_args);"
             )
             template_fmt_args["backward_dispatch"] = (
-                f"    const bool wp_linear_contiguous = dim->coord_mult == 1 && ({backward_condition});\n"
+                "    const bool wp_linear_contiguous = dim->coord_mult == 1 && dim->size <= 0x7fffffff\n"
+                f"        && ({backward_condition});\n"
                 "    if (wp_linear_contiguous)\n"
                 f"        {name}_cpu_backward_tasks<true>(dim, _wp_args, _wp_adj_args);\n"
                 "    else\n"

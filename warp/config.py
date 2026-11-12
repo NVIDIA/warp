@@ -15,6 +15,7 @@ For information on module-level and kernel-level settings, see :doc:`/user_guide
 """
 
 import os as _os
+import platform as _platform
 import sys as _sys
 import types as _types
 from enum import IntEnum as _IntEnum
@@ -312,13 +313,19 @@ This setting can be overridden at the module level by setting the
 cpu_compiler_flags: str | None = (
     "-march=native -mllvm=-inline-threshold=9000 -mllvm=-inline-cold-callsite-threshold=3000"
     " -mllvm=-slp-recursion-max-depth=4"
+    # Prefer zero idioms over arbitrary register contents for unused operands.
+    # Otherwise packed operations can process denormals in unused SIMD lanes.
+    # This option targets x86 SIMD merge operands; omit it on other architectures.
+    + (" -mllvm=-undef-reg-clearance=4294967295" if _platform.machine().lower() in ("x86_64", "amd64") else "")
 )
 """Flags controlling CPU kernel compilation.
 
 The default detects host CPU features, raises LLVM's inlining thresholds,
-and limits SLP recursion depth to four instead of LLVM's default 12. Set this
-to ``None`` to retain host feature detection with LLVM's default inlining
-thresholds and SLP recursion depth.
+and limits SLP recursion depth to four instead of LLVM's default 12. On x86-64,
+it also favors clearing unused scalar-conversion operands to avoid denormal
+penalties in unused SIMD lanes. This does not flush valid subnormal values.
+Set this to ``None`` to retain host feature detection with LLVM's default
+optimization settings.
 ``""`` compiles for a generic CPU target. A flag string can include
 ``-march=native``, Clang frontend flags, and LLVM arguments in either
 ``-mllvm <option>`` or ``-mllvm=<option>`` form. Use ``-fno-vectorize`` to
@@ -327,7 +334,7 @@ vectorization for a module.
 
 The ``"cpu_compiler_flags"`` module option replaces this global string for
 that module. Use ``"-march=native"`` to keep host feature detection while
-using LLVM's default inlining thresholds and SLP recursion depth. ``None`` at
+using LLVM's default optimization settings. ``None`` at
 the module level inherits the global setting.
 
 The resolved flag string is part of the module cache key.
