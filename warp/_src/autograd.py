@@ -724,7 +724,7 @@ def jacobian(
     The input function can be either a Warp kernel (e.g. a function decorated by :func:`@wp.kernel <warp.kernel>`) or a regular Python function that accepts arguments (of which some must be Warp arrays) and returns a Warp array or a list of Warp arrays.
 
     In case ``function`` is a Warp kernel, it and its adjoint kernel are launched with the given inputs and outputs, as well as the provided ``dim``,
-    ``max_blocks``, and ``block_dim`` arguments (see :func:`warp.launch` for more details). Its array arguments are restored to their original values afterwards.
+    ``max_blocks``, and ``block_dim`` arguments (see :func:`warp.launch` for more details). Its Warp array arguments are restored to their original values afterwards.
 
     Note:
         If ``function`` is a Warp kernel, the input arguments must precede the output arguments in the kernel code definition.
