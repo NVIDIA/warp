@@ -10,10 +10,7 @@ on:
     branches:
       - main
       - release-*
-  pull_request:
-    branches:
-      - main
-      - release-*
+  # Experiment branch only: no CodeQL on this PR.
   schedule:
     - cron: "45 9 * * *"
 
