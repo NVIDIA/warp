@@ -6,6 +6,45 @@ from pathlib import Path
 
 import warp as wp
 
+PAGE_BYTES = 4096
+
+
+def page_aligned_cpu_arrays(dtype, length, count, gap_bytes):
+    """Slice CPU arrays from one allocation at fixed offsets modulo 4 KiB.
+
+    Separately allocated arrays land at offsets modulo 4 KiB that depend on
+    the heap's history, which differs between benchmark processes. When a
+    vectorized kernel loads from one array at addresses that match, modulo
+    4 KiB, those it stored to in another array a few iterations earlier, the
+    CPU can hold the loads behind those stores. How often it does also
+    depends on the physical pages behind the arrays, so the cost differs
+    from process to process. Here array ``k`` starts ``k * gap_bytes`` past
+    a page boundary, modulo 4 KiB, in every process.
+
+    Args:
+        dtype: Element type of the arrays.
+        length: Number of elements in each array.
+        count: Number of arrays.
+        gap_bytes: Distance between consecutive arrays modulo 4 KiB.
+
+    Returns:
+        The backing allocation, which the caller must keep alive, and a list
+        of ``count`` arrays.
+
+    Raises:
+        ValueError: If whole elements of ``dtype`` cannot start at these
+            offsets, as with 12-byte vectors.
+    """
+    itemsize = wp.types.type_size_in_bytes(dtype)
+    slot_bytes = -(-length * itemsize // PAGE_BYTES) * PAGE_BYTES + gap_bytes
+    storage = wp.empty((count * slot_bytes + PAGE_BYTES) // itemsize, dtype=dtype, device="cpu")
+    start = (-storage.ptr % PAGE_BYTES) // itemsize
+    stride = slot_bytes // itemsize
+    arrays = [storage[start + k * stride : start + k * stride + length] for k in range(count)]
+    if any(arr.ptr % PAGE_BYTES != k * gap_bytes % PAGE_BYTES for k, arr in enumerate(arrays)):
+        raise ValueError(f"Cannot place {itemsize}-byte elements {gap_bytes} bytes apart from a page boundary")
+    return storage, arrays
+
 
 def setup_once(setup):
     """Run a benchmark's expensive setup once per parameter set.
