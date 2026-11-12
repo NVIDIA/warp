@@ -723,8 +723,8 @@ def jacobian(
 
     The input function can be either a Warp kernel (e.g. a function decorated by :func:`@wp.kernel <warp.kernel>`) or a regular Python function that accepts arguments (of which some must be Warp arrays) and returns a Warp array or a list of Warp arrays.
 
-    In case ``function`` is a Warp kernel, its adjoint kernel is launched with the given inputs and outputs, as well as the provided ``dim``,
-    ``max_blocks``, and ``block_dim`` arguments (see :func:`warp.launch` for more details).
+    In case ``function`` is a Warp kernel, it and its adjoint kernel are launched with the given inputs and outputs, as well as the provided ``dim``,
+    ``max_blocks``, and ``block_dim`` arguments (see :func:`warp.launch` for more details). Its array arguments are restored to their original values afterwards.
 
     Note:
         If ``function`` is a Warp kernel, the input arguments must precede the output arguments in the kernel code definition.
@@ -767,6 +767,8 @@ def jacobian(
         if metadata.is_empty:
             metadata.update_from_kernel(function, inputs)
 
+        kernel_args = [*inputs, *outputs]
+        kernel_snapshot = _snapshot_array_inputs(kernel_args)
         tape = wp.Tape()
         tape.record_launch(
             kernel=function,
@@ -786,7 +788,19 @@ def jacobian(
             outputs = [outputs]
 
     try:
-        if not isinstance(function, wp.Kernel):
+        if isinstance(function, wp.Kernel):
+            # adjoints such as atomic_min() read outputs, so they need the forward results
+            wp.launch(
+                function,
+                dim=dim,
+                inputs=inputs,
+                outputs=outputs,
+                device=device,
+                max_blocks=max_blocks,
+                block_dim=block_dim,
+                record_tape=False,
+            )
+        else:
             for launch in tape.launches:
                 if isinstance(launch, (tuple, list)) and isinstance(launch[0], wp.Kernel):
                     if not _is_kernel_backward_enabled(launch[0]):
@@ -842,7 +856,9 @@ def jacobian(
             jacobians[input_i, output_i] = jacobian
     finally:
         # restores the snapshot even when a backward pass raises
-        if restore_inputs and not isinstance(function, wp.Kernel):
+        if isinstance(function, wp.Kernel):
+            _restore_array_inputs(kernel_args, kernel_snapshot)
+        elif restore_inputs:
             _restore_array_inputs(inputs, input_snapshot)
 
     if plot_jacobians:
