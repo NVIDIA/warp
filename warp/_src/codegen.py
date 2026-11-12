@@ -4298,21 +4298,13 @@ class Adjoint:
     def emit_BinOp(adj, node):
         # evaluate binary operator arguments
 
-        if adj.builder_options.get("verify_autograd_array_access", False):
-            # array overwrite tracking: in-place operators are a special case
-            # x[tid] = x[tid] + 1 is a read followed by a write, but we only want to record the write
-            # so we save the current arg read flags and restore them after lhs eval
-            is_read_states = []
-            for arg in adj.args:
-                is_read_states.append(arg.is_read)
-
         # evaluate lhs binary operator argument
-        left = adj.eval(node.left)
-
-        if adj.builder_options.get("verify_autograd_array_access", False):
-            # restore arg read flags
-            for i, arg in enumerate(adj.args):
-                arg.is_read = is_read_states[i]
+        if getattr(node, "is_inplace_update", False):
+            # x[i] = x[i] + y is an in-place update that only records the write, like x[i] += y
+            with adj.suppress_read_tracking():
+                left = adj.eval(node.left)
+        else:
+            left = adj.eval(node.left)
 
         # evaluate rhs binary operator argument
         right = adj.eval(node.right)
@@ -5879,6 +5871,14 @@ class Adjoint:
             # we do this so we can decide which function to
             # call based on the number of expected outputs
             node.value.expects = len(lhs.elts)
+
+        if (
+            isinstance(lhs, ast.Subscript)
+            and isinstance(node.value, ast.BinOp)
+            and isinstance(node.value.op, (ast.Add, ast.Sub))
+            and ast.unparse(node.value.left) == ast.unparse(lhs)
+        ):
+            node.value.is_inplace_update = True
 
         # evaluate rhs
         if isinstance(lhs, ast.Tuple) and isinstance(node.value, ast.Tuple):

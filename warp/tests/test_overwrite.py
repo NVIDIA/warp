@@ -54,6 +54,54 @@ def test_kernel_read_kernel_write(test, device):
 
 
 @wp.kernel
+def product_kernel(x: wp.array[float], y: wp.array[float], z: wp.array[float]):
+    tid = wp.tid()
+    z[tid] = x[tid] * y[tid]
+
+
+@wp.kernel
+def sine_plus_kernel(x: wp.array[float], y: wp.array[float]):
+    tid = wp.tid()
+    y[tid] = wp.sin(x[tid]) + 1.0
+
+
+@wp.kernel
+def difference_square_kernel(x: wp.array[float], y: wp.array[float], z: wp.array[float]):
+    tid = wp.tid()
+    z[tid] = (x[tid] - y[tid]) ** 2.0
+
+
+# (kernel READ as the left operand of a binary operator) -> (kernel WRITE) failure case
+def test_kernel_read_left_operand_kernel_write(test, device):
+    saved_verify_autograd_array_access_setting = wp.config.verify_autograd_array_access
+    try:
+        wp.config.verify_autograd_array_access = True
+
+        expected = "is being written to but has already been read from in a previous launch. This may corrupt gradient computation in the backward pass."
+
+        for kernel, extra_inputs in ((product_kernel, 1), (difference_square_kernel, 1), (sine_plus_kernel, 0)):
+            a = wp.array(np.array([1.0, 2.0, 3.0]), dtype=float, requires_grad=True, device=device)
+            b = wp.array(np.array([4.0, 5.0, 6.0]), dtype=float, requires_grad=True, device=device)
+            c = wp.zeros_like(a)
+            d = wp.array(np.array([-1.0, -2.0, -3.0]), dtype=float, requires_grad=True, device=device)
+
+            inputs = [a, b] if extra_inputs else [a]
+            outputs = [c]
+
+            tape = wp.Tape()
+
+            with contextlib.redirect_stderr(io.StringIO()) as f:
+                with tape:
+                    wp.launch(kernel, a.shape, inputs=inputs, outputs=outputs, device=device)
+                    wp.launch(overwrite_kernel_a, d.shape, inputs=[d], outputs=[a], device=device)
+
+            test.assertIn(expected, f.getvalue(), msg=kernel.key)
+
+    finally:
+        wp.config.verify_autograd_array_access = saved_verify_autograd_array_access_setting
+
+
+@wp.kernel
 def double_kernel(x: wp.array[float], y: wp.array[float]):
     tid = wp.tid()
     y[tid] = 2.0 * x[tid]
@@ -590,6 +638,52 @@ def test_kernel_readwrite(test, device):
         wp.config.verify_autograd_array_access = saved_verify_autograd_array_access_setting
 
 
+# (kernel READ as the left operand of a binary operator -> WRITE) failure case
+def test_kernel_readwrite_left_operand(test, device):
+    saved_verify_autograd_array_access_setting = wp.config.verify_autograd_array_access
+    try:
+        wp.config.verify_autograd_array_access = True
+
+        expected = "is being written to after it has been read from within the same kernel. This may corrupt gradient computation in the backward pass."
+
+        with contextlib.redirect_stderr(io.StringIO()) as f:
+
+            @wp.kernel
+            def readwrite_kernel_left_operand(a: wp.array[float], b: wp.array[float]):
+                tid = wp.tid()
+                b[tid] = (a[tid] - 1.0) ** 2.0
+                a[tid] = 1.0
+
+            a = wp.array(np.arange(5), dtype=float, requires_grad=True, device=device)
+            b = wp.zeros_like(a)
+
+            tape = wp.Tape()
+            with tape:
+                wp.launch(readwrite_kernel_left_operand, dim=5, inputs=[a, b], device=device)
+
+        test.assertIn(expected, f.getvalue())
+        test.assertIn("in kernel readwrite_kernel_left_operand", f.getvalue())
+
+        # the in-place form x = x + y is exempt, like x += y
+        with contextlib.redirect_stderr(io.StringIO()) as f:
+
+            @wp.kernel
+            def increment_kernel(a: wp.array[float]):
+                tid = wp.tid()
+                a[tid] = a[tid] + 1.0
+
+            a = wp.zeros(5, dtype=float, requires_grad=True, device=device)
+
+            tape = wp.Tape()
+            with tape:
+                wp.launch(increment_kernel, dim=5, inputs=[a], device=device)
+
+        test.assertNotIn("in kernel increment_kernel", f.getvalue())
+
+    finally:
+        wp.config.verify_autograd_array_access = saved_verify_autograd_array_access_setting
+
+
 # (kernel READ -> func WRITE) codegen failure case
 def test_kernel_read_func_write(test, device):
     saved_verify_autograd_array_access_setting = wp.config.verify_autograd_array_access
@@ -687,6 +781,12 @@ add_function_test(
 add_function_test(TestOverwrite, "test_nested_function_read_write", test_nested_function_read_write, devices=devices)
 add_function_test(TestOverwrite, "test_multidimensional_indexing", test_multidimensional_indexing, devices=devices)
 add_function_test(TestOverwrite, "test_in_place_operators", test_in_place_operators, devices=devices)
+add_function_test(
+    TestOverwrite,
+    "test_kernel_read_left_operand_kernel_write",
+    test_kernel_read_left_operand_kernel_write,
+    devices=devices,
+)
 add_function_test(TestOverwrite, "test_views", test_views, devices=devices)
 add_function_test(TestOverwrite, "test_reset", test_reset, devices=devices)
 
@@ -722,6 +822,9 @@ add_function_test(
 )
 add_function_test(TestOverwrite, "test_kernel_readwrite", test_kernel_readwrite, devices=cuda_device)
 add_function_test(TestOverwrite, "test_kernel_read_func_write", test_kernel_read_func_write, devices=cuda_device)
+add_function_test(
+    TestOverwrite, "test_kernel_readwrite_left_operand", test_kernel_readwrite_left_operand, devices=cuda_device
+)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
