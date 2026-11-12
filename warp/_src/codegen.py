@@ -1219,10 +1219,10 @@ class Var:
             classstr = f"wp::{concrete_array_type(t).__name__}"
             return f"{classstr}_t<{dtypestr}>"
         elif get_origin(t) is tuple:
-            dtypestr = ", ".join(Var.dtype_to_ctype(x) for x in get_args(t))
+            dtypestr = ", ".join(Var.type_to_ctype(x) for x in get_args(t))
             return f"wp::tuple_t<{dtypestr}>"
         elif is_tuple(t):
-            dtypestr = ", ".join(Var.dtype_to_ctype(x) for x in t.types)
+            dtypestr = ", ".join(Var.type_to_ctype(x) for x in t.types)
             classstr = f"wp::{type(t).__name__}"
             return f"{classstr}<{dtypestr}>"
         elif is_tile(t):
@@ -1298,6 +1298,13 @@ class Block:
         self.body_forward = []
         self.body_replay = []
         self.body_reverse = []
+        # Track the calls that actually execute during backward so validation
+        # catches unsafe mutations without rejecting forward-only calls protected
+        # by custom callbacks. Each edge is (function, call_adjoint). Keeping edges
+        # with their statements also handles loop conditions, whose reverse
+        # statements are discarded while their replay statements still execute.
+        self.replay_calls = set()
+        self.reverse_calls = set()
 
         # list of vars declared in this block
         self.vars = []
@@ -2543,7 +2550,7 @@ class Adjoint:
         return s
 
     # generates a list of formatted args
-    def format_args(adj, prefix, args):
+    def format_args(adj, prefix, args, *, call_mode="forward"):
         arg_strs = []
 
         for a in args:
@@ -2552,7 +2559,10 @@ class Adjoint:
             elif isinstance(a, warp._src.context.Function):
                 # functions don't have a var_ prefix so strip it off here
                 if prefix == "var":
-                    arg_strs.append(f"{a.namespace}{a.native_func}")
+                    if call_mode == "forward":
+                        arg_strs.append(f"{a.namespace}{a.native_func}")
+                    else:
+                        arg_strs.append(adj.replay_function(a, reverse=call_mode == "reverse"))
                 else:
                     arg_strs.append(f"{a.namespace}{prefix}_{a.native_func}")
             elif is_reference(a.type):
@@ -2564,9 +2574,19 @@ class Adjoint:
 
         return arg_strs
 
+    def replay_function(adj, func, native_name=None, *, reverse=False):
+        """Select the emitted replay target and record any automatic forward call."""
+        name = native_name or func.native_func
+        if func.custom_replay_func is not None or func.replay_snippet is not None:
+            return f"{func.namespace}replay_{name}"
+        if not func.is_builtin() or getattr(func, "_external_builtin_contract", None) is not None:
+            calls = adj.blocks[-1].reverse_calls if reverse else adj.blocks[-1].replay_calls
+            calls.add((func, False))
+        return f"{func.namespace}{name}"
+
     # generates argument string for a forward function call
-    def format_forward_call_args(adj, args, use_initializer_list):
-        arg_str = ", ".join(adj.format_args("var", args))
+    def format_forward_call_args(adj, args, use_initializer_list, *, replay=False):
+        arg_str = ", ".join(adj.format_args("var", args, call_mode="replay" if replay else "forward"))
         if use_initializer_list:
             return f"{{{arg_str}}}"
         return arg_str
@@ -2584,7 +2604,9 @@ class Adjoint:
     ):
         if extra_args is None:
             extra_args = []
-        formatted_var = adj.format_args("var", args_var)
+        # Native adjoints can invoke their primal callable to recompute outputs.
+        # Use its replay implementation while retaining adj_<original> below.
+        formatted_var = adj.format_args("var", args_var, call_mode="reverse")
         formatted_extra = adj.format_args("var", extra_args)
         formatted_out = []
         if has_output_args and (require_original_output_arg or len(args_out) > 1):
@@ -3040,6 +3062,8 @@ class Adjoint:
             kwarg_nodes=kwarg_nodes,
         )
 
+        func_is_builtin = func.is_builtin()
+
         def return_value(output):
             if return_resolved:
                 return output, func, bound_args
@@ -3055,7 +3079,7 @@ class Adjoint:
         # returned here, and a const-qualified C++ variable cannot be passed
         # by non-const reference to functions that write through it.
         if (
-            func.is_builtin()
+            func_is_builtin
             and func.value_type in (float64, int64, uint64)
             and func.native_func == func.value_type.__name__
             and len(bound_args) == 1
@@ -3077,7 +3101,7 @@ class Adjoint:
                     return return_value(arg)
 
         # if it is a user-function then build it recursively
-        if not func.is_builtin():
+        if not func_is_builtin:
             # record the call-graph edge for the post-build propagation passes
             adj.called_user_functions.setdefault(func, None)
             # If the function called is a user function,
@@ -3092,14 +3116,6 @@ class Adjoint:
 
             elif func not in adj.builder.functions:
                 adj.builder.build_function(func)
-                # add custom grad, replay functions to the list of functions
-                # to be built later (invalid code could be generated if we built them now)
-                # so that they are not missed when only the forward function is imported
-                # from another module
-                if func.custom_grad_func:
-                    adj.builder.deferred_functions.append(func.custom_grad_func)
-                if func.custom_replay_func:
-                    adj.builder.deferred_functions.append(func.custom_replay_func)
 
             adj.deterministic.include_function_call(func, bound_args)
 
@@ -3167,7 +3183,7 @@ class Adjoint:
             func_arg_names = tuple(
                 name
                 for name in bound_args
-                if func.is_builtin() or not warp._src.types.is_warp_function_annotation(func.input_types.get(name))
+                if func_is_builtin or not warp._src.types.is_warp_function_annotation(func.input_types.get(name))
             )
             func_args = tuple(bound_args[name] for name in func_arg_names)
             # Function parameters are specialization inputs, not C++ arguments.
@@ -3177,14 +3193,22 @@ class Adjoint:
         func_name = compute_type_str(func.native_func, template_args)
         use_initializer_list = func.initializer_list_func(bound_args, return_type)
 
-        # For user functions, check which parameters are wp.ref[T] / Reference(T)
-        # so we can pass pointer-shaped IR through without creating copies.
-        parameter_types = func.input_types if not func.is_builtin() else {}
+        # User functions take pointer-shaped references. External native functions
+        # bind the same addressable storage through ordinary C++ reference parameters.
+        external_builtin = getattr(func, "_external_builtin_contract", None) is not None
+        parameter_types = func.input_types if not func_is_builtin or external_builtin else {}
         func_has_ref_params = any(is_reference(t) for t in parameter_types.values())
+
+        # Non-differentiable external calls still run during replay. Record mutable
+        # references independently of reverse-call generation so backward use is
+        # rejected after the full call graph is known.
+        if external_builtin and func_has_ref_params:
+            adj.unvalidated_ref_calls.append(func)
 
         fwd_args = []
         reverse_adj_args = []
         reverse_prelude = []
+        callable_args = ()
         for i, func_arg in enumerate(func_args):
             arg_name = func_arg_names[i] if i < len(func_arg_names) else None
             parameter_type = parameter_types.get(arg_name)
@@ -3198,17 +3222,29 @@ class Adjoint:
                     expected_type=parameter_type,
                     purpose=f"wp.ref[{type_repr(parameter_type.value_type)}] parameter",
                 )
-                reverse_arg_var = Var(
-                    adj.emit_ref_adjoint_pointer(func_arg_var, prelude=reverse_prelude),
-                    parameter_type,
-                    prefix=False,
-                )
+                if external_builtin:
+                    func_arg_var = Var(f"*({func_arg_var.emit()})", parameter_type.value_type, prefix=False)
+                    reverse_arg_var = func_arg_var
+                else:
+                    reverse_arg_var = Var(
+                        adj.emit_ref_adjoint_pointer(func_arg_var, prelude=reverse_prelude),
+                        parameter_type,
+                        prefix=False,
+                    )
             elif not isinstance(func_arg, (Reference, warp._src.context.Function)):
                 func_arg_var = adj.load(func_arg)
                 reverse_arg_var = strip_reference(func_arg)
             else:
                 func_arg_var = func_arg
                 reverse_arg_var = strip_reference(func_arg)
+
+            if isinstance(func_arg_var, warp._src.context.Function):
+                callable_args += (func_arg_var,)
+                adj.validate_external_adjoint(func_arg_var)
+                if getattr(func_arg_var, "_external_builtin_contract", None) is not None and any(
+                    is_reference(typ) for typ in func_arg_var.input_types.values()
+                ):
+                    adj.unvalidated_ref_calls.append(func_arg_var)
 
             # if the argument is a function (and not a builtin), then build it recursively
             if isinstance(func_arg_var, warp._src.context.Function) and not func_arg_var.is_builtin():
@@ -3233,57 +3269,89 @@ class Adjoint:
         det_args = adj.deterministic.call_args(func, bound_args)
         replay_det_args = adj.deterministic.replay_call_args(func, bound_args, det_args)
 
-        if return_type is None:
-            # handles expression (zero output) functions, e.g.: void do_something();
-            forward_call = f"{func.namespace}{func_name}({adj.format_forward_call_args(fwd_args + det_args, use_initializer_list)});"
+        # Select the same replay target for void, scalar, and multiple outputs.
+        # Function-valued arguments follow that selection too, including when
+        # the enclosing native implementation invokes them during its adjoint.
+        call_outputs = output_list if len(output_list) > 1 else []
+        assignment = f"var_{output} = " if len(output_list) == 1 else ""
+        forward_args = adj.format_forward_call_args(fwd_args + det_args + call_outputs, use_initializer_list)
+        forward_call = f"{assignment}{func.namespace}{func_name}({forward_args});"
+        if func.skip_replay:
             replay_call = forward_call
-            if func.custom_replay_func is not None or func.replay_snippet is not None:
-                replay_call = f"{func.namespace}replay_{func_name}({adj.format_forward_call_args(fwd_args + replay_det_args, use_initializer_list)});"
-
-        elif not isinstance(return_type, Sequence) or len(return_type) == 1:
-            # handle simple function (one output)
-            forward_call = f"var_{output} = {func.namespace}{func_name}({adj.format_forward_call_args(fwd_args + det_args, use_initializer_list)});"
+        elif (
+            not callable_args
+            and replay_det_args == det_args
+            and func.custom_replay_func is None
+            and func.replay_snippet is None
+        ):
+            # Most calls replay verbatim. Reuse their formatted arguments and
+            # record only calls whose bodies need backward-safety validation.
             replay_call = forward_call
-            if func.custom_replay_func is not None:
-                replay_call = f"var_{output} = {func.namespace}replay_{func_name}({adj.format_forward_call_args(fwd_args + replay_det_args, use_initializer_list)});"
-
+            if not func_is_builtin or external_builtin:
+                adj.blocks[-1].replay_calls.add((func, False))
         else:
-            # handle multiple value functions
-            forward_call = f"{func.namespace}{func_name}({adj.format_forward_call_args(fwd_args + det_args + output, use_initializer_list)});"
-            replay_call = forward_call
+            replay_name = adj.replay_function(func, func_name)
+            replay_args = adj.format_forward_call_args(
+                fwd_args + replay_det_args + call_outputs, use_initializer_list, replay=True
+            )
+            replay_call = f"{assignment}{replay_name}({replay_args});"
 
         forward_call, replay_call = adj.deterministic.wrap_unintercepted_side_effect_atomic(
             func, forward_call, replay_call, return_value_used=return_value_used
         )
-
-        if func.skip_replay:
-            adj.add_forward(forward_call, replay="// " + replay_call)
-        else:
-            adj.add_forward(forward_call, replay=replay_call)
+        adj.add_forward(forward_call, replay="// " + replay_call if func.skip_replay else replay_call)
 
         # Skip reverse call generation for functions that use warp.grad() - they don't have
         # meaningful adjoints (the gradient of a gradient call is not supported).
-        skip_reverse = not func.is_builtin() and func.adj.uses_grad_call
+        skip_reverse = not func_is_builtin and func.adj.uses_grad_call
         # Higher-order built-ins pass callable args to native adjoint helpers.
         # Only generate the reverse call when those callables have adjoints.
-        has_nondifferentiable_callable_arg = any(
-            isinstance(arg, warp._src.context.Function) and not arg.is_differentiable for arg in func_args
-        )
-        has_native_value = any(
-            isinstance(arg, Var) and adj.type_contains_native_value(arg.type) for arg in (*func_args, *output_list)
-        )
+        has_nondifferentiable_callable_arg = callable_args and any(not arg.is_differentiable for arg in callable_args)
+        if external_builtin and func.is_differentiable:
+            adj.validate_external_adjoint(
+                func, (arg.type for arg in (*func_args, *output_list) if isinstance(arg, Var))
+            )
 
+        requests_reverse = (
+            func.is_differentiable and func_args and not skip_reverse and not has_nondifferentiable_callable_arg
+        )
+        # Ordinary Warp calls need no native-boundary analysis. Native snippets
+        # also need the deeper check for native values nested in Warp structs.
+        supports_native_adjoint = requests_reverse and (
+            (
+                func.native_snippet is None
+                and not any(
+                    isinstance(arg, Var) and adj.type_contains_native_value(arg.type)
+                    for arg in (*func_args, *output_list)
+                )
+            )
+            or adj.supports_native_adjoint(
+                func,
+                (arg.type for arg in func_args if isinstance(arg, Var)),
+                (out.type for out in output_list),
+            )
+        )
         if (
-            func.is_differentiable
-            and func_args
-            and not skip_reverse
-            and not has_nondifferentiable_callable_arg
-            and not has_native_value
+            requests_reverse
+            and not supports_native_adjoint
+            and not func_is_builtin
+            and (
+                any(not adj.type_contains_native_value(out.type) for out in output_list)
+                or any(adj.type_has_ordinary_array(arg.type) for arg in func_args if isinstance(arg, Var))
+            )
         ):
+            # Ordinary return values and potential array writes must not lose
+            # derivatives at an unsupported boundary. Native-only results are
+            # inactive, but do not establish that array arguments are read-only.
+            # Validate this requested edge only if backward execution reaches
+            # it; calls used forward inside custom callbacks remain legal.
+            adj.blocks[-1].reverse_calls.add((func, True))
+
+        if requests_reverse and supports_native_adjoint:
             # Ref-param functions are not automatically differentiable and a silent skip would
             # produce wrong gradients, but used_by_backward_kernel is not known yet (callers may
             # still be built); ModuleBuilder rejects the recorded calls once it is final
-            if func_has_ref_params and not adj.has_manual_ref_adjoint(func):
+            if func_has_ref_params and not external_builtin and not adj.has_manual_ref_adjoint(func):
                 adj.unvalidated_ref_calls.append(func)
             adj_args = tuple(reverse_adj_args)
             reverse_has_output_args = (
@@ -3305,15 +3373,20 @@ class Adjoint:
                 else:
                     adj_func_name = func.native_func
                 reverse_call = f"{func.namespace}adj_{adj_func_name}({arg_str});"
-                if adj.deterministic.enabled and func.is_builtin() and func.key == "address":
+                if adj.deterministic.enabled and func_is_builtin and func.key == "address":
                     reverse_call = adj.deterministic.adjoint_address_call(fwd_args, output_list, reverse_call)
                 adj.add_reverse(reverse_call)
+                if not func_is_builtin:
+                    adj.blocks[-1].reverse_calls.add((func, True))
+                for target in callable_args:
+                    if not target.is_builtin():
+                        adj.blocks[-1].reverse_calls.add((target, True))
                 for statement in reversed(reverse_prelude):
                     adj.add_reverse(statement)
 
         # update our smem roofline requirements based on any
         # shared memory required by the dependent function call
-        if not func.is_builtin():
+        if not func_is_builtin:
             adj.alloc_shared_extra(func.adj.get_total_required_shared() + extra_shared_memory)
         else:
             adj.alloc_shared_extra(extra_shared_memory)
@@ -3326,6 +3399,77 @@ class Adjoint:
     def add_builtin_call(adj, func_name, args, min_outputs=None, return_value_used=True):
         func = warp._src.context.builtin_functions[func_name]
         return adj.add_call(func, args, {}, {}, min_outputs=min_outputs, return_value_used=return_value_used)
+
+    @staticmethod
+    def supports_native_adjoint(func, input_types, output_types):
+        """Keep native context inactive without suppressing generated Warp derivatives."""
+        if not warp._src.types._native_value_types:
+            return True
+        input_types = tuple(input_types)
+        output_types = tuple(output_types)
+        if func.custom_grad_func is not None or func.adj_native_snippet is not None:
+            return True
+        # Warp structs can hold differentiable fields beside native context.
+        # That context still needs an explicit derivative in native snippets.
+        if func.native_snippet is not None and any(
+            Adjoint.type_contains_native_context(typ) for typ in (*input_types, *output_types)
+        ):
+            return False
+        native_output = any(Adjoint.type_contains_native_value(typ) for typ in output_types)
+        if not native_output and not any(Adjoint.type_contains_native_value(typ) for typ in input_types):
+            return True
+        if native_output and (
+            func.is_builtin() or any(not Adjoint.type_contains_native_value(typ) for typ in output_types)
+        ):
+            return False
+        if not func.is_builtin():
+            # Native-only returns stay inactive, but a Warp body may also write
+            # ordinary arrays whose derivatives must not be suppressed.
+            return True
+        # Generated struct adjoints already omit native fields while retaining
+        # ordinary differentiable fields. Other builtins need a native contract.
+        return any(isinstance(typ, Struct) and func is typ.value_constructor for typ in output_types)
+
+    @staticmethod
+    def type_contains_native_context(var_type):
+        """Include native fields inside otherwise differentiable Warp aggregates."""
+        var_type = strip_reference(var_type)
+        if is_array(var_type):
+            return Adjoint.type_contains_native_context(var_type.dtype)
+        if isinstance(var_type, Struct):
+            return any(Adjoint.type_contains_native_context(var.type) for var in var_type.vars.values())
+        if isinstance(var_type, tuple_t):
+            return any(Adjoint.type_contains_native_context(typ) for typ in var_type.types)
+        return warp._src.types.is_native_type(var_type)
+
+    @staticmethod
+    def type_has_ordinary_array(var_type):
+        """Find potential ordinary array outputs, including nested Warp fields."""
+        var_type = strip_reference(var_type)
+        if is_array(var_type):
+            return not Adjoint.type_contains_native_value(var_type)
+        if isinstance(var_type, Struct):
+            return any(Adjoint.type_has_ordinary_array(var.type) for var in var_type.vars.values())
+        if isinstance(var_type, tuple_t):
+            return any(Adjoint.type_has_ordinary_array(typ) for typ in var_type.types)
+        return False
+
+    @staticmethod
+    def validate_external_adjoint(func, argument_types=()):
+        """Reject native-value signatures without an external adjoint contract."""
+        if (
+            getattr(func, "_external_builtin_contract", None) is not None
+            and func.is_differentiable
+            and any(
+                Adjoint.type_contains_native_value(typ)
+                for typ in (*func.input_types.values(), func.value_type, *argument_types)
+            )
+        ):
+            raise WarpCodegenError(
+                f"External function '{func.key}' uses native value types without adjoint storage; "
+                "register it as non-differentiable and use a @wp.func_grad wrapper "
+                "to differentiate its Warp arguments."
+            )
 
     def add_grad_call(adj, func, args, kwargs):
         """Generate code for calling the gradient of a function via warp.grad().
@@ -3363,6 +3507,8 @@ class Adjoint:
         if not func.is_builtin():
             # Force adjoint code generation for the function.
             func.adj.force_adjoint_codegen = True
+            if adj.builder is not None:
+                adj.builder.wp_grad_targets.add(func)
 
             # Build the function if not already built
             if adj.builder is None:
@@ -3399,26 +3545,37 @@ class Adjoint:
         # Determine if we need to include the forward output in the adjoint call.
         # Builtins with require_original_output_arg=True or multiple outputs need it.
         # User functions don't include it (unless multiple outputs).
-        include_fwd_output = func.require_original_output_arg or len(return_types) > 1
+        adj.validate_external_adjoint(func, (*bound_arg_types.values(), *return_types))
+        if any(adj.type_contains_native_value(typ) for typ in return_types):
+            raise WarpCodegenError(
+                f"Cannot compute gradient of '{func.key}': native value outputs do not have a gradient seed."
+            )
+
+        if not adj.supports_native_adjoint(func, bound_arg_types.values(), return_types):
+            raise WarpCodegenError(
+                f"Cannot compute gradient of '{func.key}': native context requires a Warp function body "
+                "or an explicit custom gradient."
+            )
+
+        include_fwd_output = (
+            func.require_original_output_arg or len(return_types) > 1
+        ) and func.custom_grad_func is None
 
         # Call the forward function first to get the output value(s)
         # (needed for adjoint functions that require the original output)
         fwd_output_vars = []
         if include_fwd_output:
-            if len(return_types) == 1:
-                # Single return value
-                fwd_out = adj.add_var(return_types[0])
-                fwd_args_str = ", ".join(arg.emit() for arg in fwd_args_loaded)
-                adj.add_forward(f"{fwd_out.emit()} = {func.namespace}{func.native_func}({fwd_args_str});")
-                fwd_output_vars.append(fwd_out)
-            else:
-                # Multiple return values
-                for ret_type in return_types:
-                    fwd_out = adj.add_var(ret_type)
-                    fwd_output_vars.append(fwd_out)
-                fwd_args_str = ", ".join(arg.emit() for arg in fwd_args_loaded)
-                out_args_str = ", ".join(v.emit() for v in fwd_output_vars)
-                adj.add_forward(f"{func.namespace}{func.native_func}({fwd_args_str}, {out_args_str});")
+            if not func.is_builtin():
+                adj.called_user_functions.setdefault(func, None)
+            fwd_output_vars = [adj.add_var(typ) for typ in return_types]
+            call_outputs = fwd_output_vars if len(return_types) > 1 else []
+            assignment = f"{fwd_output_vars[0].emit()} = " if len(return_types) == 1 else ""
+            arg_str = ", ".join(arg.emit() for arg in (*fwd_args_loaded, *call_outputs))
+            replay_name = adj.replay_function(func)
+            adj.add_forward(
+                f"{assignment}{func.namespace}{func.native_func}({arg_str});",
+                replay=f"{assignment}{replay_name}({arg_str});",
+            )
 
         # Create local variables for adjoint inputs initialized to 0
         adj_input_vars = []
@@ -3431,8 +3588,7 @@ class Adjoint:
         adj_ret_vars = []
         for ret_type in return_types:
             local_var = adj.add_var(ret_type)
-            ctype = Var.type_to_ctype(ret_type)
-            adj.add_forward(f"{local_var.emit()} = {ctype}(1);")
+            adj.add_forward(f"{local_var.emit()} = {local_var.ctype()}(1);")
             adj_ret_vars.append(local_var)
 
         # Build arguments for calling the adjoint function.
@@ -3477,11 +3633,13 @@ class Adjoint:
             adj.add_forward("return;", f"goto label{adj.label_count};")
         elif len(var) == 1:
             adj.add_forward(f"return {var[0].emit()};", f"goto label{adj.label_count};")
-            adj.add_reverse("adj_" + str(var[0]) + " += adj_ret;")
+            if not adj.type_contains_native_value(var[0].type):
+                adj.add_reverse("adj_" + str(var[0]) + " += adj_ret;")
         else:
             for i, v in enumerate(var):
                 adj.add_forward(f"ret_{i} = {v.emit()};")
-                adj.add_reverse(f"adj_{v} += adj_ret_{i};")
+                if not adj.type_contains_native_value(v.type):
+                    adj.add_reverse(f"adj_{v} += adj_ret_{i};")
             adj.add_forward("return;", f"goto label{adj.label_count};")
 
         adj.add_reverse(f"label{adj.label_count}:;")
@@ -3612,6 +3770,7 @@ class Adjoint:
         reverse.append(adj.indentation + f"end_{cond_block.label}:;")
 
         adj.blocks[-1].body_reverse.extend(reversed(reverse))
+        adj.blocks[-1].reverse_calls.update(body_block.replay_calls | body_block.reverse_calls)
 
         # An enclosing loop must also zero this loop's adjoints at each of its reverse iterations:
         # a later sibling loop that reassigns one of these vars reads its adjoint via adj_assign.
@@ -3624,12 +3783,12 @@ class Adjoint:
         # so we can control replay
         cond_block = adj.begin_block("while")
         adj.loop_blocks.append(cond_block)
-        cond_block.body_forward.append(f"start_{cond_block.label}:;")
+        adj.add_forward(f"start_{cond_block.label}:;")
 
         c = adj.eval(cond)
         c = adj.load(c)
 
-        cond_block.body_forward.append(f"if (({c.emit()}) == false) goto end_{cond_block.label};")
+        adj.add_forward(f"if (({c.emit()}) == false) goto end_{cond_block.label};")
 
         # being block around loop
         adj.begin_block()
@@ -3657,8 +3816,8 @@ class Adjoint:
         # reverse pass
         reverse = []
 
-        # cond
-        for i in cond_block.body_forward:
+        # Re-evaluate the condition using its replay calls, including callbacks.
+        for i in cond_block.body_replay:
             reverse.append(i)
 
         # zero adjoints of local vars
@@ -3686,6 +3845,8 @@ class Adjoint:
 
         # output
         adj.blocks[-1].body_reverse.extend(reversed(reverse))
+        adj.blocks[-1].reverse_calls.update(body_block.replay_calls | body_block.reverse_calls)
+        adj.blocks[-1].reverse_calls.update(cond_block.replay_calls)
 
     def emit_FunctionDef(adj, node):
         adj.fun_def_lineno = node.lineno
@@ -3955,6 +4116,9 @@ class Adjoint:
 
     @staticmethod
     def type_contains_native_value(var_type):
+        # Read the live registry so later addon registrations activate these checks.
+        if not warp._src.types._native_value_types:
+            return False
         var_type = strip_reference(var_type)
         if warp._src.types.is_native_type(var_type):
             return True
@@ -4088,6 +4252,10 @@ class Adjoint:
                 adj.deterministic.propagate_attribute_reference(attr, aggregate, attr_var, attr_type)
                 adj.apply_struct_array_field_metadata(attr, aggregate, (attr_var.label,))
 
+                # Native members are primal context, including when reached
+                # through a Warp struct. Their placeholder adjoints stay inactive.
+                if warp._src.types.is_native_type(aggregate_type) or adj.type_contains_native_value(attr_type):
+                    return attr
                 if adj.is_differentiable_value_type(strip_reference(attr_type)):
                     adj.add_reverse(f"{aggregate.emit_adj()}.{attr_var.label} += {adj_cast}{attr.emit_adj()};")
                 else:

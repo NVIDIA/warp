@@ -14,6 +14,8 @@ from warp._src.context import add_builtin as _add_builtin
 from warp._src.context import builtin_functions as _builtin_functions
 from warp._src.types import _native_value_types as _native_value_types
 from warp._src.types import get_type_code as _get_type_code
+from warp._src.types import is_reference as _is_reference
+from warp._src.types import strip_reference as _strip_reference
 from warp._src.types import type_repr as _type_repr
 from warp._src.types import type_size_in_bytes as _type_size_in_bytes
 from warp._src.types import type_to_warp as _type_to_warp
@@ -83,22 +85,52 @@ def add_builtin(
     value_type: type | None = None,
     *,
     native_name: str | None = None,
+    is_differentiable: bool = False,
+    adjoint_uses_forward_output: bool = False,
     doc: str = "",
 ) -> _Function:
     """Register an external C++ function for use in Warp kernels.
 
     Experimental: this API may change without deprecation in future releases.
 
-    The registered function is available in kernels as ``wp.<name>``. Calling
-    it directly from Python is not supported.
+    The registered function is available in kernels as ``wp.<name>`` or through
+    the returned function handle. Calling it directly from Python is not supported.
+    Overloads must differ in their parameter types or the order of those types.
+    Changing only parameter names, return types, or reference qualifiers does
+    not distinguish overloads. Exact duplicate registrations return the existing handle.
+
+    External calls may run again during backward replay, even with
+    ``is_differentiable=False``. Stateful operations need replay-safe behavior;
+    calls to external functions with mutable reference parameters (``wp.ref[T]``)
+    require ``enable_backward=False`` or a wrapper with both
+    :func:`warp.func_grad` and :func:`warp.func_replay`.
+
+    See :doc:`External Function Gradients </user_guide/programming_model/cpp_cuda_workflows>`
+    for C++ adjoint signatures and custom gradient/replay examples.
 
     Args:
         name: Name used to call the function from Warp kernels.
         input_types: Ordered mapping from parameter names to Warp types.
+            Use ``wp.ref[T]`` for C++ ``T&`` parameters; callers must pass
+            addressable storage, such as an array element or mutable local.
         value_type: Warp return type, or ``None`` for a function returning
             ``void``.
         native_name: Exact qualified C++ function name. When omitted,
             ``wp::<name>`` is used.
+        is_differentiable: Whether the external header provides a C++ adjoint.
+            Warp does not infer derivatives from C++ code. Reference inputs
+            require a custom gradient/replay wrapper instead.
+        adjoint_uses_forward_output: Whether the C++ adjoint takes an extra
+            argument containing the forward result, after the original inputs.
+            Warp recomputes this result during backward execution. Requires
+            ``is_differentiable=True`` and a non-void return type. For example:
+
+            .. code-block:: cpp
+
+                // False
+                void adj_root(float x, float& adj_x, float adj_result);
+                // True
+                void adj_root(float x, float result, float& adj_x, float adj_result);
         doc: Description of the function.
 
     Returns:
@@ -112,6 +144,12 @@ def add_builtin(
         raise TypeError(f"input_types must be a mapping or None, got {type(input_types).__name__}")
     if not all(isinstance(param, str) and param.isidentifier() for param in input_types):
         raise ValueError("input_types keys must be valid Python identifiers")
+    if not isinstance(is_differentiable, bool):
+        raise TypeError("is_differentiable must be a bool")
+    if not isinstance(adjoint_uses_forward_output, bool):
+        raise TypeError("adjoint_uses_forward_output must be a bool")
+    if adjoint_uses_forward_output and (not is_differentiable or value_type is None):
+        raise ValueError("adjoint_uses_forward_output requires a differentiable function with a non-void return type")
     if not isinstance(doc, str):
         raise TypeError(f"doc must be a str, got {type(doc).__name__}")
 
@@ -122,17 +160,26 @@ def add_builtin(
 
     canonical_input_types = {param: _type_to_warp(dtype) for param, dtype in input_types.items()}
     canonical_value_type = _type_to_warp(value_type) if value_type is not None else None
+    if is_differentiable and any(_is_reference(dtype) for dtype in canonical_input_types.values()):
+        raise ValueError(
+            "Differentiable external functions with wp.ref[T] inputs require a @wp.func_grad/@wp.func_replay wrapper"
+        )
     signature = _signature_contract(canonical_input_types, canonical_value_type)
+    dispatch_types = tuple(_type_contract_code(_strip_reference(dtype)) for dtype in canonical_input_types.values())
     namespace, native_func = _split_native_name(native_name)
-    external_contract = (signature, namespace, native_func)
+    external_contract = (signature, namespace, native_func, is_differentiable, adjoint_uses_forward_output)
 
     existing = _builtin_functions.get(name)
     if existing is not None:
         for overload in existing.overloads:
             overload_signature = _signature_contract(overload.input_types, overload.value_type)
-            if overload_signature[0] == signature[0]:
+            overload_dispatch_types = tuple(
+                _type_contract_code(_strip_reference(dtype)) for dtype in overload.input_types.values()
+            )
+            if overload_dispatch_types == dispatch_types:
                 if (
-                    overload_signature[1] == signature[1]
+                    overload_signature == signature
+                    and getattr(overload, "_external_builtin_contract", None) == external_contract
                     and overload.namespace == namespace
                     and overload.native_func == native_func
                 ):
@@ -146,13 +193,14 @@ def add_builtin(
 
     _add_builtin(
         name,
-        input_types=dict(input_types),
-        value_type=value_type,
+        input_types=canonical_input_types,
+        value_type=canonical_value_type,
         doc=doc,
         namespace=namespace,
         export=False,
         hidden=True,
-        is_differentiable=False,
+        is_differentiable=is_differentiable,
+        require_original_output_arg=adjoint_uses_forward_output,
         native_func=native_func,
     )
     function = _builtin_functions[name]

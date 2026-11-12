@@ -517,8 +517,271 @@ resources referenced by opaque values; the external package remains
 responsible for their ownership and lifetime.
 
 Native value types do not automatically gain arithmetic or differentiation.
-Register operations explicitly with :func:`warp.build_experimental.add_builtin`, and use
-arrays without ``requires_grad``.
+Register operations explicitly with :func:`warp.build_experimental.add_builtin`,
+and leave ``requires_grad`` disabled on Warp arrays containing native value types.
+
+A native value can provide context to a Warp function. For example, this helper
+uses a native ``Color`` without differentiating the color itself:
+
+.. code:: python
+
+    @wp.func
+    def scale_with_context(color: Color, value: float):
+        """Scale a differentiable value using a C++ Color."""
+        return color.r * value
+
+Warp computes the derivative with respect to ``value``; ``color.r`` has no
+gradient. This also works with Warp arrays of ``Color`` values and native value
+fields inside Warp structs. Ordinary floating-point fields in those Warp structs remain
+differentiable.
+
+External Function Signatures
+----------------------------
+
+Use :func:`warp.build_experimental.add_builtin` to give an external C++ function
+a Python name, ordered argument types, and a return type. Omit the return type
+for C++ ``void``. The returned handle supports positional and keyword calls.
+
+Use ``wp.ref[T]`` for a mutable C++ ``T&`` argument. Given this header declaration:
+
+.. code:: cpp
+
+    namespace my_addon {
+    CUDA_CALLABLE inline void write(float& output, float value) {
+        output = value;
+    }
+    }
+
+Register it in Python:
+
+.. code:: python
+
+    write = wp.build_experimental.add_builtin(
+        "my_addon_write",
+        {"output": wp.ref[wp.float32], "value": wp.float32},
+        native_name="my_addon::write",
+    )
+
+Inside a kernel, pass an array element or a mutable local:
+
+.. code:: python
+
+    write(output[i], value)
+    local = float(0.0)
+    write(local, value)
+
+These calls update the original storage. If two reference arguments point to the
+same element, they see each other's writes. A literal or temporary expression,
+such as ``write(0.0, value)``, is rejected. Calls with mutable reference parameters require
+``enable_backward=False`` unless protected by custom gradient and replay functions,
+as shown below.
+
+Overloads must differ in their ordered argument types. Changing only parameter
+names, return types, or reference qualifiers cannot distinguish a call and is
+rejected. Repeating an identical registration is allowed; changing an existing
+registration's derivative settings is a conflict.
+
+External Function Gradients
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Warp does not infer derivatives from C++ headers. Choose one of these approaches:
+
+- Supply a C++ adjoint and register the operation with ``is_differentiable=True``.
+  The example below uses a ``float`` input and return value.
+- Wrap the operation in :func:`warp.func` and supply :func:`warp.func_grad`
+  to write the derivative in Warp. This also lets you pass native value types
+  while differentiating ordinary Warp arguments.
+
+By default, external registrations are non-differentiable: no gradient flows
+through the call. The call can still run during backward replay. If it changes
+state, follow the replay guidance below.
+
+Supply a C++ adjoint
+^^^^^^^^^^^^^^^^^^^^^^
+
+Save the following header as ``external_framework.h``. It supplies the forward
+operation and its derivative:
+
+.. code:: cpp
+
+    #pragma once
+
+    namespace external_framework {
+
+    CUDA_CALLABLE inline float square(float x) {
+        return x * x;
+    }
+
+    CUDA_CALLABLE inline void adj_square(float x, float& adj_x, float adj_result) {
+        adj_x += 2.0f * x * adj_result;
+    }
+
+    }
+
+Save this Python script as ``external_framework_example.py`` beside the header.
+Start by registering the C++ operation. Warp finds its derivative by adding
+``adj_`` to the function name in the same C++ namespace:
+
+.. code:: python
+
+    from pathlib import Path
+
+    import warp as wp
+
+    square = wp.build_experimental.add_builtin(
+        "external_framework_square",
+        input_types={"x": wp.float32},
+        value_type=wp.float32,
+        native_name="external_framework::square",
+        is_differentiable=True,
+    )
+
+Call it from a kernel:
+
+.. code:: python
+
+    @wp.kernel
+    def compute_loss(x: wp.array[wp.float32], loss: wp.array[wp.float32]):
+        """Compute a scalar loss with the external square operation."""
+        loss[0] = square(x[0])
+
+Include the header in this kernel's module:
+
+.. code:: python
+
+    header = Path(__file__).resolve().with_name("external_framework.h")
+    build_options = wp.ModuleBuildOptions(
+        extra_cpu_include_dirs=[str(header.parent)],
+        extra_cuda_include_dirs=[str(header.parent)],
+        extra_cpu_preamble='#include "external_framework.h"',
+        extra_cuda_preamble='#include "external_framework.h"',
+        extra_build_dependencies=[str(header)],
+    )
+    wp.set_module_options({"extra_build_options": build_options}, module=compute_loss.module)
+
+Record a launch and run backward. Append each of these blocks to the same script:
+
+.. code:: python
+
+    device = "cpu"  # Use "cuda:0" to run on a GPU.
+    x = wp.array([3.0], dtype=wp.float32, device=device, requires_grad=True)
+    loss = wp.zeros(1, dtype=wp.float32, device=device, requires_grad=True)
+
+    with wp.Tape() as tape:
+        wp.launch(compute_loss, dim=1, inputs=[x], outputs=[loss], device=device)
+
+    tape.backward(loss=loss)
+
+Run ``uv run python -i external_framework_example.py``, then inspect the forward
+result and gradient in the same Python session:
+
+.. code-block:: pycon
+
+    >>> print(loss.numpy())
+    [9.]
+    >>> print(x.grad.numpy())
+    [6.]
+
+``tape.backward()`` calls ``external_framework::adj_square`` automatically. Its
+arguments are the original inputs, references to their gradients, and the
+return-value gradient (omitted for a ``void`` return). Use ``+=`` to accumulate
+into input gradients. Here the loss gradient is one, giving ``dx = 2 * 3 = 6``.
+``CUDA_CALLABLE`` makes the same header usable on CPU and CUDA.
+
+Use the forward result in an adjoint
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Some C++ adjoints use the forward result. For example, the derivative of
+``sqrt(x)`` is ``1 / (2 * result)``. Register such a function with both
+``is_differentiable=True`` and ``adjoint_uses_forward_output=True``:
+
+.. code:: cpp
+
+    CUDA_CALLABLE inline float root(float x) {
+        return wp::sqrt(x);
+    }
+
+    CUDA_CALLABLE inline void adj_root(float x, float result, float& adj_x, float adj_result) {
+        adj_x += adj_result / (2.0f * result);
+    }
+
+.. code:: python
+
+    root = wp.build_experimental.add_builtin(
+        "external_framework_root",
+        {"x": wp.float32},
+        wp.float32,
+        native_name="external_framework::root",
+        is_differentiable=True,
+        adjoint_uses_forward_output=True,
+    )
+
+Place these definitions in the same ``external_framework`` namespace as the
+previous example. Warp recomputes ``root(x)`` during backward replay and passes
+that result after the original inputs, before the gradient arguments. It does
+not save the original forward result. The same rule applies to :func:`warp.grad`.
+This option requires a differentiable registration with a non-void return.
+
+Provide a Warp gradient and safe replay
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Use :func:`warp.func_grad` to define a wrapper's derivative in Warp. The wrapper
+can accept native value types, such as ``Color``, and differentiate ordinary Warp
+arguments, such as ``float``. The native value itself has no gradient.
+
+For a wrapper that calls an external reference operation, also provide
+:func:`warp.func_replay`. Backward execution may need to recompute forward values;
+repeating the original mutation could change data twice.
+
+Using ``write`` from above, define the forward operation, its derivative, and a
+replay that recomputes the result without the reference write:
+
+.. code:: python
+
+    @wp.func
+    def square_with_native_write(x: float):
+        """Square a value through an external reference write."""
+        result = float(0.0)
+        write(result, x * x)
+        return result
+
+    @wp.func_grad(square_with_native_write)
+    def square_grad(x: float, adj_ret: float):
+        """Accumulate the square gradient."""
+        wp.adjoint[x] += 2.0 * x * adj_ret
+
+    @wp.func_replay(square_with_native_write)
+    def square_replay(x: float):
+        """Recompute the square without repeating the forward reference write."""
+        return x * x
+
+Put these callbacks on the function that contains the complete mutating
+operation. A callback on an inner function does not protect the ordinary forward
+body of an outer wrapper. A direct :func:`warp.grad` call uses the custom gradient
+without replaying the original function.
+
+Your wrapper must preserve any values needed to compute gradients and avoid
+unintended writes during replay. Custom callbacks may call external operations,
+but passing an array or a native value containing a pointer by value does not
+make the referenced data immutable. Warp rejects unprotected ``wp.ref`` replay; it cannot detect
+hidden writes through a C++ pointer.
+
+Limits when differentiating native value types
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Registered C++ adjoints support ordinary Warp types. Mutable reference inputs,
+  native value inputs or outputs, and Warp arrays containing native values require
+  a :func:`warp.func_grad` wrapper instead.
+- A Warp function returning a native value can still propagate gradients through
+  writes to ordinary Warp arrays. The native return value has no gradient.
+- A function returning both native values and ordinary Warp values requires a
+  custom :func:`warp.func_grad`. For :func:`warp.grad`, expose ordinary Warp
+  outputs through a wrapper; native outputs cannot receive gradient seeds.
+- A native snippet that takes or returns native value types needs an explicit
+  C++ adjoint to participate in backward execution. This includes native values
+  nested inside Warp structs or arrays, and snippets that return nothing but
+  write to differentiable arrays. Use a no-op adjoint only when no derivative
+  contribution is needed.
 
 Complete Addon Example
 ----------------------
@@ -606,7 +869,8 @@ configure each kernel module before its first launch or AOT compilation:
 Registered built-in names share Warp's global kernel namespace. Addons should
 use a package-specific prefix unless they intentionally add an overload to an
 existing Warp operation. Registrations are process-global and equivalent
-registrations are idempotent, which makes normal module reloads safe.
+registrations are idempotent. Recreating a ctypes class on module reload does
+not make instances of the old and new Python classes interchangeable.
 
 Ahead-of-Time C++/CUDA Workflows
 --------------------------------
