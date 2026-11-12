@@ -830,9 +830,19 @@ linux-x86_64 cu13 mujoco-warp test:
     # Python environment
     - uv venv
     - uv pip install -e .
-    - uv pip install mujoco
     - uv pip install "git+https://github.com/google-deepmind/mujoco_warp@main"
     - uv pip install pytest pytest-xdist "jax[cuda13]"
+    - |
+      uv run --no-sync python - <<'PY'
+      from importlib import metadata
+      import json
+
+      print(f"mujoco-core: {metadata.version('mujoco-core')}")
+      distribution = metadata.distribution("mujoco-warp")
+      origin = json.loads(distribution.read_text("direct_url.json"))
+      commit = origin["vcs_info"]["commit_id"]
+      print(f"MuJoCo Warp commit: {commit}")
+      PY
     - source .venv/bin/activate
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
@@ -858,9 +868,19 @@ linux-x86_64 cu13 mujoco-warp serial test:
     # Python environment
     - uv venv
     - uv pip install -e .
-    - uv pip install mujoco
     - uv pip install "git+https://github.com/google-deepmind/mujoco_warp@main"
     - uv pip install pytest
+    - |
+      uv run --no-sync python - <<'PY'
+      from importlib import metadata
+      import json
+
+      print(f"mujoco-core: {metadata.version('mujoco-core')}")
+      distribution = metadata.distribution("mujoco-warp")
+      origin = json.loads(distribution.read_text("direct_url.json"))
+      commit = origin["vcs_info"]["commit_id"]
+      print(f"MuJoCo Warp commit: {commit}")
+      PY
     - source .venv/bin/activate
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:

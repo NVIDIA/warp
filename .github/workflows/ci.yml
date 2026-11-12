@@ -1212,7 +1212,7 @@ jobs:
       - name: Install Python dependencies
         run: |
           uv venv
-          uv pip install -e . mujoco "git+https://github.com/google-deepmind/mujoco_warp@main" pytest pytest-xdist "jax[cuda13]"
+          uv pip install -e . "git+https://github.com/google-deepmind/mujoco_warp@main" pytest pytest-xdist "jax[cuda13]"
 
       - name: Report MuJoCo dependencies
         run: |
@@ -1221,16 +1221,16 @@ jobs:
           import json
           import os
 
-          mujoco_version = importlib.metadata.version("mujoco")
+          mujoco_core_version = importlib.metadata.version("mujoco-core")
           mujoco_warp = importlib.metadata.distribution("mujoco-warp")
           origin = json.loads(mujoco_warp.read_text("direct_url.json"))
           commit = origin["vcs_info"]["commit_id"]
 
-          print(f"MuJoCo: {mujoco_version}")
+          print(f"mujoco-core: {mujoco_core_version}")
           print(f"MuJoCo Warp commit: {commit}")
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
               summary.write("### MuJoCo dependencies\n\n")
-              summary.write(f"- MuJoCo: `{mujoco_version}`\n")
+              summary.write(f"- mujoco-core: `{mujoco_core_version}`\n")
               summary.write(
                   f"- MuJoCo Warp (`main`): [`{commit}`](https://github.com/google-deepmind/mujoco_warp/commit/{commit})\n"
               )
