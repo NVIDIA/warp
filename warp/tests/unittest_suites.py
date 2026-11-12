@@ -1051,7 +1051,6 @@ def llvm_cuda_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoade
     mathdx = "llvm_cuda can't link mathdx code."
     no_align = "cuda_crt.h lacks __align__."
     no_atomic_bitwise = "cuda_crt.h lacks atomicAnd/atomicOr/atomicXor."
-    no_atomic_min_max = "cuda_crt.h lacks atomicMin/atomicMax for unsigned and 64-bit integers."
     no_shfl_64 = "cuda_crt.h lacks __shfl_down_sync/__shfl_xor_sync for 64-bit types."
     no_shfl_up = "cuda_crt.h lacks __shfl_up_sync."
     shared_ctor = "tile.h declares a __shared__ variable whose type has a constructor."
@@ -1077,10 +1076,7 @@ def llvm_cuda_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoade
         "warp.tests.fem.test_fem_integrate.TestFemIntegrate": [no_shfl_64],
         "warp.tests.fem.test_fem_multi_env.TestFemMultiEnv": [no_atomic_bitwise],
         "warp.tests.fem.test_fem_quadrature.TestFemQuadrature": [no_shfl_64],
-        "warp.tests.geometry.test_delaunay.TestDelaunay": [no_atomic_min_max],
-        "warp.tests.geometry.test_swept_volume.TestSweptVolume": [no_atomic_min_max],
         "warp.tests.test_apic.TestApic": [mathdx, aot_apic],
-        "warp.tests.test_atomic.TestAtomic": [no_atomic_min_max],
         "warp.tests.test_atomic_bitwise.TestAtomicBitwise": [no_atomic_bitwise],
         "warp.tests.test_codegen.TestCodeGen": [ulp],
         "warp.tests.test_composite_component_adjoint.TestCompositeComponentAdjoint": [no_atomic_bitwise],
