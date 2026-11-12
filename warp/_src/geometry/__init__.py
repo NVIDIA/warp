@@ -31,3 +31,15 @@ from warp._src.geometry.delaunay import (
 from warp._src.geometry.delaunay import (
     tri_tri_adjacency as tri_tri_adjacency,
 )
+from warp._src.geometry.oriented_bounding_box import (
+    OBBMeasureType as OBBMeasureType,
+)
+from warp._src.geometry.oriented_bounding_box import (
+    oriented_bounding_box as oriented_bounding_box,
+)
+from warp._src.geometry.oriented_bounding_box import (
+    oriented_bounding_boxes as oriented_bounding_boxes,
+)
+from warp._src.geometry.oriented_bounding_box import (
+    super_fibonacci as super_fibonacci,
+)

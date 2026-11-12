@@ -289,6 +289,12 @@ add_example_test(
     devices=test_devices,
     test_options={"usd_required": True},
 )
+add_example_test(
+    TestGeometryExamples,
+    name="geometry.example_oriented_bounding_box",
+    devices=test_devices,
+    test_options={"usd_required": True},
+)
 
 
 class TestOptimExamples(unittest.TestCase):

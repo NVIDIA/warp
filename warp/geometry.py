@@ -40,6 +40,9 @@ from warp._src.geometry.sparse_marching_cubes import (
     sparse_marching_cubes as sparse_marching_cubes,
     sparse_marching_cubes_from_cells as sparse_marching_cubes_from_cells,
 )
+from warp._src.geometry import OBBMeasureType as OBBMeasureType
+from warp._src.geometry import oriented_bounding_box as oriented_bounding_box
+from warp._src.geometry import oriented_bounding_boxes as oriented_bounding_boxes
 from warp._src.geometry import SweptVolumeSignMode as SweptVolumeSignMode
 from warp._src.geometry import delaunay_edge_flip as delaunay_edge_flip
 from warp._src.geometry import swept_volume_bounds as swept_volume_bounds
@@ -54,4 +57,5 @@ from warp._src.geometry import tri_tri_adjacency as tri_tri_adjacency
 # category: Kernel API
 
 from warp._src.geometry import find_triangle_neighbor_edge_index as find_triangle_neighbor_edge_index
+from warp._src.geometry import super_fibonacci as super_fibonacci
 from warp._src.geometry import swept_volume_sdf as swept_volume_sdf

@@ -135,6 +135,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.fem.test_fem_shape import TestFemShape
     from warp.tests.geometry.test_bvh import TestBvh
     from warp.tests.geometry.test_delaunay import TestDelaunay
+    from warp.tests.geometry.test_geometry_obb import TestGeometryOBB
     from warp.tests.geometry.test_hash_grid import TestHashGrid
     from warp.tests.geometry.test_marching_cubes import TestMarchingCubes
     from warp.tests.geometry.test_mesh import TestMesh
@@ -425,6 +426,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestLinearSolvers,
         TestLogger,
         TestLValue,
+        TestGeometryOBB,
         TestMarchingCubes,
         TestSparseMarchingCubes,
         TestSurfaceNets,
@@ -603,6 +605,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.deterministic.test_deterministic_scatter import TestDeterministicScatter
     from warp.tests.fem.test_fem_linalg import TestFemLinalg
     from warp.tests.geometry.test_bvh import TestBvh
+    from warp.tests.geometry.test_geometry_obb import TestGeometryOBB
     from warp.tests.geometry.test_grouped_bvh import TestGroupedBvh
     from warp.tests.geometry.test_hash_grid import TestHashGrid
     from warp.tests.geometry.test_marching_cubes import TestMarchingCubes
@@ -889,6 +892,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestUnifiedMemory,
         TestFemLinalg,
         TestHashGrid,
+        TestGeometryOBB,
         TestMarchingCubes,
         TestSurfaceNets,
         TestVolume,
