@@ -1,8 +1,9 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-# EXPERIMENT BRANCH ONLY: do not merge. Replaces the full PR pipeline with one
-# Windows ARM64 job: a CPU-only Warp build plus the fill tests.
+# EXPERIMENT BRANCH ONLY: do not merge. Replaces the full PR pipeline with two
+# Windows ARM64 jobs: the MSVC fill-loop probe, and a CPU-only Warp build plus
+# the fill tests.
 
 name: Pull Request
 
@@ -16,6 +17,30 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  msvc-arm64-fill-probe:
+    runs-on: windows-11-arm
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+          sparse-checkout: tools/msvc_arm64_fill_probe
+
+      - name: Build and run the probe with each MSVC toolset
+        shell: pwsh
+        run: tools/msvc_arm64_fill_probe/run.ps1
+
+      - name: Upload assembly listings
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a  # v7.0.1
+        with:
+          name: msvc-arm64-fill-probe
+          path: probe-out/*.asm
+          retention-days: 3
+
   windows-arm64-cpu-fill:
     runs-on: windows-11-arm
     timeout-minutes: 60

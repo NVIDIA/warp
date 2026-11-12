@@ -932,9 +932,12 @@ WP_API bool wp_array_copy_host(void* dst, void* src, int dst_type, int src_type,
 
 template <typename T> static void array_fill_1d_value(char* data, int n, size_t stride, const int* indices, T value)
 {
-    for (int i = 0; i < n; i++) {
-        size_t idx = indices ? size_t(indices[i]) : size_t(i);
-        *reinterpret_cast<T*>(data + idx * stride) = value;
+    if (indices) {
+        for (int i = 0; i < n; i++)
+            *reinterpret_cast<T*>(data + size_t(indices[i]) * stride) = value;
+    } else {
+        for (int i = 0; i < n; i++)
+            *reinterpret_cast<T*>(data + size_t(i) * stride) = value;
     }
 }
 

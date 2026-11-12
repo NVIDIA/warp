@@ -46,6 +46,20 @@ struct IndexOffset {
     }
 };
 
+// Two loops; the non-indexed one computes the byte offset from the index.
+struct TwoLoopIndexOffset {
+    template <typename T> static void run(char* data, int n, size_t stride, const int* indices, T value)
+    {
+        if (indices) {
+            for (int i = 0; i < n; i++)
+                *reinterpret_cast<T*>(data + size_t(indices[i]) * stride) = value;
+        } else {
+            for (int i = 0; i < n; i++)
+                *reinterpret_cast<T*>(data + size_t(i) * stride) = value;
+        }
+    }
+};
+
 // Stride in elements of T (valid because the caller checked alignment).
 struct ElementStride {
     template <typename T> static void run(char* data, int n, size_t stride, const int* indices, T value)
@@ -225,6 +239,7 @@ int main()
     const Variant variants[] = {
         {"Base (current warp.cpp)", &array_fill_1d<Base>},
         {"IndexOffset", &array_fill_1d<IndexOffset>},
+        {"TwoLoopIndexOffset", &array_fill_1d<TwoLoopIndexOffset>},
         {"ElementStride", &array_fill_1d<ElementStride>},
         {"MemcpyConst", &array_fill_1d<MemcpyConst>},
         {"SizeTCounter", &array_fill_1d<SizeTCounter>},
