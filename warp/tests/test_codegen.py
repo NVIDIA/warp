@@ -2748,6 +2748,7 @@ class TestCodeGen(unittest.TestCase):
         analysis_1 = k1.adj.reference_analysis()
         analysis_2 = k2.adj.reference_analysis()
         self.assertIs(analysis_1, analysis_2)
+        self.assertIs(analysis_1.reference_nodes, k1.adj.syntax().reference_nodes)
         self.assertEqual(tuple(node for node, _ in analysis_1.iter_candidates()), analysis_1.reference_nodes)
         self.assertNotEqual(k1.module.name, k2.module.name)
         self.assertIs(make(1.0), k1)

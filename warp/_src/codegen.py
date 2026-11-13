@@ -544,7 +544,9 @@ class _ReferenceAnalysis(NamedTuple):
                 yield node, shadowed_names
 
 
-def _analyze_reference_bindings(root: ast.AST) -> _ReferenceAnalysis:
+def _analyze_reference_bindings(
+    root: ast.AST, reference_nodes: tuple[ast.AST, ...] | None = None
+) -> _ReferenceAnalysis:
     """Collect reference candidates and track definite local bindings.
 
     Candidates remain in the breadth-first order used by the existing reference
@@ -553,7 +555,8 @@ def _analyze_reference_bindings(root: ast.AST) -> _ReferenceAnalysis:
     if the reference sets stayed the same. A separate source-order pass records
     each candidate's position and the ranges where each local name is definitely
     bound. An assignment's right-hand side sees the incoming state; its targets
-    become bound afterward.
+    become bound afterward. Callers can supply cached candidates to avoid
+    repeating the breadth-first traversal.
 
     This analysis cannot use :meth:`Adjoint.eval`. Hashing needs reference
     information before code generation, but ``eval`` emits IR and mutates build
@@ -569,7 +572,8 @@ def _analyze_reference_bindings(root: ast.AST) -> _ReferenceAnalysis:
     run.
     """
 
-    reference_nodes = tuple(iter_ast_nodes_of_types(root, ast.Name, ast.Attribute, ast.Call, ast.Assign))
+    if reference_nodes is None:
+        reference_nodes = tuple(iter_ast_nodes_of_types(root, ast.Name, ast.Attribute, ast.Call, ast.Assign))
     node_positions = {}
     binding_ranges = {}
     active_names = set()
@@ -7748,7 +7752,7 @@ class Adjoint:
             if shared is not None and shared.reference_analysis is not None:
                 adj._reference_analysis = shared.reference_analysis
             else:
-                adj._reference_analysis = _analyze_reference_bindings(adj.tree)
+                adj._reference_analysis = _analyze_reference_bindings(adj.tree, adj.syntax().reference_nodes)
                 if shared is not None:
                     shared.reference_analysis = adj._reference_analysis
         return adj._reference_analysis
