@@ -1034,6 +1034,13 @@ use vector types like <a class="reference internal" href="../api_reference/_gene
 <span class="n">my_data</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span>
 </pre></div>
 </div>
+<p><a class="reference internal" href="../language_reference/_generated/warp.empty.html#warp._src.lang.empty" title="warp._src.lang.empty"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.empty()</span></code></a> creates a fixed-size array like <a class="reference internal" href="../language_reference/_generated/warp.zeros.html#warp._src.lang.zeros" title="warp._src.lang.zeros"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.zeros()</span></code></a>,
+but leaves its data uninitialized. Use it to skip the zero-fill when every element is written before being read.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Use <code class="docutils literal notranslate"><span class="pre">wp.empty()</span></code> with caution: reading an element before it is written is undefined behavior, and can give
+different results between runs and devices.</p>
+</div>
 </section>
 <section id="limitations-and-unsupported-features">
 <h3>Limitations and Unsupported Features<a class="headerlink" href="#limitations-and-unsupported-features" title="Link to this heading">#</a></h3>
