@@ -463,6 +463,35 @@ def test_gradcheck_incorrect(test, device):
 
 
 @wp.kernel
+def atomic_min_square_kernel(x: wp.array[float], out: wp.array[float]):
+    tid = wp.tid()
+    wp.atomic_min(out, 0, x[tid] * x[tid])
+
+
+def test_jacobian_adjoint_reads_output(test, device):
+    x = wp.array([0.7, -1.3, 2.1], dtype=float, requires_grad=True, device=device)
+    out = wp.full(1, 1.0e30, dtype=float, requires_grad=True, device=device)
+
+    jacs = jacobian(atomic_min_square_kernel, dim=len(x), inputs=[x], outputs=[out])
+    assert_np_equal(jacs[0, 0].numpy(), np.array([[1.4, 0.0, 0.0]]), tol=1e-5)
+    assert_np_equal(out.numpy(), np.array([1.0e30], dtype=np.float32))
+
+    passed = gradcheck(
+        atomic_min_square_kernel, dim=len(x), inputs=[x], outputs=[out], raise_exception=False, show_summary=False
+    )
+    test.assertTrue(passed, "gradcheck failed for atomic_min_square_kernel")
+
+
+def test_jacobian_inside_active_tape(test, device):
+    x = wp.array([0.7, -1.3, 2.1], dtype=float, requires_grad=True, device=device)
+    out = wp.full(1, 1.0e30, dtype=float, requires_grad=True, device=device)
+
+    with wp.Tape():
+        jacs = jacobian(atomic_min_square_kernel, dim=len(x), inputs=[x], outputs=[out])
+    assert_np_equal(jacs[0, 0].numpy(), np.array([[1.4, 0.0, 0.0]]), tol=1e-5)
+
+
+@wp.kernel
 def inplace_increment_kernel(x: wp.array[float]):
     tid = wp.tid()
     x[tid] = x[tid] + 1.0
@@ -956,6 +985,10 @@ add_function_test(TestGradDebug, "test_gradcheck_mixed", test_gradcheck_mixed, d
 add_function_test(TestGradDebug, "test_gradcheck_mixed_precision", test_gradcheck_mixed_precision, devices=devices)
 add_function_test(TestGradDebug, "test_gradcheck_nan", test_gradcheck_nan, devices=devices)
 add_function_test(TestGradDebug, "test_gradcheck_incorrect", test_gradcheck_incorrect, devices=devices)
+add_function_test(
+    TestGradDebug, "test_jacobian_adjoint_reads_output", test_jacobian_adjoint_reads_output, devices=devices
+)
+add_function_test(TestGradDebug, "test_jacobian_inside_active_tape", test_jacobian_inside_active_tape, devices=devices)
 add_function_test(TestGradDebug, "test_gradcheck_restore_inputs", test_gradcheck_restore_inputs, devices=devices)
 add_function_test(
     TestGradDebug, "test_restore_inputs_direct_jacobian", test_restore_inputs_direct_jacobian, devices=devices
