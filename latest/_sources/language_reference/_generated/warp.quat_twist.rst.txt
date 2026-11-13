@@ -9,7 +9,7 @@
       :kernel: true
       :python: true
       :differentiable: true
-      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/math.py#L151-L169
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/math.py#L152-L170
 
    Return the twist component of ``q`` about ``axis``.
    

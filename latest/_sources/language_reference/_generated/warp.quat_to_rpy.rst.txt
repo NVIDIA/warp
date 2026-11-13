@@ -9,7 +9,7 @@
       :kernel: true
       :python: true
       :differentiable: true
-      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/math.py#L221-L256
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/math.py#L222-L257
 
    Return the roll, pitch, and yaw angles in radians of the rotation ``q``.
    

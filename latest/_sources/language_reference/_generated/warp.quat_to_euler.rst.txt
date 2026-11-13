@@ -9,7 +9,7 @@
       :kernel: true
       :python: true
       :differentiable: true
-      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/math.py#L259-L393
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/math.py#L260-L394
 
    Return the Euler angles in radians of the rotation ``q`` for an axis sequence.
    

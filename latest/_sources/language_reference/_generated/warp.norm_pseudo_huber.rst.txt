@@ -9,7 +9,7 @@
       :kernel: true
       :python: true
       :differentiable: true
-      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/math.py#L91-L109
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/math.py#L92-L110
 
    Compute the "pseudo" Huber norm of a vector v with a given delta.
    

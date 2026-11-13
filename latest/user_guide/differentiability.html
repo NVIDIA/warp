@@ -65,7 +65,7 @@
 
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Programming Model" href="programming_model.html" />
+    <link rel="next" title="Forward-Mode Jets" href="forward_mode_jets.html" />
     <link rel="prev" title="Runtime" href="runtime.html" />
 
 
@@ -398,6 +398,7 @@
 <li class="toctree-l1"><a class="reference internal" href="basics.html">Basics</a></li>
 <li class="toctree-l1"><a class="reference internal" href="runtime.html">Runtime</a></li>
 <li class="toctree-l1 current active"><a class="current reference internal" href="#">Differentiability</a></li>
+<li class="toctree-l1"><a class="reference internal" href="forward_mode_jets.html">Forward-Mode Jets</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="programming_model.html">Programming Model</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="programming_model/generics.html">Generics</a></li>
 <li class="toctree-l2"><a class="reference internal" href="programming_model/tiles.html">Tiles</a></li>
@@ -902,6 +903,10 @@ the corresponding row of the Jacobian <span class="math notranslate nohighlight"
 in a single pass.</p>
 <p>This approach works best when the Jacobian for a single function call is needed. The tape-based approach computes
 the Jacobian of an arbitrary sequence of transformations between input and output buffers.</p>
+<div class="admonition seealso">
+<p class="admonition-title">See also</p>
+<p>Reverse mode has no second-order tape. For the local Hessian of a small energy, see <a class="reference internal" href="forward_mode_jets.html#forward-mode-jets"><span class="std std-ref">Forward-Mode Jets</span></a>.</p>
+</div>
 </section>
 </section>
 <section id="custom-gradient-functions">
@@ -1921,11 +1926,11 @@ depends on them to the caller.</p>
       </div>
     </a>
     <a class="right-next"
-       href="programming_model.html"
+       href="forward_mode_jets.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">Programming Model</p>
+        <p class="prev-next-title">Forward-Mode Jets</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>

@@ -9,7 +9,7 @@
       :kernel: true
       :python: true
       :differentiable: true
-      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/math.py#L112-L128
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/math.py#L113-L129
 
    Normalize a vector using the pseudo-Huber norm.
    

@@ -9,7 +9,7 @@
       :kernel: true
       :python: true
       :differentiable: true
-      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/math.py#L197-L218
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/math.py#L198-L219
 
    Return the signed twist angle in radians of ``q`` around ``axis``.
    

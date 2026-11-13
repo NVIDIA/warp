@@ -9,7 +9,7 @@
       :kernel: true
       :python: true
       :differentiable: true
-      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/math.py#L172-L194
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/math.py#L173-L195
 
    Return the unsigned twist magnitude in radians of ``q`` around ``axis``.
    
