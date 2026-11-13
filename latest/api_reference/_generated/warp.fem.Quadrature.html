@@ -509,7 +509,7 @@
 <h1>warp.fem.Quadrature<a class="headerlink" href="#warp-fem-quadrature" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.fem.Quadrature">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">Quadrature</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L27-L203"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Quadrature" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">Quadrature</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">domain</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L27-L212"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Quadrature" title="Link to this definition">#</a></dt>
 <dd><p>Interface class for quadrature rules.</p>
 <p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
@@ -526,25 +526,28 @@
 <tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Quadrature.fill_arg" title="warp.fem.Quadrature.fill_arg"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fill_arg</span></code></a>(arg, device)</p></td>
 <td><p>Fill the argument with the value of the argument to be passed to device</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Quadrature.max_points_per_element" title="warp.fem.Quadrature.max_points_per_element"><code class="xref py py-obj docutils literal notranslate"><span class="pre">max_points_per_element</span></code></a>()</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Quadrature.has_unique_evaluation_indices" title="warp.fem.Quadrature.has_unique_evaluation_indices"><code class="xref py py-obj docutils literal notranslate"><span class="pre">has_unique_evaluation_indices</span></code></a>()</p></td>
+<td><p>Whether every element-local point has a distinct evaluation index.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Quadrature.max_points_per_element" title="warp.fem.Quadrature.max_points_per_element"><code class="xref py py-obj docutils literal notranslate"><span class="pre">max_points_per_element</span></code></a>()</p></td>
 <td><p>Maximum number of points per element if known, or <code class="docutils literal notranslate"><span class="pre">None</span></code> otherwise</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Quadrature.point_coords" title="warp.fem.Quadrature.point_coords"><code class="xref py py-obj docutils literal notranslate"><span class="pre">point_coords</span></code></a>(elt_arg, qp_arg, ...)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Quadrature.point_coords" title="warp.fem.Quadrature.point_coords"><code class="xref py py-obj docutils literal notranslate"><span class="pre">point_coords</span></code></a>(elt_arg, qp_arg, ...)</p></td>
 <td><p>Coordinate values in element of the element's qp_index'th quadrature point.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Quadrature.point_count" title="warp.fem.Quadrature.point_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">point_count</span></code></a>(elt_arg, qp_arg, ...)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Quadrature.point_count" title="warp.fem.Quadrature.point_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">point_count</span></code></a>(elt_arg, qp_arg, ...)</p></td>
 <td><p>Number of quadrature points for a given element.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Quadrature.point_evaluation_index" title="warp.fem.Quadrature.point_evaluation_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">point_evaluation_index</span></code></a>(elt_arg, qp_arg, ...)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Quadrature.point_evaluation_index" title="warp.fem.Quadrature.point_evaluation_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">point_evaluation_index</span></code></a>(elt_arg, qp_arg, ...)</p></td>
 <td><p>Quadrature point index according to evaluation order.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Quadrature.point_index" title="warp.fem.Quadrature.point_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">point_index</span></code></a>(elt_arg, qp_arg, ...)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Quadrature.point_index" title="warp.fem.Quadrature.point_index"><code class="xref py py-obj docutils literal notranslate"><span class="pre">point_index</span></code></a>(elt_arg, qp_arg, ...)</p></td>
 <td><p>Global index of the element's qp_index'th  quadrature point.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Quadrature.point_weight" title="warp.fem.Quadrature.point_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">point_weight</span></code></a>(elt_arg, qp_arg, ...)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Quadrature.point_weight" title="warp.fem.Quadrature.point_weight"><code class="xref py py-obj docutils literal notranslate"><span class="pre">point_weight</span></code></a>(elt_arg, qp_arg, ...)</p></td>
 <td><p>Weight of the element's qp_index'th quadrature point.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="#warp.fem.Quadrature.total_point_count" title="warp.fem.Quadrature.total_point_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">total_point_count</span></code></a>()</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.fem.Quadrature.total_point_count" title="warp.fem.Quadrature.total_point_count"><code class="xref py py-obj docutils literal notranslate"><span class="pre">total_point_count</span></code></a>()</p></td>
 <td><p>Number of unique quadrature points that can be indexed by this rule.</p></td>
 </tr>
 </tbody>
@@ -617,8 +620,22 @@ Returns a number such that <cite>evaluation_point_index()</cite> is always small
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="warp.fem.Quadrature.has_unique_evaluation_indices">
+<span class="sig-name descname"><span class="pre">has_unique_evaluation_indices</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L75-L82"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Quadrature.has_unique_evaluation_indices" title="Link to this definition">#</a></dt>
+<dd><p>Whether every element-local point has a distinct evaluation index.</p>
+<p>When <code class="docutils literal notranslate"><span class="pre">True</span></code>, <a class="reference internal" href="#warp.fem.Quadrature.point_evaluation_index" title="warp.fem.Quadrature.point_evaluation_index"><code class="xref py py-meth docutils literal notranslate"><span class="pre">point_evaluation_index()</span></code></a> cannot return the same
+index for different points, including points within one element.
+The default is conservative for rules that do not provide this guarantee.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool">bool</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="warp.fem.Quadrature.max_points_per_element">
-<span class="sig-name descname"><span class="pre">max_points_per_element</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L75-L77"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Quadrature.max_points_per_element" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">max_points_per_element</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L84-L86"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Quadrature.max_points_per_element" title="Link to this definition">#</a></dt>
 <dd><p>Maximum number of points per element if known, or <code class="docutils literal notranslate"><span class="pre">None</span></code> otherwise</p>
 </dd></dl>
 
@@ -633,7 +650,7 @@ Returns a number such that <cite>evaluation_point_index()</cite> is always small
 <dd><em class="sig-param"><span class="n"><span class="pre">geo_element_index</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L79-L87"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Quadrature.point_count" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L88-L96"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Quadrature.point_count" title="Link to this definition">#</a></dt>
 <dd><p>Number of quadrature points for a given element.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -659,7 +676,7 @@ Returns a number such that <cite>evaluation_point_index()</cite> is always small
 <dd><em class="sig-param"><span class="n"><span class="pre">element_qp_index</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L89-L98"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Quadrature.point_coords" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L98-L107"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Quadrature.point_coords" title="Link to this definition">#</a></dt>
 <dd><p>Coordinate values in element of the element’s qp_index’th quadrature point.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -686,7 +703,7 @@ Returns a number such that <cite>evaluation_point_index()</cite> is always small
 <dd><em class="sig-param"><span class="n"><span class="pre">element_qp_index</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L100-L109"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Quadrature.point_weight" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L109-L118"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Quadrature.point_weight" title="Link to this definition">#</a></dt>
 <dd><p>Weight of the element’s qp_index’th quadrature point.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -713,7 +730,7 @@ Returns a number such that <cite>evaluation_point_index()</cite> is always small
 <dd><em class="sig-param"><span class="n"><span class="pre">element_qp_index</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L111-L124"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Quadrature.point_index" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L120-L133"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Quadrature.point_index" title="Link to this definition">#</a></dt>
 <dd><p>Global index of the element’s qp_index’th  quadrature point.
 May be shared among elements.
 This is what determines <cite>qp_index</cite> in integrands’ <cite>Sample</cite> arguments.</p>
@@ -742,7 +759,7 @@ This is what determines <cite>qp_index</cite> in integrands’ <cite>Sample</cit
 <dd><em class="sig-param"><span class="n"><span class="pre">element_qp_index</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L126-L139"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Quadrature.point_evaluation_index" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/fem/quadrature/quadrature.py#L135-L148"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Quadrature.point_evaluation_index" title="Link to this definition">#</a></dt>
 <dd><p>Quadrature point index according to evaluation order.</p>
 <p>Quadrature points for distinct elements must have different evaluation indices.
 Only required if <code class="docutils literal notranslate"><span class="pre">evaluation_point_element_index</span></code> is not overloaded.</p>
@@ -843,6 +860,7 @@ Only required if <code class="docutils literal notranslate"><span class="pre">ev
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Quadrature.fill_arg"><code class="docutils literal notranslate"><span class="pre">fill_arg()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Quadrature.total_point_count"><code class="docutils literal notranslate"><span class="pre">total_point_count()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Quadrature.evaluation_point_count"><code class="docutils literal notranslate"><span class="pre">evaluation_point_count()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Quadrature.has_unique_evaluation_indices"><code class="docutils literal notranslate"><span class="pre">has_unique_evaluation_indices()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Quadrature.max_points_per_element"><code class="docutils literal notranslate"><span class="pre">max_points_per_element()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Quadrature.point_count"><code class="docutils literal notranslate"><span class="pre">point_count()</span></code></a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.fem.Quadrature.point_coords"><code class="docutils literal notranslate"><span class="pre">point_coords()</span></code></a></li>

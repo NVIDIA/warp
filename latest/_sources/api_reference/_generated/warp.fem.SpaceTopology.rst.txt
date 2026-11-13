@@ -15,6 +15,7 @@
       ~SpaceTopology.element_node_indices
       ~SpaceTopology.fill_topo_arg
       ~SpaceTopology.full_space_topology
+      ~SpaceTopology.has_unique_node_incidence
       ~SpaceTopology.is_derived_from
       ~SpaceTopology.make_generic_side_neighbor_node_counts
       ~SpaceTopology.node_count

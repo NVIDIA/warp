@@ -16,6 +16,7 @@
       ~PicQuadrature.evaluation_point_count
       ~PicQuadrature.fill_arg
       ~PicQuadrature.fill_element_mask
+      ~PicQuadrature.has_unique_evaluation_indices
       ~PicQuadrature.max_points_per_element
       ~PicQuadrature.point_coords
       ~PicQuadrature.point_count

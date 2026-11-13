@@ -14,6 +14,7 @@
       ~ExplicitQuadrature.element_index_arg_value
       ~ExplicitQuadrature.evaluation_point_count
       ~ExplicitQuadrature.fill_arg
+      ~ExplicitQuadrature.has_unique_evaluation_indices
       ~ExplicitQuadrature.max_points_per_element
       ~ExplicitQuadrature.point_coords
       ~ExplicitQuadrature.point_evaluation_index

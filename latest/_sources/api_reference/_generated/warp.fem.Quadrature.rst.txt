@@ -14,6 +14,7 @@
       ~Quadrature.element_index_arg_value
       ~Quadrature.evaluation_point_count
       ~Quadrature.fill_arg
+      ~Quadrature.has_unique_evaluation_indices
       ~Quadrature.max_points_per_element
       ~Quadrature.point_coords
       ~Quadrature.point_count

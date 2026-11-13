@@ -14,6 +14,7 @@
       ~RegularQuadrature.element_index_arg_value
       ~RegularQuadrature.evaluation_point_count
       ~RegularQuadrature.fill_arg
+      ~RegularQuadrature.has_unique_evaluation_indices
       ~RegularQuadrature.max_points_per_element
       ~RegularQuadrature.point_coords
       ~RegularQuadrature.point_count
