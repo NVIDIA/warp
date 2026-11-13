@@ -5872,13 +5872,13 @@ class Adjoint:
             # call based on the number of expected outputs
             node.value.expects = len(lhs.elts)
 
-        if (
-            isinstance(lhs, ast.Subscript)
-            and isinstance(node.value, ast.BinOp)
-            and isinstance(node.value.op, (ast.Add, ast.Sub))
-            and ast.unparse(node.value.left) == ast.unparse(lhs)
-        ):
-            node.value.is_inplace_update = True
+        if isinstance(node.value, ast.BinOp):
+            # recompute on every visit: the AST node may be shared by several builds
+            node.value.is_inplace_update = (
+                isinstance(lhs, ast.Subscript)
+                and isinstance(node.value.op, (ast.Add, ast.Sub))
+                and ast.unparse(node.value.left) == ast.unparse(lhs)
+            )
 
         # evaluate rhs
         if isinstance(lhs, ast.Tuple) and isinstance(node.value, ast.Tuple):
