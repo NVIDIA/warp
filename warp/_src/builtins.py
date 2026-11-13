@@ -14904,7 +14904,7 @@ add_builtin(
 )
 
 
-def zeros_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+def fixedarray_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     if arg_types is None:
         return fixedarray(dtype=Scalar)
 
@@ -14912,12 +14912,12 @@ def zeros_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any
     shape = extract_tuple(arg_values["shape"], as_constant=True)
 
     if None in shape:
-        raise RuntimeError("the `shape` argument must be specified as a constant when zero-initializing an array")
+        raise RuntimeError("the `shape` argument must be specified as a constant when creating a fixed-size array")
 
     return fixedarray(dtype=dtype, shape=shape)
 
 
-def zeros_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+def fixedarray_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
     # We're in the codegen stage where we emit the code calling the built-in.
     # Further validate the given argument values if needed and map them
     # to the underlying C++ function's runtime and template params.
@@ -14933,11 +14933,49 @@ def zeros_dispatch_func(input_types: Mapping[str, type], return_type: Any, args:
 
 
 add_builtin(
+    "empty",
+    input_types={"shape": tuple[int, ...], "dtype": Any},
+    value_func=fixedarray_value_func,
+    export_func=lambda input_types: {},
+    dispatch_func=fixedarray_dispatch_func,
+    native_func="fixedarray_empty",
+    doc="""Create a fixed-size array of the given shape and dtype, leaving its data uninitialized.
+
+    Use it instead of :func:`~warp._src.lang.zeros` when every element is written before being read.
+
+    .. warning::
+
+        Use it with caution: reading an element before it is written is undefined behavior.""",
+    group="Utility",
+    export=False,
+    is_differentiable=False,
+)
+
+add_builtin(
+    "empty",
+    input_types={"shape": int, "dtype": Any},
+    value_func=fixedarray_value_func,
+    export_func=lambda input_types: {},
+    dispatch_func=fixedarray_dispatch_func,
+    native_func="fixedarray_empty",
+    doc="""Create a fixed-size array of the given length and dtype, leaving its data uninitialized.
+
+    Use it instead of :func:`~warp._src.lang.zeros` when every element is written before being read.
+
+    .. warning::
+
+        Use it with caution: reading an element before it is written is undefined behavior.""",
+    group="Utility",
+    export=False,
+    is_differentiable=False,
+)
+
+add_builtin(
     "zeros",
     input_types={"shape": tuple[int, ...], "dtype": Any},
-    value_func=zeros_value_func,
+    value_func=fixedarray_value_func,
     export_func=lambda input_types: {},
-    dispatch_func=zeros_dispatch_func,
+    dispatch_func=fixedarray_dispatch_func,
     native_func="fixedarray_zeros",
     doc="Create a zero-initialized fixed-size array of the given shape and dtype.",
     group="Utility",
@@ -14948,9 +14986,9 @@ add_builtin(
 add_builtin(
     "zeros",
     input_types={"shape": int, "dtype": Any},
-    value_func=zeros_value_func,
+    value_func=fixedarray_value_func,
     export_func=lambda input_types: {},
-    dispatch_func=zeros_dispatch_func,
+    dispatch_func=fixedarray_dispatch_func,
     native_func="fixedarray_zeros",
     doc="Create a zero-initialized fixed-size array of the given length and dtype.",
     group="Utility",

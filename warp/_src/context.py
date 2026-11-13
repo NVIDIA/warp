@@ -10594,7 +10594,7 @@ def clone(
 
 def empty(
     shape: int | tuple[int, ...] | list[int] | None = None,
-    dtype=float,
+    dtype: type = float,
     device: DeviceLike = None,
     requires_grad: bool = False,
     pinned: bool = False,

@@ -286,12 +286,12 @@ template <typename T> inline CUDA_CALLABLE array_t<T> add(const array_t<T>& a, c
 }
 
 
-// Shape returned by the in-kernel `wp.zeros()` builtin. Assigning it to a declared
-// fixedarray_t zero-fills that array's own storage, instead of building a zeroed
-// temporary and copying it.
-template <int Size, typename T> struct fixedarray_zeros_t {
+// Shape returned by the in-kernel `wp.zeros()` and `wp.empty()` builtins. Assigning it
+// to a declared fixedarray_t sets that array's shape in place, and zero-fills its own
+// storage when `Zero` is true, instead of building a temporary and copying it.
+template <int Size, typename T, bool Zero> struct fixedarray_init_t {
     // Not default-constructible, so `adj = {}` on a fixedarray stays unambiguous.
-    CUDA_CALLABLE explicit fixedarray_zeros_t(int dim0, int dim1, int dim2, int dim3)
+    CUDA_CALLABLE explicit fixedarray_init_t(int dim0, int dim1, int dim2, int dim3)
         : dims { dim0, dim1, dim2, dim3 }
     {
     }
@@ -300,9 +300,17 @@ template <int Size, typename T> struct fixedarray_zeros_t {
 };
 
 template <int Size, typename T>
-CUDA_CALLABLE inline fixedarray_zeros_t<Size, T> fixedarray_zeros(int dim0, int dim1 = 0, int dim2 = 0, int dim3 = 0)
+CUDA_CALLABLE inline fixedarray_init_t<Size, T, true>
+fixedarray_zeros(int dim0, int dim1 = 0, int dim2 = 0, int dim3 = 0)
 {
-    return fixedarray_zeros_t<Size, T>(dim0, dim1, dim2, dim3);
+    return fixedarray_init_t<Size, T, true>(dim0, dim1, dim2, dim3);
+}
+
+template <int Size, typename T>
+CUDA_CALLABLE inline fixedarray_init_t<Size, T, false>
+fixedarray_empty(int dim0, int dim1 = 0, int dim2 = 0, int dim3 = 0)
+{
+    return fixedarray_init_t<Size, T, false>(dim0, dim1, dim2, dim3);
 }
 
 // Constructor tag that leaves storage uninitialized.
@@ -329,9 +337,9 @@ template <int Size, typename T> struct fixedarray_t : array_t<T> {
     {
     }
 
-    CUDA_CALLABLE fixedarray_t<Size, T>& operator=(const fixedarray_zeros_t<Size, T>& zeros)
+    template <bool Zero> CUDA_CALLABLE fixedarray_t<Size, T>& operator=(const fixedarray_init_t<Size, T, Zero>& init)
     {
-        const int* d = zeros.dims;
+        const int* d = init.dims;
         if (d[1] == 0)
             Base::operator=(Base(storage, d[0]));
         else if (d[2] == 0)
@@ -341,8 +349,10 @@ template <int Size, typename T> struct fixedarray_t : array_t<T> {
         else
             Base::operator=(Base(storage, d[0], d[1], d[2], d[3]));
 
-        for (int i = 0; i < Size; ++i) {
-            storage[i] = T();
+        if constexpr (Zero) {
+            for (int i = 0; i < Size; ++i) {
+                storage[i] = T();
+            }
         }
         return *this;
     }
@@ -367,7 +377,11 @@ template <int Size, typename T> struct fixedarray_t : array_t<T> {
         return *this;
     }
 
-    T storage[Size];
+    // A union leaves the elements unconstructed, so declarations made with `no_init_t`
+    // don't zero element types that have a default constructor, such as vectors.
+    union {
+        T storage[Size];
+    };
 };
 
 

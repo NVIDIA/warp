@@ -58,7 +58,6 @@ from warp._src.context import ones_like as ones_like
 from warp._src.context import full as full
 from warp._src.context import full_like as full_like
 from warp._src.context import clone as clone
-from warp._src.context import empty as empty
 from warp._src.context import empty_like as empty_like
 from warp._src.context import copy as copy
 from warp._src.types import indexedarray as indexedarray
@@ -309,6 +308,7 @@ element methods, and :mod:`warp.sparse` for sparse linear algebra.
 # Skipped: from warp._src.types import tile_stack as tile_stack (kernel builtin stubs preferred)
 
 # Skipped: from warp._src.context import zeros as zeros (merged stubs generated below)
+# Skipped: from warp._src.context import empty as empty (merged stubs generated below)
 
 if _TYPE_CHECKING:
     from warp._src.geometry.marching_cubes import IsoSurfaceMarchingCubes as _IsoSurfaceMarchingCubes
@@ -1744,6 +1744,41 @@ class transformd:
 # ======================================================================
 # Merged stubs for symbols with both Python API and kernel-scope versions
 # ======================================================================
+
+@over
+def empty(
+    shape: int | tuple[int, ...] | list[int] | None = None,
+    dtype: type = float,
+    device: DeviceLike = None,
+    requires_grad: _builtins.bool = False,
+    pinned: _builtins.bool = False,
+    retain_grad: _builtins.bool = False,
+    **kwargs,
+) -> array:
+    """Return an uninitialized array."""
+    ...
+
+@over
+def empty(shape: tuple[int, ...], dtype: Any) -> Array[Scalar]:
+    """Create a fixed-size array of the given shape and dtype, leaving its data uninitialized.
+
+    Use it instead of :func:`~warp._src.lang.zeros` when every element is written before being read.
+
+    .. warning::
+
+        Use it with caution: reading an element before it is written is undefined behavior."""
+    ...
+
+@over
+def empty(shape: int32 | int, dtype: Any) -> Array[Scalar]:
+    """Create a fixed-size array of the given length and dtype, leaving its data uninitialized.
+
+    Use it instead of :func:`~warp._src.lang.zeros` when every element is written before being read.
+
+    .. warning::
+
+        Use it with caution: reading an element before it is written is undefined behavior."""
+    ...
 
 @over
 def zeros(
