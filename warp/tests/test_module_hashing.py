@@ -634,6 +634,22 @@ class TestModuleHasherKernelOptions(unittest.TestCase):
         self.assertEqual(make(32).module.hash_module(), make(32).module.hash_module())
 
 
+class _ReferenceConstantHolder:
+    value = 3.0
+
+
+class _ReuseLoadNames(ast.NodeTransformer):
+    """Model a transformer that shares name nodes between source occurrences."""
+
+    def __init__(self):
+        self.names = {}
+
+    def visit_Name(self, node):
+        if isinstance(node.ctx, ast.Load):
+            return self.names.setdefault(node.id, node)
+        return node
+
+
 class TestModuleHashing(unittest.TestCase):
     def test_builtin_adjoint_dispatch_affects_module_hash(self):
         """Changes to a native adjoint call must invalidate cached kernels."""
@@ -742,11 +758,56 @@ class TestModuleHashing(unittest.TestCase):
         adj = Adjoint(apply, is_user_function=True)
         adj.callable_arg_values = {"target": shadowed_function_target}
         self.assertIn(shadowed_function_target, adj.get_references()[2])
-        for node, shadowed_names in adj.reference_analysis().iter_candidates():
+        for node, local_nodes in adj.syntax().reference_analysis().iter_candidates():
             if isinstance(node, ast.Call):
-                arg_types, _, resolved = resolve_call_arg_types(adj, node, adj.callable_arg_values, shadowed_names)
+                arg_types, _, resolved = resolve_call_arg_types(adj, node, adj.callable_arg_values, local_nodes)
                 self.assertTrue(resolved)
                 self.assertEqual(arg_types, (wp.float32,))
+
+    def test_reused_callee_name_preserves_global_reference(self):
+        """A reused callee node must retain the global call before a local binding."""
+
+        def raw(value: float):
+            first = shadowed_function_target(value)  # noqa: F823
+            shadowed_function_target = shadowed_function_alias
+            return first + shadowed_function_target(value)
+
+        adj = Adjoint(raw, is_user_function=True, transformers=[_ReuseLoadNames()])
+        self.assertEqual(set(adj.get_references()[2]), {shadowed_function_target, shadowed_function_alias})
+        module = wp.get_module(f"{__name__}_reused_callee")
+        module._find_references(adj)
+        self.assertIn(REFERENCE_TARGET_MODULE, module.references)
+        self.assertIn(REFERENCE_DECOY_MODULE, module.references)
+
+    def test_reused_attribute_root_preserves_global_constant(self):
+        """A reused attribute root must retain its value before a local binding."""
+
+        def raw(value: float):
+            first = _ReferenceConstantHolder.value  # noqa: F823
+            _ReferenceConstantHolder = make_shadowed_attribute_result(value)
+            return first + _ReferenceConstantHolder.value
+
+        adj = Adjoint(raw, is_user_function=True, transformers=[_ReuseLoadNames()])
+        self.assertEqual(adj.get_references()[0].get("_ReferenceConstantHolder.value"), 3.0)
+
+    def test_reused_callable_argument_preserves_global_target(self):
+        """A reused argument node must retain a function passed before rebinding."""
+
+        @wp.func(module="unique")
+        def apply(target: wp.Function, value: float):
+            return target(value)
+
+        def raw(value: float):
+            first = apply(shadowed_function_target, value)  # noqa: F823
+            shadowed_function_target = shadowed_function_alias
+            return first + apply(shadowed_function_target, value)
+
+        adj = Adjoint(raw, is_user_function=True, transformers=[_ReuseLoadNames()])
+        self.assertEqual(set(adj.get_references()[2]), {apply, shadowed_function_target, shadowed_function_alias})
+        module = wp.get_module(f"{__name__}_reused_callable_argument")
+        module._find_references(adj)
+        self.assertIn(REFERENCE_TARGET_MODULE, module.references)
+        self.assertIn(REFERENCE_DECOY_MODULE, module.references)
 
     def test_shadowed_assignment_reference_is_local(self):
         """A value copied from a local must not reference its global namesake (GH-2310)."""

@@ -3273,8 +3273,7 @@ class ModuleHasher:
         ch.update(bytes(kernel.key, "utf-8"))
         for opt in sorted(kernel.options):
             ch.update(bytes(f"{opt}:{kernel.options[opt]}", "utf-8"))
-        reference_analysis = kernel.adj.reference_analysis()
-        ch.update(self.hash_adjoint(kernel.adj, reference_analysis))
+        ch.update(self.hash_adjoint(kernel.adj))
         ch.update(self._hash_kernel_return_annotation(kernel))
 
     @staticmethod
@@ -3316,18 +3315,15 @@ class ModuleHasher:
                 continue
 
             # adjoint
-            reference_analysis = ovl.adj.reference_analysis()
-            ch.update(self.hash_adjoint(ovl.adj, reference_analysis))
+            ch.update(self.hash_adjoint(ovl.adj))
 
             # custom bits
             if ovl.custom_grad_func:
                 grad = ovl.custom_grad_func
-                reference_analysis = grad.adj.reference_analysis()
-                ch.update(self.hash_adjoint(grad.adj, reference_analysis))
+                ch.update(self.hash_adjoint(grad.adj))
             if ovl.custom_replay_func:
                 replay = ovl.custom_replay_func
-                reference_analysis = replay.adj.reference_analysis()
-                ch.update(self.hash_adjoint(replay.adj, reference_analysis))
+                ch.update(self.hash_adjoint(replay.adj))
             if ovl.replay_snippet:
                 ch.update(bytes(ovl.replay_snippet, "utf-8"))
             if ovl.native_snippet:
@@ -3391,7 +3387,7 @@ class ModuleHasher:
 
         return ch.digest()
 
-    def hash_adjoint(self, adj: warp._src.codegen.Adjoint, reference_analysis=None) -> bytes:
+    def hash_adjoint(self, adj: warp._src.codegen.Adjoint) -> bytes:
         # NOTE: We don't cache adjoint hashes, because adjoints are always unique.
         # Even instances of generic kernels and functions have unique adjoints with
         # different argument types.
@@ -3418,7 +3414,7 @@ class ModuleHasher:
         # dicts, custom classes) captured by closures are not included in the hash.
         # Users should wrap such values with wp.static() to make them visible.
         # find referenced constants, types, and functions
-        constants, types, functions = adj.get_references(reference_analysis)
+        constants, types, functions = adj.get_references()
 
         # hash referenced constants
         for name, value in constants.items():
@@ -4577,20 +4573,17 @@ class Module:
 
     # collect all referenced functions / structs
     # given the AST of a function or kernel
-    def _find_references(self, adj, reference_analysis=None):
+    def _find_references(self, adj):
         def add_ref(ref):
             if ref is not self:
                 self.references.add(ref)
                 ref.dependents.add(self)
 
         callable_arg_values = getattr(adj, "callable_arg_values", None) or {}
-        if reference_analysis is None:
-            reference_analysis = adj.reference_analysis()
-
-        # Scan cached function-call and kernel-local binding candidates using
-        # the same source-order binding analysis as Adjoint.get_references.
-        # Name/Attribute candidates are ignored by this dependency scan.
-        for node, shadowed_names in reference_analysis.iter_candidates():
+        syntax = adj.syntax()
+        # Calls and function-binding assignments retain the same relative order
+        # as hashing, without visiting irrelevant name/attribute candidates.
+        for node, local_nodes in syntax.reference_analysis().iter_candidates(syntax.function_reference_nodes):
             if type(node) is ast.Call:
                 try:
                     # try to resolve the function
@@ -4598,7 +4591,7 @@ class Module:
                         adj,
                         node,
                         callable_arg_values,
-                        shadowed_names,
+                        local_nodes,
                     )
 
                     # if this is a user-defined function, add a module reference
@@ -4613,7 +4606,7 @@ class Module:
                             func,
                             node,
                             callable_arg_values,
-                            shadowed_names,
+                            local_nodes,
                         ):
                             if not callable_func.is_builtin() and callable_func.module is not None:
                                 add_ref(callable_func.module)
@@ -4625,24 +4618,13 @@ class Module:
                     pass
 
             elif type(node) is ast.Assign:
-                # A function bound to a kernel-local (`f = mod.func`) or to several locals via
-                # tuple unpacking (`f, g = mod.a, mod.b`) is later called through the local(s),
-                # so the ast.Call above resolves to the local rather than to the function.
-                # Resolve each right-hand side here so the dependency on the bound function's
-                # module is still registered, mirroring Adjoint.get_references. Without this,
-                # reloading the bound function's module would not unload the dependent kernel
-                # and a stale executable could be reused.
-                rhs_nodes = node.value.elts if isinstance(node.value, ast.Tuple) else [node.value]
-                for rhs_node in rhs_nodes:
+                for source in syntax.assignment_sources[node]:
                     try:
-                        rhs_func, _ = adj.resolve_static_expression(
-                            rhs_node,
-                            eval_types=False,
-                            shadowed_names=shadowed_names,
-                        )
-                        if isinstance(rhs_func, warp._src.context.Function) and rhs_func.module is not None:
-                            add_ref(rhs_func.module)
+                        func = warp._src.codegen.resolve_assignment_function_reference(adj, source, local_nodes)
+                        if func is not None and func.module is not None:
+                            add_ref(func.module)
                     except Exception:
+                        # A failed lookup must not hide another tuple element.
                         pass
 
         # scan for structs
