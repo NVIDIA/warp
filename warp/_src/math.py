@@ -83,7 +83,8 @@ def norm_huber(v: Any, delta: float = 1.0) -> float:
         float: The Huber norm of the vector.
     """
     a = wp.dot(v, v)
-    if a <= delta * delta:
+    # wp.value() lets the comparison also accept forward-mode jets.
+    if wp.value(a) <= delta * delta:
         return 0.5 * a
     return delta * (wp.sqrt(a) - 0.5 * delta)
 

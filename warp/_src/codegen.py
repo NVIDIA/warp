@@ -6396,6 +6396,20 @@ class Adjoint:
                 else:
                     adj.add_builtin_call("assign_inplace", [target, *indices, rhs])
 
+        elif isinstance(target_type, Struct) and not is_reference(target.type) and isinstance(lhs.value, ast.Name):
+            # A local struct value supports subscript assignment only through an
+            # ``assign_copy`` overload registered for it, such as a forward-mode
+            # jet. The copy is rebound to the assigned name only: after ``b = a``
+            # both names share one variable, and ``b[i] = x`` must leave ``a`` alone.
+            try:
+                out = adj.add_builtin_call("assign_copy", [target, *indices, rhs])
+            except WarpCodegenError as e:
+                raise WarpCodegenError(
+                    f"Can only subscript assign array, vector, quaternion, transformation, and matrix types, "
+                    f"or structs with a matching 'assign_copy' overload, got {type_repr(target_type)}: {e}"
+                ) from e
+            adj.symbols[lhs.value.id] = out
+
         else:
             raise WarpCodegenError(
                 f"Can only subscript assign array, vector, quaternion, transformation, and matrix types, got {target_type}"

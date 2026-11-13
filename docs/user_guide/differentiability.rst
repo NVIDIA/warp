@@ -388,6 +388,10 @@ in a single pass.
 This approach works best when the Jacobian for a single function call is needed. The tape-based approach computes
 the Jacobian of an arbitrary sequence of transformations between input and output buffers.
 
+.. seealso::
+
+    Reverse mode has no second-order tape. For the local Hessian of a small energy, see :ref:`forward_mode_jets`.
+
 .. _custom-gradient-functions:
 
 Custom Gradient Functions

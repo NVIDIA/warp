@@ -243,6 +243,12 @@ python -m warp.examples.browse
             <td align="center">particle repulsion</td>
             <td align="center">navier-stokes perturbation</td>
         </tr>
+        <tr>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_implicit_projection.py"><img src="./docs/img/examples/optim_implicit_projection.png"></a></td>
+        </tr>
+        <tr>
+            <td align="center">implicit projection</td>
+        </tr>
     </tbody>
 </table>
 

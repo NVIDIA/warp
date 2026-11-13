@@ -56,6 +56,7 @@ Scalar Math
    tan
    tanh
    trunc
+   value
 
 Vector Math
 -----------

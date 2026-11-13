@@ -123,6 +123,8 @@ from warp._src.context import get_cuda_kernel_properties as get_cuda_kernel_prop
 from warp._src.context import get_suggested_block_size as get_suggested_block_size
 from warp._src.context import synchronize as synchronize
 from warp._src.tape import Tape as Tape
+from warp._src.jet import JetSpace as JetSpace
+from warp._src.jet import JetSpace2 as JetSpace2
 from warp._src.context import Device as Device
 from warp._src.utils import ScopedDevice as ScopedDevice
 from warp._src.context import is_device_available as is_device_available
@@ -1896,6 +1898,66 @@ def sign(x: Scalar) -> Scalar:
 
     Returns:
         -1 if ``x`` < 0 and 1 otherwise."""
+    ...
+
+def value(x: Float) -> Float:
+    """Return the value of a scalar jet without its derivatives, or a plain float unchanged.
+
+    .. admonition:: Experimental
+
+        Forward-mode jets are experimental and subject to change without a formal deprecation
+        cycle. See :func:`warp.JetSpace`.
+
+    Comparisons such as ``a < b`` are not defined on jets, so a function written
+    generically over plain floats and jets compares ``wp.value(a) < wp.value(b)``
+    instead. A branch chosen this way carries the derivative of the branch taken.
+
+    The signatures listed here take plain floats. Each space
+    ``J = wp.JetSpace(...)`` or ``J = wp.JetSpace2(...)`` adds one that takes a
+    scalar jet of that space, an instance of ``J.scalar`` such as ``J.seed(1.5)``
+    (not the space ``J`` itself), and returns its ``value`` field.
+
+    The result carries no forward-mode derivatives, but ``wp.value()`` is not a
+    stop-gradient: in reverse mode it is the identity, so a :class:`warp.Tape` or
+    :func:`warp.grad` still differentiates through it.
+
+    Args:
+        x: A ``float16``, ``float32`` or ``float64`` scalar, or a scalar jet
+            (an instance of ``J.scalar`` for a jet space ``J``).
+
+    Returns:
+        ``x`` itself for a plain float, otherwise the jet's ``value`` field,
+        a plain float of the jet's dtype.
+
+    Example:
+
+        Branch on a value in a function that takes plain floats and scalar jets alike:
+
+        .. testcode::
+
+            J = wp.JetSpace(1)
+
+            @wp.func
+            def ramp_squared(x: Any):
+                if wp.value(x) > 0.0:
+                    return x * x
+                return 0.0 * x
+
+            @wp.kernel
+            def ramp_kernel(out: wp.array[float]):
+                x = J.seed(1.5)
+                y = ramp_squared(x)  # a jet
+                out[0] = wp.value(y)  # its value, a plain float
+                out[1] = y.grad[0]  # its derivative, d(x**2)/dx = 2x
+                out[2] = ramp_squared(1.5)  # the same function on a plain float
+
+            out = wp.zeros(3, dtype=float)
+            wp.launch(ramp_kernel, dim=1, outputs=[out])
+            print(out.numpy())
+
+        .. testoutput::
+
+            [2.25 3.   2.25]"""
     ...
 
 def copysign(x: Float, y: Float) -> Float:
