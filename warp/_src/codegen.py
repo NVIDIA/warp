@@ -2819,6 +2819,13 @@ class Adjoint:
                 comp_var = adj.load(comp)
                 s += op + " " + comp_var.emit() + ") "
 
+            comparison_left = prev_comp_var if prev_comp_var else left
+            if isinstance(comparison_left.type, Struct) or isinstance(comp_var.type, Struct):
+                raise WarpCodegenTypeError(
+                    f"Comparison '{op}' is not supported between values of type "
+                    f"{type_repr(comparison_left.type)} and {type_repr(comp_var.type)}."
+                )
+
             prev_comp_var = comp_var
 
         s = s.rstrip() + ";"
