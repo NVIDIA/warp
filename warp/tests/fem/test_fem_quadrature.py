@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import unittest
+from typing import Any
+from unittest.mock import patch
 
 import numpy as np
 
@@ -58,6 +60,47 @@ def _value_at_node(domain: fem.Domain, s: fem.Sample, f: fem.Field, values: wp.a
 def _test_node_index(s: fem.Sample, u: fem.Field):
     wp.expect_eq(fem.node_index(u, s), s.qp_index)
     return 0.0
+
+
+class _RepeatedLocalQuadrature(fem.Quadrature):
+    """A rule whose local points share an evaluation index within each cell."""
+
+    @property
+    def name(self):
+        return "RepeatedLocalQuadrature"
+
+    def fill_arg(self, arg, device):
+        pass
+
+    def total_point_count(self):
+        return self.domain.element_count()
+
+    def max_points_per_element(self):
+        return 2
+
+    @wp.func
+    def point_count(elt_arg: Any, qp_arg: Any, domain_element_index: int, geo_element_index: int):
+        return 2
+
+    @wp.func
+    def point_coords(
+        elt_arg: Any, qp_arg: Any, domain_element_index: int, geo_element_index: int, element_qp_index: int
+    ):
+        return wp.vec3(0.5)
+
+    @wp.func
+    def point_weight(
+        elt_arg: Any, qp_arg: Any, domain_element_index: int, geo_element_index: int, element_qp_index: int
+    ):
+        return 0.5
+
+    @wp.func
+    def point_index(
+        elt_arg: Any, qp_arg: Any, domain_element_index: int, geo_element_index: int, element_qp_index: int
+    ):
+        return domain_element_index
+
+    point_evaluation_index = point_index
 
 
 def test_regular_quadrature(test, device):
@@ -190,6 +233,251 @@ def test_point_basis(test, device):
         np.array([ref_grad, -ref_grad], dtype=float),
         rtol=1.0e-6,
     )
+
+
+def test_point_basis_evaluation_restriction(test, device):
+    with wp.ScopedDevice(device):
+        geometry = fem.Grid3D(res=wp.vec3i(2, 1, 1), env_count=2)
+        domain = fem.Cells(geometry)
+        quadrature = fem.PicQuadrature(
+            domain,
+            positions=(
+                wp.array([0, 0, 0, 2, 3, -1], dtype=int),
+                wp.array(
+                    [[0.2, 0.3, 0.4], [0.4, 0.3, 0.4], [0.6, 0.3, 0.4], [0.2, 0.3, 0.4], [0.3, 0.4, 0.5], [0.0] * 3],
+                    dtype=wp.vec3,
+                ),
+            ),
+        )
+        partial_geometry = fem.LinearGeometryPartition(geometry, partition_rank=0, partition_count=2)
+        store = fem.TemporaryStore()
+
+        def check_restriction(restriction, incidences, compact=True):
+            partition = restriction.space_partition
+            node_arg = restriction.node_arg_value(restriction.partition_element_offsets().device)
+            references = [
+                (p, incidences[n]) for p, n in enumerate(partition.space_node_indices().numpy()) if n in incidences
+            ]
+            expected_offsets = np.zeros(partition.node_count() + 1, dtype=np.int32)
+            for p, _ in references:
+                expected_offsets[p + 1] = 1
+            np.cumsum(expected_offsets, out=expected_offsets)
+            np.testing.assert_array_equal(restriction.partition_element_offsets().numpy(), expected_offsets)
+            # Keep the live counter buffer attached for subsequent captured replays.
+            test.assertEqual(int(restriction._node_count_dev.numpy()[0]), len(references))
+            np.testing.assert_array_equal(
+                restriction.node_partition_indices().numpy()[: len(references)], [p for p, _ in references]
+            )
+            np.testing.assert_array_equal(
+                node_arg.dof_element_indices.numpy()[: len(references)], [pair[0] for _, pair in references]
+            )
+            np.testing.assert_array_equal(
+                node_arg.dof_indices_in_element.numpy()[: len(references)], [pair[1] for _, pair in references]
+            )
+            if compact:
+                capacity = min(
+                    partition.node_count(),
+                    restriction.domain.element_count() * restriction.space_topology.MAX_NODES_PER_ELEMENT,
+                )
+                for output in (
+                    restriction.node_partition_indices(),
+                    node_arg.dof_element_indices,
+                    node_arg.dof_indices_in_element,
+                ):
+                    test.assertLessEqual(output.shape[0], capacity)
+
+        for partial in (False, True):
+            for capacity in (8, 2, 1):
+                basis = fem.PointBasisSpace(quadrature, max_nodes_per_element=capacity, use_evaluation_point_index=True)
+                space = fem.make_collocated_function_space(basis)
+                partition = fem.make_space_partition(
+                    space_topology=basis.topology,
+                    geometry_partition=partial_geometry if partial else domain.geometry_partition,
+                    environment_first=True,
+                    with_halo=False,
+                    max_node_count=6,
+                    temporary_store=store,
+                )
+                restriction = fem.make_space_restriction(
+                    space_partition=partition, domain=domain, temporary_store=store
+                )
+                incidences = {n: (0, n) for n in range(min(capacity, 3))}
+                if not partial:
+                    incidences.update({3: (2, 0), 4: (3, 0)})
+                check_restriction(restriction, incidences)
+                point_test = fem.make_test(space, space_restriction=restriction)
+                result = fem.integrate(linear_form, quadrature=quadrature, fields={"u": point_test}).numpy()
+                expected = np.array(
+                    [
+                        0 if n not in incidences else 0.5 / (3 if n < 3 else 1)
+                        for n in partition.space_node_indices().numpy()
+                    ]
+                )
+                np.testing.assert_allclose(result, expected, rtol=1.0e-6)
+
+                if partial and capacity == 1:
+                    whole_partition = fem.make_space_partition(space_topology=basis.topology)
+                    partial_restriction = fem.make_space_restriction(
+                        space_partition=whole_partition,
+                        domain=fem.Cells(partial_geometry),
+                        temporary_store=store,
+                    )
+                    test.assertLess(partial_restriction.domain.element_count(), whole_partition.node_count())
+                    check_restriction(partial_restriction, incidences)
+
+                if not partial and capacity == 8:
+                    # Reuse the restriction across zero, one, and many active nodes.
+                    old_offsets = quadrature.cell_particle_offsets.numpy().copy()
+                    for offsets, expected in (([0, 0, 0, 0, 0], {}), ([0, 0, 0, 0, 1], {0: (3, 0)})):
+                        quadrature.cell_particle_offsets.assign(np.array(offsets, dtype=np.int32))
+                        partition.rebuild(device=device, temporary_store=store)
+                        restriction.rebuild(device=device, temporary_store=store)
+                        check_restriction(restriction, expected)
+                    quadrature.cell_particle_offsets.assign(old_offsets)
+                    partition.rebuild(device=device, temporary_store=store)
+                    restriction.rebuild(device=device, temporary_store=store)
+                    check_restriction(restriction, incidences)
+
+                    # Replacing restriction buffers must preserve arrays retained by callers.
+                    retained_store = fem.TemporaryStore()
+                    retained_restriction = fem.make_space_restriction(
+                        space_partition=partition, domain=domain, temporary_store=retained_store
+                    )
+                    retained = (
+                        retained_restriction.partition_element_offsets(),
+                        retained_restriction.node_partition_indices(),
+                    )
+                    snapshots = [array.numpy().copy() for array in retained]
+                    retained_restriction.space_partition = fem.make_space_partition(
+                        space_topology=basis.topology, environment_first=True, max_node_count=1
+                    )
+                    test.assertLess(retained_restriction.space_partition.node_count(), partition.node_count())
+                    retained_restriction.rebuild(device=device, temporary_store=retained_store)
+                    scratch = retained_store.borrow(shape=retained[0].shape, dtype=int, device=device)
+                    scratch.fill_(-1)
+                    for array, snapshot in zip(retained, snapshots, strict=True):
+                        np.testing.assert_array_equal(array.numpy(), snapshot)
+
+                if device.is_cuda and not partial and capacity in (8, 1):
+                    # Both builders must replace persistent buffers when the device changes.
+                    for target in (wp.get_device("cpu"), device):
+                        restriction.rebuild(device=target, temporary_store=store)
+                        check_restriction(restriction, incidences)
+                        test.assertEqual(restriction.partition_element_offsets().device, target)
+                        test.assertEqual(restriction.node_arg_value(target).dof_element_indices.device, target)
+
+                if device.is_cuda and not partial and capacity == 2:
+                    for _ in range(2):
+                        partition.rebuild(device=device, temporary_store=store)
+                        restriction.rebuild(device=device, temporary_store=store)
+                    # Warm scratch buffers make ordinary capture independent of callback allocation handling.
+                    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+                        partition.rebuild(device=device, temporary_store=store)
+                        restriction.rebuild(device=device, temporary_store=store)
+                    old_offsets = quadrature.cell_particle_offsets.numpy().copy()
+                    quadrature.cell_particle_offsets.assign(np.array([0, 1, 2, 4, 5], dtype=np.int32))
+                    wp.capture_launch(capture.graph)
+                    changed = {0: (0, 0), 1: (1, 0), 2: (2, 0), 3: (2, 1), 4: (3, 0)}
+                    check_restriction(restriction, changed)
+                    quadrature.cell_particle_offsets.assign(old_offsets)
+                    wp.capture_launch(capture.graph)
+                    check_restriction(restriction, incidences)
+
+        # A subset domain retains the generic path and its domain-local cell indices.
+        basis = fem.PointBasisSpace(quadrature, max_nodes_per_element=8, use_evaluation_point_index=True)
+        partition = fem.make_space_partition(space_topology=basis.topology)
+        subset = fem.Subdomain(domain, element_indices=wp.array([0, 3], dtype=int))
+        restriction = fem.make_space_restriction(space_partition=partition, domain=subset, temporary_store=store)
+        check_restriction(restriction, {0: (0, 0), 1: (0, 1), 2: (0, 2), 4: (1, 0)}, compact=False)
+
+        # A deliberately smaller partition excludes otherwise valid point nodes.
+        partition = fem.make_space_partition(
+            space_topology=basis.topology, environment_first=True, max_node_count=1, temporary_store=store
+        )
+        test.assertEqual(partition.node_count(), 1)
+        test.assertEqual(np.count_nonzero(np.isin(partition.space_node_indices().numpy(), np.arange(5))), 1)
+        restriction = fem.make_space_restriction(space_partition=partition, domain=domain, temporary_store=store)
+        check_restriction(restriction, {0: (0, 0), 1: (0, 1), 2: (0, 2), 3: (2, 0), 4: (3, 0)})
+
+
+def test_discontinuous_restriction(test, device):
+    with wp.ScopedDevice(device):
+        geometry = fem.Grid2D(res=wp.vec2i(2, 1))
+        domain = fem.Cells(geometry)
+        discontinuous = fem.make_polynomial_space(geometry, degree=1, discontinuous=True)
+        continuous = fem.make_polynomial_space(geometry, degree=1)
+        # Built-in evaluation indices are unique; custom rules need not guarantee this.
+        nodal = fem.NodalQuadrature(domain, continuous)
+        point_basis = fem.PointBasisSpace(nodal)
+        evaluation_basis = fem.PointBasisSpace(nodal, use_evaluation_point_index=True)
+        repeated_basis = fem.PointBasisSpace(_RepeatedLocalQuadrature(domain), use_evaluation_point_index=True)
+        test.assertFalse(point_basis.topology.has_unique_node_incidence())
+        test.assertTrue(evaluation_basis.topology.has_unique_node_incidence())
+        test.assertTrue(discontinuous.topology.has_unique_node_incidence())
+        test.assertFalse(discontinuous.topology.trace().has_unique_node_incidence())
+
+        for topology, cell_nodes in (
+            (discontinuous.topology, [[0, 1, 2, 3], [4, 5, 6, 7]]),
+            (evaluation_basis.topology, [[0, 1, 2, 3], [4, 5, 6, 7]]),
+            (point_basis.topology, [[0, 1, 2, 3], [2, 3, 4, 5]]),
+            (repeated_basis.topology, [[0, 0], [1, 1]]),
+        ):
+            for cells in ([0, 1], [1, 1]):
+                # Explicit Subdomains can repeat cells and must retain every incidence.
+                restricted_domain = (
+                    domain if cells == [0, 1] else fem.Subdomain(domain, element_indices=wp.array(cells, dtype=int))
+                )
+                restriction = fem.make_space_restriction(space_topology=topology, domain=restricted_domain)
+                expected = [[] for _ in range(topology.node_count())]
+                for element, cell in enumerate(cells):
+                    for local, node in enumerate(cell_nodes[cell]):
+                        expected[node].append((element, local))
+                offsets = np.concatenate(([0], np.cumsum([len(entries) for entries in expected])))
+                np.testing.assert_array_equal(restriction.partition_element_offsets().numpy(), offsets)
+                test.assertEqual(restriction.node_count_sync(), sum(bool(entries) for entries in expected))
+                node_arg = restriction.node_arg_value(device)
+                elements = node_arg.dof_element_indices.numpy()
+                local_indices = node_arg.dof_indices_in_element.numpy()
+                for node, entries in enumerate(expected):
+                    actual = list(
+                        zip(
+                            elements[offsets[node] : offsets[node + 1]],
+                            local_indices[offsets[node] : offsets[node + 1]],
+                            strict=True,
+                        )
+                    )
+                    test.assertEqual(sorted(actual), sorted(entries))
+
+        def workspace_bytes(cell_count):
+            large_geometry = fem.Grid2D(res=wp.vec2i(cell_count, 1))
+            space = fem.make_polynomial_space(large_geometry, degree=1, discontinuous=True)
+            partition = fem.make_space_partition(space_topology=space.topology)
+            small_domain = fem.Cells(
+                fem.LinearGeometryPartition(large_geometry, partition_rank=0, partition_count=cell_count)
+            )
+            # Exclude geometry and argument initialization from restriction workspace.
+            fem.make_space_restriction(space_partition=partition, domain=small_domain)
+            allocated = 0
+            allocator = wp.get_device(device).get_allocator()
+            allocate = allocator.allocate
+
+            def record_allocation(size):
+                nonlocal allocated
+                allocated += size
+                return allocate(size)
+
+            store = fem.TemporaryStore()
+            with patch.object(allocator, "allocate", record_allocation):
+                restriction = fem.make_space_restriction(
+                    space_partition=partition, domain=small_domain, temporary_store=store
+                )
+            test.assertEqual(restriction.node_count_sync(), 4)
+            return partition.node_count(), allocated
+
+        # For one selected cell, increasing the full partition only grows its offsets.
+        small_nodes, small_bytes = workspace_bytes(16)
+        large_nodes, large_bytes = workspace_bytes(32)
+        test.assertLessEqual(large_bytes - small_bytes, (large_nodes - small_nodes) * wp.types.type_size_in_bytes(int))
 
 
 def test_point_basis_gradient_identity(test, device):
@@ -562,6 +850,13 @@ add_function_test(
 )
 add_function_test(TestFemQuadrature, "test_gimp_quadrature", test_gimp_quadrature)
 add_function_test(TestFemQuadrature, "test_point_basis", test_point_basis)
+add_function_test(
+    TestFemQuadrature,
+    "test_point_basis_evaluation_restriction",
+    test_point_basis_evaluation_restriction,
+    devices=devices,
+)
+add_function_test(TestFemQuadrature, "test_discontinuous_restriction", test_discontinuous_restriction, devices=devices)
 add_function_test(
     TestFemQuadrature, "test_point_basis_gradient_identity", test_point_basis_gradient_identity, devices=devices
 )

@@ -158,6 +158,9 @@ class PicQuadrature(Quadrature):
         """
         return self._cell_particle_indices.shape[0]
 
+    def has_unique_evaluation_indices(self) -> bool:
+        return True
+
     def active_cell_count(self):
         """Number of cells containing at least one particle"""
         return self._active_cell_count.numpy()[0]
