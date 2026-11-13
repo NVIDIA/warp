@@ -650,6 +650,21 @@ class _ReuseLoadNames(ast.NodeTransformer):
         return node
 
 
+def _reload_reference_target(module_name, path, offset):
+    """Reload a file-backed function as a user would after editing its module.
+
+    Callers change the source length so Python's bytecode cache is invalidated
+    even when both writes have the same filesystem timestamp.
+    """
+    with open(path, "w") as source:
+        source.write(f"import warp as wp\n\n@wp.func\ndef target(value: float):\n    return value + {offset}\n")
+    spec = util.spec_from_file_location(module_name, path)
+    module = util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module.target
+
+
 class TestModuleHashing(unittest.TestCase):
     def test_builtin_adjoint_dispatch_affects_module_hash(self):
         """Changes to a native adjoint call must invalidate cached kernels."""
@@ -764,50 +779,82 @@ class TestModuleHashing(unittest.TestCase):
                 self.assertTrue(resolved)
                 self.assertEqual(arg_types, (wp.float32,))
 
-    def test_reused_callee_name_preserves_global_reference(self):
-        """A reused callee node must retain the global call before a local binding."""
+    def test_reused_callee_name_observes_reloaded_function(self):
+        """Reloading a callee must update a kernel that reuses its name node."""
+        global _reused_callee_target
+        self.addCleanup(globals().pop, "_reused_callee_target", None)
+        provider_name = f"{__name__}_reused_callee_provider"
+        self.addCleanup(sys.modules.pop, provider_name, None)
 
-        def raw(value: float):
-            first = shadowed_function_target(value)  # noqa: F823
-            shadowed_function_target = shadowed_function_alias
-            return first + shadowed_function_target(value)
+        def raw(out: wp.array[float]):
+            first = _reused_callee_target(2.0)  # noqa: F823
+            _reused_callee_target = shadowed_function_alias
+            out[0] = first + _reused_callee_target(2.0)
 
-        adj = Adjoint(raw, is_user_function=True, transformers=[_ReuseLoadNames()])
-        self.assertEqual(set(adj.get_references()[2]), {shadowed_function_target, shadowed_function_alias})
-        module = wp.get_module(f"{__name__}_reused_callee")
-        module._find_references(adj)
-        self.assertIn(REFERENCE_TARGET_MODULE, module.references)
-        self.assertIn(REFERENCE_DECOY_MODULE, module.references)
+        module = wp.Module(f"{__name__}_reused_callee")
+        self.addCleanup(module.unload)
+        out = wp.empty(1, dtype=float, device="cpu")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "provider.py")
+            _reused_callee_target = _reload_reference_target(provider_name, path, 1.0)
+            kernel = wp.Kernel(raw, module=module, code_transformers=[_ReuseLoadNames()])
+            wp.launch(kernel, dim=1, outputs=[out], device="cpu")
+            self.assertEqual(out.numpy()[0], 105.0)
 
-    def test_reused_attribute_root_preserves_global_constant(self):
-        """A reused attribute root must retain its value before a local binding."""
+            _reused_callee_target = _reload_reference_target(provider_name, path, 10.0)
+            wp.launch(kernel, dim=1, outputs=[out], device="cpu")
+            self.assertEqual(out.numpy()[0], 114.0)
 
-        def raw(value: float):
+    def test_reused_attribute_root_observes_changed_constant(self):
+        """Redeclaration must use a changed constant despite a shared attribute root."""
+        self.addCleanup(setattr, _ReferenceConstantHolder, "value", _ReferenceConstantHolder.value)
+
+        def raw(out: wp.array[float]):
             first = _ReferenceConstantHolder.value  # noqa: F823
-            _ReferenceConstantHolder = make_shadowed_attribute_result(value)
-            return first + _ReferenceConstantHolder.value
+            _ReferenceConstantHolder = make_shadowed_attribute_result(2.0)
+            out[0] = first + _ReferenceConstantHolder.value
 
-        adj = Adjoint(raw, is_user_function=True, transformers=[_ReuseLoadNames()])
-        self.assertEqual(adj.get_references()[0].get("_ReferenceConstantHolder.value"), 3.0)
+        module = wp.Module(f"{__name__}_reused_attribute")
+        self.addCleanup(module.unload)
+        out = wp.empty(1, dtype=float, device="cpu")
+        for value, expected in ((3.0, 5.0), (11.0, 13.0)):
+            with self.subTest(value=value):
+                _ReferenceConstantHolder.value = value
+                kernel = wp.Kernel(raw, module=module, code_transformers=[_ReuseLoadNames()])
+                wp.launch(kernel, dim=1, outputs=[out], device="cpu")
+                self.assertEqual(out.numpy()[0], expected)
+                # Keep disk artifacts to exercise cache reuse on redeclaration.
+                module.unload()
 
-    def test_reused_callable_argument_preserves_global_target(self):
-        """A reused argument node must retain a function passed before rebinding."""
+    def test_reused_callable_argument_observes_reloaded_function(self):
+        """Reloading a callable argument must update a kernel that reuses its name node."""
+        global _reused_argument_target
+        self.addCleanup(globals().pop, "_reused_argument_target", None)
+        provider_name = f"{__name__}_reused_argument_provider"
+        self.addCleanup(sys.modules.pop, provider_name, None)
 
         @wp.func(module="unique")
         def apply(target: wp.Function, value: float):
             return target(value)
 
-        def raw(value: float):
-            first = apply(shadowed_function_target, value)  # noqa: F823
-            shadowed_function_target = shadowed_function_alias
-            return first + apply(shadowed_function_target, value)
+        def raw(out: wp.array[float]):
+            first = apply(_reused_argument_target, 2.0)  # noqa: F823
+            _reused_argument_target = shadowed_function_alias
+            out[0] = first + apply(_reused_argument_target, 2.0)
 
-        adj = Adjoint(raw, is_user_function=True, transformers=[_ReuseLoadNames()])
-        self.assertEqual(set(adj.get_references()[2]), {apply, shadowed_function_target, shadowed_function_alias})
-        module = wp.get_module(f"{__name__}_reused_callable_argument")
-        module._find_references(adj)
-        self.assertIn(REFERENCE_TARGET_MODULE, module.references)
-        self.assertIn(REFERENCE_DECOY_MODULE, module.references)
+        module = wp.Module(f"{__name__}_reused_callable_argument")
+        self.addCleanup(module.unload)
+        out = wp.empty(1, dtype=float, device="cpu")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "provider.py")
+            _reused_argument_target = _reload_reference_target(provider_name, path, 1.0)
+            kernel = wp.Kernel(raw, module=module, code_transformers=[_ReuseLoadNames()])
+            wp.launch(kernel, dim=1, outputs=[out], device="cpu")
+            self.assertEqual(out.numpy()[0], 105.0)
+
+            _reused_argument_target = _reload_reference_target(provider_name, path, 10.0)
+            wp.launch(kernel, dim=1, outputs=[out], device="cpu")
+            self.assertEqual(out.numpy()[0], 114.0)
 
     def test_shadowed_assignment_reference_is_local(self):
         """A value copied from a local must not reference its global namesake (GH-2310)."""

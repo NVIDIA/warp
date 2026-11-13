@@ -2744,13 +2744,13 @@ class TestCodeGen(unittest.TestCase):
         self.assertIs(k1.adj._shared_source, k2.adj._shared_source)
         self.assertIs(k1.adj.tree, k2.adj.tree)
         self.assertIs(k1.adj.syntax(), k2.adj.syntax())
-        analysis_1 = k1.adj.syntax().reference_analysis()
-        analysis_2 = k2.adj.syntax().reference_analysis()
-        self.assertIs(analysis_1, analysis_2)
-        self.assertIs(analysis_1.reference_nodes, k1.adj.syntax().reference_nodes)
-        self.assertEqual(tuple(node for node, _ in analysis_1.iter_candidates()), analysis_1.reference_nodes)
         self.assertNotEqual(k1.module.name, k2.module.name)
         self.assertIs(make(1.0), k1)
+
+        out = wp.empty(1, dtype=wp.float32, device="cpu")
+        for kernel, expected in ((k1, 2.0), (k2, 4.0), (k1, 2.0)):
+            wp.launch(kernel, dim=1, outputs=[out], device="cpu")
+            self.assertEqual(out.numpy()[0], expected)
 
     def test_rebind_observed_through_shared_source(self):
         """Observe rebound module globals when reusing cached syntax.
