@@ -192,6 +192,61 @@ def test_point_basis(test, device):
     )
 
 
+@unittest.skipUnless(wp.is_conditional_graph_supported(), "Conditional graph nodes not supported")
+def test_conditional_restriction_rebuild(test, device):
+    with wp.ScopedDevice(device):
+        if not device.is_mempool_enabled:
+            test.skipTest("CUDA memory pools are required")
+
+        domain = fem.Cells(fem.Grid3D(res=wp.vec3i(2, 1, 1)))
+        quadrature = fem.PicQuadrature(
+            domain,
+            positions=(
+                wp.array([0, 0, 1, -1], dtype=int),
+                wp.array([[0.2, 0.3, 0.4], [0.4, 0.3, 0.4], [0.6, 0.3, 0.4], [0.0] * 3], dtype=wp.vec3),
+            ),
+        )
+        basis = fem.PointBasisSpace(quadrature, max_nodes_per_element=4, use_evaluation_point_index=True)
+        space = fem.make_collocated_function_space(basis)
+        partition = fem.make_space_partition(space_topology=basis.topology)
+        restriction = fem.make_space_restriction(space_partition=partition, domain=domain)
+        point_test = fem.make_test(space, space_restriction=restriction)
+
+        # Warm the kernels, then capture with an empty store so scratch must be allocated
+        # inside the callback rather than borrowed from a previous rebuild.
+        restriction.rebuild(device=device)
+        initial = fem.integrate(linear_form, quadrature=quadrature, fields={"u": point_test})
+        np.testing.assert_allclose(initial.numpy(), [0.25, 0.25, 0.5, 0.0], rtol=1.0e-6)
+        store = fem.TemporaryStore()
+        condition = wp.ones(1, dtype=int)
+
+        def rebuild():
+            restriction.rebuild(device=device, temporary_store=store)
+
+        with wp.ScopedCapture(force_module_load=False) as capture:
+            wp.capture_if(condition, on_true=rebuild)
+
+        for offsets, incidences in (
+            ([0, 1, 3], [0, 1, 1]),
+            ([0, 2, 3], [0, 0, 1]),
+        ):
+            previous = restriction.node_arg_value(device).dof_element_indices.numpy()[:3].copy()
+            quadrature.cell_particle_offsets.assign(np.array(offsets, dtype=np.int32))
+            condition.zero_()
+            wp.capture_launch(capture.graph)
+            np.testing.assert_array_equal(restriction.node_arg_value(device).dof_element_indices.numpy()[:3], previous)
+            condition.fill_(1)
+            wp.capture_launch(capture.graph)
+            np.testing.assert_array_equal(
+                restriction.node_arg_value(device).dof_element_indices.numpy()[:3], incidences
+            )
+
+        # The quadrature's integration map and weights still describe the initial
+        # binning, so check the integral after restoring the original offsets.
+        result = fem.integrate(linear_form, quadrature=quadrature, fields={"u": point_test})
+        np.testing.assert_allclose(result.numpy(), [0.25, 0.25, 0.5, 0.0], rtol=1.0e-6)
+
+
 def test_point_basis_gradient_identity(test, device):
     """Verify that point bases with different gradient functions do not share evaluators."""
     with wp.ScopedDevice(device):
@@ -562,6 +617,12 @@ add_function_test(
 )
 add_function_test(TestFemQuadrature, "test_gimp_quadrature", test_gimp_quadrature)
 add_function_test(TestFemQuadrature, "test_point_basis", test_point_basis)
+add_function_test(
+    TestFemQuadrature,
+    "test_conditional_restriction_rebuild",
+    test_conditional_restriction_rebuild,
+    devices=get_cuda_test_devices_with_mempool(),
+)
 add_function_test(
     TestFemQuadrature, "test_point_basis_gradient_identity", test_point_basis_gradient_identity, devices=devices
 )

@@ -165,6 +165,7 @@ struct ContextInfo {
 
     // the current stream, managed from Python (see wp_cuda_context_set_stream() and wp_cuda_context_get_stream())
     CUstream stream = NULL;
+    CUstream allocation_stream = NULL;  // backing storage for conditional body allocations
 
     // conditional graph node support, loaded on demand if the driver supports it (CUDA 12.4+)
     CUmodule conditional_module = NULL;
@@ -189,6 +190,7 @@ struct GraphAllocInfo {
     cudaGraphNode_t node = NULL;  // corresponding mem alloc node in the graph
     bool ref_exists = false;  // whether user reference still exists
     bool graph_destroyed = false;  // whether graph instance was destroyed
+    bool side_allocation = false;  // backing storage allocated outside the graph
 };
 
 static std::unordered_map<CUfunction, std::string> g_kernel_names;
@@ -840,9 +842,44 @@ void* wp_alloc_device_async(void* context, size_t s, void* stream_, const char* 
         stream = get_current_stream(context);
 
     void* ptr = NULL;
-    check_cuda(cudaMallocAsync(&ptr, s, stream));
+    uint64_t capture_id = wp_cuda_stream_is_capturing(stream) ? get_capture_id(stream) : 0;
+    CaptureInfo* capture = capture_id ? find_capture_info(capture_id) : NULL;
+    bool conditional_body = capture && capture->id != capture_id;
+    if (conditional_body) {
+        // Conditional nodes cannot contain allocation nodes. Allocate backing storage once,
+        // at capture time, and share its lifetime between the parent graph and the array.
+        cudaStreamCaptureMode mode = cudaStreamCaptureModeRelaxed;
+        if (!check_cuda(cudaThreadExchangeStreamCaptureMode(&mode)))
+            return NULL;
 
-    if (ptr) {
+        ContextInfo* info = get_context_info(WP_CURRENT_CONTEXT);
+        bool success = info != NULL;
+        if (success && !info->allocation_stream)
+            success = check_cu(cuStreamCreate_f(&info->allocation_stream, CU_STREAM_NON_BLOCKING));
+        if (success)
+            success = check_cuda(cudaMallocAsync(&ptr, s, info->allocation_stream));
+        if (success)
+            success = check_cuda(cudaStreamSynchronize(info->allocation_stream));
+        bool mode_restored = check_cuda(cudaThreadExchangeStreamCaptureMode(&mode));
+        if (!success || !mode_restored) {
+            if (ptr)
+                defer_release(ReleaseKind::DeviceFreeAsync, context, (uint64_t)ptr);
+            return NULL;
+        }
+
+        if (ptr) {
+            GraphAllocInfo alloc_info;
+            alloc_info.capture_id = capture->id;
+            alloc_info.context = context ? context : get_current_context();
+            alloc_info.ref_exists = true;
+            alloc_info.side_allocation = true;
+            g_graph_allocs[ptr] = alloc_info;
+        }
+    } else {
+        check_cuda(cudaMallocAsync(&ptr, s, stream));
+    }
+
+    if (ptr && !conditional_body) {
         // if the stream is capturing, the allocation requires special handling
         if (wp_cuda_stream_is_capturing(stream)) {
             // check if this is a known capture
@@ -951,7 +988,8 @@ void wp_free_device_async(void* context, void* ptr, void** dbg_node_ret)
         // Note: the capture id is stable across pause/resume of the same graph, so this
         // path is taken again for frees that occur after the conditional completes.
         auto capture_iter = g_captures.find(capture_id);
-        if (capture_iter != g_captures.end() && capture_id == get_capture_id(capture_iter->second->stream)) {
+        if (!alloc_info.side_allocation && capture_iter != g_captures.end()
+            && capture_id == get_capture_id(capture_iter->second->stream)) {
             CaptureInfo* capture = capture_iter->second;
             cudaGraph_t graph = get_capture_graph(capture->stream);
             if (!graph) {
@@ -2955,6 +2993,9 @@ void wp_cuda_context_destroy(void* context)
             if (info->stream)
                 check_cu(cuStreamDestroy_f(info->stream));
 
+            if (info->allocation_stream)
+                check_cu(cuStreamDestroy_f(info->allocation_stream));
+
             if (info->conditional_module)
                 check_cu(cuModuleUnload_f(info->conditional_module));
 
@@ -3625,31 +3666,49 @@ bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
     g_captures.erase(capture_id);
     delete capture;
 
-    // a lambda to clean up on exit in case of error
-    auto clean_up = [cuda_stream, capture_id, external]() {
-        // unreference outstanding graph allocs so that they will be released with the user reference
-        for (auto it = g_graph_allocs.begin(); it != g_graph_allocs.end(); /*noop*/) {
-            GraphAllocInfo& alloc_info = it->second;
-            if (alloc_info.capture_id == capture_id) {
-                if (!alloc_info.ref_exists) {
-                    // The user reference was already dropped (e.g., freed during conditional
-                    // body capture). No graph instance will exist to own the allocation, so
-                    // free it once graph captures complete.
-                    defer_release(ReleaseKind::DeviceFreeAsyncUnmapped, alloc_info.context, (uint64_t)it->first);
-                    it = g_graph_allocs.erase(it);
-                    continue;
+    bool graph_resources_owned = false;
+
+    // Clean up an unsuccessful capture, including allocations made by conditional bodies.
+    auto clean_up = [cuda_stream, capture_id, external, &graph_resources_owned,
+                     &tmp_allocs](cudaGraph_t unpublished_graph = NULL, bool capture_ended = false) {
+        // After attaching a user object, its callback alone may retire these pointers.
+        if (!graph_resources_owned) {
+            for (auto it = g_graph_allocs.begin(); it != g_graph_allocs.end(); /*noop*/) {
+                GraphAllocInfo& alloc_info = it->second;
+                if (alloc_info.capture_id == capture_id) {
+                    if (!alloc_info.ref_exists) {
+                        defer_release(ReleaseKind::DeviceFreeAsyncUnmapped, alloc_info.context, (uint64_t)it->first);
+                        it = g_graph_allocs.erase(it);
+                        continue;
+                    }
+                    alloc_info.graph_destroyed = true;
                 }
-                alloc_info.graph_destroyed = true;
+                ++it;
             }
-            ++it;
         }
 
-        // make sure we terminate the capture
         if (!external) {
-            cudaGraph_t graph = NULL;
-            cudaStreamEndCapture(cuda_stream, &graph);
-            cudaGetLastError();
+            if (!capture_ended) {
+                cudaStreamEndCapture(cuda_stream, &unpublished_graph);
+                cudaGetLastError();
+            }
+            if (unpublished_graph)
+                check_cuda(cudaGraphDestroy(unpublished_graph));
         }
+
+        if (!graph_resources_owned) {
+            for (const FreeInfo& tmp_info : tmp_allocs) {
+                if (tmp_info.context)
+                    defer_release(
+                        tmp_info.is_async ? ReleaseKind::DeviceFreeAsync : ReleaseKind::DeviceFree, tmp_info.context,
+                        (uint64_t)tmp_info.ptr
+                    );
+                else
+                    wp_free_host(tmp_info.ptr);
+            }
+        }
+        if (g_captures.empty())
+            run_deferred_actions();
     };
 
     // get captured graph without ending the capture in case it is external
@@ -3704,8 +3763,19 @@ bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
         graph_info->unfreed_allocs = unfreed_allocs;
         graph_info->tmp_allocs = tmp_allocs;
         cudaUserObject_t user_object;
-        check_cuda(cudaUserObjectCreate(&user_object, graph_info, on_graph_destroy, 1, cudaUserObjectNoDestructorSync));
-        check_cuda(cudaGraphRetainUserObject(graph, user_object, 1, cudaGraphUserObjectMove));
+        if (!check_cuda(
+                cudaUserObjectCreate(&user_object, graph_info, on_graph_destroy, 1, cudaUserObjectNoDestructorSync)
+            )) {
+            delete graph_info;
+            clean_up();
+            return false;
+        }
+        graph_resources_owned = true;
+        if (!check_cuda(cudaGraphRetainUserObject(graph, user_object, 1, cudaGraphUserObjectMove))) {
+            check_cuda(cudaUserObjectRelease(user_object, 1));
+            clean_up();
+            return false;
+        }
 
         // ensure graph is still valid
         if (get_capture_graph(cuda_stream) != graph) {
@@ -3719,8 +3789,12 @@ bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
         return true;
 
     // end the capture
-    if (!check_cuda(cudaStreamEndCapture(cuda_stream, &graph)))
+    cudaGraph_t completed_graph = NULL;
+    if (!check_cuda(cudaStreamEndCapture(cuda_stream, &completed_graph))) {
+        clean_up(completed_graph, true);
         return false;
+    }
+    graph = completed_graph;
 
     // process deferred free list if no more captures are ongoing
     if (g_captures.empty()) {
