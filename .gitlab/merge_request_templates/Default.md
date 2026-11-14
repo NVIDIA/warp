@@ -1,3 +1,4 @@
+<!-- Bringing in a GitHub pull request? Choose the github-pr template instead. -->
 <!-- Labels: apply every existing project label whose description fits this MR. Do not create new labels. -->
 
 ## Description
