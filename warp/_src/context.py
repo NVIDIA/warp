@@ -3319,9 +3319,11 @@ class ModuleHasher:
 
             # custom bits
             if ovl.custom_grad_func:
-                ch.update(self.hash_adjoint(ovl.custom_grad_func.adj))
+                grad = ovl.custom_grad_func
+                ch.update(self.hash_adjoint(grad.adj))
             if ovl.custom_replay_func:
-                ch.update(self.hash_adjoint(ovl.custom_replay_func.adj))
+                replay = ovl.custom_replay_func
+                ch.update(self.hash_adjoint(replay.adj))
             if ovl.replay_snippet:
                 ch.update(bytes(ovl.replay_snippet, "utf-8"))
             if ovl.native_snippet:
@@ -4579,18 +4581,18 @@ class Module:
 
         callable_arg_values = getattr(adj, "callable_arg_values", None) or {}
         syntax = adj.syntax()
-        local_variables = syntax.assigned_name_ids
-
-        # scan for function calls and kernel-local function bindings. ``reference_nodes`` shares
-        # a single AST traversal with Adjoint.get_references; it also yields Name/Attribute
-        # nodes, which this dependency scan ignores.
-        for node in syntax.reference_nodes:
+        # Calls and function-binding assignments retain the same relative order
+        # as hashing, without visiting irrelevant name/attribute candidates.
+        for node, local_nodes in syntax.reference_analysis().iter_candidates(syntax.function_reference_nodes):
             if type(node) is ast.Call:
-                if isinstance(node.func, ast.Name) and node.func.id in local_variables:
-                    continue
                 try:
                     # try to resolve the function
-                    func = warp._src.codegen.resolve_reference_call_func(adj, node, callable_arg_values)
+                    func = warp._src.codegen.resolve_reference_call_func(
+                        adj,
+                        node,
+                        callable_arg_values,
+                        local_nodes,
+                    )
 
                     # if this is a user-defined function, add a module reference
                     if isinstance(func, warp._src.context.Function) and func.module is not None:
@@ -4600,7 +4602,11 @@ class Module:
                         # Function targets can come from arguments or defaults;
                         # either way their modules must invalidate this module.
                         for callable_func in warp._src.codegen.iter_call_callable_arg_targets(
-                            adj, func, node, callable_arg_values
+                            adj,
+                            func,
+                            node,
+                            callable_arg_values,
+                            local_nodes,
                         ):
                             if not callable_func.is_builtin() and callable_func.module is not None:
                                 add_ref(callable_func.module)
@@ -4612,20 +4618,13 @@ class Module:
                     pass
 
             elif type(node) is ast.Assign:
-                # A function bound to a kernel-local (`f = mod.func`) or to several locals via
-                # tuple unpacking (`f, g = mod.a, mod.b`) is later called through the local(s),
-                # so the ast.Call above resolves to the local rather than to the function.
-                # Resolve each right-hand side here so the dependency on the bound function's
-                # module is still registered, mirroring Adjoint.get_references. Without this,
-                # reloading the bound function's module would not unload the dependent kernel
-                # and a stale executable could be reused.
-                rhs_nodes = node.value.elts if isinstance(node.value, ast.Tuple) else [node.value]
-                for rhs_node in rhs_nodes:
+                for source in syntax.assignment_sources[node]:
                     try:
-                        rhs_func, _ = adj.resolve_static_expression(rhs_node, eval_types=False)
-                        if isinstance(rhs_func, warp._src.context.Function) and rhs_func.module is not None:
-                            add_ref(rhs_func.module)
+                        func = warp._src.codegen.resolve_assignment_function_reference(adj, source, local_nodes)
+                        if func is not None and func.module is not None:
+                            add_ref(func.module)
                     except Exception:
+                        # A failed lookup must not hide another tuple element.
                         pass
 
         # scan for structs

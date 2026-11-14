@@ -19,8 +19,9 @@ import textwrap
 import threading
 import types
 import weakref
+from bisect import bisect_right
 from collections import deque
-from collections.abc import Callable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Container, Iterator, Mapping, Sequence
 from copy import copy as shallowcopy
 from dataclasses import dataclass
 from typing import Any, ClassVar, Literal, NamedTuple, get_args, get_origin
@@ -491,6 +492,243 @@ def _uses_tid_call(adj) -> bool:
     return any(
         _is_tid_call(node, adj, local_variables, tid_aliases, callable_arg_values)
         for node in iter_ast_nodes_of_types(adj.tree, ast.Call)
+    )
+
+
+def iter_assignment_target_names(node: ast.Assign | ast.AugAssign | ast.For):
+    """Yield simple local names bound by a supported Warp assignment."""
+    lhs = node.targets[0] if isinstance(node, ast.Assign) else node.target
+    if isinstance(lhs, ast.Tuple):
+        for value in lhs.elts:
+            if isinstance(value, ast.Name):
+                yield value.id
+    elif isinstance(lhs, ast.Name):
+        yield lhs.id
+
+
+class _LocalNodesAtPosition:
+    """Resolve reused name nodes using the enclosing reference's position."""
+
+    __slots__ = ("binding_ranges", "position")
+
+    def __init__(self, binding_ranges: Mapping[str, Sequence[int]], position: int):
+        self.binding_ranges = binding_ranges
+        self.position = position
+
+    def __contains__(self, node: ast.Name) -> bool:
+        ranges = self.binding_ranges.get(node.id)
+        if ranges is None:
+            return False
+        if len(ranges) == 2:
+            return ranges[0] <= self.position < ranges[1]
+        return builtins.bool(bisect_right(ranges, self.position) & 1)
+
+
+class _PositionalReferenceAnalysis(NamedTuple):
+    """Positional bindings for trees whose transformers reuse reference nodes."""
+
+    reference_nodes: tuple[ast.AST, ...]
+    node_positions: Mapping[ast.AST, int]
+    binding_ranges: Mapping[str, Sequence[int]]
+
+    def __len__(self) -> int:
+        return len(self.node_positions)
+
+    def iter_candidates(self, nodes=None):
+        """Yield cached candidates with one iterator-local definite-binding view.
+
+        Any supplied nodes must come from this tree's cached reference list.
+        """
+        local_nodes = _LocalNodesAtPosition(self.binding_ranges, 0)
+        for node in self.reference_nodes if nodes is None else nodes:
+            position = self.node_positions.get(node)
+            if position is not None:
+                local_nodes.position = position
+                yield node, local_nodes
+
+
+_EMPTY_REFERENCE_NODES = frozenset()
+
+
+class _ReferenceAnalysis(NamedTuple):
+    """Immutable local-name classifications shared by reference scans."""
+
+    reference_nodes: tuple[ast.AST, ...]
+    local_nodes: frozenset[ast.Name]
+    excluded_nodes: frozenset[ast.AST]
+
+    def __len__(self) -> int:
+        return len(self.reference_nodes) - len(self.excluded_nodes)
+
+    def iter_candidates(self, nodes=None):
+        """Yield cached candidates with immutable local-name classifications.
+
+        Any supplied nodes must come from this tree's cached reference list.
+        """
+        for node in self.reference_nodes if nodes is None else nodes:
+            if node not in self.excluded_nodes:
+                yield node, self.local_nodes
+
+
+def _analyze_reference_bindings(
+    root: ast.AST, reference_nodes: tuple[ast.AST, ...] | None = None
+) -> _ReferenceAnalysis | _PositionalReferenceAnalysis:
+    """Collect reference candidates and track definite local bindings.
+
+    Candidates remain in the breadth-first order used by the existing reference
+    scans. This order controls dictionary insertion during recursive function
+    hashing and dependency discovery. Changing it would alter many hashes even
+    if the reference sets stayed the same. A separate source-order pass records
+    which name occurrences refer to definitely bound locals. An assignment's
+    right-hand side sees the incoming state; its targets become bound afterward.
+    Callers can supply cached candidates to avoid repeating the breadth-first
+    traversal.
+
+    This analysis cannot use :meth:`Adjoint.eval`. Hashing needs reference
+    information before code generation, but ``eval`` emits IR and mutates build
+    state, including ``Adjoint.symbols``. Calling it here would make hashing
+    depend on earlier builds and on which device built the adjoint first.
+
+    Control-flow handling is conservative. The analysis scans both branches of
+    a conditional and each loop body without evaluating compile-time conditions.
+    A name remains bound after a branch only if both branches bind it. A name
+    first bound inside a loop does not remain bound afterward because the loop
+    may not run. This may retain references that code generation later removes,
+    but it will not hide a live global behind a local assignment that may never
+    run.
+    """
+
+    if reference_nodes is None:
+        reference_nodes = tuple(iter_ast_nodes_of_types(root, ast.Name, ast.Attribute, ast.Call, ast.Assign))
+    # A transformer can share one name between differently bound occurrences.
+    # Preserve positional lookup for those trees, including queries made from
+    # the enclosing call or attribute rather than from the name itself.
+    use_positions = len(set(reference_nodes)) != len(reference_nodes)
+    node_positions = {}
+    binding_ranges = {}
+    position = 0
+    visited_nodes = set()
+    local_nodes = set()
+    active_names = set()
+    activation_log = []
+    reference_types = (ast.Name, ast.Attribute, ast.Call, ast.Assign)
+
+    def record(node):
+        nonlocal position
+        if use_positions:
+            node_positions[node] = position
+            position += 1
+        else:
+            visited_nodes.add(node)
+            if type(node) is ast.Name and node.id in active_names:
+                local_nodes.add(node)
+
+    def activate(names):
+        for name in names:
+            if name not in active_names:
+                active_names.add(name)
+                activation_log.append(name)
+                if use_positions:
+                    binding_ranges.setdefault(name, []).append(position)
+
+    def restore(checkpoint):
+        introduced = activation_log[checkpoint:]
+        while len(activation_log) > checkpoint:
+            name = activation_log.pop()
+            active_names.remove(name)
+            if use_positions:
+                binding_ranges[name].append(position)
+        return introduced
+
+    def visit_sequence(nodes):
+        for node in nodes:
+            visit(node)
+
+    def visit(node):
+        if type(node) is ast.Assign:
+            visit(node.value)
+            record(node)
+
+            activate(iter_assignment_target_names(node))
+            for target in node.targets:
+                visit(target)
+            return
+
+        if type(node) is ast.AugAssign:
+            visit(node.target)
+            visit(node.value)
+            activate(iter_assignment_target_names(node))
+            return
+
+        if type(node) in reference_types:
+            record(node)
+
+        if type(node) is ast.If:
+            visit(node.test)
+
+            checkpoint = len(activation_log)
+            visit_sequence(node.body)
+            body_names = restore(checkpoint)
+            visit_sequence(node.orelse)
+            else_names = restore(checkpoint)
+            else_name_set = set(else_names)
+            activate(name for name in body_names if name in else_name_set)
+            return
+
+        if type(node) is ast.While:
+            visit(node.test)
+            checkpoint = len(activation_log)
+            visit_sequence(node.body)
+            restore(checkpoint)
+            return
+
+        if type(node) is ast.For:
+            visit(node.iter)
+            checkpoint = len(activation_log)
+            activate(iter_assignment_target_names(node))
+            visit(node.target)
+            visit_sequence(node.body)
+            restore(checkpoint)
+            return
+
+        if type(node) in (ast.FunctionDef, ast.AsyncFunctionDef):
+            for decorator in node.decorator_list:
+                visit(decorator)
+            visit(node.args)
+            if node.returns is not None:
+                visit(node.returns)
+            for type_param in getattr(node, "type_params", ()):
+                visit(type_param)
+
+            outer_names = restore(0)
+            # Parameters shadow globals through adj.arg_types, but remain available
+            # for declared-type and callable-specialization resolution. Only later
+            # assignments should hide their original parameter bindings.
+            visit_sequence(node.body)
+            restore(0)
+            activate(outer_names)
+            return
+
+        for field in node._fields:
+            value = getattr(node, field, None)
+            if type(value) is list:
+                visit_sequence(child for child in value if isinstance(child, ast.AST))
+            elif isinstance(value, ast.AST):
+                visit(value)
+
+    visit(root)
+    restore(0)
+
+    if use_positions:
+        immutable_positions = types.MappingProxyType(node_positions)
+        immutable_ranges = types.MappingProxyType({name: tuple(ranges) for name, ranges in binding_ranges.items()})
+        return _PositionalReferenceAnalysis(reference_nodes, immutable_positions, immutable_ranges)
+
+    excluded_nodes = frozenset(node for node in reference_nodes if node not in visited_nodes)
+    return _ReferenceAnalysis(
+        reference_nodes,
+        frozenset(local_nodes) if local_nodes else _EMPTY_REFERENCE_NODES,
+        excluded_nodes or _EMPTY_REFERENCE_NODES,
     )
 
 
@@ -1528,7 +1766,12 @@ def bind_call_arg_nodes(func, call_node):
     return bound_args.arguments
 
 
-def resolve_callable_arg_target(adj, arg_node, callable_arg_values=None):
+def resolve_callable_arg_target(
+    adj,
+    arg_node,
+    callable_arg_values=None,
+    local_nodes: Container[ast.Name] | None = None,
+):
     """Resolve a callable argument node or default to a concrete Warp function.
 
     Args:
@@ -1536,6 +1779,7 @@ def resolve_callable_arg_target(adj, arg_node, callable_arg_values=None):
         arg_node: AST node or default value bound to a function parameter.
         callable_arg_values: Specialized function targets already bound in the
             caller, keyed by parameter name.
+        local_nodes: Name nodes that are locally bound for this reference scan.
 
     Returns:
         The resolved Warp function, or the unresolved object when resolution
@@ -1545,29 +1789,48 @@ def resolve_callable_arg_target(adj, arg_node, callable_arg_values=None):
     if isinstance(arg_node, warp._src.context.Function):
         return arg_node
 
+    if isinstance(arg_node, ast.Name) and local_nodes is not None and arg_node in local_nodes:
+        return None
+
     if callable_arg_values and isinstance(arg_node, ast.Name):
         callable_func = callable_arg_values.get(arg_node.id)
         if callable_func is not None:
             return callable_func
 
-    callable_func, _ = adj.resolve_static_expression(arg_node, eval_types=False)
+    callable_func, _ = adj.resolve_static_expression(
+        arg_node,
+        eval_types=False,
+        local_nodes=local_nodes,
+    )
     return callable_func
 
 
 _UNRESOLVED_CALL_ARG = object()
 
 
-def resolve_call_arg_type(adj, arg_node, callable_arg_values=None):
-    """Best-effort static type resolution for call arguments during reference scans."""
+def resolve_call_arg_type(
+    adj,
+    arg_node,
+    callable_arg_values=None,
+    local_nodes: Container[ast.Name] | None = None,
+):
+    """Best-effort static type resolution for call arguments during reference scans.
+
+    Args:
+        local_nodes: Name nodes that are locally bound for this reference scan.
+    """
 
     if isinstance(arg_node, ast.Name):
+        if local_nodes is not None and arg_node in local_nodes:
+            return _UNRESOLVED_CALL_ARG
+
         if callable_arg_values:
             callable_func = callable_arg_values.get(arg_node.id)
             if callable_func is not None:
                 return get_arg_type(callable_func)
 
         symbol = adj.symbols.get(arg_node.id)
-        if symbol is not None:
+        if symbol is not None and (local_nodes is None or arg_node.id in adj.arg_types):
             return get_arg_type(symbol)
 
         obj = adj.resolve_external_reference(arg_node.id)
@@ -1577,7 +1840,11 @@ def resolve_call_arg_type(adj, arg_node, callable_arg_values=None):
         return _UNRESOLVED_CALL_ARG
 
     if isinstance(arg_node, ast.Attribute):
-        obj, _ = adj.resolve_static_expression(arg_node, eval_types=False)
+        obj, _ = adj.resolve_static_expression(
+            arg_node,
+            eval_types=False,
+            local_nodes=local_nodes,
+        )
         if obj is not None:
             return get_arg_type(obj)
 
@@ -1592,8 +1859,17 @@ def resolve_call_arg_type(adj, arg_node, callable_arg_values=None):
         return _UNRESOLVED_CALL_ARG
 
 
-def resolve_call_arg_types(adj, call_node, callable_arg_values=None):
-    """Return static call argument types and whether every type was resolved."""
+def resolve_call_arg_types(
+    adj,
+    call_node,
+    callable_arg_values=None,
+    local_nodes: Container[ast.Name] | None = None,
+):
+    """Return static call argument types and whether every type was resolved.
+
+    Args:
+        local_nodes: Name nodes that are locally bound for this reference scan.
+    """
 
     arg_types = []
     resolved = True
@@ -1603,7 +1879,7 @@ def resolve_call_arg_types(adj, call_node, callable_arg_values=None):
             resolved = False
             continue
 
-        arg_type = resolve_call_arg_type(adj, arg_node, callable_arg_values)
+        arg_type = resolve_call_arg_type(adj, arg_node, callable_arg_values, local_nodes)
         if arg_type is _UNRESOLVED_CALL_ARG:
             resolved = False
         else:
@@ -1615,7 +1891,7 @@ def resolve_call_arg_types(adj, call_node, callable_arg_values=None):
             resolved = False
             continue
 
-        arg_type = resolve_call_arg_type(adj, kw_node.value, callable_arg_values)
+        arg_type = resolve_call_arg_type(adj, kw_node.value, callable_arg_values, local_nodes)
         if arg_type is _UNRESOLVED_CALL_ARG:
             resolved = False
         else:
@@ -1645,39 +1921,70 @@ def iter_call_func_overload_candidates(func, call_node):
             yield overload
 
 
-def resolve_grad_call_reference_func(adj, func_node, callable_arg_values=None):
-    """Return the function wrapped by a ``wp.grad(...)`` callee, if any."""
+def resolve_grad_call_reference_func(
+    adj,
+    func_node,
+    callable_arg_values=None,
+    local_nodes: Container[ast.Name] | None = None,
+):
+    """Return the function wrapped by a ``wp.grad(...)`` callee, if any.
+
+    Args:
+        local_nodes: Name nodes that are locally bound for this reference scan.
+    """
 
     if not isinstance(func_node, ast.Call) or len(func_node.args) != 1 or func_node.keywords:
         return None
 
-    grad_func, _ = adj.resolve_static_expression(func_node.func, eval_types=False)
+    grad_func, _ = adj.resolve_static_expression(
+        func_node.func,
+        eval_types=False,
+        local_nodes=local_nodes,
+    )
     if not adj.is_grad_expression(grad_func):
         return None
 
-    target_func = resolve_callable_arg_target(adj, func_node.args[0], callable_arg_values)
+    target_func = resolve_callable_arg_target(
+        adj,
+        func_node.args[0],
+        callable_arg_values,
+        local_nodes,
+    )
     if isinstance(target_func, warp._src.context.Function):
         return target_func
 
     return None
 
 
-def resolve_reference_call_func(adj, call_node, callable_arg_values=None):
-    """Resolve the Warp function called by ``call_node`` during reference scans."""
+def resolve_reference_call_func(
+    adj,
+    call_node,
+    callable_arg_values=None,
+    local_nodes: Container[ast.Name] | None = None,
+):
+    """Resolve the Warp function called by ``call_node`` during reference scans.
+
+    Args:
+        local_nodes: Name nodes that are locally bound for this reference scan.
+    """
 
     if callable_arg_values is None:
         callable_arg_values = {}
 
-    func, path = adj.resolve_static_expression(call_node.func, eval_types=False)
+    func, path = adj.resolve_static_expression(call_node.func, eval_types=False, local_nodes=local_nodes)
     if path and not isinstance(func, warp._src.context.Function):
         attr = path[-1]
         if func is warp:
             func = warp._src.context.builtin_functions.get(attr)
-    if func is None and isinstance(call_node.func, ast.Name):
+    if (
+        func is None
+        and isinstance(call_node.func, ast.Name)
+        and (local_nodes is None or call_node.func not in local_nodes)
+    ):
         func = callable_arg_values.get(call_node.func.id)
 
     if func is None:
-        func = resolve_grad_call_reference_func(adj, call_node.func, callable_arg_values)
+        func = resolve_grad_call_reference_func(adj, call_node.func, callable_arg_values, local_nodes)
     elif isinstance(func, warp._src.context.GradWrapper):
         func = func.func
 
@@ -1730,7 +2037,13 @@ def resolve_reference_tid_aliases(adj, local_variables) -> frozenset[str]:
     return frozenset(tid_aliases)
 
 
-def iter_call_callable_arg_targets(adj, func, call_node, callable_arg_values=None):
+def iter_call_callable_arg_targets(
+    adj,
+    func,
+    call_node,
+    callable_arg_values=None,
+    local_nodes: Container[ast.Name] | None = None,
+):
     """Yield Warp function targets passed to ``wp.Function`` parameters.
 
     Args:
@@ -1739,6 +2052,7 @@ def iter_call_callable_arg_targets(adj, func, call_node, callable_arg_values=Non
         call_node: AST call node whose arguments may include function targets.
         callable_arg_values: Specialized function targets already bound in the
             caller, keyed by parameter name.
+        local_nodes: Name nodes that are locally bound for this reference scan.
 
     Yields:
         Concrete Warp functions supplied to function parameters by explicit
@@ -1748,7 +2062,7 @@ def iter_call_callable_arg_targets(adj, func, call_node, callable_arg_values=Non
     if not isinstance(func, warp._src.context.Function) or func.is_builtin():
         return
 
-    arg_types, kwarg_types, resolved = resolve_call_arg_types(adj, call_node, callable_arg_values)
+    arg_types, kwarg_types, resolved = resolve_call_arg_types(adj, call_node, callable_arg_values, local_nodes)
 
     # Binding is costly; skip it unless an overload can take a function. Templates can when
     # instantiated, and a custom get_overload() may dispatch anywhere. Checked after resolving
@@ -1778,10 +2092,18 @@ def iter_call_callable_arg_targets(adj, func, call_node, callable_arg_values=Non
             if not warp._src.types.is_warp_function_annotation(func_candidate.input_types.get(arg_name)):
                 continue
 
-            callable_func = resolve_callable_arg_target(adj, arg_node, callable_arg_values)
+            callable_func = resolve_callable_arg_target(adj, arg_node, callable_arg_values, local_nodes)
             if isinstance(callable_func, warp._src.context.Function) and callable_func not in yielded:
                 yielded.add(callable_func)
                 yield callable_func
+
+
+def resolve_assignment_function_reference(adj, source, local_nodes):
+    """Resolve a candidate assignment value without caching globals between scans."""
+    func, path = adj.resolve_static_expression(source, eval_types=False, local_nodes=local_nodes)
+    if path and func is warp:
+        func = warp._src.context.builtin_functions.get(path[-1])
+    return func if isinstance(func, warp._src.context.Function) else None
 
 
 def specialize_callable_func(func, callable_arg_values):
@@ -1987,10 +2309,25 @@ class _NonUnrolledConstantRange(NamedTuple):
 class _TreeSyntax:
     """Syntax-only facts about a function tree: pure functions of the tree, so shareable across adjoints."""
 
-    __slots__ = ("assigned_name_ids", "assignment_call_dims", "assignment_call_name_ids", "reference_nodes")
+    __slots__ = (
+        "_reference_analysis",
+        "assigned_name_ids",
+        "assignment_call_dims",
+        "assignment_call_name_ids",
+        "assignment_sources",
+        "function_reference_nodes",
+        "hash_reference_nodes",
+        "reference_nodes",
+        "tree",
+    )
 
     def __init__(self, tree):
+        self.tree = tree
+        self._reference_analysis = None
         self.reference_nodes = tuple(iter_ast_nodes_of_types(tree, ast.Name, ast.Attribute, ast.Call, ast.Assign))
+        hash_nodes = []
+        function_nodes = []
+        assignment_sources = {}
         names = set()
         # Unpacking arity of direct assignment calls, for ``wp.tid()`` dimension inference, and
         # their bare callee names, so ``get_references()`` only resolves tid aliases when needed.
@@ -1998,7 +2335,21 @@ class _TreeSyntax:
         call_name_ids = set()
         for node in self.reference_nodes:
             if not isinstance(node, ast.Assign):
+                hash_nodes.append(node)
+                if isinstance(node, ast.Call):
+                    function_nodes.append(node)
                 continue
+
+            # Static assignment resolution can only produce a function from a
+            # name or attribute. Calls in other RHS expressions are independent
+            # reference candidates and retain their original traversal order.
+            values = node.value.elts if isinstance(node.value, ast.Tuple) else (node.value,)
+            sources = tuple(value for value in values if isinstance(value, (ast.Name, ast.Attribute)))
+            if sources:
+                assignment_sources[node] = sources
+                hash_nodes.append(node)
+                function_nodes.append(node)
+
             pending = list(node.targets)
             while pending:
                 target = pending.pop()
@@ -2014,6 +2365,19 @@ class _TreeSyntax:
         self.assigned_name_ids = frozenset(names)
         self.assignment_call_dims = call_dims
         self.assignment_call_name_ids = frozenset(call_name_ids)
+        self.hash_reference_nodes = tuple(hash_nodes)
+        self.function_reference_nodes = tuple(function_nodes)
+        self.assignment_sources = assignment_sources
+
+    def reference_analysis(self):
+        """Lazily annotate cached candidates with source-order local bindings.
+
+        Only syntax is shared. Hashing and dependency discovery resolve the
+        candidates separately so global rebinding and module reloads stay visible.
+        """
+        if self._reference_analysis is None:
+            self._reference_analysis = _analyze_reference_bindings(self.tree, self.reference_nodes)
+        return self._reference_analysis
 
 
 class _SharedFunctionSource:
@@ -6949,12 +7313,19 @@ class Adjoint:
 
     # helper to evaluate expressions of the form
     # obj1.obj2.obj3.attr in the function's global scope
-    def resolve_path(adj, path):
+    def resolve_path(adj, path, *, reference_scan=False):
         if len(path) == 0:
             return None
 
-        # if root is overshadowed by local symbols, bail out
-        if path[0] in adj.symbols:
+        # During reference scans, resolve_static_expression has already rejected
+        # locally bound name occurrences. Parameters still shadow globals for
+        # the whole function. Other callers retain the live symbol behavior.
+        if not reference_scan:
+            root_is_shadowed = path[0] in adj.symbols
+        else:
+            root_is_shadowed = path[0] in adj.arg_types
+
+        if root_is_shadowed:
             return None
 
         # look up in closure/global variables
@@ -7352,7 +7723,12 @@ class Adjoint:
 
     # Evaluates a static expression that does not depend on runtime values
     # if eval_types is True, try resolving the path using evaluated type information as well
-    def resolve_static_expression(adj, root_node, eval_types=True):
+    def resolve_static_expression(
+        adj,
+        root_node,
+        eval_types=True,
+        local_nodes: Container[ast.Name] | None = None,
+    ):
         attributes = []
 
         node = root_node
@@ -7393,13 +7769,16 @@ class Adjoint:
         path = [*reversed(attributes)]
         if isinstance(node, ast.Name):
             path.insert(0, node.id)
+            if local_nodes is not None and node in local_nodes:
+                return None, path
+
             # resolve_path traverses a dotted name chain starting from a root
             # name — only valid when the root expression is actually a name.
             # A non-Name root (e.g. boxes[i].quat.w where boxes[i] is a
             # Subscript) has no static root to look up; calling resolve_path
             # with the bare attribute suffix would match warp module names
             # (e.g. 'quat' → warp.quat) and return the wrong object.
-            captured_obj = adj.resolve_path(path)
+            captured_obj = adj.resolve_path(path, reference_scan=local_nodes is not None)
             if captured_obj is not None:
                 return captured_obj, path
 
@@ -7445,18 +7824,16 @@ class Adjoint:
         return adj._syntax
 
     def get_references(adj) -> tuple[dict[str, Any], dict[Any, Any], dict[warp._src.context.Function, Any]]:
-        """Traverse ``adj.tree`` for referenced constants, types, and user-defined functions.
+        """Resolve cached candidates for constants, types, and user-defined functions.
 
-        As a side effect, also sets ``adj.kernel_dim`` (the thread-grid dimension inferred from
-        ``wp.tid()``) and ``adj.tid_extent_limit_candidate``. They are folded into this
-        traversal rather than walked separately because ``get_references`` already visits every
-        ``Assign`` and runs for every adjoint during module hashing. The candidate is conservative;
-        code generation records exact reachability before an oversized launch is rejected.
+        Also sets ``adj.kernel_dim`` using assignment arities collected by ``_TreeSyntax``
+        and ``wp.tid()`` calls resolved during this scan. ``adj.tid_extent_limit_candidate``
+        is conservative; code generation records exact reachability before an oversized
+        launch is rejected.
         """
 
-        # ``syntax.reference_nodes`` is breadth-first, not source-ordered. Collect locals
-        # up front to match Python's function-scope semantics and avoid resolving a
-        # local call target as an unrelated global before visiting its assignment.
+        # TID alias inference uses the complete assignment set; reference
+        # resolution below uses the source-order bindings at each candidate.
         syntax = adj.syntax()
         local_variables = syntax.assigned_name_ids
 
@@ -7471,26 +7848,28 @@ class Adjoint:
             tid_aliases = resolve_reference_tid_aliases(adj, local_variables)
         tid_func = warp._src.context.builtin_functions["tid"]
         callable_arg_values = getattr(adj, "callable_arg_values", None) or {}
-        # Shared single traversal (see syntax()); resolved here at hash time.
-        for node in syntax.reference_nodes:
-            if isinstance(node, ast.Name) and node.id not in local_variables:
+
+        # Shared syntax analysis; references are resolved here at hash time.
+        for node, local_nodes in syntax.reference_analysis().iter_candidates(syntax.hash_reference_nodes):
+            if isinstance(node, ast.Name) and node not in local_nodes and node.id not in adj.arg_types:
                 # look up in closure/global variables
                 obj = adj.resolve_external_reference(node.id)
                 if warp._src.types.is_value(obj):
                     constants[node.id] = obj
 
             elif isinstance(node, ast.Attribute):
-                obj, path = adj.resolve_static_expression(node, eval_types=False)
+                obj, path = adj.resolve_static_expression(
+                    node,
+                    eval_types=False,
+                    local_nodes=local_nodes,
+                )
                 if warp._src.types.is_value(obj):
                     constants[".".join(path)] = obj
 
             elif isinstance(node, ast.Call):
-                if isinstance(node.func, ast.Name) and node.func.id in local_variables:
-                    func = callable_arg_values.get(node.func.id)
-                    if func is None and node.func.id in tid_aliases:
-                        func = tid_func
-                else:
-                    func = resolve_reference_call_func(adj, node, callable_arg_values)
+                func = resolve_reference_call_func(adj, node, callable_arg_values, local_nodes)
+                if func is None and isinstance(node.func, ast.Name) and node.func.id in tid_aliases:
+                    func = tid_func
 
                 if func is tid_func:
                     call_dim = assignment_call_dims.get(node)
@@ -7506,7 +7885,9 @@ class Adjoint:
                         # added explicitly to the function reference set. Built-in
                         # targets are hash inputs too, but they are filtered out by
                         # module dependency discovery because they have no module.
-                        for callable_func in iter_call_callable_arg_targets(adj, func, node, callable_arg_values):
+                        for callable_func in iter_call_callable_arg_targets(
+                            adj, func, node, callable_arg_values, local_nodes
+                        ):
                             functions[callable_func] = None
                     elif _builtin_affects_module_hash(func):
                         functions[func] = None
@@ -7522,14 +7903,9 @@ class Adjoint:
                 # unpacking (`f, g = mod.a, mod.b`) is referenced only through the local(s)
                 # afterwards, so it would otherwise be missed here and left out of the module
                 # hash. Register each bound function explicitly to keep the hash sound.
-                rhs_nodes = node.value.elts if isinstance(node.value, ast.Tuple) else [node.value]
-                for rhs_node in rhs_nodes:
-                    rhs_func, path = adj.resolve_static_expression(rhs_node, eval_types=False)
-                    if path and rhs_func is warp:
-                        rhs_func = warp._src.context.builtin_functions.get(path[-1])
-                    if isinstance(rhs_func, warp._src.context.Function) and (
-                        not rhs_func.is_builtin() or _builtin_affects_module_hash(rhs_func)
-                    ):
+                for source in syntax.assignment_sources[node]:
+                    rhs_func = resolve_assignment_function_reference(adj, source, local_nodes)
+                    if rhs_func is not None and (not rhs_func.is_builtin() or _builtin_affects_module_hash(rhs_func)):
                         functions[rhs_func] = None
 
         adj.kernel_dim = max_dim if max_dim > 0 else 1
