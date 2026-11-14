@@ -907,7 +907,6 @@ inline CUDA_CALLABLE void adj_floordiv(T a, T b, T& adj_a, T& adj_b, T adj_ret) 
 { \
     /* MISSINGADJOINT: gradient is zero almost everywhere (subgradient at integer points) */ \
 } \
-inline CUDA_CALLABLE void adj_mod(T a, T b, T& adj_a, T& adj_b, T adj_ret){ adj_a += adj_ret; }\
 inline CUDA_CALLABLE void adj_sign(T x, T adj_x, T& adj_ret) \
 { \
     /* MISSINGADJOINT: gradient is zero almost everywhere (subgradient at x = 0) */ \
@@ -1064,6 +1063,26 @@ inline CUDA_CALLABLE double mod(double a, double b)
 #endif
     return fmod(a, b);
 }
+
+// Quotient trunc(a / b) of mod(a, b) = a - trunc(a / b) * b, recovered from the exact
+// remainder. A rounded a / b can land on the next integer when the true quotient is just
+// below it, which would disagree with the forward result. float16 and bfloat16 use float,
+// like their mod().
+inline CUDA_CALLABLE float mod_quotient(float16 a, float16 b)
+{
+    return ::rintf((float(a) - float(mod(a, b))) / float(b));
+}
+
+#ifndef WP_NO_BFLOAT16
+inline CUDA_CALLABLE float mod_quotient(bfloat16 a, bfloat16 b)
+{
+    return ::rintf((float(a) - float(mod(a, b))) / float(b));
+}
+#endif  // WP_NO_BFLOAT16
+
+inline CUDA_CALLABLE float32 mod_quotient(float32 a, float32 b) { return ::rintf((a - mod(a, b)) / b); }
+
+inline CUDA_CALLABLE double mod_quotient(double a, double b) { return ::rint((a - mod(a, b)) / b); }
 
 inline CUDA_CALLABLE half log(half a)
 {
@@ -1714,6 +1733,12 @@ template <> struct atan2_adjoint_compute_type<float16> {
 };
 
 #define DECLARE_ADJOINTS(T)\
+inline CUDA_CALLABLE void adj_mod(T a, T b, T& adj_a, T& adj_b, T adj_ret)\
+{\
+    /* mod(a, b) = a - trunc(a / b) * b, where trunc(a / b) is piecewise constant */\
+    adj_a += adj_ret;\
+    adj_b -= T(mod_quotient(a, b)) * adj_ret;\
+}\
 inline CUDA_CALLABLE void adj_log(T a, T& adj_a, T adj_ret)\
 {\
     adj_a += (T(1)/a)*adj_ret;\

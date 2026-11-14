@@ -426,9 +426,9 @@ def test_binary_ops(test, device, dtype, register_kernels=False):
             assert_np_equal(tape.gradients[in2].numpy(), expected, tol=tol)
             tape.zero()
 
-            # modulus. unless at discontinuities,
+            # modulus. x1 % x2 == x1 - trunc(x1 / x2) * x2, so unless at discontinuities,
             # d/dx1( x1 % x2 ) == 1
-            # d/dx2( x1 % x2 ) == 0
+            # d/dx2( x1 % x2 ) == -trunc(x1 / x2)
             tape = wp.Tape()
             with tape:
                 wp.launch(kernel, dim=1, inputs=[in1, in2], outputs=[outputs], device=device)
@@ -438,7 +438,8 @@ def test_binary_ops(test, device, dtype, register_kernels=False):
             expected = np.zeros_like(in1.numpy())
             expected[4, i] = 2.0
             assert_np_equal(tape.gradients[in1].numpy(), expected, tol=tol)
-            expected[4, i] = 0.0
+            x1, x2 = np.float64(in1.numpy()[4, i]), np.float64(in2.numpy()[4, i])
+            expected[4, i] = -2.0 * (x1 - np.fmod(x1, x2)) / x2
             assert_np_equal(tape.gradients[in2].numpy(), expected, tol=tol)
             tape.zero()
 
@@ -1125,6 +1126,55 @@ def test_floordiv_negative(test, device, dtype, register_kernels=False):
 
     wp.launch(kernel, dim=1, inputs=[a, b], outputs=[outputs], device=device)
     assert_np_equal(outputs.numpy(), np.floor_divide(a_np, b_np))
+
+
+def test_mod_grad_quotient(test, device, dtype, register_kernels=False):
+    """Use the quotient of the forward ``mod`` in the divisor gradient.
+
+    Each pair is exactly representable in ``dtype`` and has a true quotient just
+    below an integer, which a division rounded to ``dtype`` lands on.
+    """
+
+    def check_mod(
+        a: wp.array[wp.float32],
+        b: wp.array[wp.float32],
+        outputs: wp.array[wp.float32],
+    ):
+        i = wp.tid()
+        outputs[i] = wp.float32(wp.mod(dtype(a[i]), dtype(b[i])))
+
+    kernel = getkernel(check_mod, suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+
+    pairs = {
+        wp.float16: [(3.001953125, 1.0009765625), (7.01171875, 1.001953125)],
+        wp.bfloat16: [(6.6875, 2.234375), (18.625, 1.2421875)],
+        wp.float32: [(8.217273712158203, 1.6434547901153564)],
+    }[dtype]
+    a_np = np.array([p[0] for p in pairs] + [-p[0] for p in pairs], dtype=np.float64)
+    b_np = np.array([p[1] for p in pairs] * 2, dtype=np.float64)
+    r_np = np.fmod(a_np, b_np)
+
+    a = wp.array(a_np, dtype=wp.float32, requires_grad=True, device=device)
+    b = wp.array(b_np, dtype=wp.float32, requires_grad=True, device=device)
+    outputs = wp.zeros(len(a_np), dtype=wp.float32, requires_grad=True, device=device)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(kernel, dim=len(a_np), inputs=[a, b], outputs=[outputs], device=device)
+    tape.backward(grads={outputs: wp.ones_like(outputs)})
+
+    assert_np_equal(outputs.numpy(), r_np)
+    assert_np_equal(a.grad.numpy(), np.ones_like(a_np))
+    assert_np_equal(b.grad.numpy(), -(a_np - r_np) / b_np)
+
+
+for dtype in (wp.float16, wp.bfloat16, wp.float32):
+    add_function_test_register_kernel(
+        TestArithmetic, f"test_mod_grad_quotient_{dtype.__name__}", test_mod_grad_quotient, devices=devices, dtype=dtype
+    )
 
 
 for dtype in np_scalar_types:
