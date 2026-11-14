@@ -1,64 +1,58 @@
 <!-- Bringing in a GitHub pull request? Choose the github-pr template instead. -->
 <!-- Labels: apply every existing project label whose description fits this MR. Do not create new labels. -->
+<!-- If there is a related GitHub issue, end the MR title with [GH-123]. -->
 
-## Description
+## Context
 
-<!-- What does this MR change and why? Be specific:
-     - Summarize the problem or motivation
-     - Describe the approach taken and key design decisions
-     - Note any alternatives considered and why they were rejected
-     Reference GitHub issues with GH-<NUM>. Use "closes GH-<NUM>" if applicable. -->
+<!-- Name the concrete problem this change solves (what broke, was missing, or
+was slow) and why it matters. Link related GitHub issues, NVBugs, or
+downstream work. -->
 
-## Changes
+## What does this change?
 
-<!-- List the key changes, grouped logically. Example:
+<!-- Explain how the change works and call out any non-obvious choices. Do not
+retell the diff. Include a short usage example for a new feature. -->
 
-- **warp/_src/codegen.py**: Refactored kernel compilation to support X
-- **warp/tests/test_codegen.py**: Added tests for new compilation path
-- **docs/**: Updated API reference for new parameter
+## Validation
 
-This section helps reviewers navigate the diff efficiently. -->
+### Bug reproducer
+
+<!-- For a bug fix, include a minimal reproducer and show the failure before
+the fix and success after it. Otherwise write "N/A: not a bug fix". -->
+
+### Related-code audit
+
+<!-- For a bug fix, check for the same problem in other dtypes, devices, and
+backends, and in other functions that share the faulty code. For a feature,
+check related APIs and backends for consistency. List problems you find but
+do not fix here under Deferred work. Write "N/A: <reason>" if there is nothing
+similar to check. -->
+
+- Audit scope:
+- Findings:
+
+### Other validation
+
+<!-- List the checks you ran and the hardware used. For performance work, give
+before/after results and say whether you added ASV coverage or used a focused
+benchmark. Note anything you did not test and why. Do not paste raw logs. -->
+
+## Deferred work
+
+<!-- List work you are intentionally leaving out of this MR, such as review
+suggestions you agreed to defer or problems found by the related-code audit.
+Link the issue for any item that is already tracked. Update this list during
+review whenever you defer something or pick it back up. Write "None" if
+nothing is deferred. -->
 
 ## Checklist
 
-<!-- See the Contributing Guidelines for general guidance:
-     https://nvidia.github.io/warp/latest/project/contribution_guide.html -->
+<!-- Use [x] for completed items. Use [~] for items that do not apply, and end
+the item with "N/A: <reason>". Leave [ ] for incomplete items and explain them
+under Validation. -->
 
-- [ ] New or existing tests cover these changes.
-- [ ] The documentation is up to date with these changes.
-- [ ] I added a changelog fragment if this change affects users.
-
-## Validation summary
-
-<!--
-Explain what was verified and why it is sufficient for review. Write a short
-step-by-step validation narrative, not a command dump. Prefer test names plus
-behavior summaries.
-
-For test-driven changes, include red/green evidence when applicable, e.g.:
-- Verified the new test fails on the target branch without this change.
-- Verified the new test passes on this branch with the fix.
-
-If testing was not run, say so and explain the risk or blocker. Include
-commands only when they help reproduce the validation.
--->
-
-## Bug fix
-
-<!-- If this is a bug fix, provide a minimal code example that reproduces the
-     issue WITHOUT this MR applied. Delete this section if not applicable. -->
-
-```python
-import warp as wp
-# Code that demonstrates the bug
-```
-
-## New feature / enhancement
-
-<!-- If this is a new feature or enhancement, provide a code example showing
-     what this MR enables. Delete this section if not applicable. -->
-
-```python
-import warp as wp
-# Code that demonstrates the new capability
-```
+- [ ] Every change in this MR is part of addressing the problem described under Context.
+- [ ] I verified that new or existing tests cover the behavior changed by this MR, including error paths and edge cases.
+- [ ] I considered how any changes to code generation, native code, or kernel launches could affect runtime, occupancy, and JIT compile time, and measured any likely effects, including on GPU architectures other than the one I developed on.
+- [ ] I updated any affected documentation or design documents.
+- [ ] I added a [changelog fragment](https://github.com/NVIDIA/warp/blob/main/changelog/README.md) if this change affects users, and used a `+` prefix only for changes that do not require a GitHub issue.
