@@ -1899,7 +1899,8 @@ inline CUDA_CALLABLE void adj_ceil(T x, T& adj_x, T adj_ret) \
 }\
 inline CUDA_CALLABLE void adj_frac(T x, T& adj_x, T adj_ret) \
 { \
-    /* MISSINGADJOINT: gradient is 1 between integers (subgradient at integer points) */ \
+    /* frac(x) = x - trunc(x), and trunc(x) is piecewise constant */ \
+    adj_x += adj_ret; \
 }
 
 DECLARE_ADJOINTS(float16)

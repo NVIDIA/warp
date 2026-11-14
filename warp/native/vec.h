@@ -1595,24 +1595,26 @@ inline CUDA_CALLABLE void adj_mod(
     const vec_t<Length, Type>& adj_ret
 )
 {
-    // MISSINGADJOINT: element-wise: adj_a[i] += adj_ret[i]; adj_b[i] -= floor(a[i] / b[i]) *
-    // adj_ret[i]
+    for (unsigned i = 0; i < Length; ++i) {
+        adj_mod(a[i], b[i], adj_a[i], adj_b[i], adj_ret[i]);
+    }
 }
 
 template <typename Type>
 inline CUDA_CALLABLE void
 adj_mod(vec_t<2, Type> a, vec_t<2, Type> b, vec_t<2, Type>& adj_a, vec_t<2, Type>& adj_b, const vec_t<2, Type>& adj_ret)
 {
-    // MISSINGADJOINT: element-wise: adj_a[i] += adj_ret[i]; adj_b[i] -= floor(a[i] / b[i]) *
-    // adj_ret[i]
+    adj_mod(a.c[0], b.c[0], adj_a.c[0], adj_b.c[0], adj_ret.c[0]);
+    adj_mod(a.c[1], b.c[1], adj_a.c[1], adj_b.c[1], adj_ret.c[1]);
 }
 
 template <typename Type>
 inline CUDA_CALLABLE void
 adj_mod(vec_t<3, Type> a, vec_t<3, Type> b, vec_t<3, Type>& adj_a, vec_t<3, Type>& adj_b, const vec_t<3, Type>& adj_ret)
 {
-    // MISSINGADJOINT: element-wise: adj_a[i] += adj_ret[i]; adj_b[i] -= floor(a[i] / b[i]) *
-    // adj_ret[i]
+    adj_mod(a.c[0], b.c[0], adj_a.c[0], adj_b.c[0], adj_ret.c[0]);
+    adj_mod(a.c[1], b.c[1], adj_a.c[1], adj_b.c[1], adj_ret.c[1]);
+    adj_mod(a.c[2], b.c[2], adj_a.c[2], adj_b.c[2], adj_ret.c[2]);
 }
 
 template <unsigned Length, typename Type>
