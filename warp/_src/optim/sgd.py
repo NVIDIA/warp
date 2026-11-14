@@ -101,6 +101,8 @@ class SGD:
         """
         if self.params is None:
             raise RuntimeError("SGD parameters must be set before calling step(), got None")
+        if len(grad) != len(self.params):
+            raise ValueError(f"SGD gradient count must match parameter count {len(self.params)}, got {len(grad)}")
         for i in range(len(self.params)):
             SGD.step_detail(
                 grad[i],
