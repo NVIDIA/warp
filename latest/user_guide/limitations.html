@@ -587,8 +587,8 @@ recompilation of the affected kernels if the modules have already been loaded
 <a class="reference internal" href="../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.float32</span></code></a> (for Python floats) or <a class="reference internal" href="../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.int32</span></code></a> (for Python integers).
 To preserve full 64-bit precision, wrap the constant in an explicit type constructor
 (e.g., <code class="docutils literal notranslate"><span class="pre">wp.float64(wp.PI)</span></code> or <code class="docutils literal notranslate"><span class="pre">wp.int64(large_value)</span></code>).</p></li>
-<li><p>Python <code class="docutils literal notranslate"><span class="pre">IntFlag</span></code> values behave like raw integers in Warp kernels: bitwise negation (<code class="docutils literal notranslate"><span class="pre">~</span></code>)
-produces the integer negation, not a masked combination of flags as in standard Python <code class="docutils literal notranslate"><span class="pre">IntFlag</span></code> behavior.</p></li>
+<li><p>Python <code class="docutils literal notranslate"><span class="pre">IntFlag</span></code> values behave like raw integers in Warp kernels: bitwise inversion (<code class="docutils literal notranslate"><span class="pre">~</span></code>)
+produces the integer bitwise complement, not a masked combination of flags as in standard Python <code class="docutils literal notranslate"><span class="pre">IntFlag</span></code> behavior.</p></li>
 <li><p><a class="reference internal" href="basics.html#callable-parameters"><span class="std std-ref">Function parameters</span></a> in user functions only support direct inline calls with
 user-defined <a class="reference internal" href="../api_reference/_generated/warp.func.html#warp.func" title="warp.func"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.func</span></code></a> functions and simple built-in Warp functions such as <code class="docutils literal notranslate"><span class="pre">wp.sin</span></code>,
 <code class="docutils literal notranslate"><span class="pre">wp.cos</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.sqrt</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.add</span></code>, and <code class="docutils literal notranslate"><span class="pre">wp.min</span></code>.
@@ -627,7 +627,7 @@ able to process one Warp-grid element per CUDA thread.</p>
 <span class="math notranslate nohighlight">\(2^{31}-1\)</span>. As a result, one-dimensional Warp arrays cannot represent larger logical data sets; split them
 across multiple dimensions instead. See <a class="reference internal" href="basics.html#large-launch-indexing"><span class="std std-ref">large-array launch indexing</span></a> for the launch
 and indexing pattern.</p></li>
-<li><p>There are currently no data types that support complex numbers.</p></li>
+<li><p>There is currently no dedicated complex scalar type.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">wp.config.launch_array_access_mode</span> <span class="pre">=</span> <span class="pre">wp.config.LaunchArrayAccessMode.CHECKED</span></code>
 only fully verifies cross-device <a class="reference internal" href="../api_reference/_generated/warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.array</span></code></a> arguments when
 Warp can classify the pointer and prove the relevant access requirements.
@@ -729,9 +729,9 @@ The difference applies both in Warp kernels and when calling <code class="docuti
 </section>
 <section id="variable-scope">
 <h2>Variable Scope<a class="headerlink" href="#variable-scope" title="Link to this heading">#</a></h2>
-<p>When writing Warp kernels, variable scope might behave differently than in standard Python.
+<p>When writing Warp kernels, reading uninitialized variables can behave differently than in standard Python.
 This can sometimes lead to unexpected results.</p>
-<p>In standard Python, variables are only accessible within the block where they are defined.
+<p>In standard Python, variables assigned inside an <code class="docutils literal notranslate"><span class="pre">if</span></code> block belong to the enclosing function’s scope.
 Consider this example:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">foo</span><span class="p">(</span><span class="n">cond</span><span class="p">:</span> <span class="nb">bool</span><span class="p">):</span>
@@ -747,17 +747,17 @@ Consider this example:</p>
 Regardless of the value of <code class="docutils literal notranslate"><span class="pre">cond</span></code>, <code class="docutils literal notranslate"><span class="pre">out</span></code> is defined before being printed.</p>
 <p>However, consider a slightly modified example:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">foo</span><span class="p">(</span><span class="n">cond</span><span class="p">:</span> <span class="nb">bool</span><span class="p">):</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">foo</span><span class="p">(</span><span class="n">cond</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
     <span class="k">if</span> <span class="n">cond</span><span class="p">:</span>
-        <span class="n">out</span> <span class="o">=</span> <span class="mi">123</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="mi">123</span>
 
     <span class="nb">print</span><span class="p">(</span><span class="n">out</span><span class="p">)</span> <span class="c1"># No error even when `cond` is `False`.</span>
 </pre></div>
 </div>
 <p>In standard Python, if <code class="docutils literal notranslate"><span class="pre">cond</span></code> is <code class="docutils literal notranslate"><span class="pre">False</span></code>, the call to <code class="docutils literal notranslate"><span class="pre">print(out)</span></code> would raise an <code class="docutils literal notranslate"><span class="pre">UnboundLocalError</span></code> because
-<code class="docutils literal notranslate"><span class="pre">out</span></code> is only defined inside the <code class="docutils literal notranslate"><span class="pre">if</span></code> block.</p>
+<code class="docutils literal notranslate"><span class="pre">out</span></code> was never assigned a value.</p>
 <p>In Warp, the behavior is different. The call to <code class="docutils literal notranslate"><span class="pre">print(out)</span></code> <em>will not</em> raise an error, even if <code class="docutils literal notranslate"><span class="pre">cond</span></code> is <code class="docutils literal notranslate"><span class="pre">False</span></code>.
-Warp effectively makes <code class="docutils literal notranslate"><span class="pre">out</span></code> accessible outside the <code class="docutils literal notranslate"><span class="pre">if</span></code> block.
+Warp does not check whether <code class="docutils literal notranslate"><span class="pre">out</span></code> was assigned before it is read.
 However, if <code class="docutils literal notranslate"><span class="pre">cond</span></code> is <code class="docutils literal notranslate"><span class="pre">False</span></code>, <code class="docutils literal notranslate"><span class="pre">out</span></code> will be uninitialized, leading to undefined behavior.</p>
 </section>
 <section id="arrays-in-structs">
@@ -776,7 +776,7 @@ However, if <code class="docutils literal notranslate"><span class="pre">cond</s
 <span class="n">a</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="kc">True</span>
 </pre></div>
 </div>
-<p>In this case the array stored in the struct will not have the <cite>requires_grad=True</cite> value propagated to it,
+<p>In this case, <code class="docutils literal notranslate"><span class="pre">s.arr.requires_grad</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code>, but the struct’s copied array descriptor still has no gradient pointer,
 which could lead to gradients not being computed during backward kernel launches.</p>
 <p>Array fields are also treated as descriptors when Warp combines struct values.
 For example, tile reductions and atomics on struct-valued tiles accumulate scalar, vector, matrix,
