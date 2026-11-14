@@ -1674,7 +1674,7 @@ supported by the target data type.</p>
 </section>
 </section>
 <section id="constants">
-<h2>Constants<a class="headerlink" href="#constants" title="Link to this heading">#</a></h2>
+<span id="runtime-constants"></span><h2>Constants<a class="headerlink" href="#constants" title="Link to this heading">#</a></h2>
 <p>A Warp kernel can access Python variables defined outside of the kernel, which are treated as compile-time constants inside of the kernel.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">TYPE_SPHERE</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
 <span class="n">TYPE_CUBE</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
@@ -1694,6 +1694,10 @@ supported by the target data type.</p>
 </pre></div>
 </div>
 <p>Note that using <a class="reference internal" href="../api_reference/_generated/warp.constant.html#warp.constant" title="warp.constant"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.constant()</span></code></a> is no longer required, but it performs some type checking and can serve as a reminder that the variables are meant to be used as Warp constants.</p>
+<p>A <a class="reference internal" href="../api_reference/_generated/warp.constant.html#warp.constant" title="warp.constant"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.constant()</span></code></a> used without an explicit type constructor is treated as
+<a class="reference internal" href="../api_reference/_generated/warp.float32.html#warp.float32" title="warp.float32"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.float32</span></code></a> (for Python floats) or <a class="reference internal" href="../api_reference/_generated/warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.int32</span></code></a> (for Python integers).
+To preserve full 64-bit precision, wrap the constant in an explicit type constructor
+(e.g., <code class="docutils literal notranslate"><span class="pre">wp.float64(wp.PI)</span></code> or <code class="docutils literal notranslate"><span class="pre">wp.int64(large_value)</span></code>).</p>
 <p>The behavior is simple and intuitive when the referenced Python variables never change. For details and more complex scenarios, refer to <a class="reference internal" href="programming_model/code_generation.html#external-references"><span class="std std-ref">External References and Constants</span></a>. The <a class="reference internal" href="programming_model/code_generation.html#code-generation"><span class="std std-ref">Code Generation</span></a> section contains additional information and tips for advanced usage.</p>
 <section id="predefined-constants">
 <h3>Predefined Constants<a class="headerlink" href="#predefined-constants" title="Link to this heading">#</a></h3>

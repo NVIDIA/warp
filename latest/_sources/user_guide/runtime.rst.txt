@@ -1162,6 +1162,8 @@ Users should explicitly cast variables to compatible types using constructors li
     Numeric conversions are only guaranteed to produce correct results when the value being converted is in the range
     supported by the target data type.
 
+.. _runtime-constants:
+
 Constants
 ---------
 
@@ -1186,6 +1188,11 @@ A Warp kernel can access Python variables defined outside of the kernel, which a
             print("capsule")
 
 Note that using :func:`wp.constant() <warp.constant>` is no longer required, but it performs some type checking and can serve as a reminder that the variables are meant to be used as Warp constants.
+
+A :func:`wp.constant() <warp.constant>` used without an explicit type constructor is treated as
+:class:`wp.float32 <float32>` (for Python floats) or :class:`wp.int32 <int32>` (for Python integers).
+To preserve full 64-bit precision, wrap the constant in an explicit type constructor
+(e.g., ``wp.float64(wp.PI)`` or ``wp.int64(large_value)``).
 
 The behavior is simple and intuitive when the referenced Python variables never change. For details and more complex scenarios, refer to :ref:`External References and Constants<external_references>`. The :ref:`Code Generation<code_generation>` section contains additional information and tips for advanced usage.
 
