@@ -101,6 +101,7 @@ linux-x86_64 cu13 clang test:
     - .save_test_report_artifact
   before_script:
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-x86_64-binaries]
   script:
     - uv run --extra dev --extra torch-cu13 --with "jax[cuda13]" --with rmm-cu13 -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast

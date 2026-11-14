@@ -37,6 +37,8 @@
 # Utilities:
 #   - define-powershell-GetTime
 #       Define a PowerShell function to get timestamps for Windows jobs
+#   - print-cpu-info
+#       Log the CPU model, core count, and host load (Linux, best effort)
 #
 # CONTAINER IMAGES:
 # -----------------
@@ -137,6 +139,15 @@ default:
           "$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/intersphinx-inventories/latest/$name.inv" \
           || { echo "No cached $name inventory; building without a fallback for it."; rm -f "$WARP_INTERSPHINX_FALLBACK_DIR/$name.inv"; }
       done
+
+  # Log the host CPU and how busy the host already is, so a slow job can be
+  # traced to the machine it ran on. Best effort: a missing lscpu or a kernel
+  # without pressure stall information must not fail the job.
+  print-cpu-info:
+    - lscpu | grep -E '^(Model name|CPU\(s\)|Thread\(s\) per core|Core\(s\) per (socket|cluster)|Socket\(s\)):' || true
+    - nproc || true
+    - cat /proc/loadavg || true
+    - cat /proc/pressure/cpu || true
 
   # GitLab collapsible section wrappers for cleaner CI logs
   section-start-install-deps:

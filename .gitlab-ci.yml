@@ -458,6 +458,7 @@ linux-aarch64 cu12 test:
     - .test_common_with_coverage
   before_script:
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-aarch64-binaries]
   script:
     - uv run --extra dev --with "jax[cuda12]>=0.5" --with rmm-cu12 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
@@ -470,6 +471,7 @@ linux-aarch64 cu13 test:
     - .test_common_with_coverage
   before_script:
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-aarch64-binaries]
   script:
     - uv run --extra dev --with "jax[cuda13]>=0.5" --with rmm-cu13 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
@@ -493,6 +495,7 @@ linux-aarch64 cu12 test orin:
   before_script:
     - !reference [.snippets, section-start-install-deps]
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-aarch64-binaries]
     - uv sync --extra dev --no-install-package psutil
     - !reference [.snippets, section-end-install-deps]
@@ -510,6 +513,7 @@ linux-aarch64 cu13 test thor:
   before_script:
     - !reference [.snippets, section-start-install-deps]
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-aarch64-binaries]
     - uv sync --extra dev
     - !reference [.snippets, section-end-install-deps]
@@ -527,6 +531,7 @@ linux-aarch64 cu12 test dgx spark:
   before_script:
     - !reference [.snippets, section-start-install-deps]
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-aarch64-binaries]
     - uv sync --extra dev
     - !reference [.snippets, section-end-install-deps]
@@ -546,6 +551,7 @@ linux-aarch64 cu13 test dgx spark:
   before_script:
     - !reference [.snippets, section-start-install-deps]
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-aarch64-binaries]
     - uv sync --extra dev
     - !reference [.snippets, section-end-install-deps]
@@ -566,6 +572,7 @@ linux-x86_64 cu12 test:
     - .test_common_with_coverage
   before_script:
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-x86_64-binaries]
     # HACK: disable P2P tests due to misbehaving agents
     - export WARP_DISABLE_P2P_TESTS=1
@@ -582,6 +589,7 @@ linux-x86_64 cu13 test:
     - .test_common_with_coverage
   before_script:
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-x86_64-binaries]
     # HACK: disable P2P tests due to misbehaving agents
     - export WARP_DISABLE_P2P_TESTS=1
@@ -596,6 +604,7 @@ linux-x86_64 cu13 blackwell test:
     - .test_common_with_coverage
   before_script:
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-x86_64-binaries]
   script:
     - uv run --extra dev --extra torch-cu13 --with "jax[cuda13]>=0.5" --with rmm-cu13 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
@@ -619,6 +628,7 @@ linux-x86_64 cu13 free-threaded test:
   before_script:
     - !reference [.snippets, section-start-install-deps]
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - apt-get update && apt-get install build-essential --no-install-recommends -y
     - uv python install 3.14t
     - !reference [.snippets, move-linux-x86_64-binaries]
@@ -647,6 +657,7 @@ linux-x86_64 python 3.15 test:
   before_script:
     - !reference [.snippets, section-start-install-deps]
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - apt-get update && apt-get install build-essential --no-install-recommends -y
     - uv python install 3.15
     - !reference [.snippets, move-linux-x86_64-binaries]
@@ -670,6 +681,7 @@ linux-x86_64 cu13 debug-mode test:
     - .basic_test_changes_rules
   before_script:
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-x86_64-binaries]
   script:
     - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml --suite debug --warp-debug --isolate-test-processes --failfast
@@ -689,6 +701,7 @@ linux-x86_64 cu13 llvm-cuda test:
     - .basic_test_changes_rules
   before_script:
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-x86_64-binaries]
   script:
     - uv run --extra dev python -c "import warp as wp; wp.print_diagnostics(); assert wp.get_cuda_devices(), 'No CUDA device visible to Warp'"
@@ -791,6 +804,7 @@ linux-x86_64 cu13 warp-init test:
     - .basic_test_changes_rules
   before_script:
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-x86_64-binaries]
   script:
     # Keep exactly one test per class: class-level isolation must give every test
@@ -931,6 +945,7 @@ linux-x86_64 cu13 python-matrix test:
   before_script:
     - !reference [.snippets, section-start-install-deps]
     - df -h
+    - !reference [.snippets, print-cpu-info]
     # Python 3.14 requires a C compiler for some dependencies
     - if [ "$UV_PYTHON" = "3.14" ]; then apt-get update && apt-get install build-essential --no-install-recommends -y; fi
     - !reference [.snippets, move-linux-x86_64-binaries]
@@ -950,6 +965,7 @@ linux-x86_64 cu13 cpp-examples test:
     - .basic_test_changes_rules
   before_script:
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-x86_64-binaries]
     - ls -lh warp/bin/*.so  # Verify binaries exist
   script:
