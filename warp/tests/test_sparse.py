@@ -250,8 +250,29 @@ def test_bsr_mapped_triplets(test, device):
     empty_matrix = bsr_zeros(2, 2, float, device=device)
     empty_mapping = bsr_set_from_triplets(empty_matrix, empty, empty, prune_numerical_zeros=False, build_mapping=True)
     test.assertEqual(empty_mapping.triplet_count, 0)
-    bsr_set_from_mapped_values(empty_matrix, empty_mapping, wp.empty(shape=(0,), dtype=float, device=device))
-    np.testing.assert_allclose(_bsr_to_dense(empty_matrix), np.zeros((2, 2)))
+    empty_values = wp.empty(shape=(0,), dtype=float, device=device)
+    for reduction in ("gather", "atomic"):
+        bsr_set_from_mapped_values(empty_matrix, empty_mapping, empty_values, reduction=reduction)
+        np.testing.assert_allclose(_bsr_to_dense(empty_matrix), np.zeros((2, 2)))
+
+    # A nonempty triplet list can also produce no stored blocks.
+    discarded_rows = wp.array([-1, -1], dtype=int, device=device)
+    discarded_columns = wp.array([0, 1], dtype=int, device=device)
+    for dtype in (float, wp.int8):
+        discarded_values = wp.array([2, 3], dtype=dtype, device=device)
+        discarded_matrix = bsr_zeros(2, 2, dtype, device=device)
+        # Build topology without values so int8 does not require numerical assembly.
+        discarded_mapping = bsr_set_from_triplets(
+            discarded_matrix,
+            discarded_rows,
+            discarded_columns,
+            prune_numerical_zeros=False,
+            build_mapping=True,
+        )
+        test.assertEqual(discarded_matrix.nnz_sync(), 0)
+        for reduction in ("gather", "atomic"):
+            bsr_set_from_mapped_values(discarded_matrix, discarded_mapping, discarded_values, reduction=reduction)
+            np.testing.assert_allclose(_bsr_to_dense(discarded_matrix), np.zeros((2, 2)))
 
     # Preallocated mapping, built in place and returned
     preallocated = BsrTripletMap(capacity=8, device=device)
