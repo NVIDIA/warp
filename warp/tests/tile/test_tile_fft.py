@@ -3,6 +3,7 @@
 
 import functools
 import unittest
+from typing import Any
 
 import numpy as np
 
@@ -26,6 +27,71 @@ def tile_fft_kernel_vec2f(gx: wp.array2d[wp.vec2f], gy: wp.array2d[wp.vec2f]):
     xy = wp.tile_load(gx, shape=(FFT_SIZE_FP32, FFT_SIZE_FP32))
     wp.tile_fft(xy)
     wp.tile_store(gy, xy)
+
+
+# The module disables the backward pass, and only the kernel enables it.
+@wp.kernel(module="unique", module_options={"enable_backward": False}, enable_backward=True)
+def tile_fft_kernel_vec2f_kernel_backward_enabled(gx: wp.array2d[wp.vec2f], gy: wp.array2d[wp.vec2f]):
+    xy = wp.tile_load(gx, shape=(FFT_SIZE_FP32, FFT_SIZE_FP32))
+    wp.tile_fft(xy)
+    wp.tile_store(gy, xy)
+
+
+# The module disables the backward pass, and only the kernel enables it.
+@wp.kernel(module="unique", module_options={"enable_backward": False}, enable_backward=True)
+def tile_ifft_kernel_vec2f_kernel_backward_enabled(gx: wp.array2d[wp.vec2f], gy: wp.array2d[wp.vec2f]):
+    xy = wp.tile_load(gx, shape=(FFT_SIZE_FP32, FFT_SIZE_FP32))
+    wp.tile_ifft(xy)
+    wp.tile_store(gy, xy)
+
+
+def make_tile_fft_shared_helper_kernels(index):
+    """Return a forward-only kernel and a backward kernel that share a new generic ``tile_fft()`` helper.
+
+    Both kernels go in one module, so the same build of the helper serves both.
+    """
+
+    @wp.func
+    def helper(gx: Any, gy: Any):
+        xy = wp.tile_load(gx, shape=(FFT_SIZE_FP32, FFT_SIZE_FP32))
+        wp.tile_fft(xy)
+        wp.tile_store(gy, xy)
+
+    @wp.kernel(
+        module="test_tile_fft_shared_helper", enable_backward=False, name=f"tile_fft_shared_helper_forward_{index}"
+    )
+    def forward_kernel(gx: wp.array2d[wp.vec2f], gy: wp.array2d[wp.vec2f]):
+        helper(gx, gy)
+
+    @wp.kernel(module="test_tile_fft_shared_helper", name=f"tile_fft_shared_helper_backward_{index}")
+    def backward_kernel(gx: wp.array2d[wp.vec2f], gy: wp.array2d[wp.vec2f]):
+        helper(gx, gy)
+
+    return forward_kernel, backward_kernel
+
+
+# Kernels are built in the order of their content hashes, so several independent pairs catch a result
+# that depends on which kernel of a pair is built first.
+tile_fft_shared_helper_kernels = [make_tile_fft_shared_helper_kernels(i) for i in range(4)]
+
+
+def test_tile_fft_shared_helper_backward(test, device):
+    """Differentiate generic ``tile_fft()`` helpers that forward-only kernels in their module also call."""
+    if not wp._src.context.runtime.core.wp_is_mathdx_enabled():
+        test.skipTest("Warp was not built with MathDx support")
+
+    data_shape = (FFT_SIZE_FP32, 2 * FFT_SIZE_FP32)
+    X = np.random.default_rng(42).random(data_shape, dtype=np.float32)
+    expected = np.fft.fft(X.view(np.complex64), axis=-1)
+
+    for forward_kernel, backward_kernel in tile_fft_shared_helper_kernels:
+        with test.subTest(kernel=backward_kernel.key):
+            X_wp = wp.array(X, dtype=wp.vec2f, device=device)
+            Y_wp = wp.zeros_like(X_wp)
+            wp.launch_tiled(forward_kernel, dim=[1], inputs=[X_wp], outputs=[Y_wp], block_dim=TILE_DIM, device=device)
+            assert_np_equal(Y_wp.numpy().view(np.complex64).reshape(expected.shape), expected, tol=1.0e-4)
+
+            test_tile_fft(test, device, wp.vec2f, backward_kernel, data_shape)
 
 
 @wp.kernel
@@ -213,6 +279,39 @@ add_function_test(
         data_shape=(FFT_SIZE_FP32, 2 * FFT_SIZE_FP32),
     ),
     devices=test_devices,
+    check_output=False,
+)
+add_function_test(
+    TestTileFFT,
+    "test_tile_fft_2d_vec2f_kernel_backward_enabled",
+    functools.partial(
+        test_tile_fft,
+        wp_dtype=wp.vec2f,
+        kernel=tile_fft_kernel_vec2f_kernel_backward_enabled,
+        data_shape=(FFT_SIZE_FP32, 2 * FFT_SIZE_FP32),
+    ),
+    devices=test_devices,
+    check_output=False,
+)
+add_function_test(
+    TestTileFFT,
+    "test_tile_ifft_2d_vec2f_kernel_backward_enabled",
+    functools.partial(
+        test_tile_ifft,
+        wp_dtype=wp.vec2f,
+        kernel=tile_ifft_kernel_vec2f_kernel_backward_enabled,
+        data_shape=(FFT_SIZE_FP32, 2 * FFT_SIZE_FP32),
+    ),
+    devices=test_devices,
+    check_output=False,
+)
+# CUDA only: the CPU path has no adjoint LTOs, and a CPU build first would leave the helper marked as
+# reached by a backward kernel, hiding a failure in any rule that reads the mark
+add_function_test(
+    TestTileFFT,
+    "test_tile_fft_shared_helper_backward",
+    test_tile_fft_shared_helper_backward,
+    devices=get_selected_cuda_test_devices(),
     check_output=False,
 )
 add_function_test(

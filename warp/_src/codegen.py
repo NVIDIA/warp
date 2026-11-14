@@ -2057,6 +2057,39 @@ def _store_shared_source(code, entry):
     _shared_function_sources[key] = (weakref.ref(code, _remove), entry)
 
 
+class AdjointUnsupportedError(TypeError):
+    """Raised by an ``lto_dispatch_func`` that cannot build adjoint LTOs for the call it was given.
+
+    The error only reaches the user if the adjoint of the calling code is emitted, see
+    :meth:`Adjoint.lto_dispatch`.
+    """
+
+
+class LtoDispatchOptions(Mapping):
+    """Options for an ``lto_dispatch_func`` that note whether it was told to skip adjoint LTOs.
+
+    Not every dispatch has adjoint LTOs to build. Reading ``enable_backward``, or iterating
+    over the options, counts as asking.
+    """
+
+    def __init__(self, options: dict[str, Any]):
+        self._options = options
+        self.skipped_backward = False
+        """Whether the dispatch asked for ``enable_backward`` and the answer was ``False``."""
+
+    def __getitem__(self, key: str) -> Any:
+        if key == "enable_backward" and not self._options[key]:
+            self.skipped_backward = True
+        return self._options[key]
+
+    def __iter__(self) -> Iterator[str]:
+        self.skipped_backward = not self._options["enable_backward"]
+        return iter(self._options)
+
+    def __len__(self) -> int:
+        return len(self._options)
+
+
 class Adjoint:
     # Source code transformer, this class takes a Python function and
     # generates forward and backward SSA forms of the function instructions
@@ -2466,16 +2499,9 @@ class Adjoint:
 
         except Exception as original_exc:
             try:
-                lineno = adj.lineno + adj.fun_lineno
-                line = adj.source_lines[adj.lineno]
-                msg = f'Error while parsing function "{adj.fun_name}" at {adj.filename}:{lineno}:\n{line}\n'
-
-                # Combine the new message with the original exception's arguments
-                new_args = (";".join([msg] + [str(a) for a in original_exc.args]),)
-
                 # Enhance the original exception with parser context before re-raising.
                 # 'from None' is used to suppress Python's chained exceptions for a cleaner error output.
-                raise type(original_exc)(*new_args).with_traceback(original_exc.__traceback__) from None
+                raise adj.with_location(original_exc).with_traceback(original_exc.__traceback__) from None
             finally:
                 adj.builder = None
 
@@ -3040,6 +3066,59 @@ class Adjoint:
 
         return func, bound_args, bound_arg_nodes
 
+    def emits_adjoint(adj) -> bool:
+        """Return whether the adjoint of this function is generated.
+
+        A custom gradient replaces the generated adjoint of its function, and a function that
+        calls ``wp.grad()`` has none. Whether a kernel with the backward pass enabled or
+        ``wp.grad()`` reaches the function is only final once
+        :class:`~warp._src.context.ModuleBuilder` has built the whole module.
+
+        This does not describe a kernel, whose adjoint follows its ``enable_backward`` option.
+        """
+        if adj.skip_reverse_codegen or adj.custom_reverse_mode:
+            return False
+        return (adj.used_by_backward_kernel or adj.force_adjoint_codegen) and not adj.uses_grad_call
+
+    def with_location(adj, error: Exception) -> Exception:
+        """Return a copy of ``error`` whose message starts with the line of this code being built."""
+        lineno = adj.lineno + adj.fun_lineno
+        line = adj.source_lines[adj.lineno]
+        msg = f'Error while parsing function "{adj.fun_name}" at {adj.filename}:{lineno}:\n{line}\n'
+        return type(error)(";".join([msg] + [str(a) for a in error.args]))
+
+    def lto_dispatch_options(adj) -> LtoDispatchOptions:
+        """Return the options for a builtin's ``lto_dispatch_func`` called while building this code.
+
+        These are the builder options with ``enable_backward`` replaced by whether this code's
+        adjoint can be emitted, which decides whether the dispatch builds adjoint LTOs. The module
+        option alone misses a kernel's own ``enable_backward``.
+        """
+        # builds without a module builder only infer types and metadata, and their code is not compiled
+        enable_backward = adj.builder is not None and adj.builder.lto_enable_backward(adj)
+        return LtoDispatchOptions(adj.builder_options | {"enable_backward": enable_backward})
+
+    def lto_dispatch(adj, func, return_type, output_list, bound_args):
+        """Return the result of a builtin's ``lto_dispatch_func`` for a call in this code.
+
+        A dispatch that cannot build the adjoint LTOs it is asked for raises
+        :class:`AdjointUnsupportedError`. That only matters if the adjoint of this code is emitted,
+        so the builder gets the error and the dispatch runs again without adjoint LTOs.
+        """
+        options = adj.lto_dispatch_options()
+        args = (func.input_types, return_type, output_list, bound_args)
+        try:
+            dispatched = func.lto_dispatch_func(*args, options=options, builder=adj.builder)
+        except AdjointUnsupportedError as refusal:
+            adj.builder.adjoint_unsupported(adj, TypeError(*refusal.args))
+            options = LtoDispatchOptions(adj.builder_options | {"enable_backward": False})
+            dispatched = func.lto_dispatch_func(*args, options=options, builder=adj.builder)
+
+        # only a dispatch that asked can have left out adjoint LTOs
+        if adj.builder is not None and options.skipped_backward:
+            adj.builder.adjoints_without_adjoint_ltos.add(adj)
+        return dispatched
+
     def add_call(
         adj,
         func,
@@ -3174,8 +3253,8 @@ class Adjoint:
         extra_shared_memory = 0
         func_arg_names = tuple(bound_args.keys())
         if func.lto_dispatch_func is not None:
-            func_args, template_args, _ltoirs, extra_shared_memory = func.lto_dispatch_func(
-                func.input_types, return_type, output_list, bound_args, options=adj.builder_options, builder=adj.builder
+            func_args, template_args, _ltoirs, extra_shared_memory = adj.lto_dispatch(
+                func, return_type, output_list, bound_args
             )
         elif func.dispatch_func is not None:
             func_args, template_args = func.dispatch_func(func.input_types, return_type, bound_args)
@@ -8689,9 +8768,7 @@ def codegen_func(
             # - force_adjoint_codegen is True (set by warp.grad() to ensure adjoint exists)
             # Note: Functions using warp.grad() won't have their adjoints called anyway
             # (the reverse call is skipped in add_call), so we can skip generating them.
-            should_generate_adjoint = adj.used_by_backward_kernel or adj.force_adjoint_codegen
-            should_generate_adjoint = should_generate_adjoint and not adj.uses_grad_call
-            if should_generate_adjoint:
+            if adj.emits_adjoint():
                 reverse_body = codegen_func_reverse(adj, func_type="function", device=device)
             else:
                 reverse_body = "\t// reverse mode disabled (no backward-enabled kernel depends on this function)\n"
