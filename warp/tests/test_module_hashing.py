@@ -282,6 +282,32 @@ def test_module_load(test, device):
     test.assertEqual(hash1, hash2)
 
 
+def test_wide_constant_hashing(test, device):
+    """Ensure that captured constants differing only beyond 32 bits get distinct kernels.
+
+    Codegen emits 64-bit integer and double literals for such constants, so a hash that
+    narrows them makes the second kernel reuse the binary compiled for the first.
+    """
+
+    def create_kernel(constant):
+        @wp.kernel(enable_backward=False, module="unique")
+        def k(out: wp.array[wp.float64]):
+            out[0] = wp.float64(constant)
+
+        return k
+
+    for first, second in ((1 << 32, 1 << 33), (100_000_000.0, 100_000_001.0)):
+        with test.subTest(first=first, second=second):
+            kernels = (create_kernel(first), create_kernel(second))
+
+            for kernel, expected in zip(kernels, (first, second), strict=True):
+                out = wp.zeros(1, dtype=wp.float64, device=device)
+                wp.launch(kernel, dim=1, outputs=[out], device=device)
+                test.assertEqual(out.numpy()[0], expected)
+
+            test.assertNotEqual(kernels[0].module.hash_module(), kernels[1].module.hash_module())
+
+
 class TestOptionResolution(unittest.TestCase):
     """Tests for centralized option resolution."""
 
@@ -585,6 +611,7 @@ devices = get_test_devices()
 add_function_test(TestModuleHashing, "test_function_overload_hashing", test_function_overload_hashing)
 add_function_test(TestModuleHashing, "test_function_generic_overload_hashing", test_function_generic_overload_hashing)
 add_function_test(TestModuleHashing, "test_module_load", test_module_load, devices=devices)
+add_function_test(TestModuleHashing, "test_wide_constant_hashing", test_wide_constant_hashing, devices=devices)
 
 
 if __name__ == "__main__":

@@ -3446,10 +3446,12 @@ class ModuleHasher:
 
     def get_constant_bytes(self, value) -> bytes:
         if isinstance(value, int):
-            # this also handles builtins.bool
-            return bytes(ctypes.c_int(value))
+            # this also handles builtins.bool; codegen emits 64-bit literals for ints
+            # outside the int32 range, so hash the exact value rather than its low 32 bits
+            return str(int(value)).encode()
         elif isinstance(value, float):
-            return bytes(ctypes.c_float(value))
+            # codegen emits Python floats as double-precision literals
+            return bytes(ctypes.c_double(value))
         elif isinstance(value, warp._src.types.float16):
             # float16 is a special case
             return bytes(ctypes.c_float(value.value))
