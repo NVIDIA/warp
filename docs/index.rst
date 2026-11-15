@@ -239,7 +239,6 @@ warp/examples/tile
     user_guide/basics
     user_guide/runtime
     user_guide/differentiability
-    user_guide/forward_mode_jets
     user_guide/programming_model
     user_guide/interoperability
     user_guide/execution_and_performance
