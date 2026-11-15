@@ -296,15 +296,31 @@ def test_wide_constant_hashing(test, device):
 
         return k
 
-    # the last pair encodes to the same bytes unless the constant's type is hashed too
-    for first, second in ((1 << 32, 1 << 33), (100_000_000.0, 100_000_001.0), (1, wp.int8(49))):
+    def create_vector_kernel(constant):
+        @wp.kernel(enable_backward=False, module="unique")
+        def k(out: wp.array[wp.float64]):
+            out[0] = wp.float64(constant[0])
+
+        return k
+
+    # the last two pairs encode to the same bytes unless the constant's type is hashed too;
+    # both vector classes come from one factory, so they also share a qualname
+    pairs = (
+        (1 << 32, 1 << 33),
+        (100_000_000.0, 100_000_001.0),
+        (1, wp.int8(49)),
+        (wp.types.vector(2, wp.float32)(1.0, 0.0), wp.types.vector(2, wp.int32)(1065353216, 0)),
+    )
+    for first, second in pairs:
         with test.subTest(first=first, second=second):
-            kernels = (create_kernel(first), create_kernel(second))
+            factory = create_vector_kernel if wp.types.type_is_vector(type(first)) else create_kernel
+            kernels = (factory(first), factory(second))
 
             for kernel, constant in zip(kernels, (first, second), strict=True):
                 out = wp.zeros(1, dtype=wp.float64, device=device)
                 wp.launch(kernel, dim=1, outputs=[out], device=device)
-                test.assertEqual(out.numpy()[0], getattr(constant, "value", constant))
+                expected = constant[0] if factory is create_vector_kernel else getattr(constant, "value", constant)
+                test.assertEqual(out.numpy()[0], expected)
 
             test.assertNotEqual(kernels[0].module.hash_module(), kernels[1].module.hash_module())
 

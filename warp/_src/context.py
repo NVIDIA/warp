@@ -3448,8 +3448,15 @@ class ModuleHasher:
         # prefix the type and length so that constants of different types can't encode to the
         # same bytes, e.g. Python 1 and wp.int8(49) both encode to b"1"
         value_type = type(value)
+        type_key = f"{value_type.__module__}.{value_type.__qualname__}"
+        # vector, matrix, quaternion, and struct classes made by Warp's factories share a qualname,
+        # e.g. wp.types.vector(2, wp.float32) and wp.types.vector(2, wp.int32), so add their type code or struct hash
+        if hasattr(value_type, "_wp_scalar_type_"):
+            type_key += f"[{warp._src.types.get_type_code(value_type)}]"
+        elif warp._src.types.is_struct(value):
+            type_key += f"[{value._cls.hash.hex()}]"
         value_bytes = self.get_constant_value_bytes(value)
-        return f"{value_type.__module__}.{value_type.__qualname__}:{len(value_bytes)}:".encode() + value_bytes
+        return f"{type_key}:{len(value_bytes)}:".encode() + value_bytes
 
     def get_constant_value_bytes(self, value) -> bytes:
         if isinstance(value, int):
