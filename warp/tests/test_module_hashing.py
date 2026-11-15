@@ -303,23 +303,42 @@ def test_wide_constant_hashing(test, device):
 
         return k
 
-    # the last two pairs encode to the same bytes unless the constant's type is hashed too;
-    # both vector classes come from one factory, so they also share a qualname
+    def create_matrix_kernel(constant):
+        @wp.kernel(enable_backward=False, module="unique")
+        def k(out: wp.array[wp.float64]):
+            out[0] = wp.float64(constant[1, 0])
+
+        return k
+
+    # the last three pairs encode to the same bytes unless the constant's type is hashed too;
+    # each vector or matrix pair comes from one factory, so its classes also share a qualname,
+    # and the type codes of the (2, 22) and (22, 2) matrices are both "m222f4"
     pairs = (
         (1 << 32, 1 << 33),
         (100_000_000.0, 100_000_001.0),
         (1, wp.int8(49)),
         (wp.types.vector(2, wp.float32)(1.0, 0.0), wp.types.vector(2, wp.int32)(1065353216, 0)),
+        (wp.types.matrix((2, 22), wp.float32)(*range(44)), wp.types.matrix((22, 2), wp.float32)(*range(44))),
     )
     for first, second in pairs:
         with test.subTest(first=first, second=second):
-            factory = create_vector_kernel if wp.types.type_is_vector(type(first)) else create_kernel
+            if wp.types.type_is_matrix(type(first)):
+                factory = create_matrix_kernel
+            elif wp.types.type_is_vector(type(first)):
+                factory = create_vector_kernel
+            else:
+                factory = create_kernel
             kernels = (factory(first), factory(second))
 
             for kernel, constant in zip(kernels, (first, second), strict=True):
                 out = wp.zeros(1, dtype=wp.float64, device=device)
                 wp.launch(kernel, dim=1, outputs=[out], device=device)
-                expected = constant[0] if factory is create_vector_kernel else getattr(constant, "value", constant)
+                if factory is create_matrix_kernel:
+                    expected = constant[1, 0]
+                elif factory is create_vector_kernel:
+                    expected = constant[0]
+                else:
+                    expected = getattr(constant, "value", constant)
                 test.assertEqual(out.numpy()[0], expected)
 
             test.assertNotEqual(kernels[0].module.hash_module(), kernels[1].module.hash_module())

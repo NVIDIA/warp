@@ -3450,9 +3450,11 @@ class ModuleHasher:
         value_type = type(value)
         type_key = f"{value_type.__module__}.{value_type.__qualname__}"
         # vector, matrix, quaternion, and struct classes made by Warp's factories share a qualname,
-        # e.g. wp.types.vector(2, wp.float32) and wp.types.vector(2, wp.int32), so add their type code or struct hash
+        # e.g. wp.types.vector(2, wp.float32) and wp.types.vector(2, wp.int32), so add their scalar type and
+        # shape or struct hash; the shape is separated because type codes join dimensions, e.g. (2, 22) and (22, 2)
         if hasattr(value_type, "_wp_scalar_type_"):
-            type_key += f"[{warp._src.types.get_type_code(value_type)}]"
+            scalar_code = warp._src.types.get_type_code(value_type._wp_scalar_type_)
+            type_key += f"[{scalar_code}{tuple(value_type._shape_)}]"
         elif warp._src.types.is_struct(value):
             type_key += f"[{value._cls.hash.hex()}]"
         value_bytes = self.get_constant_value_bytes(value)
