@@ -96,10 +96,6 @@ Before running examples, install the optional example dependencies using:
 pip install warp-lang[examples]
 ```
 
-On Linux aarch64 systems (e.g., NVIDIA DGX Spark), the `[examples]` extra automatically installs
-[`usd-exchange`](https://pypi.org/project/usd-exchange/) instead of `usd-core` as a drop-in replacement,
-since `usd-core` wheels are not available for that platform.
-
 Examples can be run from the command-line as follows:
 
 ```text
