@@ -69,6 +69,10 @@ def log_grad_kernel(x: wp.array[Any], out: wp.array[Any]):
     out[i] = wp.log(x[i])
 
 
+for _dtype in (wp.float16, wp.float32, wp.float64):
+    wp.overload(log_grad_kernel, [wp.array[_dtype], wp.array[_dtype]])
+
+
 def test_log_grad_with_subnormal_input(test, device):
     for dtype, tiny in ((wp.float16, 2.0**-16), (wp.float32, 2.0**-128), (wp.float64, 2.0**-1024)):
         with test.subTest(dtype=dtype):
