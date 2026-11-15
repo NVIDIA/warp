@@ -3445,6 +3445,13 @@ class ModuleHasher:
         return ch.digest()
 
     def get_constant_bytes(self, value) -> bytes:
+        # prefix the type and length so that constants of different types can't encode to the
+        # same bytes, e.g. Python 1 and wp.int8(49) both encode to b"1"
+        value_type = type(value)
+        value_bytes = self.get_constant_value_bytes(value)
+        return f"{value_type.__module__}.{value_type.__qualname__}:{len(value_bytes)}:".encode() + value_bytes
+
+    def get_constant_value_bytes(self, value) -> bytes:
         if isinstance(value, int):
             # this also handles builtins.bool; codegen emits 64-bit literals for ints
             # outside the int32 range, so hash the exact value rather than its low 32 bits

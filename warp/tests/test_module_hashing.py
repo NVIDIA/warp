@@ -296,14 +296,15 @@ def test_wide_constant_hashing(test, device):
 
         return k
 
-    for first, second in ((1 << 32, 1 << 33), (100_000_000.0, 100_000_001.0)):
+    # the last pair encodes to the same bytes unless the constant's type is hashed too
+    for first, second in ((1 << 32, 1 << 33), (100_000_000.0, 100_000_001.0), (1, wp.int8(49))):
         with test.subTest(first=first, second=second):
             kernels = (create_kernel(first), create_kernel(second))
 
-            for kernel, expected in zip(kernels, (first, second), strict=True):
+            for kernel, constant in zip(kernels, (first, second), strict=True):
                 out = wp.zeros(1, dtype=wp.float64, device=device)
                 wp.launch(kernel, dim=1, outputs=[out], device=device)
-                test.assertEqual(out.numpy()[0], expected)
+                test.assertEqual(out.numpy()[0], getattr(constant, "value", constant))
 
             test.assertNotEqual(kernels[0].module.hash_module(), kernels[1].module.hash_module())
 
