@@ -36,6 +36,7 @@ from warp._src.module_registry import register_module_source as _register_module
 # fmt: off
 _register_module_source("warp.autograd", "warp._src.autograd")
 _register_module_source("warp.geometry", "warp._src.geometry.delaunay")
+_register_module_source("warp.geometry.intersect", "warp._src.geometry.intersect")
 _register_module_source("warp.geometry.marching_cubes", "warp._src.geometry.marching_cubes")
 _register_module_source("warp.geometry.sparse_marching_cubes", "warp._src.geometry.sparse_marching_cubes")
 _register_module_source("warp.geometry.surface_nets", "warp._src.geometry.surface_nets")
