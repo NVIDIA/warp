@@ -694,14 +694,14 @@ CUDA 13.x requires Turing (<code class="docutils literal notranslate"><span clas
 <p id="openusd-dependencies"><strong>OpenUSD dependencies</strong></p>
 <p>Some Warp examples and USD rendering features import the OpenUSD <code class="docutils literal notranslate"><span class="pre">pxr</span></code> modules. If those modules
 are missing, Python may report <code class="docutils literal notranslate"><span class="pre">ModuleNotFoundError:</span> <span class="pre">No</span> <span class="pre">module</span> <span class="pre">named</span> <span class="pre">'pxr'</span></code>. The error reports the
-import name; the PyPI distributions that provide these modules are <code class="docutils literal notranslate"><span class="pre">usd-core</span></code> and <code class="docutils literal notranslate"><span class="pre">usd-exchange</span></code>.</p>
-<p>The <code class="docutils literal notranslate"><span class="pre">warp-lang[examples]</span></code> extra uses platform markers to install <code class="docutils literal notranslate"><span class="pre">usd-core</span></code> where supported and
-<code class="docutils literal notranslate"><span class="pre">usd-exchange</span></code> on supported platforms without a compatible <code class="docutils literal notranslate"><span class="pre">usd-core</span></code> wheel.</p>
-<p><code class="docutils literal notranslate"><span class="pre">usd-exchange</span></code> includes its own OpenUSD runtime and <code class="docutils literal notranslate"><span class="pre">pxr</span></code> modules. Do not install it alongside
-<code class="docutils literal notranslate"><span class="pre">usd-core</span></code>. Both packages install files to the same locations, which can cause import or runtime
-failures.</p>
-<p><code class="docutils literal notranslate"><span class="pre">usd-exchange</span></code> has its own release version, separate from the version of the OpenUSD runtime it
-includes. After installation, call <code class="docutils literal notranslate"><span class="pre">pxr.Usd.GetVersion()</span></code> to query the OpenUSD version.</p>
+import name; the PyPI distribution that provides these modules is <code class="docutils literal notranslate"><span class="pre">usd-core</span></code>.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">warp-lang[examples]</span></code> extra installs <code class="docutils literal notranslate"><span class="pre">usd-core</span></code> on every platform
+that has a compatible <code class="docutils literal notranslate"><span class="pre">usd-core</span></code> wheel.
+Windows ARM64 has none.</p>
+<p>Earlier Warp releases installed <code class="docutils literal notranslate"><span class="pre">usd-exchange</span></code> instead of <code class="docutils literal notranslate"><span class="pre">usd-core</span></code>
+on Linux aarch64 with Python 3.12 and earlier.
+Because pip does not remove it on upgrade,
+run <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">uninstall</span> <span class="pre">usd-exchange</span></code> before upgrading such an environment with pip.</p>
 <p>Some examples need extra packages. Check the example’s source file to see what else you need to
 install. For JAX and PyTorch, follow the official
 <a class="reference external" href="https://docs.jax.dev/en/latest/installation.html">JAX installation guide</a> or
