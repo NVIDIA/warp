@@ -789,12 +789,9 @@ template <typename T, typename Shape_, bool BoundsCheck = true, bool Aligned = f
         return byte_index;
     }
 
-    inline CUDA_CALLABLE int64_t index_from_coord(const Coord& coord) const
-    {
-        return byte_offset_from_coord(coord) / sizeof(T);
-    }
-
-    inline CUDA_CALLABLE bool index(const Coord& coord, int64_t& out) const
+    // Keep array strides in bytes: a padded element stride need not be a
+    // multiple of sizeof(T).
+    inline CUDA_CALLABLE bool byte_offset(const Coord& coord, int64_t& out) const
     {
         if constexpr (BoundsCheck) {
             // Byte total can exceed 2 GiB; accumulate in 64-bit.
@@ -812,54 +809,53 @@ template <typename T, typename Shape_, bool BoundsCheck = true, bool Aligned = f
                     byte_index += int64_t(data.strides[i]) * c;
             }
 
-            // array strides are in bytes so we convert to elements
-            out = byte_index / sizeof(T);
+            out = byte_index;
             return true;
         } else {
-            out = index_from_coord(coord);
+            out = byte_offset_from_coord(coord);
             return true;
         }
     }
 
     inline CUDA_CALLABLE T load(const Coord& coord) const
     {
-        int64_t i;
-        if (index(coord, i))
-            return data.data[i];
+        int64_t offset;
+        if (byte_offset(coord, offset))
+            return *data_at_byte_offset(data, offset);
         else
             return T {};
     }
 
     inline CUDA_CALLABLE T load_grad(const Coord& coord) const
     {
-        int64_t i;
-        if (index(coord, i))
-            return data.grad[i];
+        int64_t offset;
+        if (byte_offset(coord, offset))
+            return *grad_at_byte_offset(data, offset);
         else
             return T {};
     }
 
     inline CUDA_CALLABLE void store(const Coord& coord, const T& x) const
     {
-        int64_t i;
-        if (index(coord, i))
-            data.data[i] = x;
+        int64_t offset;
+        if (byte_offset(coord, offset))
+            *data_at_byte_offset(data, offset) = x;
     }
 
     inline CUDA_CALLABLE T atomic_add(const Coord& coord, const T& value) const
     {
-        int64_t i;
-        if (index(coord, i))
-            return tile_atomic_add_value(&data.data[i], value);
+        int64_t offset;
+        if (byte_offset(coord, offset))
+            return tile_atomic_add_value(data_at_byte_offset(data, offset), value);
         else
             return T {};
     }
 
     inline CUDA_CALLABLE T atomic_add_grad(const Coord& coord, const T& grad) const
     {
-        int64_t i;
-        if (index(coord, i))
-            return tile_adj_atomic_add_value(&data.grad[i], grad);
+        int64_t offset;
+        if (byte_offset(coord, offset))
+            return tile_adj_atomic_add_value(grad_at_byte_offset(data, offset), grad);
         else
             return T {};
     }
@@ -1124,9 +1120,9 @@ template <typename T, typename L> struct tile_register_t {
     template <typename Global> inline CUDA_CALLABLE void grad_zero_global(const Global& global)
     {
         apply([&](int reg, auto c) {
-            int64_t i;
-            if (global.index(c, i))
-                global.data.grad[i] = T();
+            int64_t offset;
+            if (global.byte_offset(c, offset))
+                *grad_at_byte_offset(global.data, offset) = T();
         });
     }
 
@@ -1934,9 +1930,9 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
         WP_PRAGMA_UNROLL
         for (int i = WP_TILE_THREAD_IDX; i < Layout::Size; i += WP_TILE_BLOCK_DIM) {
             auto c = Layout::coord_from_linear(i);
-            int64_t idx;
-            if (global.index(c, idx))
-                global.data.grad[idx] = T();
+            int64_t offset;
+            if (global.byte_offset(c, offset))
+                *grad_at_byte_offset(global.data, offset) = T();
         }
 
         WP_TILE_SYNC();
@@ -2961,7 +2957,7 @@ inline CUDA_CALLABLE auto tile_load(array_t<T>& src, Offset... offset)
 // used for indexed loads and stores
 template <typename T, typename IndicesTile, typename Coord>
 inline CUDA_CALLABLE bool
-compute_index(array_t<T>& src, IndicesTile& indices, int axis, Coord offset, Coord c, int64_t& out)
+compute_indexed_byte_offset(array_t<T>& src, IndicesTile& indices, int axis, Coord offset, Coord c, int64_t& out)
 {
     // Byte total can exceed 2 GiB; accumulate in 64-bit.
     int64_t byte_index = 0;
@@ -2990,8 +2986,7 @@ compute_index(array_t<T>& src, IndicesTile& indices, int axis, Coord offset, Coo
         }
     }
 
-    // array strides are in bytes so we convert to elements
-    out = byte_index / sizeof(T);
+    out = byte_index;
     return true;
 }
 
@@ -3003,9 +2998,9 @@ inline CUDA_CALLABLE auto tile_load_indexed(array_t<T>& src, IndicesTile& indice
     auto offset_coord = tile_coord(offset...);
 
     out.apply([&](int reg, auto c) {
-        int64_t i;
-        if (compute_index(src, indices, axis, offset_coord, c, i))
-            out.data[reg] = src.data[i];
+        int64_t offset;
+        if (compute_indexed_byte_offset(src, indices, axis, offset_coord, c, offset))
+            out.data[reg] = *data_at_byte_offset(src, offset);
         else
             out.data[reg] = T {};
     });
@@ -3050,9 +3045,9 @@ inline CUDA_CALLABLE void tile_store_indexed(
     auto src_reg = src.copy_to_register();
 
     src_reg.apply([&](int reg, auto c) {
-        int64_t i;
-        if (compute_index(dest, indices, axis, offset, c, i))
-            dest.data[i] = src_reg.data[reg];
+        int64_t byte_offset;
+        if (compute_indexed_byte_offset(dest, indices, axis, offset, c, byte_offset))
+            *data_at_byte_offset(dest, byte_offset) = src_reg.data[reg];
     });
 }
 
@@ -3144,9 +3139,9 @@ inline CUDA_CALLABLE auto tile_atomic_add_indexed(
     auto ret_reg = tile_register_like<Tile>();
 
     src_reg.apply([&](int reg, auto c) {
-        int64_t i;
-        if (compute_index(dest, indices, axis, offset, c, i))
-            ret_reg.data[reg] = tile_atomic_add_value(&dest.data[i], src_reg.data[reg]);
+        int64_t byte_offset;
+        if (compute_indexed_byte_offset(dest, indices, axis, offset, c, byte_offset))
+            ret_reg.data[reg] = tile_atomic_add_value(data_at_byte_offset(dest, byte_offset), src_reg.data[reg]);
         else
             ret_reg.data[reg] = T {};
     });
@@ -3283,9 +3278,9 @@ inline CUDA_CALLABLE void adj_tile_load_indexed(
     auto adj_ret_reg = adj_ret.grad_to_register();
 
     adj_ret_reg.apply([&](int reg, auto c) {
-        int64_t i;
-        if (compute_index(src, indices, axis, offset, c, i))
-            tile_adj_atomic_add_value(&src.grad[i], adj_ret_reg.data[reg]);
+        int64_t byte_offset;
+        if (compute_indexed_byte_offset(src, indices, axis, offset, c, byte_offset))
+            tile_adj_atomic_add_value(grad_at_byte_offset(src, byte_offset), adj_ret_reg.data[reg]);
     });
 }
 
@@ -3456,10 +3451,10 @@ inline CUDA_CALLABLE void adj_tile_store_indexed(
     auto adj_t_reg = tile_register_like<Tile>();
 
     adj_t_reg.apply([&](int reg, auto c) {
-        int64_t i;
-        if (compute_index(dest, indices, axis, offset, c, i)) {
-            adj_t_reg.data[reg] += dest.grad[i];
-            dest.grad[i] = T();
+        int64_t byte_offset;
+        if (compute_indexed_byte_offset(dest, indices, axis, offset, c, byte_offset)) {
+            adj_t_reg.data[reg] += *grad_at_byte_offset(dest, byte_offset);
+            *grad_at_byte_offset(dest, byte_offset) = T();
         }
     });
 
@@ -3642,9 +3637,9 @@ inline CUDA_CALLABLE void adj_tile_atomic_add_indexed(
     auto adj_t_reg = tile_register_like<Tile>();
 
     adj_t_reg.apply([&](int reg, auto c) {
-        int64_t i;
-        if (compute_index(dest, indices, axis, offset, c, i))
-            adj_t_reg.data[reg] += dest.grad[i];
+        int64_t byte_offset;
+        if (compute_indexed_byte_offset(dest, indices, axis, offset, c, byte_offset))
+            adj_t_reg.data[reg] += *grad_at_byte_offset(dest, byte_offset);
     });
 
     // write adjoints back
