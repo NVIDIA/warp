@@ -64,6 +64,29 @@ def test_scalar_math(test, device):
 
 
 @wp.kernel
+def log_grad_kernel(x: wp.array[Any], out: wp.array[Any]):
+    i = wp.tid()
+    out[i] = wp.log(x[i])
+
+
+def test_log_grad_with_subnormal_input(test, device):
+    for dtype, tiny in ((wp.float16, 2.0**-16), (wp.float32, 2.0**-128), (wp.float64, 2.0**-1024)):
+        with test.subTest(dtype=dtype):
+            x = wp.array([tiny, tiny, 0.5, 0.25], dtype=dtype, device=device, requires_grad=True)
+            out = wp.empty_like(x, requires_grad=True)
+            with wp.Tape() as tape:
+                wp.launch(log_grad_kernel, dim=len(x), inputs=[x], outputs=[out], device=device)
+            seeds = wp.array([tiny, 0.0, 2.0, -0.5], dtype=dtype, device=device)
+            x.grad.fill_(0.25)
+            tape.backward(grads={out: seeds})
+
+            actual = x.grad.numpy()
+            # The exact seeded contributions are [1, 0, 4, -2]. The reciprocal
+            # of either subnormal input overflows in the storage dtype.
+            np.testing.assert_array_equal(actual, np.array([1.25, 0.25, 4.25, -1.75], dtype=actual.dtype))
+
+
+@wp.kernel
 def atan2_grad_kernel(x: wp.array[Any], y: wp.array[Any], out: wp.array[Any]):
     i = wp.tid()
     out[i] = wp.atan2(y[i], x[i])
@@ -661,6 +684,7 @@ class TestMath(unittest.TestCase):
 
 add_function_test(TestMath, "test_scalar_math", test_scalar_math, devices=devices)
 add_function_test(TestMath, "test_atan2_grad", test_atan2_grad, devices=devices)
+add_function_test(TestMath, "test_log_grad_with_subnormal_input", test_log_grad_with_subnormal_input, devices=devices)
 add_function_test(TestMath, "test_erf_math", test_erf_math, devices=devices)
 add_function_test(TestMath, "test_erfcinv_extreme_args", test_erfcinv_extreme_args, devices=devices)
 add_function_test(TestMath, "test_erfcinv_erfc_roundtrip", test_erfcinv_erfc_roundtrip, devices=devices)
