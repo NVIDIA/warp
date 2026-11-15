@@ -1,0 +1,94 @@
+﻿warp.geometry.intersect\_seg\_tri
+=================================
+
+.. currentmodule:: warp.geometry
+
+.. function:: intersect_seg_tri(p0: vec3f, p1: vec3f, v0: vec3f, v1: vec3f, v2: vec3f, tol: float64 = float64(1e-06)) -> bool
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/intersect.py#L444-L494
+
+   Test whether a closed segment intersects a triangle.
+   
+   Overloads accept ``vec3`` or ``vec3d`` points, each with a float32 or float64
+   ``tol``. All points must have the same type and be in the same coordinate
+   space. Endpoint, edge, vertex, and coplanar contact count as
+   intersections. A zero-length segment is treated as a point. A zero-area
+   triangle returns ``False``.
+   
+   With ``n = cross(v1 - v0, v2 - v0)``, endpoint plane values
+   ``d = dot(n, p) - dot(n, v0)`` satisfying ``abs(d) < tol`` are snapped to
+   zero. Such endpoints are treated as lying in the triangle's plane; the
+   dominant-axis projection determines their position within that plane.
+   Barycentric and projected edge tests receive no additional tolerance.
+   
+   The normal is unnormalized: the corresponding world-space distance
+   threshold is ``tol / length(n)``, so ``tol`` depends on triangle area.
+   Under uniform coordinate scaling by ``s``, scale ``tol`` by ``abs(s)**3``
+   to preserve the classification, apart from roundoff. See
+   :func:`warp.geometry.intersect_tri_tri` for the default tolerance's float64
+   representation and the rounding of explicit float32 tolerances.
+   
+   This floating-point predicate is not exact and may be inaccurate near
+   degeneracy. Use ``vec3d`` for greater precision. The result is not
+   differentiable.
+   
+   :param p0: First endpoint of the segment.
+   :param p1: Second endpoint of the segment.
+   :param v0: First vertex of the triangle.
+   :param v1: Second vertex of the triangle.
+   :param v2: Third vertex of the triangle.
+   :param tol: Nonnegative finite plane-equation tolerance, in float32 or float64.
+               Zero disables snapping but retains exact floating-point coplanarity
+               and boundary checks. Increasing it does not dilate triangle edges.
+   
+   :returns: ``True`` if the segment intersects the triangle, or ``False`` otherwise.
+   
+   .. rubric:: Example
+   
+   Given segment and triangle vertices inside a Warp kernel or function::
+   
+       hit = wp.geometry.intersect_seg_tri(p0, p1, v0, v1, v2, tol=0.0)
+       hit = wp.geometry.intersect_seg_tri(p0, p1, v0, v1, v2, tol=user_tolerance)
+   
+   ``user_tolerance`` may be a runtime float32 or float64 scalar.
+   
+
+.. function:: intersect_seg_tri(p0: vec3d, p1: vec3d, v0: vec3d, v1: vec3d, v2: vec3d, tol: float64 = float64(1e-06)) -> bool
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/intersect.py#L497-L506
+
+   Double-precision overload of :func:`warp.geometry.intersect_seg_tri`.
+   
+   Return ``True`` for an intersection, including boundary and coplanar contact.
+   The tolerance and limitations are the same as for the single-precision overload.
+
+.. function:: intersect_seg_tri(p0: vec3f, p1: vec3f, v0: vec3f, v1: vec3f, v2: vec3f, tol: float32) -> bool
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/intersect.py#L509-L512
+
+   Overload accepting a float32 plane tolerance; see :func:`warp.geometry.intersect_seg_tri`.
+
+.. function:: intersect_seg_tri(p0: vec3d, p1: vec3d, v0: vec3d, v1: vec3d, v2: vec3d, tol: float32) -> bool
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/intersect.py#L515-L518
+
+   Overload accepting a float32 plane tolerance; see :func:`warp.geometry.intersect_seg_tri`.

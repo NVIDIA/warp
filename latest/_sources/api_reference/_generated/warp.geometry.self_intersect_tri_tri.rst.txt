@@ -1,0 +1,88 @@
+﻿warp.geometry.self\_intersect\_tri\_tri
+=======================================
+
+.. currentmodule:: warp.geometry
+
+.. function:: self_intersect_tri_tri(a0: vec3f, a1: vec3f, a2: vec3f, b0: vec3f, b1: vec3f, b2: vec3f, vertex_ids_a: vec3i, vertex_ids_b: vec3i, tol: float64 = float64(1e-06)) -> bool
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/intersect.py#L809-L865
+
+   Test whether two triangles intersect beyond their topologically shared boundary.
+   
+   Adjacency is established only by equal vertex IDs, not by equal coordinates.
+   With no shared IDs, this delegates to :func:`warp.geometry.intersect_tri_tri`
+   with the same tolerance. One shared vertex permits contact only at that
+   vertex; two shared vertices permit contact along their common edge. Three
+   shared IDs report a duplicate face as an intersection, regardless of winding.
+   Callers must exclude a face paired with itself before invoking this function.
+   Contact elsewhere, including contact at geometrically coincident vertices
+   with different IDs, counts as intersection. No intersection-length threshold
+   is applied.
+   
+   Inputs must be finite, nondegenerate triangles in the same coordinate space,
+   all using the same type. Overloads accept ``vec3`` or ``vec3d`` coordinates,
+   each with a float32 or float64 ``tol``. Each face must have three
+   distinct IDs from a common vertex-ID namespace, and coordinates associated
+   with a shared ID must agree exactly. These preconditions are not checked.
+   
+   ``tol`` has the same default and unnormalized plane-value units as
+   :func:`warp.geometry.intersect_tri_tri`. For a shared edge, the triangles
+   are treated as coplanar if either opposite vertex's plane value relative to
+   the other triangle is within ``tol``. Positive tolerance can consequently classify a slight fold as coplanar
+   overlap. Zero disables snapping, but floating-point roundoff can still affect
+   results; this is not an exact predicate. Use ``vec3d`` for greater precision.
+   
+   This convention applies to static intersection only, not positive-clearance
+   or continuous collision queries. The boolean result is not differentiable.
+   
+   :param a0: First vertex of triangle A.
+   :param a1: Second vertex of triangle A.
+   :param a2: Third vertex of triangle A.
+   :param b0: First vertex of triangle B.
+   :param b1: Second vertex of triangle B.
+   :param b2: Third vertex of triangle B.
+   :param vertex_ids_a: Vertex IDs of A, in the order ``a0``, ``a1``, ``a2``.
+   :param vertex_ids_b: Vertex IDs of B, in the order ``b0``, ``b1``, ``b2``.
+   :param tol: Nonnegative finite plane-equation tolerance, in float32 or float64.
+               This does not dilate edges or suppress short intersections.
+   
+   :returns: ``True`` for intersection beyond the shared vertex or edge, or for a
+             duplicate face; ``False`` for separation or ordinary adjacency.
+   
+
+.. function:: self_intersect_tri_tri(a0: vec3d, a1: vec3d, a2: vec3d, b0: vec3d, b1: vec3d, b2: vec3d, vertex_ids_a: vec3i, vertex_ids_b: vec3i, tol: float64 = float64(1e-06)) -> bool
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/intersect.py#L868-L881
+
+   Double-precision overload of :func:`warp.geometry.self_intersect_tri_tri`.
+
+.. function:: self_intersect_tri_tri(a0: vec3f, a1: vec3f, a2: vec3f, b0: vec3f, b1: vec3f, b2: vec3f, vertex_ids_a: vec3i, vertex_ids_b: vec3i, tol: float32) -> bool
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/intersect.py#L884-L897
+
+   Float32 tolerance overload; see :func:`warp.geometry.self_intersect_tri_tri`.
+
+.. function:: self_intersect_tri_tri(a0: vec3d, a1: vec3d, a2: vec3d, b0: vec3d, b1: vec3d, b2: vec3d, vertex_ids_a: vec3i, vertex_ids_b: vec3i, tol: float32) -> bool
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/intersect.py#L900-L913
+
+   Float32 tolerance overload; see :func:`warp.geometry.self_intersect_tri_tri`.

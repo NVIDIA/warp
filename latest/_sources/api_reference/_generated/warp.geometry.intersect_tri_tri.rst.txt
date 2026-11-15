@@ -1,0 +1,96 @@
+﻿warp.geometry.intersect\_tri\_tri
+=================================
+
+.. currentmodule:: warp.geometry
+
+.. function:: intersect_tri_tri(v0: vec3f, v1: vec3f, v2: vec3f, u0: vec3f, u1: vec3f, u2: vec3f, tol: float64 = float64(1e-06)) -> bool
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/intersect.py#L259-L316
+
+   Test whether two triangles intersect.
+   
+   Overloads accept ``vec3`` or ``vec3d`` vertices, each with a float32 or
+   float64 ``tol``. All vertices must have the same type and be in the same
+   coordinate space. Coplanar overlap counts as an intersection.
+   
+   The test follows Möller's division-free method. A vertex's plane value is ``d = dot(n, p) - dot(n, a)``, where
+   ``n = cross(b - a, c - a)`` is the other triangle's unnormalized normal.
+   Values satisfying ``abs(d) < tol`` are snapped to zero. Consequently,
+   ``tol`` is not a world-space distance: for a nondegenerate triangle its
+   corresponding distance threshold is ``tol / length(n)``. Uniformly scaling
+   all coordinates by ``s`` scales plane values by ``abs(s)**3``; scale ``tol``
+   by the same factor to preserve the classification, apart from roundoff.
+   Interval and coplanar edge tests receive no additional tolerance.
+   
+   The omitted tolerance matches :func:`warp.intersect_tri_tri` and is stored
+   in float64 even for ``vec3`` inputs. Explicit float32 tolerances use their
+   rounded float32 values. To spell the exact default explicitly, use
+   ``tol=wp.float64(1e-6)``; an ordinary kernel literal ``tol=1e-6`` is float32
+   and differs immediately at the cutoff.
+   
+   This is a floating-point predicate, not an exact orientation test. Results
+   near degeneracy may be inaccurate; use ``vec3d`` for greater precision.
+   Zero-area triangles are not supported. The discrete result is not
+   differentiable.
+   
+   :param v0: First vertex of the first triangle.
+   :param v1: Second vertex of the first triangle.
+   :param v2: Third vertex of the first triangle.
+   :param u0: First vertex of the second triangle.
+   :param u1: Second vertex of the second triangle.
+   :param u2: Third vertex of the second triangle.
+   :param tol: Nonnegative finite plane-equation tolerance, in float32 or float64.
+               Zero disables snapping but retains exact floating-point coplanarity
+               and boundary checks. Increasing it does not dilate triangle edges.
+   
+   :returns: ``True`` if the triangles intersect, or ``False`` otherwise.
+   
+   .. rubric:: Example
+   
+   Given triangle vertices inside a Warp kernel or function::
+   
+       hit = wp.geometry.intersect_tri_tri(v0, v1, v2, u0, u1, u2)
+       hit = wp.geometry.intersect_tri_tri(v0, v1, v2, u0, u1, u2, tol=1.0e-5)
+       hit = wp.geometry.intersect_tri_tri(v0, v1, v2, u0, u1, u2, tol=0.0)
+   
+
+.. function:: intersect_tri_tri(v0: vec3d, v1: vec3d, v2: vec3d, u0: vec3d, u1: vec3d, u2: vec3d, tol: float64 = float64(1e-06)) -> bool
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/intersect.py#L319-L335
+
+   Double-precision overload of :func:`warp.geometry.intersect_tri_tri`.
+   
+   Use the same coordinate space for all six vertices. Return ``True`` for an
+   intersection, including coplanar overlap, or ``False`` otherwise. The plane
+   tolerance and limitations are the same as for the single-precision overload.
+
+.. function:: intersect_tri_tri(v0: vec3f, v1: vec3f, v2: vec3f, u0: vec3f, u1: vec3f, u2: vec3f, tol: float32) -> bool
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/intersect.py#L338-L343
+
+   Overload accepting a float32 plane tolerance; see :func:`warp.geometry.intersect_tri_tri`.
+
+.. function:: intersect_tri_tri(v0: vec3d, v1: vec3d, v2: vec3d, u0: vec3d, u1: vec3d, u2: vec3d, tol: float32) -> bool
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/intersect.py#L346-L351
+
+   Overload accepting a float32 plane tolerance; see :func:`warp.geometry.intersect_tri_tri`.

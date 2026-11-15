@@ -1,0 +1,43 @@
+﻿warp.geometry.intersect\_seg\_aabb
+==================================
+
+.. currentmodule:: warp.geometry
+
+.. function:: intersect_seg_aabb(p0: vec3f, p1: vec3f, lower: vec3f, upper: vec3f) -> bool
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/intersect.py#L591-L614
+
+   Test whether a closed segment intersects an axis-aligned bounding box.
+   
+   Endpoint, face, edge, and corner contact count as intersections. A zero-length
+   segment is a point; zero-width boxes and axis-parallel segments are supported.
+   
+   Coordinates must be finite, use the same type (``vec3`` or ``vec3d``), and
+   share a coordinate space. ``lower`` must be componentwise less than or equal
+   to ``upper``. No tolerance is added; expand the bounds for a spatial margin.
+   This is a floating-point predicate, not an exact predicate: roundoff and
+   intermediate overflow or underflow can affect results. Use ``vec3d`` for
+   greater precision. The boolean result is not differentiable.
+   
+   :param p0: First endpoint of the segment.
+   :param p1: Second endpoint of the segment.
+   :param lower: Lower corner of the box.
+   :param upper: Upper corner of the box.
+   
+   :returns: ``True`` if the segment intersects the box, or ``False`` otherwise.
+   
+
+.. function:: intersect_seg_aabb(p0: vec3d, p1: vec3d, lower: vec3d, upper: vec3d) -> bool
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/intersect.py#L617-L620
+
+   Double-precision overload of :func:`warp.geometry.intersect_seg_aabb`.

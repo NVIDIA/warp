@@ -1,0 +1,40 @@
+﻿warp.geometry.intersect\_aabb\_aabb
+===================================
+
+.. currentmodule:: warp.geometry
+
+.. function:: intersect_aabb_aabb(a_lower: vec3f, a_upper: vec3f, b_lower: vec3f, b_upper: vec3f) -> bool
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/intersect.py#L539-L559
+
+   Test whether two closed axis-aligned bounding boxes overlap.
+   
+   Face, edge, and corner contact count as intersections. Zero-width boxes
+   (planes, lines, or points) are supported. All coordinates must be finite,
+   use the same type (``vec3`` or ``vec3d``), and share a coordinate space.
+   Each lower bound must be componentwise less than or equal to its upper
+   bound. No tolerance is added; expand the bounds to request a spatial margin.
+   The boolean result is not differentiable.
+   
+   :param a_lower: Lower corner of the first box.
+   :param a_upper: Upper corner of the first box.
+   :param b_lower: Lower corner of the second box.
+   :param b_upper: Upper corner of the second box.
+   
+   :returns: ``True`` if the boxes overlap, or ``False`` otherwise.
+   
+
+.. function:: intersect_aabb_aabb(a_lower: vec3d, a_upper: vec3d, b_lower: vec3d, b_upper: vec3d) -> bool
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/geometry/intersect.py#L562-L565
+
+   Double-precision overload of :func:`warp.geometry.intersect_aabb_aabb`.
