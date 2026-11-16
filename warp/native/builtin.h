@@ -1716,7 +1716,8 @@ template <> struct atan2_adjoint_compute_type<float16> {
 #define DECLARE_ADJOINTS(T)\
 inline CUDA_CALLABLE void adj_log(T a, T& adj_a, T adj_ret)\
 {\
-    adj_a += (T(1)/a)*adj_ret;\
+    /* The reciprocal can overflow even when the seeded derivative is finite. */ \
+    adj_a += adj_ret / a;\
     DO_IF_FPCHECK(if (!isfinite(adj_a))\
     {\
         printf("%s:%d - adj_log(%f, %f, %f)\n", __FILE__, __LINE__, float(a), float(adj_a), float(adj_ret));\
