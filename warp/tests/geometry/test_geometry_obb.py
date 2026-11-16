@@ -230,7 +230,9 @@ def test_obb_single_point(test, device):
 def test_obb_refinement_never_worse(test, device):
     """Return a box no looser with refinement than without it, for each shape and objective."""
     # Refinement is a local search that only commits improvements, so the refined box is
-    # never worse than the unrefined one on the same input, for either objective.
+    # never worse than the unrefined one on the same input, for either objective. PCA is off:
+    # its covariance atomics vary between calls on CUDA, and with the icosphere's isotropic
+    # covariance that alone can send the two calls to different local optima.
     rng = np.random.default_rng(83)
     for name, p_np in _shapes(rng).items():
         points = wp.array(p_np, dtype=wp.vec3, device=device)
@@ -241,6 +243,7 @@ def test_obb_refinement_never_worse(test, device):
                         points,
                         measure_type=measure_type,
                         num_samples=128,
+                        include_pca=False,
                         num_refine_iterations=0,
                         num_spin_samples=0,
                     )
@@ -250,11 +253,12 @@ def test_obb_refinement_never_worse(test, device):
                         points,
                         measure_type=measure_type,
                         num_samples=128,
+                        include_pca=False,
                         num_refine_iterations=6,
                         num_spin_samples=0,
                     )
                 )
-                test.assertLessEqual(refined, base * (1.0 + 1e-5))
+                test.assertLessEqual(refined, base)
 
 
 def test_obb_refinement_reaches_higher_sample_quality(test, device):
@@ -302,15 +306,21 @@ def test_obb_spin_rounds_settle_face_flush_box(test, device):
 
 def test_obb_spin_rounds_never_worse(test, device):
     """Return a box no looser with spin rounds than without them."""
+    # PCA is off for the same reason as in test_obb_refinement_never_worse.
     rng = np.random.default_rng(131)
     for name, p_np in _shapes(rng).items():
         points = wp.array(p_np, dtype=wp.vec3, device=device)
         for measure_type in geo.OBBMeasureType:
             with test.subTest(shape=name, measure=measure_type.name):
-                kwargs = {"measure_type": measure_type, "num_samples": 128, "num_refine_iterations": 2}
+                kwargs = {
+                    "measure_type": measure_type,
+                    "num_samples": 128,
+                    "include_pca": False,
+                    "num_refine_iterations": 2,
+                }
                 _, _, without_spin = _host(geo.oriented_bounding_box(points, num_spin_samples=0, **kwargs))
                 _, _, with_spin = _host(geo.oriented_bounding_box(points, num_spin_samples=32, **kwargs))
-                test.assertLessEqual(with_spin, without_spin * (1.0 + 1e-5))
+                test.assertLessEqual(with_spin, without_spin)
 
 
 def test_obb_overflowing_measure_returns_valid_box(test, device):
