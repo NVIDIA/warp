@@ -1796,6 +1796,75 @@ def small_norm_hessian_kernel(v: wp.vec3d, hessians_h: wp.array[wp.mat33d], hess
     hessians_d[1] = wp.normalize(vd)[1].hess
 
 
+SMALL_ARGUMENT_OPS = ("div", "pow", "log", "log2", "log10", "cbrt")
+J1SCALAR32 = wp.JetSpace(1)
+
+
+@wp.kernel(enable_backward=False)
+def float16_derivative_kernel(
+    ops: wp.array[int],
+    xs: wp.array[wp.float16],
+    gs: wp.array[wp.float16],
+    cs: wp.array[wp.float16],
+    out: wp.array2d[float],
+):
+    # Columns: first-order value, gradient, and result gradient; second-order value, gradient,
+    # result gradient, and result Hessian. c is the numerator for div and the exponent for pow.
+    i = wp.tid()
+    op = ops[i]
+    g = gs[i]
+    c = cs[i]
+    a = J1H.with_grad(xs[i], wp.vector(g, length=1))
+    b = J2H.variable(xs[i] / g, 0) * g
+    r1 = a
+    r2 = b
+    if op == 0:
+        r1 = c / a
+        r2 = c / b
+    elif op == 1:
+        r1 = wp.pow(a, c)
+        r2 = wp.pow(b, c)
+    elif op == 2:
+        r1 = wp.log(a)
+        r2 = wp.log(b)
+    elif op == 3:
+        r1 = wp.log2(a)
+        r2 = wp.log2(b)
+    elif op == 4:
+        r1 = wp.log10(a)
+        r2 = wp.log10(b)
+    else:
+        r1 = wp.cbrt(a)
+        r2 = wp.cbrt(b)
+    out[i, 0] = float(a.value)
+    out[i, 1] = float(a.grad[0])
+    out[i, 2] = float(r1.grad[0])
+    out[i, 3] = float(b.value)
+    out[i, 4] = float(b.grad[0])
+    out[i, 5] = float(r2.grad[0])
+    out[i, 6] = float(r2.hess[0, 0])
+
+
+@wp.kernel(enable_backward=False)
+def float32_small_denominator_kernel(out: wp.array[float]):
+    # 1 / a at a = 1e-20 with gradient 1e-30: the derivative -1 / a**2 overflows float32,
+    # but its product with the gradient, -1e10, fits.
+    a = J1SCALAR32.with_grad(1.0e-20, wp.vector(1.0e-30, length=1))
+    out[0] = (1.0 / a).grad[0] * 1.0e-10
+
+
+def _derivatives(op, c, v):
+    """Return the first and second derivatives of op at v, in float64."""
+    if op == "div":
+        return -c / v**2, 2.0 * c / v**3
+    if op == "pow":
+        return c * v ** (c - 1.0), c * (c - 1.0) * v ** (c - 2.0)
+    if op == "cbrt":
+        return np.cbrt(v) / (3.0 * v), -2.0 * np.cbrt(v) / (9.0 * v**2)
+    k = {"log": 1.0, "log2": 1.0 / np.log(2.0), "log10": 1.0 / np.log(10.0)}[op]
+    return k / v, -k / v**2
+
+
 @wp.kernel
 def svd2_polar_kernel(scale: float, direction: wp.mat22, out: wp.array[float]):
     # The polar factor U V^T of a scaled identity, differentiated along a rotation generator.
@@ -1883,6 +1952,63 @@ class TestJetNativeConventions(unittest.TestCase):
             # float16 carries about three significant digits, and its input is rounded too.
             for name, g, w in zip(("length", "normalize"), got, want, strict=True):
                 np.testing.assert_allclose(g, w, rtol=2.0e-2, atol=2.0e-2 * np.abs(w).max(), err_msg=name)
+
+    def test_float16_derivatives_of_small_and_large_arguments(self):
+        """Keep float16 jet derivatives finite wherever they are representable, at both orders."""
+        # (op, x, g, c): x is the argument, g its gradient, and c the numerator or exponent.
+        cases = [
+            ("div", 5.0e-4, 1.0e-3, 1.0),
+            ("div", 1.0e-4, 10.0, 1.0e-5),
+            ("pow", 5.0e-4, 1.0e-3, -1.0),
+            ("pow", 200.0, 1.0, 2.0),
+            ("pow", 1.0e-4, 1.0, 2.0),
+            ("pow", 1.0e-4, 1.0, 1.0),
+            ("log", 1.0e-4, 1.0e-2, 0.0),
+            ("log2", 1.0e-4, 1.0e-2, 0.0),
+            ("log10", 1.0e-3, 0.3, 0.0),
+            ("cbrt", 1.0e-4, 1.0e-2, 0.0),
+            ("cbrt", 1.0e-4, 0.1, 0.0),
+            # Arguments of magnitude at least 1, where nothing overflows.
+            ("div", 2.0, 1.0, 1.0),
+            ("pow", 2.0, 1.0, -1.0),
+            ("log", 2.0, 1.0, 0.0),
+        ]
+        ops = np.array([SMALL_ARGUMENT_OPS.index(case[0]) for case in cases], dtype=np.int32)
+        xs, gs, cs = (np.array([case[k] for case in cases], dtype=np.float16) for k in (1, 2, 3))
+        for device in DEVICES:
+            out = wp.zeros((len(cases), 7), dtype=float, device=device)
+            wp.launch(
+                float16_derivative_kernel,
+                dim=len(cases),
+                inputs=[
+                    wp.array(ops, device=device),
+                    wp.array(xs, device=device),
+                    wp.array(gs, device=device),
+                    wp.array(cs, device=device),
+                ],
+                outputs=[out],
+                device=device,
+            )
+            got = out.numpy().astype(np.float64)
+            for k, (op, x, _g, _c) in enumerate(cases):
+                c = float(cs[k])
+                # Compare against the derivatives at each jet's own rounded value and gradient.
+                d1, _ = _derivatives(op, c, got[k, 0])
+                d1b, d2b = _derivatives(op, c, got[k, 3])
+                expected = np.array([d1 * got[k, 1], d1b * got[k, 4], d2b * got[k, 4] ** 2])
+                actual = got[k, [2, 5, 6]]
+                # Check every derivative that float16 can represent, with its rounding.
+                representable = np.abs(expected) < np.finfo(np.float16).max
+                np.testing.assert_allclose(
+                    actual[representable], expected[representable], rtol=1.0e-2, atol=1.0e-6, err_msg=f"{op} at {x}"
+                )
+
+    def test_float32_division_by_small_denominators(self):
+        """Scale the gradient by the quotient before dividing, as native division does, so tiny denominators keep finite derivatives."""
+        for device in DEVICES:
+            out = wp.zeros(1, dtype=float, device=device)
+            wp.launch(float32_small_denominator_kernel, dim=1, outputs=[out], device=device)
+            self.assertAlmostEqual(float(out.numpy()[0]), -1.0, places=5)
 
     def test_svd2_polar_factor_at_repeated_singular_values(self):
         """Keep the derivative of the svd2 polar factor U V^T at repeated singular values, as native svd2 does."""
