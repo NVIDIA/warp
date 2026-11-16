@@ -497,7 +497,6 @@ add_builtin(
     doc="""Retrieve the fractional part of ``x``.
 
     In other words, it discards the integer part of ``x`` and is equivalent to ``x - trunc(x)``.""",
-    is_differentiable=False,
 )
 
 
@@ -17701,7 +17700,6 @@ add_builtin(
     value_func=sametypes_create_value_func(vector(length=Any, dtype=Scalar)),
     doc="Modulo operation using truncated division.",
     group="Operators",
-    is_differentiable=False,
 )
 
 add_builtin(
