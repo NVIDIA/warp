@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import unittest
+from typing import Any
 
 import numpy as np
 
@@ -521,6 +522,118 @@ def test_normalize(test, device, dtype, register_kernels=False):
         assert_np_equal(tape0.gradients[q].numpy()[0], tape1.gradients[q].numpy()[0], tol=tol)
         tape0.zero()
         tape1.zero()
+
+
+@wp.kernel
+def quat_length_normalize_kernel(q: wp.array[wp.quath], lengths: wp.array[wp.float16], units: wp.array[wp.quath]):
+    i = wp.tid()
+    lengths[i] = wp.length(q[i])
+    units[i] = wp.normalize(q[i])
+
+
+def test_quat_length_normalize_fp16_range(test, device):
+    # Squared components overflow float16 at the first scale and underflow at the others. In the last row,
+    # the length is not a float16 value, so gradients that reuse the rounded length are wrong there.
+    # 1 / length overflows at the two smallest scales, so smaller seeds keep the gradients representable.
+    base = np.array([1.0, 2.0, 2.0, 4.0])
+    ref = np.array([base * 2.0**7, base * 2.0**-12, base * 2.0**-20, np.array([1.0, 1.0, 0.0, 0.0]) * 2.0**-24])
+    seed_scales = [1.0, 1.0, 2.0**-4, 2.0**-10]
+    ref_lengths = np.linalg.norm(ref, axis=1)
+    ref_units = ref / ref_lengths[:, None]
+
+    q = wp.array(ref, dtype=wp.quath, device=device, requires_grad=True)
+    lengths = wp.empty(len(ref), dtype=wp.float16, device=device, requires_grad=True)
+    units = wp.empty(len(ref), dtype=wp.quath, device=device, requires_grad=True)
+    with wp.Tape() as tape:
+        wp.launch(quat_length_normalize_kernel, dim=len(ref), inputs=[q], outputs=[lengths, units], device=device)
+    np.testing.assert_array_equal(lengths.numpy(), ref_lengths.astype(np.float16))
+    np.testing.assert_allclose(units.numpy(), ref_units.astype(np.float16), rtol=1e-3, atol=0)
+
+    tape.backward(grads={lengths: wp.ones(len(ref), dtype=wp.float16, device=device)})
+    np.testing.assert_allclose(q.grad.numpy(), ref_units.astype(np.float16), rtol=1e-3, atol=0)
+    tape.zero()
+
+    seed = np.array([1.0, -0.5, 2.0, 0.25])
+    g = np.array([seed * k for k in seed_scales])
+    tape.backward(grads={units: wp.array(g, dtype=wp.quath, device=device)})
+    ref_grad = (g - ref_units * np.sum(ref_units * g, axis=1, keepdims=True)) / ref_lengths[:, None]
+    np.testing.assert_allclose(q.grad.numpy(), ref_grad.astype(np.float16), rtol=2e-3, atol=0)
+    tape.zero()
+
+    # A seed parallel to the input has a zero gradient. Allow float32 rounding scaled by |seed| / length.
+    g = ref / 2.0 ** np.floor(np.log2(np.max(np.abs(ref), axis=1, keepdims=True)))
+    tape.backward(grads={units: wp.array(g, dtype=wp.quath, device=device)})
+    scale = ref_lengths / np.linalg.norm(g, axis=1)
+    np.testing.assert_allclose(q.grad.numpy() * scale[:, None], 0.0, atol=2.0**-20)
+
+
+@wp.kernel
+def quat_to_axis_angle_kernel(q: wp.array[Any], axes: wp.array[Any], angles: wp.array[Any]):
+    i = wp.tid()
+    axis, angle = wp.quat_to_axis_angle(q[i])
+    axes[i] = axis
+    angles[i] = angle
+
+
+for _quat, _vec, _scalar in ((wp.quath, wp.vec3h, wp.float16), (wp.quatd, wp.vec3d, wp.float64)):
+    wp.overload(quat_to_axis_angle_kernel, [wp.array[_quat], wp.array[_vec], wp.array[_scalar]])
+
+
+def test_quat_to_axis_angle_fp16_range(test, device):
+    # The adjoint forms 1 / length**3, which overflows float16 for small rotations, and squares components,
+    # which overflows for large ones. Compare float16 results with float64 on the same inputs.
+    s = 2.0**-14
+    rows = [[s, 2 * s, -s, 1.0], [0.25, 0.5, -0.25, 1.0], [0.25, 0.5, -0.25, -1.0], [300.0, 0.0, 0.0, 1.0]]
+    results = []
+    for quat_type, vec_type, scalar_type in ((wp.quath, wp.vec3h, wp.float16), (wp.quatd, wp.vec3d, wp.float64)):
+        q = wp.array(rows, dtype=quat_type, device=device, requires_grad=True)
+        axes = wp.empty(len(rows), dtype=vec_type, device=device, requires_grad=True)
+        angles = wp.empty(len(rows), dtype=scalar_type, device=device, requires_grad=True)
+        with wp.Tape() as tape:
+            wp.launch(quat_to_axis_angle_kernel, dim=len(rows), inputs=[q], outputs=[axes, angles], device=device)
+        seed = np.tile([1.0, -0.5, 2.0], (len(rows), 1))
+        tape.backward(
+            grads={
+                axes: wp.array(seed, dtype=vec_type, device=device),
+                angles: wp.ones(len(rows), dtype=scalar_type, device=device),
+            }
+        )
+        results.append((axes.numpy(), angles.numpy(), q.grad.numpy()))
+
+    for half, ref in zip(*results, strict=True):
+        np.testing.assert_allclose(half, ref.astype(np.float16), rtol=2e-3, atol=2.0**-24)
+
+
+@wp.kernel
+def quat_slerp_kernel(q0: wp.array[Any], q1: wp.array[Any], t: wp.array[Any], out: wp.array[Any]):
+    i = wp.tid()
+    out[i] = wp.quat_slerp(q0[i], q1[i], t[i])
+
+
+for _quat, _scalar in ((wp.quath, wp.float16), (wp.quatd, wp.float64)):
+    wp.overload(quat_slerp_kernel, [wp.array[_quat], wp.array[_quat], wp.array[_scalar], wp.array[_quat]])
+
+
+def test_quat_slerp_fp16_range(test, device):
+    # The slerp adjoint forms axis derivatives that scale with 1 / angle, which overflow float16 for small
+    # rotations. Compare float16 gradients with float64 on the same inputs.
+    q0 = [[0.0, 0.0, 0.0, 1.0]] * 3
+    q1 = [[2.0**-20, 0.0, 0.0, 1.0], [2.0**-10, 2.0**-11, 0.0, 1.0], [0.25, 0.5, -0.25, 1.0]]
+    t = [0.5, 0.5, 0.25]
+    results = []
+    for quat_type, scalar_type in ((wp.quath, wp.float16), (wp.quatd, wp.float64)):
+        q0_arr = wp.array(q0, dtype=quat_type, device=device, requires_grad=True)
+        q1_arr = wp.array(q1, dtype=quat_type, device=device, requires_grad=True)
+        t_arr = wp.array(t, dtype=scalar_type, device=device, requires_grad=True)
+        out = wp.empty(len(t), dtype=quat_type, device=device, requires_grad=True)
+        with wp.Tape() as tape:
+            wp.launch(quat_slerp_kernel, dim=len(t), inputs=[q0_arr, q1_arr, t_arr], outputs=[out], device=device)
+        seed = np.tile([1.0, -0.5, 2.0, 0.25], (len(t), 1))
+        tape.backward(grads={out: wp.array(seed, dtype=quat_type, device=device)})
+        results.append((q0_arr.grad.numpy(), q1_arr.grad.numpy(), t_arr.grad.numpy()))
+
+    for half, ref in zip(*results, strict=True):
+        np.testing.assert_allclose(half, ref.astype(np.float16), rtol=2e-3, atol=2.0**-24)
 
 
 def test_addition(test, device, dtype, register_kernels=False):
@@ -2539,6 +2652,11 @@ for dtype in np_float_types:
 
 add_function_test(TestQuat, "test_quat_backward", test_quat_backward, devices=devices)
 add_function_test(TestQuat, "test_quat_len", test_quat_len, devices=devices)
+add_function_test(
+    TestQuat, "test_quat_length_normalize_fp16_range", test_quat_length_normalize_fp16_range, devices=devices
+)
+add_function_test(TestQuat, "test_quat_to_axis_angle_fp16_range", test_quat_to_axis_angle_fp16_range, devices=devices)
+add_function_test(TestQuat, "test_quat_slerp_fp16_range", test_quat_slerp_fp16_range, devices=devices)
 add_function_test(TestQuat, "test_quat_extract", test_quat_extract, devices=devices)
 add_function_test(TestQuat, "test_quat_assign", test_quat_assign, devices=devices)
 add_function_test(TestQuat, "test_quat_array_extract", test_quat_array_extract, devices=devices)

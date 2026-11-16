@@ -216,17 +216,24 @@ template <typename Type> inline CUDA_CALLABLE Type tensordot(const quat_t<Type>&
     return dot(a, b);
 }
 
-template <typename Type> inline CUDA_CALLABLE Type length(const quat_t<Type>& q) { return sqrt(dot(q, q)); }
+template <typename Type> inline CUDA_CALLABLE Type length(const quat_t<Type>& q)
+{
+    using Compute = typename length_compute_type<Type>::type;
+    quat_t<Compute> c(q);
+    return Type(sqrt(dot(c, c)));
+}
 
 template <typename Type> inline CUDA_CALLABLE Type length_sq(const quat_t<Type>& q) { return dot(q, q); }
 
 template <typename Type> inline CUDA_CALLABLE quat_t<Type> normalize(const quat_t<Type>& q)
 {
-    Type l = length(q);
-    if (l > Type(kEps)) {
-        Type inv_l = Type(1) / l;
+    using Compute = typename length_compute_type<Type>::type;
+    quat_t<Compute> c(q);
+    Compute l = length(c);
+    if (l > Compute(kEps)) {
+        Compute inv_l = Compute(1) / l;
 
-        return quat_t<Type>(q.x * inv_l, q.y * inv_l, q.z * inv_l, q.w * inv_l);
+        return quat_t<Type>(Type(c.x * inv_l), Type(c.y * inv_l), Type(c.z * inv_l), Type(c.w * inv_l));
     } else {
         return quat_t<Type>(Type(0), Type(0), Type(0), Type(1));
     }
@@ -932,40 +939,46 @@ inline CUDA_CALLABLE void adj_quat_from_axis_angle(
 
 template <typename Type>
 inline CUDA_CALLABLE void adj_quat_to_axis_angle(
-    const quat_t<Type>& q,
+    const quat_t<Type>& q_in,
     vec_t<3, Type>& axis,
     Type& angle,
     quat_t<Type>& adj_q,
-    const vec_t<3, Type>& adj_axis,
-    const Type& adj_angle
+    const vec_t<3, Type>& adj_axis_in,
+    const Type& adj_angle_in
 )
 {
-    Type l = length(vec_t<3, Type>(q.x, q.y, q.z));
+    // 1 / length**3 overflows float16 for lengths below about 0.025, so form float16 gradients in float32.
+    using Compute = typename length_compute_type<Type>::type;
+    quat_t<Compute> q(q_in);
+    vec_t<3, Compute> adj_axis(adj_axis_in);
+    Compute adj_angle = Compute(adj_angle_in);
 
-    Type ax_qx = Type(0);
-    Type ax_qy = Type(0);
-    Type ax_qz = Type(0);
-    Type ay_qx = Type(0);
-    Type ay_qy = Type(0);
-    Type ay_qz = Type(0);
-    Type az_qx = Type(0);
-    Type az_qy = Type(0);
-    Type az_qz = Type(0);
+    Compute l = length(vec_t<3, Compute>(q.x, q.y, q.z));
 
-    Type t_qx = Type(0);
-    Type t_qy = Type(0);
-    Type t_qz = Type(0);
-    Type t_qw = Type(0);
+    Compute ax_qx = Compute(0);
+    Compute ax_qy = Compute(0);
+    Compute ax_qz = Compute(0);
+    Compute ay_qx = Compute(0);
+    Compute ay_qy = Compute(0);
+    Compute ay_qz = Compute(0);
+    Compute az_qx = Compute(0);
+    Compute az_qy = Compute(0);
+    Compute az_qz = Compute(0);
 
-    Type flip = q.w < Type(0) ? -1.0 : 1.0;
+    Compute t_qx = Compute(0);
+    Compute t_qy = Compute(0);
+    Compute t_qz = Compute(0);
+    Compute t_qw = Compute(0);
 
-    if (l > Type(0)) {
-        Type l_sq = l * l;
-        Type l_inv = Type(1) / l;
-        Type l_inv_sq = l_inv * l_inv;
-        Type l_inv_cu = l_inv_sq * l_inv;
+    Compute flip = q.w < Compute(0) ? -1.0 : 1.0;
 
-        Type C = flip * l_inv_cu;
+    if (l > Compute(0)) {
+        Compute l_sq = l * l;
+        Compute l_inv = Compute(1) / l;
+        Compute l_inv_sq = l_inv * l_inv;
+        Compute l_inv_cu = l_inv_sq * l_inv;
+
+        Compute C = flip * l_inv_cu;
         ax_qx = C * (q.y * q.y + q.z * q.z);
         ax_qy = -C * q.x * q.y;
         ax_qz = -C * q.x * q.z;
@@ -976,24 +989,24 @@ inline CUDA_CALLABLE void adj_quat_to_axis_angle(
         az_qy = -C * q.z * q.y;
         az_qz = C * (q.x * q.x + q.y * q.y);
 
-        Type D = Type(2) * flip / (l_sq + q.w * q.w);
+        Compute D = Compute(2) * flip / (l_sq + q.w * q.w);
         t_qx = D * l_inv * q.x * q.w;
         t_qy = D * l_inv * q.y * q.w;
         t_qz = D * l_inv * q.z * q.w;
         t_qw = -D * l;
     } else {
-        if (abs(q.w) > Type(kEps)) {
-            Type t_qx = Type(2) / (sqrt(Type(3)) * abs(q.w));
-            Type t_qy = Type(2) / (sqrt(Type(3)) * abs(q.w));
-            Type t_qz = Type(2) / (sqrt(Type(3)) * abs(q.w));
+        if (abs(q.w) > Compute(kEps)) {
+            Compute t_qx = Compute(2) / (sqrt(Compute(3)) * abs(q.w));
+            Compute t_qy = Compute(2) / (sqrt(Compute(3)) * abs(q.w));
+            Compute t_qz = Compute(2) / (sqrt(Compute(3)) * abs(q.w));
         }
         // o/w we have a null quat_t which cannot backpropagate
     }
 
-    adj_q.x += ax_qx * adj_axis[0] + ay_qx * adj_axis[1] + az_qx * adj_axis[2] + t_qx * adj_angle;
-    adj_q.y += ax_qy * adj_axis[0] + ay_qy * adj_axis[1] + az_qy * adj_axis[2] + t_qy * adj_angle;
-    adj_q.z += ax_qz * adj_axis[0] + ay_qz * adj_axis[1] + az_qz * adj_axis[2] + t_qz * adj_angle;
-    adj_q.w += t_qw * adj_angle;
+    adj_q.x += Type(ax_qx * adj_axis[0] + ay_qx * adj_axis[1] + az_qx * adj_axis[2] + t_qx * adj_angle);
+    adj_q.y += Type(ax_qy * adj_axis[0] + ay_qy * adj_axis[1] + az_qy * adj_axis[2] + t_qy * adj_angle);
+    adj_q.z += Type(ax_qz * adj_axis[0] + ay_qz * adj_axis[1] + az_qz * adj_axis[2] + t_qz * adj_angle);
+    adj_q.w += Type(t_qw * adj_angle);
 }
 
 template <typename Type>
@@ -1053,10 +1066,14 @@ tensordot(const quat_t<Type>& a, const quat_t<Type>& b, quat_t<Type>& adj_a, qua
 template <typename Type>
 inline CUDA_CALLABLE void adj_length(const quat_t<Type>& a, Type ret, quat_t<Type>& adj_a, const Type adj_ret)
 {
-    if (ret > Type(kEps)) {
-        Type inv_l = Type(1) / ret;
+    using Compute = typename length_compute_type<Type>::type;
+    quat_t<Compute> c(a);
+    Compute l = length_compute_type<Type>::recompute ? length(c) : Compute(ret);
 
-        adj_a += quat_t<Type>(a.x * inv_l, a.y * inv_l, a.z * inv_l, a.w * inv_l) * adj_ret;
+    if (l > Compute(kEps)) {
+        Compute inv_l = Compute(1) / l;
+
+        adj_a += quat_t<Type>(quat_t<Compute>(c.x * inv_l, c.y * inv_l, c.z * inv_l, c.w * inv_l) * Compute(adj_ret));
     }
 }
 
@@ -1069,12 +1086,14 @@ inline CUDA_CALLABLE void adj_length_sq(const quat_t<Type>& a, quat_t<Type>& adj
 template <typename Type>
 inline CUDA_CALLABLE void adj_normalize(const quat_t<Type>& q, quat_t<Type>& adj_q, const quat_t<Type>& adj_ret)
 {
-    Type l = length(q);
+    using Compute = typename length_compute_type<Type>::type;
+    quat_t<Compute> c(q), g(adj_ret);
+    Compute l = length(c);
 
-    if (l > Type(kEps)) {
-        Type l_inv = Type(1) / l;
+    if (l > Compute(kEps)) {
+        Compute l_inv = Compute(1) / l;
 
-        adj_q += adj_ret * l_inv - q * (l_inv * l_inv * l_inv * dot(q, adj_ret));
+        adj_q += quat_t<Type>(g * l_inv - c * (l_inv * l_inv * l_inv * dot(c, g)));
     }
 }
 
@@ -1436,6 +1455,37 @@ inline CUDA_CALLABLE void adj_quat_slerp(
     adj_q1.y += dot(q_s_q1_y, adj_ret);
     adj_q1.z += dot(q_s_q1_z, adj_ret);
     adj_q1.w += dot(q_s_q1_w, adj_ret);
+}
+
+// The axis derivatives above scale with 1 / angle and overflow float16 for small rotations, so form float16 slerp
+// gradients in float32. Like the float16 svd2 overloads, this is a template only so that it compiles when used.
+template <typename Unused = void>
+inline CUDA_CALLABLE void adj_quat_slerp(
+    const quat_t<half>& q0,
+    const quat_t<half>& q1,
+    half t,
+    quat_t<half>& ret,
+    quat_t<half>& adj_q0,
+    quat_t<half>& adj_q1,
+    half& adj_t,
+    const quat_t<half>& adj_ret
+)
+{
+    // Recompute the result in float32 rather than widening its rounded value.
+    quat_t<float> q0_float(q0);
+    quat_t<float> q1_float(q1);
+    float t_float = float(t);
+    quat_t<float> ret_float = quat_slerp(q0_float, q1_float, t_float);
+
+    quat_t<float> adj_q0_float;
+    quat_t<float> adj_q1_float;
+    float adj_t_float = 0.0f;
+    adj_quat_slerp(
+        q0_float, q1_float, t_float, ret_float, adj_q0_float, adj_q1_float, adj_t_float, quat_t<float>(adj_ret)
+    );
+    adj_q0 += quat_t<half>(adj_q0_float);
+    adj_q1 += quat_t<half>(adj_q1_float);
+    adj_t += half(adj_t_float);
 }
 
 template <typename Type>
