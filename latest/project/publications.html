@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 
 
@@ -28,8 +27,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../_static/styles/theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
-<link href="../_static/styles/pydata-sphinx-theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
+  <link href="../_static/styles/theme.css?digest=75c7c72ae941e8b558d8" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=75c7c72ae941e8b558d8" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
@@ -37,10 +36,10 @@
     <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
+  <script defer src="../_static/scripts/fontawesome.js?digest=75c7c72ae941e8b558d8"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67" />
-<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67" />
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=75c7c72ae941e8b558d8" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=75c7c72ae941e8b558d8" />
 
 
 
@@ -51,7 +50,7 @@
     <script src="../_static/copybutton.js?v=fd10adb8"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'project/publications';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
+        DOCUMENTATION_OPTIONS.theme_version = '0.24.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
@@ -69,6 +68,7 @@
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="color-scheme" content="light dark"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="1.20.0.dev0" />
   
@@ -123,7 +123,7 @@
   
     <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
 <div class="bd-header__inner bd-page-width">
-  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+  <button type="button" class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation" aria-expanded="false" aria-controls="pst-primary-sidebar-modal">
     <span class="fa-solid fa-bars"></span>
   </button>
   
@@ -191,7 +191,7 @@
         <div class="navbar-item navbar-persistent--container">
           
 
-<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
  <i class="fa-solid fa-magnifying-glass"></i>
  <span class="search-button__default-text">Search</span>
  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
@@ -202,15 +202,15 @@
         <div class="navbar-item">
 
 <div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
-  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
-    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
-    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
-    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto" title="System Settings"></i>
   </button>
   <ul class="dropdown-menu dropdown-menu-end">
-    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
-    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
-    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg me-1"></i>Dark</button></li>
   </ul>
 </div></div>
       
@@ -247,7 +247,7 @@
   
     <div class="navbar-persistent--mobile">
 
-<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
  <i class="fa-solid fa-magnifying-glass"></i>
  <span class="search-button__default-text">Search</span>
  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
@@ -256,7 +256,7 @@
   
 
   
-    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+    <button type="button" class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page" aria-expanded="false" aria-controls="pst-secondary-sidebar-modal">
       <span class="fa-solid fa-outdent"></span>
     </button>
   
@@ -270,7 +270,7 @@
       
       
       
-      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <dialog id="pst-primary-sidebar-modal" tabindex="-1"></dialog>
       <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
         
 
@@ -340,15 +340,15 @@
           <div class="navbar-item">
 
 <div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
-  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
-    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
-    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
-    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto" title="System Settings"></i>
   </button>
   <ul class="dropdown-menu dropdown-menu-end">
-    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
-    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
-    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg me-1"></i>Dark</button></li>
   </ul>
 </div></div>
         
@@ -452,7 +452,7 @@
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">Project</span></p>
 <ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="contribution_guide.html">Contributing to Warp</a></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Publications using Warp</a></li>
+<li class="toctree-l1 current active"><a aria-current="page" class="current reference internal" href="#">Publications using Warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="changelog.html">Changelog</a></li>
 </ul>
 </div>
@@ -485,7 +485,7 @@
     
     <li class="breadcrumb-item breadcrumb-home">
       <a href="../index.html" class="nav-link" aria-label="Home">
-        <i class="fa-solid fa-home"></i>
+        <i class="fa-solid fa-house"></i>
       </a>
     </li>
     <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Publications using Warp</span></li>
@@ -559,7 +559,7 @@ If your work utilizes Warp, we encourage you to share it with us. To add your pu
 pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI to
 <a class="reference external" href="mailto:warp-python&#37;&#52;&#48;nvidia&#46;com">warp-python<span>&#64;</span>nvidia<span>&#46;</span>com</a>.</p>
 <section id="id1">
-<h2>2026<a class="headerlink" href="#id1" title="Link to this heading">#</a></h2>
+<span id="2026"></span><h2>2026<a class="headerlink" href="#id1" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p><strong>Alloy: A Multi-Material Physics Engine for Robot Learning</strong>. <em>P. Gupta, D. Rohilla</em>. November 2026. <a class="reference external" href="https://arxiv.org/abs/2611.16312">arXiv:2611.16312</a></p></li>
 <li><p><strong>CuPIQP: A Batched and Differentiable QP Solver on GPUs for Robot Learning and Control</strong>. <em>F. Song, R. Schwan, Y. Chen, Y. Jiang, C. N. Jones</em>. October 2026. <a class="reference external" href="https://arxiv.org/abs/2610.41021">arXiv:2610.41021</a></p></li>
@@ -638,7 +638,7 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 </ul>
 </section>
 <section id="id2">
-<h2>2025<a class="headerlink" href="#id2" title="Link to this heading">#</a></h2>
+<span id="2025"></span><h2>2025<a class="headerlink" href="#id2" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p><strong>AnimaMimic: Imitating 3D Animation from Video Priors</strong>. <em>T. Xie, Y. Chen, Y. Guo, Y. Yang, B. Zhou, D. Terzopoulos, Y. Jiang, C. Jiang</em>. December 2025. <a class="reference external" href="https://arxiv.org/abs/2512.14133">arXiv:2512.14133</a></p></li>
 <li><p><strong>START: Traversing Sparse Footholds with Terrain Reconstruction</strong>. <em>R. Yu, Q. Wang, H. Li, Z. Jun, Z. Wang, J. Wu, Q. Zhu</em>. December 2025. <a class="reference external" href="https://arxiv.org/abs/2512.13153">arXiv:2512.13153</a></p></li>
@@ -688,7 +688,7 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 </ul>
 </section>
 <section id="id3">
-<h2>2024<a class="headerlink" href="#id3" title="Link to this heading">#</a></h2>
+<span id="2024"></span><h2>2024<a class="headerlink" href="#id3" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p><strong>ChatGarment: Garment Estimation, Generation and Editing via Large Language Models</strong>. <em>S. Bian, C. Xu, Y. Xiu, A. Grigorev, Z. Liu, C. Lu, M. J. Black, Y. Feng</em>. December 2024. <a class="reference external" href="https://arxiv.org/abs/2412.17811">arXiv:2412.17811</a></p></li>
 <li><p><strong>Stabilizing Reinforcement Learning in Differentiable Multiphysics Simulation</strong>. <em>E. Xing, V. Luk, J. Oh</em>. December 2024. <a class="reference external" href="https://arxiv.org/abs/2412.12089">arXiv:2412.12089</a></p></li>
@@ -719,7 +719,7 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 </ul>
 </section>
 <section id="id4">
-<h2>2023<a class="headerlink" href="#id4" title="Link to this heading">#</a></h2>
+<span id="2023"></span><h2>2023<a class="headerlink" href="#id4" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p><strong>FoundationPose: Unified 6D Pose Estimation and Tracking of Novel Objects</strong>. <em>B. Wen, W. Yang, J. Kautz, S. Birchfield</em>. December 2023. <a class="reference external" href="https://arxiv.org/abs/2312.08344">arXiv:2312.08344</a></p></li>
 <li><p><strong>Neural Stress Fields for Reduced-order Elastoplasticity and Fracture</strong>. <em>Z. Zong, X. Li, M. Li, M. M. Chiaramonte, W. Matusik, E. Grinspun, K. Carlberg, C. Jiang, P. Y. Chen</em>. December 2023. <a class="reference external" href="https://arxiv.org/abs/2310.17790">arXiv:2310.17790</a></p></li>
@@ -739,7 +739,7 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 </ul>
 </section>
 <section id="id5">
-<h2>2022<a class="headerlink" href="#id5" title="Link to this heading">#</a></h2>
+<span id="2022"></span><h2>2022<a class="headerlink" href="#id5" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p><strong>NODE IK: Solving Inverse Kinematics with Neural Ordinary Differential Equations for Path Planning</strong>. <em>S. Park, M. Schwartz, J. Park</em>. September 2022. <a class="reference external" href="https://arxiv.org/abs/2209.00498">arXiv:2209.00498</a></p></li>
 <li><p><strong>Differentiable Physics Simulations with Contacts: Do They Have Correct Gradients w.r.t. Position, Velocity and Control?</strong>. <em>Y. D. Zhong, J. Han, G. O. Brikis</em>. July 2022. <a class="reference external" href="https://arxiv.org/abs/2207.05060">arXiv:2207.05060</a></p></li>
@@ -748,7 +748,7 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 </ul>
 </section>
 <section id="id6">
-<h2>2021<a class="headerlink" href="#id6" title="Link to this heading">#</a></h2>
+<span id="2021"></span><h2>2021<a class="headerlink" href="#id6" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p><strong>DiSECt: A Differentiable Simulation Engine for Autonomous Robotic Cutting</strong>. <em>E. Heiden, M. Macklin, Y. Narang, D. Fox, A. Garg, F. Ramos</em>. May 2021. <a class="reference external" href="https://arxiv.org/abs/2105.12244">arXiv:2105.12244</a></p></li>
 <li><p><strong>gradSim: Differentiable simulation for system identification and visuomotor control</strong>. <em>K. M. Jatavallabhula, M. Macklin, F. Golemo, V. Voleti, L. Petrini, M. Weiss, B. Considine, J. Parent-Levesque, K. Xie, K. Erleben, L. Paull, F. Shkurti, D. Nowrouzezahrai, S. Fidler</em>. April 2021. <a class="reference external" href="https://arxiv.org/abs/2104.02646">arXiv:2104.02646</a></p></li>
@@ -793,7 +793,7 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 
 
               
-                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <dialog id="pst-secondary-sidebar-modal" tabindex="-1"></dialog>
                 <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
 
 
@@ -828,8 +828,8 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67"></script>
-<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67"></script>
+  <script defer src="../_static/scripts/bootstrap.js?digest=75c7c72ae941e8b558d8"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=75c7c72ae941e8b558d8"></script>
 
 
   <footer class="bd-footer">

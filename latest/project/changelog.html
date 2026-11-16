@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 
 
@@ -28,8 +27,8 @@
   </noscript>
   
   <!-- Loaded before other Sphinx assets -->
-  <link href="../_static/styles/theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
-<link href="../_static/styles/pydata-sphinx-theme.css?digest=cb8930eaaf36d9849b67" rel="stylesheet" />
+  <link href="../_static/styles/theme.css?digest=75c7c72ae941e8b558d8" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=75c7c72ae941e8b558d8" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
@@ -37,10 +36,10 @@
     <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=ca94f457" />
   
   <!-- So that users can add custom icons -->
-  <script defer src="../_static/scripts/fontawesome.js?digest=cb8930eaaf36d9849b67"></script>
+  <script defer src="../_static/scripts/fontawesome.js?digest=75c7c72ae941e8b558d8"></script>
   <!-- Pre-loaded scripts that we'll load fully later -->
-  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67" />
-<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67" />
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=75c7c72ae941e8b558d8" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=75c7c72ae941e8b558d8" />
 
 
 
@@ -51,7 +50,7 @@
     <script src="../_static/copybutton.js?v=fd10adb8"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'project/changelog';</script>
     <script>
-        DOCUMENTATION_OPTIONS.theme_version = '0.21.0';
+        DOCUMENTATION_OPTIONS.theme_version = '0.24.0';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
         DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
         DOCUMENTATION_OPTIONS.show_version_warning_banner =
@@ -68,6 +67,7 @@
 
 
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="color-scheme" content="light dark"/>
   <meta name="docsearch:language" content="en"/>
   <meta name="docsearch:version" content="1.20.0.dev0" />
   
@@ -122,7 +122,7 @@
   
     <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
 <div class="bd-header__inner bd-page-width">
-  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+  <button type="button" class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation" aria-expanded="false" aria-controls="pst-primary-sidebar-modal">
     <span class="fa-solid fa-bars"></span>
   </button>
   
@@ -190,7 +190,7 @@
         <div class="navbar-item navbar-persistent--container">
           
 
-<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
  <i class="fa-solid fa-magnifying-glass"></i>
  <span class="search-button__default-text">Search</span>
  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
@@ -201,15 +201,15 @@
         <div class="navbar-item">
 
 <div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
-  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
-    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
-    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
-    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto" title="System Settings"></i>
   </button>
   <ul class="dropdown-menu dropdown-menu-end">
-    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
-    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
-    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg me-1"></i>Dark</button></li>
   </ul>
 </div></div>
       
@@ -246,7 +246,7 @@
   
     <div class="navbar-persistent--mobile">
 
-<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
  <i class="fa-solid fa-magnifying-glass"></i>
  <span class="search-button__default-text">Search</span>
  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
@@ -255,7 +255,7 @@
   
 
   
-    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+    <button type="button" class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page" aria-expanded="false" aria-controls="pst-secondary-sidebar-modal">
       <span class="fa-solid fa-outdent"></span>
     </button>
   
@@ -269,7 +269,7 @@
       
       
       
-      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <dialog id="pst-primary-sidebar-modal" tabindex="-1"></dialog>
       <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
         
 
@@ -339,15 +339,15 @@
           <div class="navbar-item">
 
 <div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
-  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
-    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
-    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
-    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto" title="System Settings"></i>
   </button>
   <ul class="dropdown-menu dropdown-menu-end">
-    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
-    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
-    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg me-1"></i>Dark</button></li>
   </ul>
 </div></div>
         
@@ -452,7 +452,7 @@
 <ul class="current nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="contribution_guide.html">Contributing to Warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="publications.html">Publications using Warp</a></li>
-<li class="toctree-l1 current active"><a class="current reference internal" href="#">Changelog</a></li>
+<li class="toctree-l1 current active"><a aria-current="page" class="current reference internal" href="#">Changelog</a></li>
 </ul>
 </div>
 </nav></div>
@@ -484,7 +484,7 @@
     
     <li class="breadcrumb-item breadcrumb-home">
       <a href="../index.html" class="nav-link" aria-label="Home">
-        <i class="fa-solid fa-home"></i>
+        <i class="fa-solid fa-house"></i>
       </a>
     </li>
     <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Changelog</span></li>
@@ -555,7 +555,7 @@
 <h1>Changelog<a class="headerlink" href="#changelog" title="Link to this heading">#</a></h1>
 <!-- towncrier release notes start -->
 <section id="id1">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/compare/v1.18.0...v1.19.0">1.19.0</a> - 2026-11-02<a class="headerlink" href="#id1" title="Link to this heading">#</a></h2>
+<span id="1190---2026-11-02"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/compare/v1.18.0...v1.19.0">1.19.0</a> - 2026-11-02<a class="headerlink" href="#id1" title="Link to this heading">#</a></h2>
 <section id="added">
 <h3>Added<a class="headerlink" href="#added" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -857,7 +857,7 @@ adds guidance for using Warp with untrusted data.</p></li>
 </section>
 </section>
 <section id="id2">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.18.0">1.18.0</a> - 2026-10-05<a class="headerlink" href="#id2" title="Link to this heading">#</a></h2>
+<span id="1180---2026-10-05"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.18.0">1.18.0</a> - 2026-10-05<a class="headerlink" href="#id2" title="Link to this heading">#</a></h2>
 <section id="id3">
 <h3>Added<a class="headerlink" href="#id3" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -1104,7 +1104,7 @@ shows <code class="docutils literal notranslate"><span class="pre">None</span></
 </section>
 </section>
 <section id="id9">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.17.0">1.17.0</a> - 2026-08-31<a class="headerlink" href="#id9" title="Link to this heading">#</a></h2>
+<span id="1170---2026-08-31"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.17.0">1.17.0</a> - 2026-08-31<a class="headerlink" href="#id9" title="Link to this heading">#</a></h2>
 <section id="id10">
 <h3>Added<a class="headerlink" href="#id10" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -1305,7 +1305,7 @@ kernel-only overloads unmarked (<a class="reference external" href="https://gith
 </section>
 </section>
 <section id="id16">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.16.0">1.16.0</a> - 2026-08-03<a class="headerlink" href="#id16" title="Link to this heading">#</a></h2>
+<span id="1160---2026-08-03"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.16.0">1.16.0</a> - 2026-08-03<a class="headerlink" href="#id16" title="Link to this heading">#</a></h2>
 <section id="id17">
 <h3>Added<a class="headerlink" href="#id17" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -1450,7 +1450,7 @@ for nearest-neighbor halo exchange
 </section>
 </section>
 <section id="id22">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.15.0">1.15.0</a> - 2026-07-07<a class="headerlink" href="#id22" title="Link to this heading">#</a></h2>
+<span id="1150---2026-07-07"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.15.0">1.15.0</a> - 2026-07-07<a class="headerlink" href="#id22" title="Link to this heading">#</a></h2>
 <section id="id23">
 <h3>Added<a class="headerlink" href="#id23" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -1638,7 +1638,7 @@ portable workarounds (<a class="reference external" href="https://github.com/NVI
 </section>
 </section>
 <section id="id29">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.14.0">1.14.0</a> - 2026-06-01<a class="headerlink" href="#id29" title="Link to this heading">#</a></h2>
+<span id="1140---2026-06-01"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.14.0">1.14.0</a> - 2026-06-01<a class="headerlink" href="#id29" title="Link to this heading">#</a></h2>
 <section id="id30">
 <h3>Added<a class="headerlink" href="#id30" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -1835,7 +1835,7 @@ and concise examples now cover the useful notebook snippets in the Sphinx docs.<
 </section>
 </section>
 <section id="id35">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.13.0">1.13.0</a> - 2026-05-04<a class="headerlink" href="#id35" title="Link to this heading">#</a></h2>
+<span id="1130---2026-05-04"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.13.0">1.13.0</a> - 2026-05-04<a class="headerlink" href="#id35" title="Link to this heading">#</a></h2>
 <section id="id36">
 <h3>Added<a class="headerlink" href="#id36" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -2020,7 +2020,7 @@ and the <code class="docutils literal notranslate"><span class="pre">params</spa
 </section>
 </section>
 <section id="id42">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.12.1">1.12.1</a> - 2026-04-06<a class="headerlink" href="#id42" title="Link to this heading">#</a></h2>
+<span id="1121---2026-04-06"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.12.1">1.12.1</a> - 2026-04-06<a class="headerlink" href="#id42" title="Link to this heading">#</a></h2>
 <section id="id43">
 <h3>Removed<a class="headerlink" href="#id43" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -2094,7 +2094,7 @@ and search engine results for built-in functions (<a class="reference external" 
 </section>
 </section>
 <section id="id47">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.12.0">1.12.0</a> - 2026-03-06<a class="headerlink" href="#id47" title="Link to this heading">#</a></h2>
+<span id="1120---2026-03-06"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.12.0">1.12.0</a> - 2026-03-06<a class="headerlink" href="#id47" title="Link to this heading">#</a></h2>
 <section id="id48">
 <h3>Added<a class="headerlink" href="#id48" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -2256,7 +2256,7 @@ instead of <code class="docutils literal notranslate"><span class="pre">wp.array
 </section>
 </section>
 <section id="id54">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.11.1">1.11.1</a> - 2026-02-01<a class="headerlink" href="#id54" title="Link to this heading">#</a></h2>
+<span id="1111---2026-02-01"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.11.1">1.11.1</a> - 2026-02-01<a class="headerlink" href="#id54" title="Link to this heading">#</a></h2>
 <section id="id55">
 <h3>Changed<a class="headerlink" href="#id55" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -2308,7 +2308,7 @@ functions, type constructors, constants, and <code class="docutils literal notra
 </section>
 </section>
 <section id="id58">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.11.0">1.11.0</a> - 2026-01-02<a class="headerlink" href="#id58" title="Link to this heading">#</a></h2>
+<span id="1110---2026-01-02"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.11.0">1.11.0</a> - 2026-01-02<a class="headerlink" href="#id58" title="Link to this heading">#</a></h2>
 <section id="id59">
 <h3>Added<a class="headerlink" href="#id59" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -2431,7 +2431,7 @@ tiled reductions.</p></li>
 </section>
 </section>
 <section id="id64">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.10.1">1.10.1</a> - 2025-12-01<a class="headerlink" href="#id64" title="Link to this heading">#</a></h2>
+<span id="1101---2025-12-01"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.10.1">1.10.1</a> - 2025-12-01<a class="headerlink" href="#id64" title="Link to this heading">#</a></h2>
 <section id="id65">
 <h3>Fixed<a class="headerlink" href="#id65" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -2474,7 +2474,7 @@ the CPU and GPU and using <code class="docutils literal notranslate"><span class
 </section>
 </section>
 <section id="id67">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.10.0">1.10.0</a> - 2025-11-02<a class="headerlink" href="#id67" title="Link to this heading">#</a></h2>
+<span id="1100---2025-11-02"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.10.0">1.10.0</a> - 2025-11-02<a class="headerlink" href="#id67" title="Link to this heading">#</a></h2>
 <section id="id68">
 <h3>Added<a class="headerlink" href="#id68" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -2599,7 +2599,7 @@ cleaned up, as these can be safely ignored during process termination
 </section>
 </section>
 <section id="id73">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.9.1">1.9.1</a> - 2025-10-01<a class="headerlink" href="#id73" title="Link to this heading">#</a></h2>
+<span id="191---2025-10-01"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.9.1">1.9.1</a> - 2025-10-01<a class="headerlink" href="#id73" title="Link to this heading">#</a></h2>
 <section id="id74">
 <h3>Added<a class="headerlink" href="#id74" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -2634,7 +2634,7 @@ cleaned up, as these can be safely ignored during process termination
 </section>
 </section>
 <section id="id76">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.9.0">1.9.0</a> - 2025-09-04<a class="headerlink" href="#id76" title="Link to this heading">#</a></h2>
+<span id="190---2025-09-04"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.9.0">1.9.0</a> - 2025-09-04<a class="headerlink" href="#id76" title="Link to this heading">#</a></h2>
 <section id="id77">
 <h3>Added<a class="headerlink" href="#id77" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -2737,7 +2737,7 @@ debug mode (<a class="reference external" href="https://github.com/NVIDIA/warp/i
 </section>
 </section>
 <section id="id82">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.8.1">1.8.1</a> - 2025-08-01<a class="headerlink" href="#id82" title="Link to this heading">#</a></h2>
+<span id="181---2025-08-01"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.8.1">1.8.1</a> - 2025-08-01<a class="headerlink" href="#id82" title="Link to this heading">#</a></h2>
 <section id="id83">
 <h3>Deprecated<a class="headerlink" href="#id83" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -2798,7 +2798,7 @@ them all to be rendered with the same scale <code class="docutils literal notran
 </section>
 </section>
 <section id="id86">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.8.0">1.8.0</a> - 2025-07-01<a class="headerlink" href="#id86" title="Link to this heading">#</a></h2>
+<span id="180---2025-07-01"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.8.0">1.8.0</a> - 2025-07-01<a class="headerlink" href="#id86" title="Link to this heading">#</a></h2>
 <section id="id87">
 <h3>Added<a class="headerlink" href="#id87" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -2924,7 +2924,7 @@ separate kernels, increasing parallelism and speeding up the solver
 </section>
 </section>
 <section id="id91">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.7.2">1.7.2</a> - 2025-05-31<a class="headerlink" href="#id91" title="Link to this heading">#</a></h2>
+<span id="172---2025-05-31"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.7.2">1.7.2</a> - 2025-05-31<a class="headerlink" href="#id91" title="Link to this heading">#</a></h2>
 <section id="id92">
 <h3>Added<a class="headerlink" href="#id92" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -2976,7 +2976,7 @@ annotations to denote whether they are accessible only from the kernel scope or 
 </section>
 </section>
 <section id="id95">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.7.1">1.7.1</a> - 2025-04-30<a class="headerlink" href="#id95" title="Link to this heading">#</a></h2>
+<span id="171---2025-04-30"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.7.1">1.7.1</a> - 2025-04-30<a class="headerlink" href="#id95" title="Link to this heading">#</a></h2>
 <section id="id96">
 <h3>Added<a class="headerlink" href="#id96" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -3027,7 +3027,7 @@ with literal values and an explicit <code class="docutils literal notranslate"><
 </section>
 </section>
 <section id="id99">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.7.0">1.7.0</a> - 2025-03-30<a class="headerlink" href="#id99" title="Link to this heading">#</a></h2>
+<span id="170---2025-03-30"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.7.0">1.7.0</a> - 2025-03-30<a class="headerlink" href="#id99" title="Link to this heading">#</a></h2>
 <section id="id100">
 <h3>Added<a class="headerlink" href="#id100" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -3104,7 +3104,7 @@ flag to discard any non-zero not already present in the destination matrix.</p><
 </section>
 </section>
 <section id="id103">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.6.2">1.6.2</a> - 2025-03-07<a class="headerlink" href="#id103" title="Link to this heading">#</a></h2>
+<span id="162---2025-03-07"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.6.2">1.6.2</a> - 2025-03-07<a class="headerlink" href="#id103" title="Link to this heading">#</a></h2>
 <section id="id104">
 <h3>Changed<a class="headerlink" href="#id104" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -3113,7 +3113,7 @@ flag to discard any non-zero not already present in the destination matrix.</p><
 </section>
 </section>
 <section id="id105">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.6.1">1.6.1</a> - 2025-03-03<a class="headerlink" href="#id105" title="Link to this heading">#</a></h2>
+<span id="161---2025-03-03"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.6.1">1.6.1</a> - 2025-03-03<a class="headerlink" href="#id105" title="Link to this heading">#</a></h2>
 <section id="id106">
 <h3>Added<a class="headerlink" href="#id106" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -3151,7 +3151,7 @@ flag to discard any non-zero not already present in the destination matrix.</p><
 </section>
 </section>
 <section id="id108">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.6.0">1.6.0</a> - 2025-02-03<a class="headerlink" href="#id108" title="Link to this heading">#</a></h2>
+<span id="160---2025-02-03"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.6.0">1.6.0</a> - 2025-02-03<a class="headerlink" href="#id108" title="Link to this heading">#</a></h2>
 <section id="id109">
 <h3>Added<a class="headerlink" href="#id109" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -3249,7 +3249,7 @@ Use tile primitives instead.</p></li>
 </section>
 </section>
 <section id="id112">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.5.1">1.5.1</a> - 2025-01-02<a class="headerlink" href="#id112" title="Link to this heading">#</a></h2>
+<span id="151---2025-01-02"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.5.1">1.5.1</a> - 2025-01-02<a class="headerlink" href="#id112" title="Link to this heading">#</a></h2>
 <section id="id113">
 <h3>Added<a class="headerlink" href="#id113" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -3277,7 +3277,7 @@ Use tile primitives instead.</p></li>
 </section>
 </section>
 <section id="id115">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.5.0">1.5.0</a> - 2024-12-02<a class="headerlink" href="#id115" title="Link to this heading">#</a></h2>
+<span id="150---2024-12-02"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.5.0">1.5.0</a> - 2024-12-02<a class="headerlink" href="#id115" title="Link to this heading">#</a></h2>
 <section id="id116">
 <h3>Added<a class="headerlink" href="#id116" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -3336,7 +3336,7 @@ to set a uniform radius for the added particles.</p></li>
 </section>
 </section>
 <section id="id119">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.4.2">1.4.2</a> - 2024-11-13<a class="headerlink" href="#id119" title="Link to this heading">#</a></h2>
+<span id="142---2024-11-13"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.4.2">1.4.2</a> - 2024-11-13<a class="headerlink" href="#id119" title="Link to this heading">#</a></h2>
 <section id="id120">
 <h3>Changed<a class="headerlink" href="#id120" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -3357,7 +3357,7 @@ to set a uniform radius for the added particles.</p></li>
 </section>
 </section>
 <section id="id122">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.4.1">1.4.1</a> - 2024-10-15<a class="headerlink" href="#id122" title="Link to this heading">#</a></h2>
+<span id="141---2024-10-15"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.4.1">1.4.1</a> - 2024-10-15<a class="headerlink" href="#id122" title="Link to this heading">#</a></h2>
 <section id="id123">
 <h3>Fixed<a class="headerlink" href="#id123" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -3372,7 +3372,7 @@ to set a uniform radius for the added particles.</p></li>
 </section>
 </section>
 <section id="id124">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.4.0">1.4.0</a> - 2024-10-01<a class="headerlink" href="#id124" title="Link to this heading">#</a></h2>
+<span id="140---2024-10-01"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.4.0">1.4.0</a> - 2024-10-01<a class="headerlink" href="#id124" title="Link to this heading">#</a></h2>
 <section id="id125">
 <h3>Added<a class="headerlink" href="#id125" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -3447,7 +3447,7 @@ from a joint to its parent joint in the articulation.</p></li>
 </section>
 </section>
 <section id="id128">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.3.3">1.3.3</a> - 2024-09-04<a class="headerlink" href="#id128" title="Link to this heading">#</a></h2>
+<span id="133---2024-09-04"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.3.3">1.3.3</a> - 2024-09-04<a class="headerlink" href="#id128" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Bug fixes</p>
 <ul>
@@ -3458,7 +3458,7 @@ from a joint to its parent joint in the articulation.</p></li>
 </ul>
 </section>
 <section id="id129">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.3.2">1.3.2</a> - 2024-08-30<a class="headerlink" href="#id129" title="Link to this heading">#</a></h2>
+<span id="132---2024-08-30"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.3.2">1.3.2</a> - 2024-08-30<a class="headerlink" href="#id129" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Bug fixes</p>
 <ul>
@@ -3488,7 +3488,7 @@ incorrect when the closest point lies on an edge.</p></li>
 </ul>
 </section>
 <section id="id130">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.3.1">1.3.1</a> - 2024-07-27<a class="headerlink" href="#id130" title="Link to this heading">#</a></h2>
+<span id="131---2024-07-27"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.3.1">1.3.1</a> - 2024-07-27<a class="headerlink" href="#id130" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Remove <code class="docutils literal notranslate"><span class="pre">wp.synchronize()</span></code> from PyTorch autograd function example</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">Tape.check_kernel_array_access()</span></code> and <code class="docutils literal notranslate"><span class="pre">Tape.reset_array_read_flags()</span></code> are now private methods.</p></li>
@@ -3496,7 +3496,7 @@ incorrect when the closest point lies on an edge.</p></li>
 </ul>
 </section>
 <section id="id131">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.3.0">1.3.0</a> - 2024-07-25<a class="headerlink" href="#id131" title="Link to this heading">#</a></h2>
+<span id="130---2024-07-25"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.3.0">1.3.0</a> - 2024-07-25<a class="headerlink" href="#id131" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Warp Core improvements</p>
 <ul>
@@ -3566,7 +3566,7 @@ loaded <code class="docutils literal notranslate"><span class="pre">(error)</spa
 </ul>
 </section>
 <section id="id132">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.2.2">1.2.2</a> - 2024-07-04<a class="headerlink" href="#id132" title="Link to this heading">#</a></h2>
+<span id="122---2024-07-04"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.2.2">1.2.2</a> - 2024-07-04<a class="headerlink" href="#id132" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix hashing of replay functions and snippets</p></li>
 <li><p>Add additional documentation and examples demonstrating <code class="docutils literal notranslate"><span class="pre">wp.copy()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.clone()</span></code>, and <code class="docutils literal notranslate"><span class="pre">array.assign()</span></code> differentiability</p></li>
@@ -3579,7 +3579,7 @@ handle when a class instance is created but not instantiated before garbage coll
 </ul>
 </section>
 <section id="id133">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.2.1">1.2.1</a> - 2024-06-14<a class="headerlink" href="#id133" title="Link to this heading">#</a></h2>
+<span id="121---2024-06-14"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.2.1">1.2.1</a> - 2024-06-14<a class="headerlink" href="#id133" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix generic function caching</p></li>
 <li><p>Fix Warp not being initialized when constructing arrays with <code class="docutils literal notranslate"><span class="pre">wp.array()</span></code></p></li>
@@ -3587,7 +3587,7 @@ handle when a class instance is created but not instantiated before garbage coll
 </ul>
 </section>
 <section id="id134">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.2.0">1.2.0</a> - 2024-06-06<a class="headerlink" href="#id134" title="Link to this heading">#</a></h2>
+<span id="120---2024-06-06"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.2.0">1.2.0</a> - 2024-06-06<a class="headerlink" href="#id134" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add a not-a-number floating-point constant that can be used as <code class="docutils literal notranslate"><span class="pre">wp.NAN</span></code> or <code class="docutils literal notranslate"><span class="pre">wp.nan</span></code>.</p></li>
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">wp.isnan()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.isinf()</span></code>, and <code class="docutils literal notranslate"><span class="pre">wp.isfinite()</span></code> for scalars, vectors, matrices, etc.</p></li>
@@ -3627,14 +3627,14 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id135">
-<h2>1.1.1 - 2024-05-24<a class="headerlink" href="#id135" title="Link to this heading">#</a></h2>
+<span id="111---2024-05-24"></span><h2>1.1.1 - 2024-05-24<a class="headerlink" href="#id135" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">wp.init()</span></code> is no longer required to be called explicitly and will be performed on first call to the API</p></li>
 <li><p>Speed up <code class="docutils literal notranslate"><span class="pre">omni.warp.core</span></code>’s startup time</p></li>
 </ul>
 </section>
 <section id="id136">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.1.0">1.1.0</a> - 2024-05-09<a class="headerlink" href="#id136" title="Link to this heading">#</a></h2>
+<span id="110---2024-05-09"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.1.0">1.1.0</a> - 2024-05-09<a class="headerlink" href="#id136" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Support returning a value from <code class="docutils literal notranslate"><span class="pre">&#64;wp.func_native</span></code> CUDA functions using type hints</p></li>
 <li><p>Improved differentiability of the <code class="docutils literal notranslate"><span class="pre">wp.sim.FeatherstoneIntegrator</span></code></p></li>
@@ -3666,13 +3666,13 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id137">
-<h2>1.0.3 - 2024-04-17<a class="headerlink" href="#id137" title="Link to this heading">#</a></h2>
+<span id="103---2024-04-17"></span><h2>1.0.3 - 2024-04-17<a class="headerlink" href="#id137" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add a <code class="docutils literal notranslate"><span class="pre">support_level</span></code> entry to the configuration file of the extensions</p></li>
 </ul>
 </section>
 <section id="id138">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.0.2">1.0.2</a> - 2024-03-22<a class="headerlink" href="#id138" title="Link to this heading">#</a></h2>
+<span id="102---2024-03-22"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.0.2">1.0.2</a> - 2024-03-22<a class="headerlink" href="#id138" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Make examples runnable from any location</p></li>
 <li><p>Fix the examples not running directly from their Python file</p></li>
@@ -3682,7 +3682,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id139">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.0.1">1.0.1</a> - 2024-03-15<a class="headerlink" href="#id139" title="Link to this heading">#</a></h2>
+<span id="101---2024-03-15"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.0.1">1.0.1</a> - 2024-03-15<a class="headerlink" href="#id139" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Document Device <code class="docutils literal notranslate"><span class="pre">total_memory</span></code> and <code class="docutils literal notranslate"><span class="pre">free_memory</span></code></p></li>
 <li><p>Documentation for allocators, streams, peer access, and generics</p></li>
@@ -3702,7 +3702,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id140">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.0.0">1.0.0</a> - 2024-03-07<a class="headerlink" href="#id140" title="Link to this heading">#</a></h2>
+<span id="100---2024-03-07"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.0.0">1.0.0</a> - 2024-03-07<a class="headerlink" href="#id140" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">FeatherstoneIntegrator</span></code> which provides more stable simulation of articulated rigid body dynamics in generalized coordinates (<code class="docutils literal notranslate"><span class="pre">State.joint_q</span></code> and <code class="docutils literal notranslate"><span class="pre">State.joint_qd</span></code>)</p></li>
 <li><p>Introduce <code class="docutils literal notranslate"><span class="pre">warp.sim.Control</span></code> struct to store control inputs for simulations (optional, by default the <code class="docutils literal notranslate"><span class="pre">Model</span></code> control inputs are used as before); integrators now have a different simulation signature: <code class="docutils literal notranslate"><span class="pre">integrator.simulate(model:</span> <span class="pre">Model,</span> <span class="pre">state_in:</span> <span class="pre">State,</span> <span class="pre">state_out:</span> <span class="pre">State,</span> <span class="pre">dt:</span> <span class="pre">float,</span> <span class="pre">control:</span> <span class="pre">Control)</span></code></p></li>
@@ -3717,7 +3717,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id141">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.15.1">0.15.1</a> - 2024-03-05<a class="headerlink" href="#id141" title="Link to this heading">#</a></h2>
+<span id="0151---2024-03-05"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.15.1">0.15.1</a> - 2024-03-05<a class="headerlink" href="#id141" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add examples assets to the wheel packages</p></li>
 <li><p>Fix broken image link in documentation</p></li>
@@ -3727,7 +3727,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id142">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.15.0">0.15.0</a> - 2024-03-04<a class="headerlink" href="#id142" title="Link to this heading">#</a></h2>
+<span id="0150---2024-03-04"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.15.0">0.15.0</a> - 2024-03-04<a class="headerlink" href="#id142" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add thumbnails to examples gallery</p></li>
 <li><p>Apply colored lighting to examples</p></li>
@@ -3756,7 +3756,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id143">
-<h2>0.14.0 - 2024-02-19<a class="headerlink" href="#id143" title="Link to this heading">#</a></h2>
+<span id="0140---2024-02-19"></span><h2>0.14.0 - 2024-02-19<a class="headerlink" href="#id143" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add support for CUDA pooled (stream-ordered) allocators</p>
 <ul>
@@ -3810,13 +3810,13 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id144">
-<h2>0.13.1 - 2024-02-22<a class="headerlink" href="#id144" title="Link to this heading">#</a></h2>
+<span id="0131---2024-02-22"></span><h2>0.13.1 - 2024-02-22<a class="headerlink" href="#id144" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Ensure that the results from the <code class="docutils literal notranslate"><span class="pre">Noise</span> <span class="pre">Deform</span></code> are deterministic across different Kit sessions</p></li>
 </ul>
 </section>
 <section id="id145">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.13.0">0.13.0</a> - 2024-02-16<a class="headerlink" href="#id145" title="Link to this heading">#</a></h2>
+<span id="0130---2024-02-16"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.13.0">0.13.0</a> - 2024-02-16<a class="headerlink" href="#id145" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Update the license to <em>NVIDIA Software License</em>, allowing commercial use (see <code class="docutils literal notranslate"><span class="pre">LICENSE.md</span></code>)</p></li>
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">CONTRIBUTING.md</span></code> guidelines (for NVIDIA employees)</p></li>
@@ -3827,7 +3827,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id146">
-<h2>0.12.0 - 2024-02-05<a class="headerlink" href="#id146" title="Link to this heading">#</a></h2>
+<span id="0120---2024-02-05"></span><h2>0.12.0 - 2024-02-05<a class="headerlink" href="#id146" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add a warning when the <code class="docutils literal notranslate"><span class="pre">enable_backward</span></code> setting is set to <code class="docutils literal notranslate"><span class="pre">False</span></code> upon calling <code class="docutils literal notranslate"><span class="pre">wp.Tape.backward()</span></code></p></li>
 <li><p>Fix kernels not being recompiled as expected when defined using a closure</p></li>
@@ -3837,7 +3837,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id147">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.11.0">0.11.0</a> - 2024-01-23<a class="headerlink" href="#id147" title="Link to this heading">#</a></h2>
+<span id="0110---2024-01-23"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.11.0">0.11.0</a> - 2024-01-23<a class="headerlink" href="#id147" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Re-release 1.0.0-beta.7 as a non-pre-release 0.11.0 version so it gets selected by <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">warp-lang</span></code>.</p></li>
 <li><p>Introducing a new versioning and release process, detailed in <code class="docutils literal notranslate"><span class="pre">PACKAGING.md</span></code> and resembling that of <a class="reference external" href="https://devguide.python.org/developer-workflow/development-cycle/#devcycle">Python itself</a>:</p>
@@ -3850,7 +3850,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="beta-7-2024-01-23">
-<h2>1.0.0-beta.7 - 2024-01-23<a class="headerlink" href="#beta-7-2024-01-23" title="Link to this heading">#</a></h2>
+<span id="100-beta7---2024-01-23"></span><h2>1.0.0-beta.7 - 2024-01-23<a class="headerlink" href="#beta-7-2024-01-23" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Ensure captures are always enclosed in <code class="docutils literal notranslate"><span class="pre">try</span></code>/<code class="docutils literal notranslate"><span class="pre">finally</span></code></p></li>
 <li><p>Only include .py files from the warp subdirectory into wheel packages</p></li>
@@ -3877,7 +3877,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="beta-6-2024-01-10">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.0.0-beta.6">1.0.0-beta.6</a> - 2024-01-10<a class="headerlink" href="#beta-6-2024-01-10" title="Link to this heading">#</a></h2>
+<span id="100-beta6---2024-01-10"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.0.0-beta.6">1.0.0-beta.6</a> - 2024-01-10<a class="headerlink" href="#beta-6-2024-01-10" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Do not create CPU copy of grad array when calling <code class="docutils literal notranslate"><span class="pre">array.numpy()</span></code></p></li>
 <li><p>Fix <code class="docutils literal notranslate"><span class="pre">assert_np_equal()</span></code> bug</p></li>
@@ -3901,7 +3901,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="beta-5-2023-11-22">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.0.0-beta.5">1.0.0-beta.5</a> - 2023-11-22<a class="headerlink" href="#beta-5-2023-11-22" title="Link to this heading">#</a></h2>
+<span id="100-beta5---2023-11-22"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v1.0.0-beta.5">1.0.0-beta.5</a> - 2023-11-22<a class="headerlink" href="#beta-5-2023-11-22" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for kernel caching when function argument types change</p></li>
 <li><p>Fix code-gen ordering of dependent structs</p></li>
@@ -3918,7 +3918,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="beta-4-2023-11-01">
-<h2>1.0.0-beta.4 - 2023-11-01<a class="headerlink" href="#beta-4-2023-11-01" title="Link to this heading">#</a></h2>
+<span id="100-beta4---2023-11-01"></span><h2>1.0.0-beta.4 - 2023-11-01<a class="headerlink" href="#beta-4-2023-11-01" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">wp.cbrt()</span></code> for cube root calculation</p></li>
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">wp.mesh_furthest_point_no_sign()</span></code> to compute furthest point on a surface from a query point</p></li>
@@ -3932,7 +3932,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="beta-3-2023-10-19">
-<h2>1.0.0-beta.3 - 2023-10-19<a class="headerlink" href="#beta-3-2023-10-19" title="Link to this heading">#</a></h2>
+<span id="100-beta3---2023-10-19"></span><h2>1.0.0-beta.3 - 2023-10-19<a class="headerlink" href="#beta-3-2023-10-19" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add support for code coverage scans (test_coverage.py), coverage at 85% in <code class="docutils literal notranslate"><span class="pre">omni.warp.core</span></code></p></li>
 <li><p>Add support for named component access for vector types, e.g.: <code class="docutils literal notranslate"><span class="pre">a</span> <span class="pre">=</span> <span class="pre">v.x</span></code></p></li>
@@ -3958,7 +3958,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </section>
 </section>
 <section id="beta-2-2023-09-01">
-<h2>1.0.0-beta.2 - 2023-09-01<a class="headerlink" href="#beta-2-2023-09-01" title="Link to this heading">#</a></h2>
+<span id="100-beta2---2023-09-01"></span><h2>1.0.0-beta.2 - 2023-09-01<a class="headerlink" href="#beta-2-2023-09-01" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for passing bool into <code class="docutils literal notranslate"><span class="pre">wp.func</span></code> functions</p></li>
 <li><p>Fix for deprecation warnings appearing on <code class="docutils literal notranslate"><span class="pre">stderr</span></code>, now redirected to <code class="docutils literal notranslate"><span class="pre">stdout</span></code></p></li>
@@ -3966,7 +3966,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="beta-1-2023-08-29">
-<h2>1.0.0-beta.1 - 2023-08-29<a class="headerlink" href="#beta-1-2023-08-29" title="Link to this heading">#</a></h2>
+<span id="100-beta1---2023-08-29"></span><h2>1.0.0-beta.1 - 2023-08-29<a class="headerlink" href="#beta-1-2023-08-29" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for <code class="docutils literal notranslate"><span class="pre">wp.float16</span></code> being passed as kernel arguments</p></li>
 <li><p>Fix for compile errors with kernels using structs in backward pass</p></li>
@@ -3994,7 +3994,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id148">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.10.1">0.10.1</a> - 2023-07-25<a class="headerlink" href="#id148" title="Link to this heading">#</a></h2>
+<span id="0101---2023-07-25"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.10.1">0.10.1</a> - 2023-07-25<a class="headerlink" href="#id148" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for large multidimensional kernel launches (&gt; 2^32 threads)</p></li>
 <li><p>Fix for module hashing with generics</p></li>
@@ -4009,7 +4009,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id149">
-<h2>0.10.0 - 2023-07-05<a class="headerlink" href="#id149" title="Link to this heading">#</a></h2>
+<span id="0100---2023-07-05"></span><h2>0.10.0 - 2023-07-05<a class="headerlink" href="#id149" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add support for macOS universal binaries (x86 + aarch64) for M1+ support</p></li>
 <li><p>Add additional methods for SDF generation please see the following new methods:</p>
@@ -4073,7 +4073,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id150">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.9.0">0.9.0</a> - 2023-06-01<a class="headerlink" href="#id150" title="Link to this heading">#</a></h2>
+<span id="090---2023-06-01"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.9.0">0.9.0</a> - 2023-06-01<a class="headerlink" href="#id150" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add support for in-place modifications to vector, matrix, and struct types inside kernels (will warn during backward pass with <code class="docutils literal notranslate"><span class="pre">wp.verbose</span></code> if using gradients)</p></li>
 <li><p>Add support for step-through VSCode debugging of kernel code with standalone LLVM compiler, see <code class="docutils literal notranslate"><span class="pre">wp.breakpoint()</span></code>, and <code class="docutils literal notranslate"><span class="pre">walkthrough_debug.py</span></code></p></li>
@@ -4101,7 +4101,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id151">
-<h2>0.8.2 - 2023-04-21<a class="headerlink" href="#id151" title="Link to this heading">#</a></h2>
+<span id="082---2023-04-21"></span><h2>0.8.2 - 2023-04-21<a class="headerlink" href="#id151" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">ModelBuilder.soft_contact_max</span></code> to control the maximum number of soft contacts that can be registered. Use <code class="docutils literal notranslate"><span class="pre">Model.allocate_soft_contacts(new_count)</span></code> to change count on existing <code class="docutils literal notranslate"><span class="pre">Model</span></code> objects.</p></li>
 <li><p>Add support for <code class="docutils literal notranslate"><span class="pre">bool</span></code> parameters</p></li>
@@ -4114,14 +4114,14 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id152">
-<h2>0.8.1 - 2023-04-13<a class="headerlink" href="#id152" title="Link to this heading">#</a></h2>
+<span id="081---2023-04-13"></span><h2>0.8.1 - 2023-04-13<a class="headerlink" href="#id152" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for regression when passing flattened numeric lists as matrix arguments to kernels</p></li>
 <li><p>Fix for regressions when passing <code class="docutils literal notranslate"><span class="pre">wp.struct</span></code> types with uninitialized (<code class="docutils literal notranslate"><span class="pre">None</span></code>) member attributes</p></li>
 </ul>
 </section>
 <section id="id153">
-<h2>0.8.0 - 2023-04-05<a class="headerlink" href="#id153" title="Link to this heading">#</a></h2>
+<span id="080---2023-04-05"></span><h2>0.8.0 - 2023-04-05<a class="headerlink" href="#id153" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">Texture</span> <span class="pre">Write</span></code> node for updating dynamic RTX textures from Warp kernels / nodes</p></li>
 <li><p>Add multi-dimensional kernel support to Warp Kernel Node</p></li>
@@ -4169,7 +4169,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </section>
 </section>
 <section id="id155">
-<h2>0.7.2 - 2023-02-15<a class="headerlink" href="#id155" title="Link to this heading">#</a></h2>
+<span id="072---2023-02-15"></span><h2>0.7.2 - 2023-02-15<a class="headerlink" href="#id155" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Reduce test time for vec/math types</p></li>
 <li><p>Clean-up CUDA disabled build pipeline</p></li>
@@ -4178,14 +4178,14 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id156">
-<h2>0.7.1 - 2023-02-14<a class="headerlink" href="#id156" title="Link to this heading">#</a></h2>
+<span id="071---2023-02-14"></span><h2>0.7.1 - 2023-02-14<a class="headerlink" href="#id156" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Disabling some slow tests for Kit</p></li>
 <li><p>Make unit tests run on first GPU only by default</p></li>
 </ul>
 </section>
 <section id="id157">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.7.0">0.7.0</a> - 2023-02-13<a class="headerlink" href="#id157" title="Link to this heading">#</a></h2>
+<span id="070---2023-02-13"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.7.0">0.7.0</a> - 2023-02-13<a class="headerlink" href="#id157" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add support for arbitrary length / type vector and matrices e.g.: <code class="docutils literal notranslate"><span class="pre">wp.vec(length=7,</span> <span class="pre">dtype=wp.float16)</span></code>, see <code class="docutils literal notranslate"><span class="pre">wp.vec()</span></code>, and <code class="docutils literal notranslate"><span class="pre">wp.mat()</span></code></p></li>
 <li><p>Add support for <code class="docutils literal notranslate"><span class="pre">array.flatten()</span></code>, <code class="docutils literal notranslate"><span class="pre">array.reshape()</span></code>, and <code class="docutils literal notranslate"><span class="pre">array.view()</span></code> with NumPy semantics</p></li>
@@ -4199,7 +4199,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id158">
-<h2>0.6.3 - 2023-01-31<a class="headerlink" href="#id158" title="Link to this heading">#</a></h2>
+<span id="063---2023-01-31"></span><h2>0.6.3 - 2023-01-31<a class="headerlink" href="#id158" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add DLPack utilities, see <code class="docutils literal notranslate"><span class="pre">wp.from_dlpack()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.to_dlpack()</span></code></p></li>
 <li><p>Add Jax utilities, see <code class="docutils literal notranslate"><span class="pre">wp.from_jax()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.to_jax()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.device_from_jax()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.device_to_jax()</span></code></p></li>
@@ -4207,7 +4207,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id159">
-<h2>0.6.2 - 2023-01-19<a class="headerlink" href="#id159" title="Link to this heading">#</a></h2>
+<span id="062---2023-01-19"></span><h2>0.6.2 - 2023-01-19<a class="headerlink" href="#id159" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Updated <code class="docutils literal notranslate"><span class="pre">wp.from_torch()</span></code> to support more data types</p></li>
 <li><p>Updated <code class="docutils literal notranslate"><span class="pre">wp.from_torch()</span></code> to automatically determine the target Warp data type if not specified</p></li>
@@ -4224,7 +4224,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id160">
-<h2>0.6.1 - 2022-12-05<a class="headerlink" href="#id160" title="Link to this heading">#</a></h2>
+<span id="061---2022-12-05"></span><h2>0.6.1 - 2022-12-05<a class="headerlink" href="#id160" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for non-CUDA builds</p></li>
 <li><p>Fix strides computation in array_t constructor, fixes a bug with accessing mesh indices through mesh.indices[]</p></li>
@@ -4233,7 +4233,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id161">
-<h2>0.6.0 - 2022-11-28<a class="headerlink" href="#id161" title="Link to this heading">#</a></h2>
+<span id="060---2022-11-28"></span><h2>0.6.0 - 2022-11-28<a class="headerlink" href="#id161" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add support for CUDA streams, see <code class="docutils literal notranslate"><span class="pre">wp.Stream</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.get_stream()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.set_stream()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.synchronize_stream()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></p></li>
 <li><p>Add support for CUDA events, see <code class="docutils literal notranslate"><span class="pre">wp.Event</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.record_event()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.wait_event()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.wait_stream()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.Stream.record_event()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.Stream.wait_event()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.Stream.wait_stream()</span></code></p></li>
@@ -4260,13 +4260,13 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id162">
-<h2>0.5.1 - 2022-11-01<a class="headerlink" href="#id162" title="Link to this heading">#</a></h2>
+<span id="051---2022-11-01"></span><h2>0.5.1 - 2022-11-01<a class="headerlink" href="#id162" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for unit tests in Kit</p></li>
 </ul>
 </section>
 <section id="id163">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.5.0">0.5.0</a> - 2022-10-31<a class="headerlink" href="#id163" title="Link to this heading">#</a></h2>
+<span id="050---2022-10-31"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.5.0">0.5.0</a> - 2022-10-31<a class="headerlink" href="#id163" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add smoothed particle hydrodynamics (SPH) example, see <code class="docutils literal notranslate"><span class="pre">example_sph.py</span></code></p></li>
 <li><p>Add support for accessing <code class="docutils literal notranslate"><span class="pre">array.shape</span></code> inside kernels, e.g.: <code class="docutils literal notranslate"><span class="pre">width</span> <span class="pre">=</span> <span class="pre">arr.shape[0]</span></code></p></li>
@@ -4295,7 +4295,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id164">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.4.3">0.4.3</a> - 2022-09-20<a class="headerlink" href="#id164" title="Link to this heading">#</a></h2>
+<span id="043---2022-09-20"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.4.3">0.4.3</a> - 2022-09-20<a class="headerlink" href="#id164" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Update all samples to use GPU interop path by default</p></li>
 <li><p>Fix for arrays &gt; 2GB in length</p></li>
@@ -4303,7 +4303,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id165">
-<h2>0.4.2 - 2022-09-07<a class="headerlink" href="#id165" title="Link to this heading">#</a></h2>
+<span id="042---2022-09-07"></span><h2>0.4.2 - 2022-09-07<a class="headerlink" href="#id165" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Register Warp samples to the sample browser in Kit</p></li>
 <li><p>Add NDEBUG flag to release mode kernel builds</p></li>
@@ -4312,7 +4312,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id166">
-<h2>0.4.1 - 2022-08-30<a class="headerlink" href="#id166" title="Link to this heading">#</a></h2>
+<span id="041---2022-08-30"></span><h2>0.4.1 - 2022-08-30<a class="headerlink" href="#id166" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add geometry sampling methods, see <code class="docutils literal notranslate"><span class="pre">wp.sample_unit_cube()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.sample_unit_disk()</span></code>, etc</p></li>
 <li><p>Add <code class="docutils literal notranslate"><span class="pre">wp.lower_bound()</span></code> for searching sorted arrays</p></li>
@@ -4324,7 +4324,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id167">
-<h2>0.4.0 - 2022-08-09<a class="headerlink" href="#id167" title="Link to this heading">#</a></h2>
+<span id="040---2022-08-09"></span><h2>0.4.0 - 2022-08-09<a class="headerlink" href="#id167" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for FP16 conversions on GPUs without hardware support</p></li>
 <li><p>Fix for <code class="docutils literal notranslate"><span class="pre">runtime</span> <span class="pre">=</span> <span class="pre">None</span></code> errors when reloading the Warp module</p></li>
@@ -4345,13 +4345,13 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </section>
 </section>
 <section id="id169">
-<h2>0.3.2 - 2022-07-19<a class="headerlink" href="#id169" title="Link to this heading">#</a></h2>
+<span id="032---2022-07-19"></span><h2>0.3.2 - 2022-07-19<a class="headerlink" href="#id169" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Remove Torch import from <code class="docutils literal notranslate"><span class="pre">__init__.py</span></code>, defer import to <code class="docutils literal notranslate"><span class="pre">wp.from_torch()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.to_torch()</span></code></p></li>
 </ul>
 </section>
 <section id="id170">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.3.1">0.3.1</a> - 2022-07-12<a class="headerlink" href="#id170" title="Link to this heading">#</a></h2>
+<span id="031---2022-07-12"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.3.1">0.3.1</a> - 2022-07-12<a class="headerlink" href="#id170" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for marching cubes reallocation after initialization</p></li>
 <li><p>Add support for closest point between line segment tests, see <code class="docutils literal notranslate"><span class="pre">wp.closest_point_edge_edge()</span></code> builtin</p></li>
@@ -4373,7 +4373,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </section>
 </section>
 <section id="id172">
-<h2>0.3.0 - 2022-07-08<a class="headerlink" href="#id172" title="Link to this heading">#</a></h2>
+<span id="030---2022-07-08"></span><h2>0.3.0 - 2022-07-08<a class="headerlink" href="#id172" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add support for FP16 storage type, see <code class="docutils literal notranslate"><span class="pre">wp.float16</span></code></p></li>
 <li><p>Add support for per-dimension byte strides, see <code class="docutils literal notranslate"><span class="pre">wp.array.strides</span></code></p></li>
@@ -4399,7 +4399,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id173">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.2.3">0.2.3</a> - 2022-06-13<a class="headerlink" href="#id173" title="Link to this heading">#</a></h2>
+<span id="023---2022-06-13"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.2.3">0.2.3</a> - 2022-06-13<a class="headerlink" href="#id173" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for incorrect 4d array bounds checking</p></li>
 <li><p>Fix for <code class="docutils literal notranslate"><span class="pre">wp.constant</span></code> changes not updating module hash</p></li>
@@ -4416,7 +4416,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </section>
 </section>
 <section id="id175">
-<h2>0.2.2 - 2022-05-30<a class="headerlink" href="#id175" title="Link to this heading">#</a></h2>
+<span id="022---2022-05-30"></span><h2>0.2.2 - 2022-05-30<a class="headerlink" href="#id175" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for <code class="docutils literal notranslate"><span class="pre">from</span> <span class="pre">import</span> <span class="pre">*</span></code> inside Warp initialization</p></li>
 <li><p>Fix for body space velocity when using deforming Mesh objects with scale</p></li>
@@ -4444,13 +4444,13 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </section>
 </section>
 <section id="id177">
-<h2>0.2.1 - 2022-05-11<a class="headerlink" href="#id177" title="Link to this heading">#</a></h2>
+<span id="021---2022-05-11"></span><h2>0.2.1 - 2022-05-11<a class="headerlink" href="#id177" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for unit tests in Kit</p></li>
 </ul>
 </section>
 <section id="id178">
-<h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.2.0">0.2.0</a> - 2022-05-02<a class="headerlink" href="#id178" title="Link to this heading">#</a></h2>
+<span id="020---2022-05-02"></span><h2><a class="reference external" href="https://github.com/NVIDIA/warp/releases/tag/v0.2.0">0.2.0</a> - 2022-05-02<a class="headerlink" href="#id178" title="Link to this heading">#</a></h2>
 <section id="warp-core">
 <h3>Warp Core<a class="headerlink" href="#warp-core" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -4504,7 +4504,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </section>
 </section>
 <section id="id180">
-<h2>0.1.25 - 2022-03-20<a class="headerlink" href="#id180" title="Link to this heading">#</a></h2>
+<span id="0125---2022-03-20"></span><h2>0.1.25 - 2022-03-20<a class="headerlink" href="#id180" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add support for class methods to be Warp kernels</p></li>
 <li><p>Add HashGrid reserve() so it can be used with CUDA graphs</p></li>
@@ -4516,7 +4516,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id181">
-<h2>0.1.24 - 2022-03-03<a class="headerlink" href="#id181" title="Link to this heading">#</a></h2>
+<span id="0124---2022-03-03"></span><h2>0.1.24 - 2022-03-03<a class="headerlink" href="#id181" title="Link to this heading">#</a></h2>
 <section id="id182">
 <h3>Warp Core<a class="headerlink" href="#id182" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -4535,7 +4535,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </section>
 </section>
 <section id="id183">
-<h2>0.1.23 - 2022-02-17<a class="headerlink" href="#id183" title="Link to this heading">#</a></h2>
+<span id="0123---2022-02-17"></span><h2>0.1.23 - 2022-02-17<a class="headerlink" href="#id183" title="Link to this heading">#</a></h2>
 <section id="id184">
 <h3>Warp Core<a class="headerlink" href="#id184" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -4548,7 +4548,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </section>
 </section>
 <section id="id185">
-<h2>0.1.22 - 2022-02-14<a class="headerlink" href="#id185" title="Link to this heading">#</a></h2>
+<span id="0122---2022-02-14"></span><h2>0.1.22 - 2022-02-14<a class="headerlink" href="#id185" title="Link to this heading">#</a></h2>
 <section id="id186">
 <h3>Warp Core<a class="headerlink" href="#id186" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -4567,7 +4567,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </section>
 </section>
 <section id="id188">
-<h2>0.1.21 - 2022-01-19<a class="headerlink" href="#id188" title="Link to this heading">#</a></h2>
+<span id="0121---2022-01-19"></span><h2>0.1.21 - 2022-01-19<a class="headerlink" href="#id188" title="Link to this heading">#</a></h2>
 <section id="id189">
 <h3>Warp Core<a class="headerlink" href="#id189" title="Link to this heading">#</a></h3>
 <ul class="simple">
@@ -4592,25 +4592,25 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </section>
 </section>
 <section id="id191">
-<h2>0.1.20 - 2021-11-02<a class="headerlink" href="#id191" title="Link to this heading">#</a></h2>
+<span id="0120---2021-11-02"></span><h2>0.1.20 - 2021-11-02<a class="headerlink" href="#id191" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Updates to the ripple solver for GTC (support for multiple colliders, buoyancy, etc)</p></li>
 </ul>
 </section>
 <section id="id192">
-<h2>0.1.19 - 2021-10-15<a class="headerlink" href="#id192" title="Link to this heading">#</a></h2>
+<span id="0119---2021-10-15"></span><h2>0.1.19 - 2021-10-15<a class="headerlink" href="#id192" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Publish from 2021.3 to avoid omni.graph database incompatibilities</p></li>
 </ul>
 </section>
 <section id="id193">
-<h2>0.1.18 - 2021-10-08<a class="headerlink" href="#id193" title="Link to this heading">#</a></h2>
+<span id="0118---2021-10-08"></span><h2>0.1.18 - 2021-10-08<a class="headerlink" href="#id193" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Enable Linux support (tested on 20.04)</p></li>
 </ul>
 </section>
 <section id="id194">
-<h2>0.1.17 - 2021-09-30<a class="headerlink" href="#id194" title="Link to this heading">#</a></h2>
+<span id="0117---2021-09-30"></span><h2>0.1.17 - 2021-09-30<a class="headerlink" href="#id194" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for 3x3 SVD adjoint</p></li>
 <li><p>Fix for A6000 GPU (bump compute model to sm_52 minimum)</p></li>
@@ -4621,14 +4621,14 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id195">
-<h2>0.1.16 - 2021-09-06<a class="headerlink" href="#id195" title="Link to this heading">#</a></h2>
+<span id="0116---2021-09-06"></span><h2>0.1.16 - 2021-09-06<a class="headerlink" href="#id195" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for case where simple assignments (a = b) incorrectly generated reference rather than value copy</p></li>
 <li><p>Handle passing zero-length (empty) arrays to kernels</p></li>
 </ul>
 </section>
 <section id="id196">
-<h2>0.1.15 - 2021-09-03<a class="headerlink" href="#id196" title="Link to this heading">#</a></h2>
+<span id="0115---2021-09-03"></span><h2>0.1.15 - 2021-09-03<a class="headerlink" href="#id196" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add additional math library functions (asin, etc)</p></li>
 <li><p>Add builtin 3x3 SVD support</p></li>
@@ -4643,7 +4643,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id197">
-<h2>0.1.14 - 2021-08-09<a class="headerlink" href="#id197" title="Link to this heading">#</a></h2>
+<span id="0114---2021-08-09"></span><h2>0.1.14 - 2021-08-09<a class="headerlink" href="#id197" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for out-of-bounds memory access in CUDA BVH</p></li>
 <li><p>Better error checking after kernel launches (use <code class="docutils literal notranslate"><span class="pre">wp.config.verify_cuda=True</span></code>)</p></li>
@@ -4651,32 +4651,32 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id198">
-<h2>0.1.13 - 2021-07-29<a class="headerlink" href="#id198" title="Link to this heading">#</a></h2>
+<span id="0113---2021-07-29"></span><h2>0.1.13 - 2021-07-29<a class="headerlink" href="#id198" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Remove OgnShrinkWrap.py test node</p></li>
 </ul>
 </section>
 <section id="id199">
-<h2>0.1.12 - 2021-07-29<a class="headerlink" href="#id199" title="Link to this heading">#</a></h2>
+<span id="0112---2021-07-29"></span><h2>0.1.12 - 2021-07-29<a class="headerlink" href="#id199" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Switch to Woop et al.’s watertight ray-tri intersection test</p></li>
 <li><p>Disable –fast-math in CUDA compilation step for improved precision</p></li>
 </ul>
 </section>
 <section id="id200">
-<h2>0.1.11 - 2021-07-28<a class="headerlink" href="#id200" title="Link to this heading">#</a></h2>
+<span id="0111---2021-07-28"></span><h2>0.1.11 - 2021-07-28<a class="headerlink" href="#id200" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for <code class="docutils literal notranslate"><span class="pre">wp.mesh_query_ray()</span></code> returning incorrect t-value</p></li>
 </ul>
 </section>
 <section id="id201">
-<h2>0.1.10 - 2021-07-28<a class="headerlink" href="#id201" title="Link to this heading">#</a></h2>
+<span id="0110---2021-07-28"></span><h2>0.1.10 - 2021-07-28<a class="headerlink" href="#id201" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for OV extension fwatcher filters to avoid hot-reload loop due to OGN regeneration</p></li>
 </ul>
 </section>
 <section id="id202">
-<h2>0.1.9 - 2021-07-21<a class="headerlink" href="#id202" title="Link to this heading">#</a></h2>
+<span id="019---2021-07-21"></span><h2>0.1.9 - 2021-07-21<a class="headerlink" href="#id202" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for loading sibling DLL paths</p></li>
 <li><p>Better type checking for built-in function arguments</p></li>
@@ -4684,7 +4684,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id203">
-<h2>0.1.8 - 2021-07-14<a class="headerlink" href="#id203" title="Link to this heading">#</a></h2>
+<span id="018---2021-07-14"></span><h2>0.1.8 - 2021-07-14<a class="headerlink" href="#id203" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix for hot-reload of CUDA kernels</p></li>
 <li><p>Add Tape object for replaying differentiable kernels</p></li>
@@ -4692,7 +4692,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id204">
-<h2>0.1.7 - 2021-07-05<a class="headerlink" href="#id204" title="Link to this heading">#</a></h2>
+<span id="017---2021-07-05"></span><h2>0.1.7 - 2021-07-05<a class="headerlink" href="#id204" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Switch to NVRTC for CUDA runtime</p></li>
 <li><p>Allow running without host compiler</p></li>
@@ -4700,13 +4700,13 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id205">
-<h2>0.1.6 - 2021-06-14<a class="headerlink" href="#id205" title="Link to this heading">#</a></h2>
+<span id="016---2021-06-14"></span><h2>0.1.6 - 2021-06-14<a class="headerlink" href="#id205" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Look for CUDA toolchain in target-deps</p></li>
 </ul>
 </section>
 <section id="id206">
-<h2>0.1.5 - 2021-06-14<a class="headerlink" href="#id206" title="Link to this heading">#</a></h2>
+<span id="015---2021-06-14"></span><h2>0.1.5 - 2021-06-14<a class="headerlink" href="#id206" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Rename OgLang -&gt; Warp</p></li>
 <li><p>Improve CUDA environment error checking</p></li>
@@ -4714,13 +4714,13 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id207">
-<h2>0.1.4 - 2021-06-10<a class="headerlink" href="#id207" title="Link to this heading">#</a></h2>
+<span id="014---2021-06-10"></span><h2>0.1.4 - 2021-06-10<a class="headerlink" href="#id207" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add support for mesh raycast</p></li>
 </ul>
 </section>
 <section id="id208">
-<h2>0.1.3 - 2021-06-09<a class="headerlink" href="#id208" title="Link to this heading">#</a></h2>
+<span id="013---2021-06-09"></span><h2>0.1.3 - 2021-06-09<a class="headerlink" href="#id208" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add support for unary negation operator</p></li>
 <li><p>Add support for mutating variables during dynamic loops (non-differentiable)</p></li>
@@ -4730,7 +4730,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id209">
-<h2>0.1.2 - 2021-06-03<a class="headerlink" href="#id209" title="Link to this heading">#</a></h2>
+<span id="012---2021-06-03"></span><h2>0.1.2 - 2021-06-03<a class="headerlink" href="#id209" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Add support for querying mesh velocities</p></li>
 <li><p>Add CUDA graph support, see <code class="docutils literal notranslate"><span class="pre">wp.capture_begin()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.capture_end()</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.capture_launch()</span></code></p></li>
@@ -4741,13 +4741,13 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 </ul>
 </section>
 <section id="id210">
-<h2>0.1.1 - 2021-05-18<a class="headerlink" href="#id210" title="Link to this heading">#</a></h2>
+<span id="011---2021-05-18"></span><h2>0.1.1 - 2021-05-18<a class="headerlink" href="#id210" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Fix bug with conflicting CUDA contexts</p></li>
 </ul>
 </section>
 <section id="id211">
-<h2>0.1.0 - 2021-05-17<a class="headerlink" href="#id211" title="Link to this heading">#</a></h2>
+<span id="010---2021-05-17"></span><h2>0.1.0 - 2021-05-17<a class="headerlink" href="#id211" title="Link to this heading">#</a></h2>
 <ul class="simple">
 <li><p>Initial publish for alpha testing</p></li>
 </ul>
@@ -4782,7 +4782,7 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
 
 
               
-                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <dialog id="pst-secondary-sidebar-modal" tabindex="-1"></dialog>
                 <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
 
 
@@ -4817,8 +4817,8 @@ Cached kernels will now be stored in hash-specific subdirectory.</p></li>
   
 
   <!-- Scripts loaded after <body> so the DOM is not blocked -->
-  <script defer src="../_static/scripts/bootstrap.js?digest=cb8930eaaf36d9849b67"></script>
-<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=cb8930eaaf36d9849b67"></script>
+  <script defer src="../_static/scripts/bootstrap.js?digest=75c7c72ae941e8b558d8"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=75c7c72ae941e8b558d8"></script>
 
 
   <footer class="bd-footer">
