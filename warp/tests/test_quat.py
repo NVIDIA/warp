@@ -1428,6 +1428,103 @@ def test_slerp_grad(test, device, dtype, register_kernels=False):
     assert_np_equal(wcmp, wcmp_auto, tol=loss_tol)
 
 
+def test_slerp_grad_near_equal(test, device, dtype, register_kernels=False):
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
+    quat_type = wp.types.quaternion(wptype)
+
+    def slerp_near_equal_kernel(
+        q0: wp.array[quat_type],
+        q1: wp.array[quat_type],
+        t: wp.array[wptype],
+        loss: wp.array[wptype],
+        index: int,
+    ):
+        tid = wp.tid()
+
+        q = wp.quat_slerp(q0[tid], q1[tid], t[tid])
+        wp.atomic_add(loss, 0, q[index])
+
+    slerp_near_equal_kernel = getkernel(slerp_near_equal_kernel, suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+
+    def qmul(a, b):
+        return np.array([*(a[3] * b[:3] + b[3] * a[:3] + np.cross(a[:3], b[:3])), a[3] * b[3] - a[:3] @ b[:3]])
+
+    def slerp_reference(q0, q1, t):
+        # float64 version of wp.quat_slerp() that stays smooth as the endpoints coincide
+        r = qmul(q0 * np.array([-1.0, -1.0, -1.0, 1.0]), q1)
+        v, w = r[:3], r[3]
+        n = np.linalg.norm(v)
+        half_angle = t * np.arctan2(n, abs(w))
+        s = np.sin(half_angle) / n if n > 0.0 else t / abs(w)
+        flip = -1.0 if w < 0.0 else 1.0
+        return qmul(q0, np.array([*(flip * s * v), np.cos(half_angle)]))
+
+    def reference_gradient(q0, q1, t, index, wrt):
+        h = 1.0e-7
+        grad = np.zeros(4)
+        for i in range(4):
+            e = np.zeros(4)
+            e[i] = h
+            if wrt == 0:
+                grad[i] = (slerp_reference(q0 + e, q1, t)[index] - slerp_reference(q0 - e, q1, t)[index]) / (2.0 * h)
+            else:
+                grad[i] = (slerp_reference(q0, q1 + e, t)[index] - slerp_reference(q0, q1 - e, t)[index]) / (2.0 * h)
+        return grad
+
+    # Endpoints closer than the rotation at which 1 / |v|^3 overflows the dtype. The start
+    # rotations keep inverse(q0) * q1 exact, so the relative rotation is not lost to rounding.
+    angles = {
+        np.float16: [0.04, 0.02],
+        np.float32: [1.0e-13, 1.0e-15],
+        np.float64: [1.0e-105],
+    }[dtype]
+    starts = np.array([[0.0, 0.0, 0.0, 1.0], [0.0, 0.0, 1.0, 0.0]])
+    axes = np.array([[1.0, 0.0, 0.0], [1.0, 2.0, 3.0]])
+    axes /= np.linalg.norm(axes, axis=1, keepdims=True)
+
+    q0_np, q1_np = [], []
+    for start in starts:
+        for angle in angles:
+            for axis in axes:
+                q0_np.append(start)
+                q1_np.append(qmul(start, np.array([*(np.sin(0.5 * angle) * axis), np.cos(0.5 * angle)])))
+    q0_np = np.array(q0_np, dtype=dtype)
+    q1_np = np.array(q1_np, dtype=dtype)
+    t_np = np.full(len(q0_np), 0.3, dtype=dtype)
+
+    q0 = wp.array(q0_np, dtype=quat_type, device=device, requires_grad=True)
+    q1 = wp.array(q1_np, dtype=quat_type, device=device, requires_grad=True)
+    t = wp.array(t_np, dtype=wptype, device=device, requires_grad=True)
+
+    tol = {
+        np.float16: 5.0e-2,
+        np.float32: 1.0e-5,
+        np.float64: 1.0e-6,
+    }[dtype]
+
+    for wrt, arr in enumerate((q0, q1)):
+        for index in range(4):
+            loss = wp.zeros(1, dtype=wptype, device=device, requires_grad=True)
+            with wp.Tape() as tape:
+                wp.launch(slerp_near_equal_kernel, dim=len(q0_np), inputs=(q0, q1, t, loss, index), device=device)
+            tape.backward(loss)
+            gradients = tape.gradients[arr].numpy().astype(np.float64)
+            tape.zero()
+
+            test.assertTrue(np.all(np.isfinite(gradients)), f"non-finite slerp gradient: {gradients}")
+
+            expected = np.array(
+                [
+                    reference_gradient(a, b, float(c), index, wrt)
+                    for a, b, c in zip(q0_np.astype(np.float64), q1_np.astype(np.float64), t_np, strict=True)
+                ]
+            )
+            np.testing.assert_allclose(gradients, expected, atol=tol)
+
+
 ############################################################
 
 
@@ -1556,6 +1653,86 @@ def test_quat_to_axis_angle_grad(test, device, dtype, register_kernels=False):
     assert_np_equal(edge_gradients_y, edge_gradients_y_auto, tol=tol)
     assert_np_equal(edge_gradients_z, edge_gradients_z_auto, tol=tol)
     assert_np_equal(edge_gradients_w, edge_gradients_w_auto, tol=tol)
+
+
+def test_quat_to_axis_angle_grad_small_angle(test, device, dtype, register_kernels=False):
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
+    vec3 = wp.types.vector(3, wptype)
+    vec4 = wp.types.vector(4, wptype)
+    quat_type = wp.types.quaternion(wptype)
+
+    def quat_to_axis_angle_small_angle_kernel(quats: wp.array[quat_type], loss: wp.array[wptype], coord_idx: int):
+        tid = wp.tid()
+        axis = vec3()
+        angle = wptype(0.0)
+
+        wp.quat_to_axis_angle(quats[tid], axis, angle)
+        a = vec4(axis[0], axis[1], axis[2], angle)
+
+        wp.atomic_add(loss, 0, a[coord_idx])
+
+    quat_to_axis_angle_small_angle_kernel = getkernel(quat_to_axis_angle_small_angle_kernel, suffix=dtype.__name__)
+
+    if register_kernels:
+        return
+
+    # Rotation angles below the size at which 1 / |v|^3 overflows the dtype
+    angles = {
+        np.float16: [0.04, 0.03, 0.02],
+        np.float32: [1.0e-13, 1.0e-15, 1.0e-18],
+        np.float64: [1.0e-105, 1.0e-120],
+    }[dtype]
+    axes = np.array([[1.0, 0.0, 0.0], [1.0, 2.0, 3.0]])
+    axes /= np.linalg.norm(axes, axis=1, keepdims=True)
+
+    quats_np = []
+    for angle in angles:
+        for axis in axes:
+            q = np.array([*(np.sin(0.5 * angle) * axis), np.cos(0.5 * angle)])
+            quats_np.extend((q, -q))
+    quats_np = np.array(quats_np, dtype=dtype)
+    quats = wp.array(quats_np, dtype=quat_type, device=device, requires_grad=True)
+
+    def expected_jacobian(q):
+        # rows: axis x, y, z, angle; columns: d/dq x, y, z, w
+        v, w = q[:3], q[3]
+        l = np.linalg.norm(v)
+        u = v / l
+        flip = -1.0 if w < 0.0 else 1.0
+        jac = np.zeros((4, 4))
+        jac[:3, :3] = flip * (np.eye(3) - np.outer(u, u)) / l
+        d = 2.0 * flip / (l * l + w * w)
+        jac[3, :3] = d * w * u
+        jac[3, 3] = -d * l
+        return jac
+
+    expected = np.array([expected_jacobian(q) for q in quats_np.astype(np.float64)])
+
+    tol = {
+        np.float16: 5.0e-2,
+        np.float32: 1.0e-5,
+        np.float64: 1.0e-12,
+    }[dtype]
+
+    for coord_idx in range(4):
+        loss = wp.zeros(1, dtype=wptype, device=device, requires_grad=True)
+        with wp.Tape() as tape:
+            wp.launch(
+                quat_to_axis_angle_small_angle_kernel,
+                dim=len(quats_np),
+                inputs=(quats, loss, coord_idx),
+                device=device,
+            )
+        tape.backward(loss)
+        gradients = quats.grad.numpy().astype(np.float64)
+        tape.zero()
+
+        test.assertTrue(np.all(np.isfinite(gradients)), f"non-finite gradient for output {coord_idx}: {gradients}")
+
+        # the axis Jacobian scales as 1 / |v|, so compare relative to each row's largest entry
+        expected_rows = expected[:, coord_idx, :]
+        scale = np.maximum(np.max(np.abs(expected_rows), axis=1, keepdims=True), 1.0)
+        np.testing.assert_allclose(gradients / scale, expected_rows / scale, atol=tol)
 
 
 ############################################################
@@ -2512,7 +2689,21 @@ for dtype in np_float_types:
         dtype=dtype,
     )
     add_function_test_register_kernel(
+        TestQuat,
+        f"test_quat_to_axis_angle_grad_small_angle_{dtype.__name__}",
+        test_quat_to_axis_angle_grad_small_angle,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
         TestQuat, f"test_slerp_grad_{dtype.__name__}", test_slerp_grad, devices=devices, dtype=dtype
+    )
+    add_function_test_register_kernel(
+        TestQuat,
+        f"test_slerp_grad_near_equal_{dtype.__name__}",
+        test_slerp_grad_near_equal,
+        devices=devices,
+        dtype=dtype,
     )
     add_function_test_register_kernel(
         TestQuat, f"test_quat_rpy_grad_{dtype.__name__}", test_quat_rpy_grad, devices=devices, dtype=dtype

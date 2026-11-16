@@ -962,24 +962,29 @@ inline CUDA_CALLABLE void adj_quat_to_axis_angle(
     if (l > Type(0)) {
         Type l_sq = l * l;
         Type l_inv = Type(1) / l;
-        Type l_inv_sq = l_inv * l_inv;
-        Type l_inv_cu = l_inv_sq * l_inv;
 
-        Type C = flip * l_inv_cu;
-        ax_qx = C * (q.y * q.y + q.z * q.z);
-        ax_qy = -C * q.x * q.y;
-        ax_qz = -C * q.x * q.z;
-        ay_qx = -C * q.y * q.x;
-        ay_qy = C * (q.x * q.x + q.z * q.z);
-        ay_qz = -C * q.y * q.z;
-        az_qx = -C * q.z * q.x;
-        az_qy = -C * q.z * q.y;
-        az_qz = C * (q.x * q.x + q.y * q.y);
+        // Express the Jacobians through the unit axis u = v / l. Forming 1 / l^3 instead
+        // overflows for small rotations (below ~0.05 rad in float16, ~3e-13 rad in float32)
+        // and turns the gradient into NaN.
+        Type ux = q.x * l_inv;
+        Type uy = q.y * l_inv;
+        Type uz = q.z * l_inv;
+
+        Type C = flip * l_inv;
+        ax_qx = C * (uy * uy + uz * uz);
+        ax_qy = -C * ux * uy;
+        ax_qz = -C * ux * uz;
+        ay_qx = -C * uy * ux;
+        ay_qy = C * (ux * ux + uz * uz);
+        ay_qz = -C * uy * uz;
+        az_qx = -C * uz * ux;
+        az_qy = -C * uz * uy;
+        az_qz = C * (ux * ux + uy * uy);
 
         Type D = Type(2) * flip / (l_sq + q.w * q.w);
-        t_qx = D * l_inv * q.x * q.w;
-        t_qy = D * l_inv * q.y * q.w;
-        t_qz = D * l_inv * q.z * q.w;
+        t_qx = D * ux * q.w;
+        t_qy = D * uy * q.w;
+        t_qz = D * uz * q.w;
         t_qw = -D * l;
     } else {
         if (abs(q.w) > Type(kEps)) {
