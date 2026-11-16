@@ -179,6 +179,43 @@ Floating-point scalar arrays, vectors, matrices, quaternions, transforms, and
 Integer atomics whose return value is ignored usually do not need rewriting
 because the final result is already deterministic for the supported operations.
 
+Pre-atomic reads of an accumulation target
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Deterministic accumulation applies updates after the kernel body completes.
+Warp therefore normally rejects a kernel that directly accesses an array that
+also receives a deterministic atomic update. This prevents a thread from
+observing a value that differs from normal atomic program order.
+
+For a reduction that reads one disjoint tree level and accumulates into the
+level above, declare the target with ``deterministic_deferred_atomics``:
+
+.. code:: python
+
+    @wp.kernel(
+        module="unique",
+        module_options={"deterministic": wp.DeterministicMode.RUN_TO_RUN},
+        deterministic_deferred_atomics=("mass",),
+    )
+    def accumulate_level(
+        parent: wp.array[wp.int32],
+        level: wp.array[wp.int32],
+        mass: wp.array[wp.float32],
+    ):
+        body = level[wp.tid()]
+        wp.atomic_add(mass, parent[body], mass[body])
+
+This is an assertion by the kernel author: direct reads before the deferred
+atomic must not depend on updates performed by this launch. Warp still rejects
+direct writes and direct reads after an update through the declared argument.
+The assertion also covers a read-only input argument that aliases the declared
+target at launch, so the author must ensure its accesses are likewise safe.
+The read and atomic update cannot occur in the same dynamic ``for`` or
+``while`` loop: later iterations could observe an update that deterministic
+mode defers until the kernel completes.
+It only applies to deterministic accumulation atomics, not slot-allocation
+counters.
+
 Pattern 2: Slot Allocation
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -728,12 +765,17 @@ One reduction family per target
             wp.atomic_add(sum_out, 0, values[tid])
             wp.atomic_max(max_out, 0, values[tid])
 
-No direct access to atomic targets
-    Deterministic updates are applied after the kernel, so a kernel cannot also
-    read, write, tile-load, tile-store, or apply ordinary atomics to an array
-    that receives them.  The check applies to the whole array, including other
-    arguments, struct fields, and views that share its memory.  Separate
-    deterministic outputs must not overlap in memory either.  Use separate
+Direct access to atomic targets
+    Deterministic updates are applied after the kernel, so a kernel normally
+    cannot also read, write, tile-load, tile-store, or apply ordinary atomics
+    to an array that receives them. An explicitly declared accumulation target
+    is the limited exception: it can be read before its deterministic atomic,
+    including through a read-only overlapping input argument, when the kernel
+    author ensures that the access does not depend on updates from the current
+    launch. Direct writes, reads after an atomic, tile stores, and ordinary
+    atomics remain unsupported. The check applies to the whole array, including
+    other arguments, struct fields, and views that share its memory. Separate
+    deterministic outputs must not overlap in memory either. Use separate
     arrays or split the work into separate kernels.
 
 Side effects in the counting pass
