@@ -11844,13 +11844,18 @@ def tile_cholesky(A: Tile[Float, tuple[int, int]], fill_mode: str = "lower") -> 
             [1. 2. 3.]"""
     ...
 
-def tile_cholesky_inplace(A: Tile[Float, tuple[int, int]], fill_mode: str = "lower") -> None:
+def tile_cholesky_inplace(
+    A: Tile[Float, tuple[int, int]],
+    fill_mode: str = "lower",
+    zero_opposite: bool | _builtins.bool = True,
+) -> None:
     """Compute the Cholesky factorization of a symmetric positive-definite matrix ``A`` in place.
 
     With ``fill_mode="lower"`` the lower triangle of ``A`` is replaced by
     the factor ``L`` such that ``L @ L^T = A`` and the upper triangle is set to zero;
     with ``fill_mode="upper"`` the upper triangle is replaced by ``U`` such that
-    ``U^T @ U = A`` and the lower triangle is set to zero. Only the triangle selected by
+    ``U^T @ U = A`` and the lower triangle is set to zero. With ``zero_opposite=False``
+    the opposite triangle is left unchanged instead. Only the triangle selected by
     ``fill_mode`` is read. ``fill_mode`` must be a compile-time constant.
 
     Supported dtypes, the positive-definiteness requirement, and backend selection match
@@ -11864,7 +11869,13 @@ def tile_cholesky_inplace(A: Tile[Float, tuple[int, int]], fill_mode: str = "low
     Args:
         A: A square, symmetric positive-definite tile with ``shape=(N, N)``, overwritten
             by the factor.
-        fill_mode: ``"lower"`` or ``"upper"``. Must be a compile-time constant."""
+        fill_mode: ``"lower"`` or ``"upper"``. Must be a compile-time constant.
+        zero_opposite: Whether to zero the triangle opposite ``fill_mode``. If ``False``,
+            that triangle keeps its input values, which saves a pass over the tile. Use
+            this only when the factor is passed to solves with the same ``fill_mode``,
+            such as :func:`~warp.tile_cholesky_solve`, which read only that triangle, and
+            not to operations that read the whole tile, such as :func:`~warp.tile_matmul`.
+            Must be a compile-time constant."""
     ...
 
 def tile_cholesky_solve(

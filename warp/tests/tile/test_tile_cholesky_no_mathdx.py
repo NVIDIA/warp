@@ -66,6 +66,20 @@ def tile_cholesky_upper_inplace_kernel(gA: wp.array2d[wp.float64]):
     wp.tile_store(gA, A)
 
 
+@wp.kernel(enable_backward=False)
+def tile_cholesky_lower_inplace_keep_opposite_kernel(gA: wp.array2d[wp.float64]):
+    A = wp.tile_load(gA, shape=(N, N))
+    wp.tile_cholesky_inplace(A, zero_opposite=False)
+    wp.tile_store(gA, A)
+
+
+@wp.kernel(enable_backward=False)
+def tile_cholesky_upper_inplace_keep_opposite_kernel(gA: wp.array2d[wp.float64]):
+    A = wp.tile_load(gA, shape=(N, N))
+    wp.tile_cholesky_inplace(A, fill_mode="upper", zero_opposite=False)
+    wp.tile_store(gA, A)
+
+
 # -----------------------------------------------------------------------------
 # Helpers
 # -----------------------------------------------------------------------------
@@ -125,6 +139,30 @@ def test_cholesky_upper_inplace(test, device):
     wp.launch_tiled(tile_cholesky_upper_inplace_kernel, dim=[1], inputs=[A], block_dim=TILE_DIM, device=device)
     A_out = A.numpy()
     assert_np_equal(np.triu(A_out), U_ref, tol=1e-10)
+
+
+def test_cholesky_lower_inplace_keep_opposite(test, device):
+    A_np, L_ref = _spd(N, seed=5)
+
+    A = wp.array(A_np.copy(), dtype=wp.float64, device=device)
+    wp.launch_tiled(
+        tile_cholesky_lower_inplace_keep_opposite_kernel, dim=[1], inputs=[A], block_dim=TILE_DIM, device=device
+    )
+    A_out = A.numpy()
+    assert_np_equal(np.tril(A_out), L_ref, tol=1e-10)
+    np.testing.assert_array_equal(np.triu(A_out, k=1), np.triu(A_np, k=1))
+
+
+def test_cholesky_upper_inplace_keep_opposite(test, device):
+    A_np, L_ref = _spd(N, seed=6)
+
+    A = wp.array(A_np.copy(), dtype=wp.float64, device=device)
+    wp.launch_tiled(
+        tile_cholesky_upper_inplace_keep_opposite_kernel, dim=[1], inputs=[A], block_dim=TILE_DIM, device=device
+    )
+    A_out = A.numpy()
+    assert_np_equal(np.triu(A_out), L_ref.T, tol=1e-10)
+    np.testing.assert_array_equal(np.tril(A_out, k=-1), np.tril(A_np, k=-1))
 
 
 # -----------------------------------------------------------------------------
@@ -294,6 +332,8 @@ cholesky_tests = [
     ("test_cholesky_lower_inplace", test_cholesky_lower_inplace),
     ("test_cholesky_upper", test_cholesky_upper),
     ("test_cholesky_upper_inplace", test_cholesky_upper_inplace),
+    ("test_cholesky_lower_inplace_keep_opposite", test_cholesky_lower_inplace_keep_opposite),
+    ("test_cholesky_upper_inplace_keep_opposite", test_cholesky_upper_inplace_keep_opposite),
     ("test_cholesky_lower_backward", test_cholesky_lower_backward),
     ("test_cholesky_upper_backward", test_cholesky_upper_backward),
     ("test_cholesky_lower_backward_n32", test_cholesky_lower_backward_n32),

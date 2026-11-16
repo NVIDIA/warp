@@ -19574,7 +19574,12 @@ def _tile_cholesky_generic_value_func(inplace: bool, arg_types, arg_values):
             return None
         return tile(dtype=Float, shape=tuple[int, int])
 
-    if len(arg_types) > 2:
+    if inplace:
+        if len(arg_types) > 3:
+            raise TypeError(
+                f"tile_cholesky_inplace() takes 1 positional argument and 2 optional arguments but {len(arg_types)} were given"
+            )
+    elif len(arg_types) > 2:
         raise TypeError(
             f"tile_cholesky() takes 1 positional argument and 1 optional argument but {len(arg_types)} were given"
         )
@@ -19617,6 +19622,16 @@ def _tile_cholesky_extract_fill_mode(arg_values, func_name="tile_cholesky"):
     return fill_mode_str == "upper"
 
 
+def _tile_cholesky_extract_zero_opposite(arg_values):
+    """Extract zero_opposite from arg_values (``tile_cholesky_inplace`` only)."""
+    var = arg_values.get("zero_opposite")
+    if var is None:
+        return True
+    if not hasattr(var, "constant") or var.constant is None:
+        raise ValueError("tile_cholesky_inplace() zero_opposite must be a compile-time constant")
+    return builtins.bool(var.constant)
+
+
 def _tile_cholesky_generic_lto_dispatch_func(
     inplace: bool,
     arg_types: Mapping[str, type],
@@ -19627,6 +19642,10 @@ def _tile_cholesky_generic_lto_dispatch_func(
     builder: warp._src.context.ModuleBuilder,
 ):
     upper = _tile_cholesky_extract_fill_mode(arg_values)
+    if inplace:
+        template_args = [upper, _tile_cholesky_extract_zero_opposite(arg_values)]
+    else:
+        template_args = [upper]
     a = arg_values["A"]
     # force source tile to shared memory
     a.type.storage = "shared"
@@ -19655,8 +19674,8 @@ def _tile_cholesky_generic_lto_dispatch_func(
         # CPU/no-MathDx/disabled dispatch -- falls into the cooperative scalar
         # branch via wp_is_null_func<Fwd>.
         if inplace:
-            return ((0, a), [upper], [], 0)
-        return ((0, 0, 0, a, out), [upper], [], 0)
+            return ((0, a), template_args, [], 0)
+        return ((0, 0, 0, a, out), template_args, [], 0)
     else:
         solver = "potrf"
         solver_enum = cusolver_function_map[solver]
@@ -19696,7 +19715,7 @@ def _tile_cholesky_generic_lto_dispatch_func(
 
         if inplace:
             var = Var(lto_symbol, str, False, True, False)
-            return ((var, a), [upper], [lto_code_data], 0)
+            return ((var, a), template_args, [lto_code_data], 0)
 
         # for out-of-place Cholesky, build backward LTOs for adjoint
         # we need a GEMM and two trsm solves for the adjoint
@@ -19760,7 +19779,7 @@ def _tile_cholesky_generic_lto_dispatch_func(
         else:
             var_gemm = 0
             var_trsm = 0
-        result = ((var_fwd, var_gemm, var_trsm, a, out), [upper], lto_list, 0)
+        result = ((var_fwd, var_gemm, var_trsm, a, out), template_args, lto_list, 0)
         return result
 
 
@@ -19855,8 +19874,8 @@ add_builtin(
 
 add_builtin(
     "tile_cholesky_inplace",
-    input_types={"A": tile(dtype=Float, shape=tuple[int, int]), "fill_mode": str},
-    defaults={"fill_mode": "lower"},
+    input_types={"A": tile(dtype=Float, shape=tuple[int, int]), "fill_mode": str, "zero_opposite": builtins.bool},
+    defaults={"fill_mode": "lower", "zero_opposite": True},
     value_func=tile_cholesky_inplace_generic_value_func,
     lto_dispatch_func=tile_cholesky_inplace_generic_lto_dispatch_func,
     variadic=True,
@@ -19865,7 +19884,8 @@ add_builtin(
     With ``fill_mode="lower"`` the lower triangle of ``A`` is replaced by
     the factor ``L`` such that ``L @ L^T = A`` and the upper triangle is set to zero;
     with ``fill_mode="upper"`` the upper triangle is replaced by ``U`` such that
-    ``U^T @ U = A`` and the lower triangle is set to zero. Only the triangle selected by
+    ``U^T @ U = A`` and the lower triangle is set to zero. With ``zero_opposite=False``
+    the opposite triangle is left unchanged instead. Only the triangle selected by
     ``fill_mode`` is read. ``fill_mode`` must be a compile-time constant.
 
     Supported dtypes, the positive-definiteness requirement, and backend selection match
@@ -19879,7 +19899,13 @@ add_builtin(
     Args:
         A: A square, symmetric positive-definite tile with ``shape=(N, N)``, overwritten
             by the factor.
-        fill_mode: ``"lower"`` or ``"upper"``. Must be a compile-time constant.""",
+        fill_mode: ``"lower"`` or ``"upper"``. Must be a compile-time constant.
+        zero_opposite: Whether to zero the triangle opposite ``fill_mode``. If ``False``,
+            that triangle keeps its input values, which saves a pass over the tile. Use
+            this only when the factor is passed to solves with the same ``fill_mode``,
+            such as :func:`~warp.tile_cholesky_solve`, which read only that triangle, and
+            not to operations that read the whole tile, such as :func:`~warp.tile_matmul`.
+            Must be a compile-time constant.""",
     group="Tile Primitives",
     export=False,
     is_differentiable=False,

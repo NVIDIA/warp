@@ -671,6 +671,55 @@ def test_tile_cholesky_upper_inplace(test, device):
 
 
 @wp.kernel(module="test_cholesky_fwd")
+def tile_math_cholesky_lower_inplace_keep_opposite(gA: wp.array2d[wp.float64], gy: wp.array1d[wp.float64]):
+    a = wp.tile_load(gA, shape=(TILE_M, TILE_M), storage="shared")
+    y = wp.tile_load(gy, shape=TILE_M, storage="shared")
+    wp.tile_cholesky_inplace(a, zero_opposite=False)
+    wp.tile_cholesky_solve_inplace(a, y)
+    wp.tile_store(gA, a)
+    wp.tile_store(gy, y)
+
+
+@wp.kernel(module="test_cholesky_fwd")
+def tile_math_cholesky_upper_inplace_keep_opposite(gA: wp.array2d[wp.float64], gy: wp.array1d[wp.float64]):
+    a = wp.tile_load(gA, shape=(TILE_M, TILE_M), storage="shared")
+    y = wp.tile_load(gy, shape=TILE_M, storage="shared")
+    wp.tile_cholesky_inplace(a, fill_mode="upper", zero_opposite=False)
+    wp.tile_cholesky_solve_inplace(a, y, fill_mode="upper")
+    wp.tile_store(gA, a)
+    wp.tile_store(gy, y)
+
+
+def _test_tile_cholesky_inplace_keep_opposite(test, device, kernel, upper):
+    """Check that the factor and solve are unchanged and the opposite triangle keeps the input."""
+    rng = np.random.default_rng(7)
+    L_h = np.tril(rng.random((TILE_M, TILE_M))) + np.eye(TILE_M)
+    A_h = L_h @ L_h.T
+    y_h = np.arange(TILE_M, dtype=np.float64)
+
+    A_wp = wp.array(A_h, dtype=wp.float64, device=device)
+    y_wp = wp.array(y_h, dtype=wp.float64, device=device)
+    wp.launch_tiled(kernel, dim=[1, 1], inputs=[A_wp, y_wp], block_dim=TILE_DIM, device=device)
+
+    F = A_wp.numpy()
+    if upper:
+        np.testing.assert_allclose(np.triu(F), L_h.T)
+        np.testing.assert_array_equal(np.tril(F, k=-1), np.tril(A_h, k=-1))
+    else:
+        np.testing.assert_allclose(np.tril(F), L_h)
+        np.testing.assert_array_equal(np.triu(F, k=1), np.triu(A_h, k=1))
+    np.testing.assert_allclose(y_wp.numpy(), np.linalg.solve(A_h, y_h))
+
+
+def test_tile_cholesky_lower_inplace_keep_opposite(test, device):
+    _test_tile_cholesky_inplace_keep_opposite(test, device, tile_math_cholesky_lower_inplace_keep_opposite, False)
+
+
+def test_tile_cholesky_upper_inplace_keep_opposite(test, device):
+    _test_tile_cholesky_inplace_keep_opposite(test, device, tile_math_cholesky_upper_inplace_keep_opposite, True)
+
+
+@wp.kernel(module="test_cholesky_fwd")
 def tile_math_cholesky_upper_multiple_rhs(
     gA: wp.array2d[wp.float64],
     gD: wp.array1d[wp.float64],
@@ -941,6 +990,20 @@ add_function_test(
     TestTileCholesky,
     "test_tile_cholesky_upper_inplace",
     test_tile_cholesky_upper_inplace,
+    devices=all_devices,
+    check_output=False,
+)
+add_function_test(
+    TestTileCholesky,
+    "test_tile_cholesky_lower_inplace_keep_opposite",
+    test_tile_cholesky_lower_inplace_keep_opposite,
+    devices=all_devices,
+    check_output=False,
+)
+add_function_test(
+    TestTileCholesky,
+    "test_tile_cholesky_upper_inplace_keep_opposite",
+    test_tile_cholesky_upper_inplace_keep_opposite,
     devices=all_devices,
     check_output=False,
 )
