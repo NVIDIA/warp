@@ -5,6 +5,7 @@
 
 import ctypes
 import gc
+import itertools
 import os
 import struct
 import subprocess
@@ -52,6 +53,7 @@ from warp.tests.unittest_utils import (
     get_test_devices_with_cuda_graph_module_load,
     get_test_devices_with_graph_capture_allocation,
     get_test_devices_with_graph_capture_allocation_and_cuda_graph_module_load,
+    suppress_native_error_output,
 )
 
 
@@ -83,6 +85,18 @@ def fill_reduction_inputs_kernel(a: wp.array[wp.float32], b: wp.array[wp.float32
 @wp.kernel
 def no_tid_kernel():
     pass
+
+
+@wp.kernel
+def add_one_2d_kernel(a: wp.array2d[float]):
+    i, j = wp.tid()
+    a[i, j] += 1.0
+
+
+@wp.kernel
+def shift_indices_kernel(indices: wp.array[wp.int32], shift: wp.int32, modulus: wp.int32):
+    i = wp.tid()
+    indices[i] = (indices[i] + shift) % modulus
 
 
 @wp.kernel
@@ -969,6 +983,203 @@ class TestApic(unittest.TestCase):
 
             _assert_apic_load_rejected(self, path, device, r"operation stream failed validation")
 
+    def _save_and_load_cpu_scale_graph(self, src, dst):
+        """Capture ``dst = src * 2`` on the CPU, then save and reload it."""
+        with wp.ScopedCapture(device="cpu", apic=True, force_module_load=False) as capture:
+            wp.launch(scale_kernel, dim=src.shape[0], inputs=[src, dst, 2.0], device="cpu")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "nested_launch")
+            wp.capture_save(capture.graph, path, inputs={"src": src}, outputs={"dst": dst})
+            return wp.capture_load(path, device="cpu")
+
+    def test_capture_launch_rejects_cpu_graph_during_cpu_capture(self):
+        """Verify that ``capture_launch()`` rejects live and loaded CPU graphs during a CPU capture."""
+        n = 4
+        src = wp.array(np.arange(n, dtype=np.float32), device="cpu")
+        dst = wp.zeros(n, dtype=float, device="cpu")
+        wp.load_module(device="cpu")
+        with wp.ScopedCapture(device="cpu", force_module_load=False) as inner:
+            wp.launch(scale_kernel, dim=n, inputs=[src, dst, 2.0], device="cpu")
+        loaded = self._save_and_load_cpu_scale_graph(src, dst)
+
+        for name, graph in (("live", inner.graph), ("loaded", loaded)):
+            with self.subTest(graph=name):
+                with wp.ScopedCapture(device="cpu", force_module_load=False):
+                    with self.assertRaisesRegex(RuntimeError, "Cannot launch a CPU graph during a CPU graph capture"):
+                        wp.capture_launch(graph)
+
+    def test_capture_launch_rejection_keeps_cpu_capture_usable(self):
+        """Verify that a rejected nested launch leaves the outer CPU capture usable and free of inner-graph work."""
+        n = 4
+        base = np.arange(n, dtype=np.float32) + 1.0
+        filled = wp.zeros(n, dtype=float, device="cpu")
+        src = wp.array(base, device="cpu")
+        dst = wp.zeros(n, dtype=float, device="cpu")
+        wp.load_module(device="cpu")
+        with wp.ScopedCapture(device="cpu", force_module_load=False) as inner:
+            filled.fill_(10.0)
+            wp.launch(scale_kernel, dim=n, inputs=[filled, filled, 2.0], device="cpu")
+
+        with wp.ScopedCapture(device="cpu", force_module_load=False) as outer:
+            with self.assertRaisesRegex(RuntimeError, "Cannot launch a CPU graph during a CPU graph capture"):
+                wp.capture_launch(inner.graph)
+            wp.launch(scale_kernel, dim=n, inputs=[src, dst, 3.0], device="cpu")
+
+        wp.capture_launch(outer.graph)
+        np.testing.assert_allclose(filled.numpy(), np.zeros(n, dtype=np.float32))
+        np.testing.assert_allclose(dst.numpy(), 3.0 * base)
+
+    def test_capture_launch_runs_cpu_graph_while_cpu_capture_paused(self):
+        """Verify that a CPU graph launched while the CPU capture is paused runs immediately and is not recorded."""
+        n = 4
+        base = np.arange(n, dtype=np.float32) + 1.0
+        src = wp.array(base, device="cpu")
+        dst = wp.zeros(n, dtype=float, device="cpu")
+        wp.load_module(device="cpu")
+        with wp.ScopedCapture(device="cpu", force_module_load=False) as inner:
+            wp.launch(scale_kernel, dim=n, inputs=[src, dst, 2.0], device="cpu")
+
+        with wp.ScopedCapture(device="cpu", force_module_load=False) as outer:
+            paused = wp_context.capture_pause(device="cpu")
+            wp.capture_launch(inner.graph)
+            wp_context.capture_resume(paused, device="cpu")
+        np.testing.assert_allclose(dst.numpy(), 2.0 * base)
+
+        dst.zero_()
+        wp.capture_launch(outer.graph)
+        np.testing.assert_allclose(dst.numpy(), np.zeros(n, dtype=np.float32))
+
+    def test_capture_launch_runs_cpu_graph_during_cuda_apic_capture(self):
+        """Verify that a CPU graph launched during a CUDA APIC capture runs immediately."""
+        if not wp.is_cuda_available():
+            self.skipTest("Requires a CUDA device")
+
+        n = 4
+        base = np.arange(n, dtype=np.float32) + 1.0
+        src = wp.array(base, device="cpu")
+        dst = wp.zeros(n, dtype=float, device="cpu")
+        wp.load_module(device="cpu")
+        with wp.ScopedCapture(device="cpu", force_module_load=False) as inner:
+            wp.launch(scale_kernel, dim=n, inputs=[src, dst, 2.0], device="cpu")
+
+        with wp.ScopedCapture(device="cuda:0", apic=True, force_module_load=False):
+            wp.capture_launch(inner.graph)
+        np.testing.assert_allclose(dst.numpy(), 2.0 * base)
+
+    def test_native_cpu_replay_refuses_during_cpu_capture(self):
+        """Verify that the native CPU replay functions refuse to run while a CPU capture is recording."""
+        n = 4
+        filled = wp.zeros(n, dtype=float, device="cpu")
+        src = wp.array(np.arange(n, dtype=np.float32), device="cpu")
+        dst = wp.zeros(n, dtype=float, device="cpu")
+        wp.load_module(device="cpu")
+        with wp.ScopedCapture(device="cpu", force_module_load=False) as inner:
+            filled.fill_(10.0)
+        loaded = self._save_and_load_cpu_scale_graph(src, dst)
+
+        core = wp_context.runtime.core
+        with wp.ScopedCapture(device="cpu", force_module_load=False) as outer:
+            self.assertFalse(core.wp_apic_cpu_replay_state(inner.graph.apic_state))
+            self.assertFalse(core.wp_apic_cpu_replay_graph(loaded._native_graph))
+
+        # The refused replay must not have recorded any of the inner graph's work.
+        wp.capture_launch(outer.graph)
+        np.testing.assert_allclose(filled.numpy(), np.zeros(n, dtype=np.float32))
+
+    def test_capture_load_rejects_malformed_array_fill(self):
+        """Reject ARRAY_FILL records whose layout cannot describe a valid fill.
+
+        The saved record fills ``values[::2]``: one dimension of 4 elements with an 8-byte
+        stride and no index array."""
+        device = wp.get_device("cpu")
+        values = wp.zeros(8, dtype=wp.float32, device=device)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            saved_path = os.path.join(tmpdir, "array_fill.wrp")
+            with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+                values[::2].fill_(42.0)
+            wp.capture_save(capture.graph, saved_path, outputs={"values": values})
+            with open(saved_path, "rb") as wrp_file:
+                saved_data = wrp_file.read()
+
+            def corrupted(**fields):
+                path = os.path.join(tmpdir, "corrupted.wrp")
+                with open(path, "wb") as wrp_file:
+                    wrp_file.write(saved_data)
+                _corrupt_apic_array_fill_record(path, **fields)
+                return path
+
+            rejected = r"operation stream failed validation"
+            record_size = _APIC_ARRAY_FILL_RECORD.size
+
+            # The inline value must hold at least one byte, and the record must end right after it.
+            _assert_apic_load_rejected(self, corrupted(value_size=0, total_size=record_size), device, rejected)
+            _assert_apic_load_rejected(self, corrupted(value_size=2), device, rejected)
+
+            _assert_apic_load_rejected(self, corrupted(ndim=0), device, rejected)
+            _assert_apic_load_rejected(self, corrupted(ndim=5), device, rejected)
+            _assert_apic_load_rejected(self, corrupted(flags=1), device, rejected)
+            _assert_apic_load_rejected(self, corrupted(strides=(-8, 0, 0, 0)), device, rejected)
+            _assert_apic_load_rejected(self, corrupted(indices_region_id=(-2, -1, -1, -1)), device, rejected)
+
+            # A dimension without an index array covers its whole underlying dimension.
+            _assert_apic_load_rejected(self, corrupted(shape=(3, 0, 0, 0)), device, rejected)
+            _assert_apic_load_rejected(self, corrupted(indices_offset=(4, 0, 0, 0)), device, rejected)
+
+            # An indexed dimension cannot select from an empty underlying dimension.
+            _assert_apic_load_rejected(
+                self, corrupted(indices_region_id=(1, -1, -1, -1), data_shape=(0, 0, 0, 0)), device, rejected
+            )
+
+            # Fields past ndim must be empty.
+            _assert_apic_load_rejected(self, corrupted(shape=(4, 1, 0, 0)), device, rejected)
+            _assert_apic_load_rejected(self, corrupted(data_shape=(4, 1, 0, 0)), device, rejected)
+            _assert_apic_load_rejected(self, corrupted(strides=(8, 4, 0, 0)), device, rejected)
+            _assert_apic_load_rejected(self, corrupted(indices_region_id=(-1, 1, -1, -1)), device, rejected)
+            _assert_apic_load_rejected(self, corrupted(indices_offset=(0, 4, 0, 0)), device, rejected)
+
+            # The recorder never emits an empty fill.
+            _assert_apic_load_rejected(self, corrupted(shape=(0, 0, 0, 0), data_shape=(0, 0, 0, 0)), device, rejected)
+
+    def test_capture_launch_rejects_array_fill_outside_region(self):
+        """Fail the replay of an ARRAY_FILL record that reaches past its data region.
+
+        The saved record fills ``values[::2]`` from an 8-element region. The loader cannot know
+        region bounds per record, so the replay checks them before writing."""
+        device = wp.get_device("cpu")
+        values = wp.zeros(8, dtype=wp.float32, device=device)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            saved_path = os.path.join(tmpdir, "array_fill.wrp")
+            with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+                values[::2].fill_(42.0)
+            wp.capture_save(capture.graph, saved_path, outputs={"values": values})
+            with open(saved_path, "rb") as wrp_file:
+                saved_data = wrp_file.read()
+
+            def load_corrupted(**fields):
+                path = os.path.join(tmpdir, "corrupted.wrp")
+                with open(path, "wb") as wrp_file:
+                    wrp_file.write(saved_data)
+                _corrupt_apic_array_fill_record(path, **fields)
+                return wp.capture_load(path, device=device)
+
+            saved_error_output_enabled = wp_context.runtime.core.wp_is_error_output_enabled()
+            try:
+                wp_context.runtime.core.wp_set_error_output_enabled(False)
+
+                # A fifth element at an 8-byte stride ends 4 bytes past the region.
+                loaded = load_corrupted(shape=(5, 0, 0, 0), data_shape=(5, 0, 0, 0))
+                with self.assertRaisesRegex(RuntimeError, r"CPU graph replay failed"):
+                    wp.capture_launch(loaded)
+
+                # The first element starts where the 32-byte region ends.
+                loaded = load_corrupted(data_offset=32)
+                with self.assertRaisesRegex(RuntimeError, r"CPU graph replay failed"):
+                    wp.capture_launch(loaded)
+            finally:
+                wp_context.runtime.core.wp_set_error_output_enabled(saved_error_output_enabled)
+
 
 def _mock_apic_cuda_export_module(directory, module_name, filename, source_data=b"// generated CUDA source\n"):
     """Create CUDA artifact metadata for save preflight without requiring a GPU."""
@@ -1060,7 +1271,7 @@ def _mock_apic_cuda_export_graph(modules):
 _APIC_SECTION_METADATA = 1
 _APIC_SECTION_MEMORY = 2
 _APIC_SECTION_OPERATIONS = 3
-_APIC_FORMAT_VERSION = 19
+_APIC_FORMAT_VERSION = 20
 
 # These layouts mirror the packed structs in warp/native/apic_types.h. "<"
 # selects little-endian standard sizes without implicit alignment; "4s", "i",
@@ -1084,6 +1295,12 @@ _APIC_COND_RECORD = struct.Struct("<IIiIQIIII")
 # destination offset, and repetition count.
 _APIC_MEMTILE_RECORD = struct.Struct("<IIiIQQ")
 _APIC_OP_MEMTILE = 10
+
+# APICArrayFillRecord: operation type/size, data region, inline value size, data offset,
+# ndim, flags, padding, then per-dimension shape, data shape, strides, index regions, and
+# index offsets.
+_APIC_ARRAY_FILL_RECORD = struct.Struct("<IIiIQBB6x4i4i4i4i4Q")
+_APIC_OP_ARRAY_FILL = 22
 _APIC_UINT32 = struct.Struct("<I")  # One serialized uint32_t.
 _APIC_OP_KERNEL_LAUNCH = 1
 _APIC_LAUNCH_SHAPE_OFFSET = _APIC_OP_HEADER.size
@@ -1327,6 +1544,41 @@ def _assert_apic_launch_rejected(test, graph, message_pattern):
             wp.capture_launch(graph)
     finally:
         wp_context.runtime.core.wp_set_error_output_enabled(saved_error_output_enabled)
+
+
+def _corrupt_apic_array_fill_record(path, **fields):
+    """Overwrite selected fields of the only ARRAY_FILL record in a WRP file.
+
+    Scalar fields take an integer. Per-dimension fields (``shape``, ``data_shape``,
+    ``strides``, ``indices_region_id``, ``indices_offset``) take a 4-tuple.
+    """
+    scalar_fields = {"total_size": 1, "data_region_id": 2, "value_size": 3, "data_offset": 4, "ndim": 5, "flags": 6}
+    dim_fields = {"shape": 7, "data_shape": 11, "strides": 15, "indices_region_id": 19, "indices_offset": 23}
+
+    with open(path, "r+b") as wrp_file:
+        wrp_data = wrp_file.read()
+        section_offset, section_size = _find_apic_section(wrp_data, _APIC_SECTION_OPERATIONS)
+
+        if section_size < _APIC_UINT32.size + _APIC_ARRAY_FILL_RECORD.size:
+            raise ValueError("WRP operations section has no ARRAY_FILL record")
+
+        operation_count = _APIC_UINT32.unpack_from(wrp_data, section_offset)[0]
+        if operation_count != 1:
+            raise ValueError("Expected exactly one operation")
+
+        record_offset = section_offset + _APIC_UINT32.size
+        record = list(_APIC_ARRAY_FILL_RECORD.unpack_from(wrp_data, record_offset))
+        if record[0] != _APIC_OP_ARRAY_FILL:
+            raise ValueError("Expected an ARRAY_FILL operation")
+
+        for name, value in fields.items():
+            if name in scalar_fields:
+                record[scalar_fields[name]] = value
+            else:
+                start = dim_fields[name]
+                record[start : start + 4] = value
+        wrp_file.seek(record_offset)
+        wrp_file.write(_APIC_ARRAY_FILL_RECORD.pack(*record))
 
 
 def _patch_apic_file_header(path, **fields):
@@ -2039,7 +2291,7 @@ def test_cuda_source_enabled_capture_load_from_bytes(test, device):
 
     filename = next(iter(modules))
     modules[filename] = b"intentionally invalid CUDA module"
-    with test.assertRaisesRegex(RuntimeError, "SHA-256 check"):
+    with suppress_native_error_output(), test.assertRaisesRegex(RuntimeError, "SHA-256 check"):
         wp.capture_load_from_bytes(wrp_data, modules, device=device)
 
 
@@ -2063,9 +2315,12 @@ def test_cuda_source_fallback_reports_missing_source(test, device):
             binary_file.write(b"intentionally invalid CUDA module")
         os.remove(os.path.join(modules_dir, artifact["source_filename"]))
 
-        with test.assertRaisesRegex(
-            RuntimeError,
-            r"packaged binary.*SHA-256 check.*generated source.*was not found",
+        with (
+            suppress_native_error_output(),
+            test.assertRaisesRegex(
+                RuntimeError,
+                r"packaged binary.*SHA-256 check.*generated source.*was not found",
+            ),
         ):
             wp.capture_load(path, device=device)
 
@@ -2307,20 +2562,347 @@ def test_apic_cuda_copy_gaps_rejected_during_capture(test, device):
             wp.copy(cpu_dst, cuda_src)
 
 
-def test_apic_cuda_indexed_fill_rejected_during_capture(test, device):
-    """Reject indexed fills during CUDA APIC capture.
+def test_capture_strided_fill(test, device):
+    """Replay fill_() and zero_() on strided views in operation order.
 
-    Indexed CUDA fill has no APIC byte-stream representation yet, so it must fail
-    loudly instead of silently dropping from the saved graph."""
-    base = wp.zeros(8, dtype=wp.float32, device=device)
-    idx = wp.array([0, 2, 4, 6], dtype=wp.int32, device=device)
-    indexed = wp.indexedarray1d(base, [idx])
+    Each launch starts from a different array state, so a fill applied once at capture time
+    cannot pass. Comparing the whole array catches writes outside the views."""
+    base = wp.zeros((3, 4), dtype=float, device=device)
 
     wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(add_one_2d_kernel, dim=base.shape, inputs=[base], device=device)
+        base[:, 1].fill_(7.0)
+        base[::2, 2:4].zero_()
+
+    # Capturing records the operations without running them.
+    np.testing.assert_array_equal(base.numpy(), np.zeros((3, 4), dtype=np.float32))
+
+    wp.capture_launch(capture.graph)
+    expected = np.full((3, 4), 1.0, dtype=np.float32)
+    expected[:, 1] = 7.0
+    expected[::2, 2:4] = 0.0
+    np.testing.assert_array_equal(base.numpy(), expected)
+
+    base.fill_(-5.0)
+    wp.capture_launch(capture.graph)
+    expected = np.full((3, 4), -4.0, dtype=np.float32)
+    expected[:, 1] = 7.0
+    expected[::2, 2:4] = 0.0
+    np.testing.assert_array_equal(base.numpy(), expected)
+
+
+def _assert_strided_fill_replays(test, device, dtype, value, sentinel):
+    """Capture ``base[1::2, 1].fill_(value)``, reset ``base`` to ``sentinel``, and check one replay."""
+    base = wp.zeros((4, 3), dtype=dtype, device=device)
+
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        base[1::2, 1].fill_(value)
+
+    base.fill_(sentinel)
+    expected = base.numpy().copy()
+    expected[1::2, 1] = value
+
+    wp.capture_launch(capture.graph)
+    np.testing.assert_array_equal(base.numpy(), expected)
+
+
+def test_capture_strided_fill_dtypes(test, device):
+    """Replay strided fills of 1-, 2-, 8-, and 12-byte elements with their exact bits."""
+    _assert_strided_fill_replays(test, device, wp.int8, 5, -1)
+    _assert_strided_fill_replays(test, device, wp.float16, 1.5, -2.0)
+    # The value needs more than 32 bits, so a truncated element fails.
+    _assert_strided_fill_replays(test, device, wp.int64, 2**40 + 3, -1)
+    _assert_strided_fill_replays(test, device, wp.vec3, (1.0, 2.0, 3.0), (-1.0, -1.0, -1.0))
+
+
+def test_capture_strided_fill_ndim(test, device):
+    """Replay strided fills of 3-D and 4-D views."""
+    volume = wp.zeros((2, 3, 4), dtype=float, device=device)
+    grid = wp.zeros((2, 3, 4, 5), dtype=float, device=device)
+
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        volume[:, ::2, 1:4].fill_(3.0)
+        grid[:, 1:, ::2, 1:4].fill_(4.0)
+
+    volume.fill_(-1.0)
+    grid.fill_(-1.0)
+    wp.capture_launch(capture.graph)
+
+    expected_volume = np.full((2, 3, 4), -1.0, dtype=np.float32)
+    expected_volume[:, ::2, 1:4] = 3.0
+    np.testing.assert_array_equal(volume.numpy(), expected_volume)
+
+    expected_grid = np.full((2, 3, 4, 5), -1.0, dtype=np.float32)
+    expected_grid[:, 1:, ::2, 1:4] = 4.0
+    np.testing.assert_array_equal(grid.numpy(), expected_grid)
+
+
+def test_capture_indexed_fill(test, device):
+    """Replay fill_() and zero_() on indexed arrays through their launch-time indices."""
+    base = wp.zeros(6, dtype=float, device=device)
+    fill_indices = wp.array([1, 4], dtype=wp.int32, device=device)
+    zero_indices = wp.array([2], dtype=wp.int32, device=device)
+    filled = wp.indexedarray(base, [fill_indices])
+    zeroed = wp.indexedarray(base, [zero_indices])
+
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        filled.fill_(7.0)
+        zeroed.zero_()
+
+    # Capturing records the operations without running them.
+    np.testing.assert_array_equal(base.numpy(), np.zeros(6, dtype=np.float32))
+
+    base.fill_(-1.0)
+    wp.capture_launch(capture.graph)
+    np.testing.assert_array_equal(base.numpy(), np.array([-1.0, 7.0, 0.0, -1.0, 7.0, -1.0], dtype=np.float32))
+
+    # The graph reads the index arrays when it runs, not when it was captured.
+    fill_indices.assign(np.array([0, 5], dtype=np.int32))
+    zero_indices.assign(np.array([3], dtype=np.int32))
+    base.fill_(-1.0)
+    wp.capture_launch(capture.graph)
+    np.testing.assert_array_equal(base.numpy(), np.array([7.0, -1.0, -1.0, 0.0, -1.0, 7.0], dtype=np.float32))
+
+
+def test_capture_indexed_fill_computed_indices(test, device):
+    """Fill through indices that a kernel writes earlier in the same capture.
+
+    The indexed array indexes the rows of a strided view, so the fill combines an index
+    array with strides. On CPU, recording reads nothing, so a fill that used the
+    capture-time indices would select the wrong rows."""
+    big = wp.zeros((3, 8), dtype=float, device=device)
+    rows = wp.array([0, 1], dtype=wp.int32, device=device)
+    indexed = wp.indexedarray(big[:, ::2], [rows, None])
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        wp.launch(shift_indices_kernel, dim=rows.shape, inputs=[rows, 1, 3], device=device)
+        indexed.fill_(5.0)
+
+    # The first launch shifts the rows to [1, 2].
+    big.fill_(-1.0)
+    wp.capture_launch(capture.graph)
+    expected = np.full((3, 8), -1.0, dtype=np.float32)
+    expected[1, ::2] = 5.0
+    expected[2, ::2] = 5.0
+    np.testing.assert_array_equal(big.numpy(), expected)
+
+    # The second launch shifts the rows to [2, 0].
+    big.fill_(-1.0)
+    wp.capture_launch(capture.graph)
+    expected = np.full((3, 8), -1.0, dtype=np.float32)
+    expected[2, ::2] = 5.0
+    expected[0, ::2] = 5.0
+    np.testing.assert_array_equal(big.numpy(), expected)
+
+
+def test_capture_fill_negative_strides_rejected(test, device):
+    """Reject fills of negative-stride arrays during capture instead of recording them."""
+    base = wp.zeros(8, dtype=wp.float32, device=device)
+    # A reversed view of base: element i is base[7 - i].
+    reversed_view = wp.array(ptr=base.ptr + 28, shape=(8,), strides=(-4,), dtype=wp.float32, device=device)
+    indices = wp.array([0, 2], dtype=wp.int32, device=device)
+    indexed = wp.indexedarray(reversed_view, [indices])
+
     with wp.ScopedCapture(device=device, apic=True, force_module_load=False):
         base.fill_(0.0)  # a recorded op so the capture is non-empty
-        with test.assertRaises(NotImplementedError):
+        with test.assertRaisesRegex(NotImplementedError, r"fill_\(\) on arrays with negative strides"):
+            reversed_view.fill_(1.0)
+        with test.assertRaisesRegex(NotImplementedError, r"fill_\(\) on arrays with negative strides"):
             indexed.fill_(1.0)
+
+
+def test_apic_cuda_noncontiguous_fill_oversized_value_rejected(test, device):
+    """Reject non-contiguous CUDA fills whose value exceeds the inline fill size.
+
+    Values larger than 3968 bytes need staged device memory that a saved graph cannot
+    rebuild, so the fill must fail instead of dropping from the saved graph."""
+    big_vec = wp.types.vector(length=1000, dtype=wp.float32)  # 4000 bytes
+    base = wp.zeros((2, 2), dtype=big_vec, device=device)
+    indices = wp.array([1], dtype=wp.int32, device=device)
+    indexed = wp.indexedarray(base, [indices])
+    marker = wp.zeros(1, dtype=float, device=device)
+
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False):
+        marker.fill_(0.0)  # a recorded op so the capture is non-empty
+        with test.assertRaisesRegex(NotImplementedError, r"larger than 3968 bytes"):
+            base[:, 0].zero_()
+        with test.assertRaisesRegex(NotImplementedError, r"larger than 3968 bytes"):
+            indexed.zero_()
+
+
+@wp.struct
+class _FillRefs:
+    """Hold each kind of field through which a struct fill value can reference memory."""
+
+    values: wp.array[float]
+    selected: wp.indexedarray[float]
+    mesh: wp.handle
+    texture: wp.Texture2D
+    scale: float
+
+
+@wp.struct
+class _FillRefsOuter:
+    inner: _FillRefs
+
+
+def test_capture_fill_struct_references_rejected(test, device):
+    """Reject strided and indexed fills of struct values that hold arrays, handles, or textures.
+
+    The fill record stores the value's bytes, which a saved graph does not relocate, so a
+    loaded graph would keep using the original array or handle."""
+    entries = wp.zeros(4, dtype=_FillRefs, device=device)
+    entry_indices = wp.array([0, 2], dtype=wp.int32, device=device)
+    indexed = wp.indexedarray(entries, [entry_indices])
+    outer_entries = wp.zeros(4, dtype=_FillRefsOuter, device=device)
+    marker = wp.zeros(1, dtype=float, device=device)
+
+    values = wp.array([5.0], dtype=float, device=device)
+    value_indices = wp.array([0], dtype=wp.int32, device=device)
+    mesh = wp.Mesh(
+        points=wp.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype=wp.vec3, device=device),
+        indices=wp.array([0, 1, 2], dtype=wp.int32, device=device),
+    )
+
+    with_array = _FillRefs()
+    with_array.values = values
+    with_indexed = _FillRefs()
+    with_indexed.selected = wp.indexedarray(values, [value_indices])
+    with_handle = _FillRefs()
+    with_handle.mesh = mesh.id
+    with_texture = _FillRefs()
+    with_texture.texture = wp.Texture2D(np.full((2, 2), 3.0, dtype=np.float32), device=device)
+    nested = _FillRefsOuter()
+    nested.inner = with_array
+
+    pattern = r"values that hold arrays, non-zero wp\.handle values, or textures"
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False):
+        marker.fill_(0.0)  # a recorded op so the capture is non-empty
+        with test.assertRaisesRegex(NotImplementedError, pattern):
+            entries[::2].fill_(with_array)
+        with test.assertRaisesRegex(NotImplementedError, pattern):
+            indexed.fill_(with_array)
+        with test.assertRaisesRegex(NotImplementedError, pattern):
+            entries[::2].fill_(with_indexed)
+        with test.assertRaisesRegex(NotImplementedError, pattern):
+            indexed.fill_(with_indexed)
+        with test.assertRaisesRegex(NotImplementedError, pattern):
+            entries[::2].fill_(with_handle)
+        with test.assertRaisesRegex(NotImplementedError, pattern):
+            indexed.fill_(with_handle)
+        with test.assertRaisesRegex(NotImplementedError, pattern):
+            entries[::2].fill_(with_texture)
+        with test.assertRaisesRegex(NotImplementedError, pattern):
+            indexed.fill_(with_texture)
+        with test.assertRaisesRegex(NotImplementedError, pattern):
+            outer_entries[::2].fill_(nested)
+
+
+def test_capture_fill_handles(test, device):
+    """Reject strided and indexed fills of ``wp.handle`` arrays with a non-zero handle; record null ones.
+
+    The fill record stores the handle, which a saved graph does not remap, so a loaded graph
+    would keep the original mesh ID."""
+    handles = wp.array([7, 7, 7, 7], dtype=wp.handle, device=device)
+    handle_indices = wp.array([1], dtype=wp.int32, device=device)
+    indexed = wp.indexedarray(handles, [handle_indices])
+    mesh = wp.Mesh(
+        points=wp.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]], dtype=wp.vec3, device=device),
+        indices=wp.array([0, 1, 2], dtype=wp.int32, device=device),
+    )
+
+    pattern = r"values that hold arrays, non-zero wp\.handle values, or textures"
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        with test.assertRaisesRegex(NotImplementedError, pattern):
+            handles[::2].fill_(mesh.id)
+        with test.assertRaisesRegex(NotImplementedError, pattern):
+            indexed.fill_(mesh.id)
+        handles[::2].fill_(0)
+        indexed.zero_()
+
+    handles.assign(np.array([7, 7, 7, 7], dtype=np.uint64))
+    wp.capture_launch(capture.graph)
+    np.testing.assert_array_equal(handles.numpy(), np.array([0, 0, 0, 7], dtype=np.uint64))
+
+
+def test_capture_fill_struct_without_references(test, device):
+    """Record strided and indexed fills of struct values whose array, handle, and texture fields are null."""
+    entries = wp.zeros(4, dtype=_FillRefs, device=device)
+    entry_indices = wp.array([1], dtype=wp.int32, device=device)
+    indexed = wp.indexedarray(entries, [entry_indices])
+    strided_value = _FillRefs()
+    strided_value.scale = 2.0
+    indexed_value = _FillRefs()
+    indexed_value.scale = 3.0
+
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        entries[::2].fill_(strided_value)
+        indexed.fill_(indexed_value)
+
+    entries.zero_()
+    wp.capture_launch(capture.graph)
+    np.testing.assert_array_equal(entries.numpy()["scale"], np.array([2.0, 3.0, 2.0, 0.0], dtype=np.float32))
+
+
+def _capture_fill_beside_other_device_fills(device, other_device):
+    """Capture a strided fill on ``device`` while filling arrays on ``other_device``.
+
+    Returns the number of recorded operations, the array on ``device`` after a saved and loaded
+    replay, and the array on ``other_device`` as the capture left it.
+    """
+    own = wp.zeros((4, 2), dtype=float, device=device)
+    other = wp.zeros((4, 2), dtype=float, device=other_device)
+    other_indices = wp.array([1, 3], dtype=wp.int32, device=other_device)
+
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        own[:, 1].fill_(1.0)
+        other[:, 1].fill_(2.0)
+        wp.indexedarray(other[:, 0], [other_indices]).fill_(3.0)
+
+    other_after_capture = other.numpy()
+    replayed = _replay_saved_capture(capture.graph, device, {"own": own})
+    return capture.graph._apic_capture.operation_count, replayed["own"], other_after_capture
+
+
+def test_apic_cuda_fill_other_device_not_recorded(test, device):
+    """Run strided and indexed fills on another CUDA device eagerly, without recording them.
+
+    A second context on the same GPU stands in for another device."""
+    operation_count, own, other = _run_on_secondary_cuda_device(device, _capture_fill_beside_other_device_fills)
+
+    test.assertEqual(operation_count, 1)
+    np.testing.assert_array_equal(own, np.array([[0.0, 1.0], [0.0, 1.0], [0.0, 1.0], [0.0, 1.0]], dtype=np.float32))
+    np.testing.assert_array_equal(other, np.array([[0.0, 2.0], [3.0, 2.0], [0.0, 2.0], [3.0, 2.0]], dtype=np.float32))
+
+
+def _capture_fills_under_other_device(device, other_device):
+    """Capture a strided and an indexed fill on ``device`` while ``other_device`` is current.
+
+    Returns the number of recorded operations and the array on ``device`` after a saved and
+    loaded replay.
+    """
+    own = wp.zeros((4, 2), dtype=float, device=device)
+    indices = wp.array([1, 3], dtype=wp.int32, device=device)
+
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        with wp.ScopedDevice(other_device):
+            own[:, 1].fill_(1.0)
+            wp.indexedarray(own[:, 0], [indices]).fill_(2.0)
+
+    replayed = _replay_saved_capture(capture.graph, device, {"own": own})
+    return capture.graph._apic_capture.operation_count, replayed["own"]
+
+
+def test_apic_cuda_fill_under_other_device_recorded(test, device):
+    """Record strided and indexed fills on the capture's device while another device is current.
+
+    A second context on the same GPU stands in for another device."""
+    operation_count, own = _run_on_secondary_cuda_device(device, _capture_fills_under_other_device)
+
+    test.assertEqual(operation_count, 2)
+    np.testing.assert_array_equal(own, np.array([[0.0, 1.0], [2.0, 1.0], [0.0, 1.0], [2.0, 1.0]], dtype=np.float32))
 
 
 def test_apic_capture_while_body_raises_cleanup(test, device):
@@ -2459,6 +3041,154 @@ def test_save_load_multiple_kernels(test, device):
         result = wp.zeros(n, dtype=float, device=device)
         loaded.get_param("d", result)
         np.testing.assert_allclose(result.numpy(), np.full(n, 50.0))
+
+
+class _SecondaryCudaDevice:
+    """A second CUDA context on the same GPU, mapped as a distinct Warp device."""
+
+    def __init__(self, device):
+        core = wp_context.runtime.core
+        self.context = core.wp_cuda_context_create(device.ordinal)
+        if not self.context:
+            raise RuntimeError(f"Failed to create a CUDA context on {device}")
+        # creating a context pushes it; setting the previous one instead would leave an extra stack entry
+        core.wp_cuda_context_pop_current()
+        # a context left alive by a failed test keeps its alias mapped until it is unmapped here
+        self.alias = f"{device.alias}_apic_other_device_{next(_secondary_cuda_device_ids)}"
+        self.device = wp.map_cuda_device(self.alias, self.context)
+
+    def close(self):
+        wp.synchronize()
+        wp.unmap_cuda_device(self.alias)
+        # release the device's default stream while its context is still alive
+        self.device = None
+        gc.collect()
+        wp_context.runtime.core.wp_cuda_context_destroy(self.context)
+
+    def abandon(self):
+        """Unmap the device but keep its context alive, for resources a failed test left behind."""
+        wp.unmap_cuda_device(self.alias)
+        self.device = None
+
+
+_secondary_cuda_device_ids = itertools.count()
+
+
+def _run_on_secondary_cuda_device(device, body):
+    """Call ``body(device, other_device)``, with a second CUDA context on ``device``'s GPU as ``other_device``.
+
+    The second context stands in for another GPU, so tests of cross-device behavior run on a
+    single GPU. ``body`` must release its arrays before returning, since the context is
+    destroyed afterwards.
+
+    Returns:
+        What ``body`` returns.
+    """
+    secondary = _SecondaryCudaDevice(device)
+    try:
+        result = body(device, secondary.device)
+    except BaseException:
+        # a failed body can leave arrays and graph resources that are freed later, so
+        # destroying the context under them would corrupt the process
+        secondary.abandon()
+        raise
+    secondary.close()
+    return result
+
+
+def _replay_saved_capture(graph, device, outputs):
+    """Save ``graph`` with ``outputs``, load it on ``device``, and launch it once.
+
+    A live CUDA graph replays what the driver captured, so only a loaded graph shows what
+    APIC recorded.
+
+    Returns:
+        Each output's contents after the loaded replay, by name.
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "graph")
+        wp.capture_save(graph, path, outputs=outputs)
+        loaded = wp.capture_load(path, device=device)
+        wp.capture_launch(loaded)
+        wp.synchronize_device(device)
+
+        results = {}
+        for name, arr in outputs.items():
+            result = wp.empty_like(arr)
+            loaded.get_param(name, result)
+            results[name] = result.numpy()
+        return results
+
+
+def _capture_memory_ops_beside_other_device(device, other_device):
+    """Capture a fill on ``device`` while zeroing, filling, and copying arrays on ``other_device``.
+
+    Returns the number of recorded operations, the array on ``device`` after a saved and loaded
+    replay, and the arrays on ``other_device`` as the capture left them.
+    """
+    own = wp.zeros(4, dtype=float, device=device)
+    zeroed = wp.ones(4, dtype=float, device=other_device)
+    filled = wp.zeros(4, dtype=float, device=other_device)
+    copied = wp.zeros(4, dtype=float, device=other_device)
+    source = wp.full(4, 3.0, dtype=float, device=other_device)
+
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        own.fill_(1.0)
+        zeroed.zero_()
+        filled.fill_(2.0)
+        wp.copy(copied, source)
+
+    others = (zeroed.numpy(), filled.numpy(), copied.numpy())
+    replayed = _replay_saved_capture(capture.graph, device, {"own": own})
+    return capture.graph._apic_capture.operation_count, replayed["own"], others
+
+
+def test_apic_cuda_memory_ops_other_device_not_recorded(test, device):
+    """Run memsets, fills, and copies on another CUDA device eagerly, without recording them.
+
+    A second context on the same GPU stands in for another device."""
+    operation_count, own, (zeroed, filled, copied) = _run_on_secondary_cuda_device(
+        device, _capture_memory_ops_beside_other_device
+    )
+
+    test.assertEqual(operation_count, 1)
+    np.testing.assert_array_equal(own, np.array([1.0, 1.0, 1.0, 1.0], dtype=np.float32))
+    np.testing.assert_array_equal(zeroed, np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float32))
+    np.testing.assert_array_equal(filled, np.array([2.0, 2.0, 2.0, 2.0], dtype=np.float32))
+    np.testing.assert_array_equal(copied, np.array([3.0, 3.0, 3.0, 3.0], dtype=np.float32))
+
+
+def _capture_memory_ops_under_other_device(device, other_device):
+    """Capture a memset, a fill, and a copy on ``device`` while ``other_device`` is current.
+
+    Returns the number of recorded operations and the arrays on ``device`` after a saved and
+    loaded replay, by name.
+    """
+    zeroed = wp.ones(4, dtype=float, device=device)
+    filled = wp.zeros(4, dtype=float, device=device)
+    copied = wp.zeros(4, dtype=float, device=device)
+    source = wp.full(4, 3.0, dtype=float, device=device)
+
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        with wp.ScopedDevice(other_device):
+            zeroed.zero_()
+            filled.fill_(2.0)
+            wp.copy(copied, source)
+
+    replayed = _replay_saved_capture(capture.graph, device, {"zeroed": zeroed, "filled": filled, "copied": copied})
+    return capture.graph._apic_capture.operation_count, replayed
+
+
+def test_apic_cuda_memory_ops_under_other_device_recorded(test, device):
+    """Record memsets, fills, and copies on the capture's device while another device is current.
+
+    A second context on the same GPU stands in for another device."""
+    operation_count, replayed = _run_on_secondary_cuda_device(device, _capture_memory_ops_under_other_device)
+
+    test.assertEqual(operation_count, 3)
+    np.testing.assert_array_equal(replayed["zeroed"], np.array([0.0, 0.0, 0.0, 0.0], dtype=np.float32))
+    np.testing.assert_array_equal(replayed["filled"], np.array([2.0, 2.0, 2.0, 2.0], dtype=np.float32))
+    np.testing.assert_array_equal(replayed["copied"], np.array([3.0, 3.0, 3.0, 3.0], dtype=np.float32))
 
 
 def test_save_load_memcpy(test, device):
@@ -2906,6 +3636,38 @@ def test_save_load_fill(test, device):
         result = wp.zeros(n, dtype=float, device=device)
         loaded.get_param("arr", result)
         np.testing.assert_allclose(result.numpy(), np.full(n, 42.0))
+
+
+def test_save_load_strided_and_indexed_fill(test, device):
+    """Round-trip strided and indexed fills via .wrp, with new indices set after loading.
+
+    The indexed fill runs second and overlaps the strided one, so the loaded graph must keep
+    their order."""
+    base = wp.zeros((3, 4), dtype=float, device=device)
+    indices = wp.array([1, 4], dtype=wp.int32, device=device)
+    indexed = wp.indexedarray(base.flatten(), [indices])
+
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        base[:, 1].fill_(7.0)
+        indexed.fill_(9.0)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "test_strided_indexed_fill")
+        wp.capture_save(capture.graph, path, inputs={"indices": indices}, outputs={"base": base})
+        loaded = wp.capture_load(path, device=device)
+
+    # Flat index 5 is (1, 1), inside the strided column; flat index 11 is (2, 3).
+    loaded.set_param("indices", wp.array([5, 11], dtype=wp.int32, device=device))
+    loaded.set_param("base", wp.full((3, 4), -1.0, dtype=float, device=device))
+    wp.capture_launch(loaded)
+
+    result = wp.zeros((3, 4), dtype=float, device=device)
+    loaded.get_param("base", result)
+    expected = np.full((3, 4), -1.0, dtype=np.float32)
+    expected[:, 1] = 7.0
+    expected[1, 1] = 9.0
+    expected[2, 3] = 9.0
+    np.testing.assert_array_equal(result.numpy(), expected)
 
 
 def test_save_load_alloc_only(test, device):
@@ -3737,7 +4499,10 @@ def test_capture_graph_branch_save_rejected_cpu(test, device):
                 record()
             with tempfile.TemporaryDirectory() as tmpdir:
                 path = os.path.join(tmpdir, "graph_branch_should_not_save")
-                with test.assertRaisesRegex(RuntimeError, r"wp\.capture_if\(\) or wp\.capture_while\(\)"):
+                with (
+                    suppress_native_error_output(),
+                    test.assertRaisesRegex(RuntimeError, r"wp\.capture_if\(\) or wp\.capture_while\(\)"),
+                ):
                     wp.capture_save(outer.graph, path)
                 test.assertFalse(os.path.exists(path + ".wrp"))
 
@@ -5576,7 +6341,7 @@ def test_capture_with_bvh_refit_save_rejected(test, device):
     with tempfile.TemporaryDirectory() as tmpdir:
         path = os.path.join(tmpdir, "bvh_refit_should_not_save")
         # The error must name the offending op so it is actionable.
-        with test.assertRaisesRegex(RuntimeError, r"wp\.Bvh\.refit\(\)"):
+        with suppress_native_error_output(), test.assertRaisesRegex(RuntimeError, r"wp\.Bvh\.refit\(\)"):
             wp.capture_save(capture.graph, path)
         # A rejected save must not leave a .wrp behind (an empty _modules dir may
         # remain, as on any failed capture_save).
@@ -5601,7 +6366,7 @@ def test_capture_with_bvh_rebuild_save_rejected(test, device):
     with tempfile.TemporaryDirectory() as tmpdir:
         path = os.path.join(tmpdir, "bvh_rebuild_should_not_save")
         # The error must name the offending op so it is actionable.
-        with test.assertRaisesRegex(RuntimeError, r"wp\.Bvh\.rebuild\(\)"):
+        with suppress_native_error_output(), test.assertRaisesRegex(RuntimeError, r"wp\.Bvh\.rebuild\(\)"):
             wp.capture_save(capture.graph, path)
         # A rejected save must not leave a .wrp behind (an empty _modules dir may
         # remain, as on any failed capture_save).
@@ -5696,23 +6461,28 @@ add_function_test(
     test_apic_native_save_reports_hashgrid_serialization_unsupported,
     devices=[d for d in devices if d.is_cpu],
 )
+# The APIC loader writes the next three rejections directly to stderr, which CheckOutput
+# can capture as stdout on Windows.
 add_function_test(
     TestApic,
     "test_capture_load_rejects_empty_conditional_branches_with_operations",
     test_capture_load_rejects_empty_conditional_branches_with_operations,
     devices=[d for d in devices if d.is_cpu],
+    check_output=False,
 )
 add_function_test(
     TestApic,
     "test_capture_load_rejects_memtile_span_overflow",
     test_capture_load_rejects_memtile_span_overflow,
     devices=[d for d in devices if d.is_cpu],
+    check_output=False,
 )
 add_function_test(
     TestApic,
     "test_capture_load_rejects_zero_memtile_srcsize",
     test_capture_load_rejects_zero_memtile_srcsize,
     devices=[d for d in devices if d.is_cpu],
+    check_output=False,
 )
 add_function_test(
     TestApic,
@@ -5823,11 +6593,14 @@ add_function_test(
     test_capture_save_binary_only_cuda_module,
     devices=[d for d in devices_with_cuda_graph_module_load if d.is_cuda],
 )
+# The CUDA module loader writes the rejected PTX diagnostics directly to stderr, which
+# CheckOutput can capture as stdout on Windows.
 add_function_test(
     TestApic,
     "test_capture_save_binary_only_after_source_fallback",
     test_capture_save_binary_only_after_source_fallback,
     devices=[d for d in devices_with_cuda_graph_module_load if d.is_cuda],
+    check_output=False,
 )
 add_function_test(
     TestApic,
@@ -5842,6 +6615,18 @@ add_function_test(
     devices=devices_with_cuda_graph_module_load,
 )
 add_function_test(TestApic, "test_save_load_memcpy", test_save_load_memcpy, devices=devices)
+add_function_test(
+    TestApic,
+    "test_apic_cuda_memory_ops_other_device_not_recorded",
+    test_apic_cuda_memory_ops_other_device_not_recorded,
+    devices=[d for d in devices if d.is_cuda],
+)
+add_function_test(
+    TestApic,
+    "test_apic_cuda_memory_ops_under_other_device_recorded",
+    test_apic_cuda_memory_ops_under_other_device_recorded,
+    devices=[d for d in devices if d.is_cuda],
+)
 add_function_test(TestApic, "test_save_load_memset", test_save_load_memset, devices=devices)
 add_function_test(
     TestApic,
@@ -5893,6 +6678,12 @@ add_function_test(
     devices=[d for d in devices if d.is_cpu],
 )
 add_function_test(TestApic, "test_save_load_fill", test_save_load_fill, devices=devices)
+add_function_test(
+    TestApic,
+    "test_save_load_strided_and_indexed_fill",
+    test_save_load_strided_and_indexed_fill,
+    devices=devices,
+)
 add_function_test(
     TestApic, "test_save_load_alloc_only", test_save_load_alloc_only, devices=devices_with_graph_capture_allocation
 )
@@ -6158,10 +6949,56 @@ add_function_test(
     test_apic_cuda_copy_gaps_rejected_during_capture,
     devices=[d for d in devices if d.is_cuda],
 )
+add_function_test(TestApic, "test_capture_strided_fill", test_capture_strided_fill, devices=devices)
+add_function_test(TestApic, "test_capture_strided_fill_dtypes", test_capture_strided_fill_dtypes, devices=devices)
+add_function_test(TestApic, "test_capture_strided_fill_ndim", test_capture_strided_fill_ndim, devices=devices)
+add_function_test(TestApic, "test_capture_indexed_fill", test_capture_indexed_fill, devices=devices)
 add_function_test(
     TestApic,
-    "test_apic_cuda_indexed_fill_rejected_during_capture",
-    test_apic_cuda_indexed_fill_rejected_during_capture,
+    "test_capture_indexed_fill_computed_indices",
+    test_capture_indexed_fill_computed_indices,
+    devices=devices,
+)
+add_function_test(
+    TestApic,
+    "test_capture_fill_negative_strides_rejected",
+    test_capture_fill_negative_strides_rejected,
+    devices=devices,
+)
+add_function_test(
+    TestApic,
+    "test_apic_cuda_noncontiguous_fill_oversized_value_rejected",
+    test_apic_cuda_noncontiguous_fill_oversized_value_rejected,
+    devices=[d for d in devices if d.is_cuda],
+)
+add_function_test(
+    TestApic,
+    "test_capture_fill_struct_references_rejected",
+    test_capture_fill_struct_references_rejected,
+    devices=devices,
+)
+add_function_test(
+    TestApic,
+    "test_capture_fill_handles",
+    test_capture_fill_handles,
+    devices=devices,
+)
+add_function_test(
+    TestApic,
+    "test_capture_fill_struct_without_references",
+    test_capture_fill_struct_without_references,
+    devices=devices,
+)
+add_function_test(
+    TestApic,
+    "test_apic_cuda_fill_other_device_not_recorded",
+    test_apic_cuda_fill_other_device_not_recorded,
+    devices=[d for d in devices if d.is_cuda],
+)
+add_function_test(
+    TestApic,
+    "test_apic_cuda_fill_under_other_device_recorded",
+    test_apic_cuda_fill_under_other_device_recorded,
     devices=[d for d in devices if d.is_cuda],
 )
 add_function_test(

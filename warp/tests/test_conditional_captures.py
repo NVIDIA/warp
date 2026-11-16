@@ -8,6 +8,7 @@ import unittest
 import numpy as np
 
 import warp as wp
+from warp._src.context import DeviceLike
 from warp.tests.unittest_utils import *
 
 
@@ -1043,7 +1044,7 @@ def body_with_alloc():
 
 
 @unittest.skipUnless(wp.is_conditional_graph_supported(), "Conditional graph nodes not supported")
-def test_body_allocation_lifetime(test, device):
+def test_body_allocation_lifetime(test, device: DeviceLike):
     """Callable bodies own persistent backing across replay and either destruction order."""
     with wp.ScopedDevice(device):
         wp.load_module(device=device)
@@ -1090,7 +1091,7 @@ def test_body_allocation_lifetime(test, device):
 
 
 @unittest.skipUnless(wp.is_conditional_graph_supported(), "Conditional graph nodes not supported")
-def test_failed_body_allocation_lifetime(test, device):
+def test_failed_body_allocation_lifetime(test, device: DeviceLike):
     """Callback aborts and failed capture ends preserve live scratch without leaking dropped scratch."""
     with wp.ScopedDevice(device):
         wp.load_module(device=device)
@@ -1151,8 +1152,11 @@ def test_error_alloc_if_subgraph(test, device):
             body_with_alloc()
 
         cond = wp.ones(1, dtype=wp.int32)
-        with test.assertRaisesRegex(
-            RuntimeError, r"Child graph contains an unsupported operation \(memory allocation\)"
+        with (
+            suppress_native_error_output(),
+            test.assertRaisesRegex(
+                RuntimeError, r"Child graph contains an unsupported operation \(memory allocation\)"
+            ),
         ):
             with wp.ScopedCapture():
                 wp.capture_if(condition=cond, on_true=body_capture.graph)
@@ -1166,8 +1170,11 @@ def test_error_alloc_else_subgraph(test, device):
             body_with_alloc()
 
         cond = wp.ones(1, dtype=wp.int32)
-        with test.assertRaisesRegex(
-            RuntimeError, r"Child graph contains an unsupported operation \(memory allocation\)"
+        with (
+            suppress_native_error_output(),
+            test.assertRaisesRegex(
+                RuntimeError, r"Child graph contains an unsupported operation \(memory allocation\)"
+            ),
         ):
             with wp.ScopedCapture():
                 wp.capture_if(condition=cond, on_false=body_capture.graph)
@@ -1181,8 +1188,11 @@ def test_error_alloc_while_subgraph(test, device):
             body_with_alloc()
 
         cond = wp.ones(1, dtype=wp.int32)
-        with test.assertRaisesRegex(
-            RuntimeError, r"Child graph contains an unsupported operation \(memory allocation\)"
+        with (
+            suppress_native_error_output(),
+            test.assertRaisesRegex(
+                RuntimeError, r"Child graph contains an unsupported operation \(memory allocation\)"
+            ),
         ):
             with wp.ScopedCapture():
                 wp.capture_while(condition=cond, while_body=body_capture.graph)

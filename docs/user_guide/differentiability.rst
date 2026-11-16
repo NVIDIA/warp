@@ -5,8 +5,14 @@ Differentiability
 
 .. currentmodule:: warp
 
-By default, Warp generates a forward and backward (adjoint) version of each kernel definition. The backward version of a kernel can be used 
-to compute gradients of loss functions that can be back propagated to machine learning frameworks like PyTorch.
+By default, Warp generates a forward and backward (adjoint) version of each kernel definition.
+The backward version uses reverse-mode automatic differentiation to compute gradients of loss
+functions that can be back propagated to machine learning frameworks like PyTorch. Reverse mode
+works well for computing the gradient of a scalar loss with respect to many inputs.
+
+For local Jacobians, directional derivatives, or local Hessians involving a small, fixed number
+of inputs, see the experimental :doc:`forward_mode_jets` guide. The :ref:`jets_when_to_use`
+section compares the two approaches.
 
 Arrays that participate in the chain of computation which require gradients must be created with ``requires_grad=True``, for example::
 
@@ -387,6 +393,10 @@ in a single pass.
 
 This approach works best when the Jacobian for a single function call is needed. The tape-based approach computes
 the Jacobian of an arbitrary sequence of transformations between input and output buffers.
+
+.. seealso::
+
+    Reverse mode has no second-order tape. For the local Hessian of a small energy, see :ref:`forward_mode_jets`.
 
 .. _custom-gradient-functions:
 
@@ -1540,3 +1550,9 @@ gradients:
 The pre-loop value read by the adjoint is not necessarily zero, so this failure is not always as visible as an ``inf``: the backward pass may instead
 produce zeros or finite but incorrect gradients. As a rule, return the raw accumulated values from the function and move any operation whose derivative
 depends on them to the caller.
+
+.. toctree::
+   :hidden:
+   :titlesonly:
+
+   forward_mode_jets

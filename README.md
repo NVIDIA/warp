@@ -96,10 +96,6 @@ Before running examples, install the optional example dependencies using:
 pip install warp-lang[examples]
 ```
 
-On Linux aarch64 systems (e.g., NVIDIA DGX Spark), the `[examples]` extra automatically installs
-[`usd-exchange`](https://pypi.org/project/usd-exchange/) instead of `usd-core` as a drop-in replacement,
-since `usd-core` wheels are not available for that platform.
-
 Examples can be run from the command-line as follows:
 
 ```text
@@ -242,6 +238,12 @@ python -m warp.examples.browse
             <td align="center">fluid checkpoint<br><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_fluid_checkpoint.py">basic</a> · <a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_fluid_checkpoint_custom_backward.py">custom backward</a></td>
             <td align="center">particle repulsion</td>
             <td align="center">navier-stokes perturbation</td>
+        </tr>
+        <tr>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_implicit_projection.py"><img src="./docs/img/examples/optim_implicit_projection.png"></a></td>
+        </tr>
+        <tr>
+            <td align="center">implicit projection</td>
         </tr>
     </tbody>
 </table>

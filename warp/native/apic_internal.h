@@ -105,6 +105,79 @@ inline bool apic_reduction_metadata_valid(
                 && input_b_stride % scalar_size == 0));
 }
 
+// Whether an ARRAY_FILL record describes a fill that replay can run: a non-empty
+// value; 1..APIC_MAX_DIMS dimensions with non-negative extents and strides; a
+// dimension without an index array that covers its whole underlying dimension; an
+// indexed dimension that selects from a non-empty one; empty fields past ndim; and
+// at least one element. Replay checks region bounds when it resolves the pointers.
+inline bool apic_array_fill_record_valid(const APICArrayFillRecord& rec)
+{
+    if (rec.value_size == 0 || rec.ndim < 1 || rec.ndim > APIC_MAX_DIMS || rec.flags != 0)
+        return false;
+
+    uint64_t count = 1;
+    for (int d = 0; d < APIC_MAX_DIMS; d++) {
+        if (d >= rec.ndim) {
+            if (rec.shape[d] != 0 || rec.data_shape[d] != 0 || rec.strides[d] != 0 || rec.indices_region_id[d] != -1
+                || rec.indices_offset[d] != 0)
+                return false;
+            continue;
+        }
+        if (rec.shape[d] < 0 || rec.data_shape[d] < 0 || rec.strides[d] < 0 || rec.indices_region_id[d] < -1)
+            return false;
+        if (rec.indices_region_id[d] < 0) {
+            if (rec.shape[d] != rec.data_shape[d] || rec.indices_offset[d] != 0)
+                return false;
+        } else if (rec.data_shape[d] == 0) {
+            return false;
+        }
+        if (!apic_mul_check(count, static_cast<uint64_t>(rec.shape[d]), &count))
+            return false;
+    }
+    return count > 0;
+}
+
+// Bytes from the underlying array's first element to the end of the farthest element
+// an in-range index can select, for a record that apic_array_fill_record_valid()
+// accepts. Its extents are positive and its strides non-negative int32 values, so
+// the sum stays below 2^64.
+inline uint64_t apic_array_fill_data_bytes(const APICArrayFillRecord& rec)
+{
+    uint64_t bytes = rec.value_size;
+    for (int d = 0; d < rec.ndim; d++)
+        bytes += static_cast<uint64_t>(rec.data_shape[d] - 1) * static_cast<uint64_t>(rec.strides[d]);
+    return bytes;
+}
+
+// Builds the descriptor that replays a valid ARRAY_FILL record, resolving each pointer
+// with ``resolve(region_id, offset, access_bytes)``. A strided fill becomes an indexed
+// array without index arrays. Returns false if a pointer does not resolve. Shared by
+// the CPU replay (apic.cpp) and the CUDA rebuild (apic.cu).
+template <typename Resolve>
+inline bool apic_array_fill_descriptor(const APICArrayFillRecord& rec, Resolve&& resolve, wp::indexedarray_t<void>* ia)
+{
+    void* data = resolve(rec.data_region_id, rec.data_offset, apic_array_fill_data_bytes(rec));
+    if (!data)
+        return false;
+
+    *ia = wp::indexedarray_t<void>();
+    ia->arr.data = data;
+    ia->arr.ndim = rec.ndim;
+    for (int d = 0; d < rec.ndim; d++) {
+        ia->arr.shape.dims[d] = rec.data_shape[d];
+        ia->arr.strides[d] = rec.strides[d];
+        ia->shape.dims[d] = rec.shape[d];
+        if (rec.indices_region_id[d] >= 0) {
+            uint64_t index_bytes = static_cast<uint64_t>(rec.shape[d]) * sizeof(int32_t);
+            void* indices = resolve(rec.indices_region_id[d], rec.indices_offset[d], index_bytes);
+            if (!indices)
+                return false;
+            ia->indices[d] = static_cast<int*>(indices);
+        }
+    }
+    return true;
+}
+
 namespace apic_detail {
 
 constexpr size_t launch_bounds_align8(size_t offset) { return (offset + 7) & ~size_t(7); }
@@ -238,6 +311,12 @@ struct APICState {
     // not recorded into the wrong byte stream.
     bool is_cpu = false;
 
+    // CUDA context of a CUDA capture (set by wp_apic_set_cuda_context).
+    // wp_apic_get_cuda_recording_state() returns this state only while that
+    // context is current, so an op on another device runs eagerly instead of
+    // recording into this capture. Null records ops from any context.
+    void* cuda_context = nullptr;
+
     // Set by wp_apic_end_recording after apic_validate_operation_stream passes.
     // Replay paths require it; see apic_validate_operation_stream.
     bool operations_validated = false;
@@ -348,6 +427,16 @@ void apic_record_memset(APICState* state, int32_t region_id, uint64_t offset, ui
 // into the destination region at replay time.
 void apic_record_memtile(
     APICState* state, int32_t region_id, uint64_t offset, uint32_t srcsize, const void* value_ptr, uint64_t count
+);
+
+// Records a wp_array_fill_host / wp_array_fill_device call on a regular (strided) or
+// indexed array descriptor. ``value_size`` bytes from ``value_ptr`` are copied into the
+// byte stream. ``live`` resolves pointers as live CUDA allocations instead of host
+// memory that a CPU save snapshots. Returns false, recording nothing, for any other
+// array type, an empty fill, or a layout APICArrayFillRecord cannot express, such as a
+// negative stride.
+bool apic_record_array_fill(
+    APICState* state, bool live, const void* arr_ptr, int arr_type, const void* value_ptr, uint32_t value_size
 );
 
 void apic_record_alloc(APICState* state, int32_t region_id, uint64_t size);

@@ -619,6 +619,11 @@ class Function:
             for allow_erasure in (False, True):
                 for f in self.overloads:
                     if warp._src.codegen.func_match_args(f, arg_types, kwarg_types, allow_erasure=allow_erasure):
+                        # Operations such as tile_map() resolve their function argument here.
+                        # Validate external-adjoint support using the actual argument types,
+                        # since a generic signature may hide unsupported native types.
+                        if getattr(f, "_external_builtin_contract", None) is not None and f.is_differentiable:
+                            warp._src.codegen.Adjoint.validate_external_adjoint(f, (*arg_types, *kwarg_types.values()))
                         return f
             return None
 
@@ -3454,7 +3459,8 @@ class ModuleHasher:
         elif isinstance(value, tuple(warp._src.types.scalar_and_bool_types)):
             return bytes(value._type_(value.value))
         elif hasattr(value, "_wp_scalar_type_"):
-            return bytes(value)
+            # Read the stored bytes, which bfloat16 composite values don't export as a buffer.
+            return ctypes.string_at(ctypes.addressof(value), ctypes.sizeof(value))
         elif warp._src.types.is_struct(value):
             return bytes(value._ctype)
         elif warp._src.types.is_native_type(type(value)):
@@ -3474,6 +3480,7 @@ class ModuleBuilder:
         # None means backend-neutral analysis, such as resolving deferred wp.static() expressions.
         self.target = target
         self.functions = {}
+        self.wp_grad_targets = set()  # Functions requested by wp.grad() in this build.
         self.structs = {}
         self.native_types = {}
         self.options = options
@@ -3633,12 +3640,22 @@ class ModuleBuilder:
             # use dict to preserve import order
             self.functions[func] = None
 
+            # Discover callbacks for every entry path, including function-valued
+            # arguments and wp.grad(), before post-build validation and sizing.
+            for callback in (func.custom_grad_func, func.custom_replay_func):
+                if callback is not None:
+                    self.deferred_functions.append(callback)
+
     def _propagate_used_by_backward_kernel(self):
         # build_function() memoizes, so a helper built from a forward-only path before a backward
         # kernel reaches it keeps its callees stubbed; re-propagate across the graph to a fixpoint.
         for func in self.functions:
-            func.adj.used_by_backward_kernel = False
+            # Recompute from this build's wp.grad() calls: Function objects can
+            # survive a previous build, including one that failed validation.
+            func.adj.force_adjoint_codegen = func in self.wp_grad_targets
+            func.adj.used_by_backward_kernel = func.adj.force_adjoint_codegen
         worklist = [kernel.adj for kernel in self.kernels if kernel.adj.used_by_backward_kernel]
+        worklist.extend(func.adj for func in self.wp_grad_targets)
         # worklist algorithm: an adj is enqueued only on a False->True flip, so the loop exits even on cycles
         while worklist:
             adj = worklist.pop()
@@ -3646,13 +3663,17 @@ class ModuleBuilder:
                 if not callee.adj.used_by_backward_kernel:
                     callee.adj.used_by_backward_kernel = True
                     worklist.append(callee.adj)
-        # backward use is final only now, so this is where wp.ref[T] calls recorded by
-        # add_call are rejected (a manual adjoint may also have been registered since)
+        self._validate_backward_calls()
+
+        # Backward use is final now. Ordinary reference callees still require
+        # a manual adjoint; external references are checked by replay path above.
         for obj in (*self.kernels, *self.functions):
             adj = obj.adj
             if not adj.used_by_backward_kernel:
                 continue
             for callee in adj.unvalidated_ref_calls:
+                if getattr(callee, "_external_builtin_contract", None) is not None:
+                    continue
                 if adj.has_manual_ref_adjoint(callee):
                     continue
                 scope = "function" if adj.is_user_function else "kernel"
@@ -3663,19 +3684,57 @@ class ModuleBuilder:
                     "with adj_snippet for a manually written adjoint."
                 )
 
+    def _validate_backward_calls(self):
+        """Validate derivative support and mutations along backward execution calls.
+
+        Replaying an ordinary function executes its original body, including
+        nested forward calls. Custom callbacks own their mutation semantics;
+        explicit wp.grad() requests inside them remain independent roots.
+        """
+        worklist = [(kernel.adj, False) for kernel in self.kernels if kernel.adj.used_by_backward_kernel]
+        worklist.extend((func.adj, False) for func in self.wp_grad_targets if func.custom_grad_func is None)
+        visited = set()
+        while worklist:
+            adj, forward = worklist.pop()
+            if (adj, forward) in visited:
+                continue
+            visited.add((adj, forward))
+            if forward:
+                calls = [(callee, False) for callee in (*adj.unvalidated_ref_calls, *adj.called_user_functions)]
+            else:
+                block = adj.blocks[0]
+                calls = block.replay_calls | block.reverse_calls
+            for callee, reverse in calls:
+                if (
+                    reverse
+                    and not callee.is_builtin()
+                    and not adj.supports_native_adjoint(
+                        callee, callee.input_types.values(), (var.type for var in callee.adj.return_var or ())
+                    )
+                ):
+                    raise WarpCodegenError(
+                        f"Cannot automatically differentiate '{callee.key}': mixed native/ordinary outputs or native "
+                        "snippets with native context require an explicit custom gradient."
+                    )
+                if getattr(callee, "_external_builtin_contract", None) is not None and any(
+                    warp._src.types.is_reference(typ) for typ in callee.input_types.values()
+                ):
+                    scope = "function" if adj.is_user_function else "kernel"
+                    raise WarpCodegenError(
+                        f"In {scope} '{adj.fun_name}': "
+                        f"Cannot automatically differentiate or replay external function '{callee.key}' "
+                        "with wp.ref[T] parameters: backward replay could repeat mutations. "
+                        "Use enable_backward=False, or provide a wrapper with both "
+                        "@wp.func_grad and @wp.func_replay."
+                    )
+                if not callee.is_builtin() and (not reverse or callee.custom_grad_func is None):
+                    worklist.append((callee.adj, not reverse))
+
     def _propagate_backward_shared_memory(self):
         # a backward call site replays the callee's forward, then calls its reverse; the two frames
         # pop between the calls, so the larger one bounds the contribution. Custom grad/replay
         # bodies are forward-emitted with no gradient buffers, hence counted once
         adjs = [obj.adj for obj in (*self.functions, *self.kernels)]
-
-        # make sure custom grads/replays are built before reading their rooflines
-        # (callees reached through function-valued arguments are not in deferred_functions)
-        for adj in adjs:
-            for callee in adj.called_user_functions:
-                for extra_fn in (callee.custom_grad_func, callee.custom_replay_func):
-                    if extra_fn is not None:
-                        self.build_function(extra_fn)
 
         # one pass in callees-before-callers order reaches the fixpoint: build_function()
         # registers a function only after its callees finished building, so self.functions
@@ -3897,6 +3956,8 @@ class ModuleBuilder:
         # Detect whether this module uses bfloat16; if not, define WP_NO_BFLOAT16
         # to skip compiling bfloat16 overloads in builtin.h (significant LLVM speedup).
         type_defines = "" if "bfloat16" in source else "#define WP_NO_BFLOAT16\n"
+        if not self.options.get("enable_wide_array_access", True):
+            type_defines += "#define WP_NO_WIDE_ARRAY_ACCESS\n"
 
         # add headers
         #
@@ -4346,6 +4407,7 @@ class Module:
         options["verify_fp"] = config.verify_fp
         options["line_directives"] = config.line_directives
         options["enable_vector_component_overwrites"] = config.enable_vector_component_overwrites
+        options["enable_wide_array_access"] = config.enable_wide_array_access
         options["llvm_cuda"] = config.llvm_cuda
         options["use_precompiled_headers"] = config.use_precompiled_headers
         options["verify_autograd_array_access"] = config.verify_autograd_array_access
@@ -7031,6 +7093,8 @@ class Runtime:
             self.core.wp_apic_begin_recording.restype = None
             self.core.wp_apic_end_recording.argtypes = [ctypes.c_void_p]
             self.core.wp_apic_end_recording.restype = None
+            self.core.wp_apic_set_cuda_context.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+            self.core.wp_apic_set_cuda_context.restype = None
             self.core.wp_apic_get_recording_state.argtypes = []
             self.core.wp_apic_get_recording_state.restype = ctypes.c_void_p
             self.core.wp_apic_get_cuda_recording_state.argtypes = []
@@ -10530,7 +10594,7 @@ def clone(
 
 def empty(
     shape: int | tuple[int, ...] | list[int] | None = None,
-    dtype=float,
+    dtype: type = float,
     device: DeviceLike = None,
     requires_grad: bool = False,
     pinned: bool = False,
@@ -14433,7 +14497,21 @@ def capture_launch(graph: Graph, stream: Stream | None = None):
         graph: A :class:`Graph` returned by :func:`~warp.capture_end()` or
           :func:`~warp.capture_load()`.
         stream: A :class:`Stream` to launch the graph on (CUDA only)
+
+    Raises:
+        RuntimeError: If ``graph`` is a CPU graph and a CPU graph capture is
+          recording, or if the launch fails, for example when a CUDA graph is
+          launched on a stream that is being captured.
     """
+
+    if graph.device.is_cpu and _get_apic_capture_for_device(graph.device) is not None:
+        # Replaying here would re-record the graph through the capture hooks,
+        # dropping kernel launches and fixing conditionals at capture time.
+        # CUDA graph launches on a capturing stream fail as well.
+        raise RuntimeError(
+            "Cannot launch a CPU graph during a CPU graph capture; "
+            "launch it outside the capture or issue its operations inside the capture."
+        )
 
     # ---- APIC loaded graph path ----
     if graph._native_graph is not None:

@@ -542,6 +542,8 @@ The following scalar storage types are supported for array structures:
 +----------+-------------------------------+
 | uint64   | unsigned long integer         |
 +----------+-------------------------------+
+| handle   | 64-bit Warp object reference  |
++----------+-------------------------------+
 | float16  | half-precision float          |
 +----------+-------------------------------+
 | bfloat16 | Brain Floating Point (16-bit) |
@@ -552,6 +554,10 @@ The following scalar storage types are supported for array structures:
 +----------+-------------------------------+
 
 Warp supports ``float`` and ``int`` as aliases for :class:`wp.float32 <warp.float32>` and :class:`wp.int32 <warp.int32>` respectively.
+
+Use :class:`wp.handle <warp.handle>` for object IDs, such as those of meshes, volumes, BVHs, and hash grids.
+It shares the native unsigned 64-bit representation of ``wp.uint64`` while identifying an object reference.
+Use ``wp.uint64`` for ordinary unsigned integers and raw pointers.
 
 Use :func:`wp.dtype_to_numpy() <warp.dtype_to_numpy>` to convert Warp scalar types to NumPy dtype specifications. See :ref:`numpy-scalar-dtypes` for examples and behavior across NumPy versions.
 
@@ -1156,6 +1162,8 @@ Users should explicitly cast variables to compatible types using constructors li
     Numeric conversions are only guaranteed to produce correct results when the value being converted is in the range
     supported by the target data type.
 
+.. _runtime-constants:
+
 Constants
 ---------
 
@@ -1180,6 +1188,11 @@ A Warp kernel can access Python variables defined outside of the kernel, which a
             print("capsule")
 
 Note that using :func:`wp.constant() <warp.constant>` is no longer required, but it performs some type checking and can serve as a reminder that the variables are meant to be used as Warp constants.
+
+A :func:`wp.constant() <warp.constant>` used without an explicit type constructor is treated as
+:class:`wp.float32 <float32>` (for Python floats) or :class:`wp.int32 <int32>` (for Python integers).
+To preserve full 64-bit precision, wrap the constant in an explicit type constructor
+(e.g., ``wp.float64(wp.PI)`` or ``wp.int64(large_value)``).
 
 The behavior is simple and intuitive when the referenced Python variables never change. For details and more complex scenarios, refer to :ref:`External References and Constants<external_references>`. The :ref:`Code Generation<code_generation>` section contains additional information and tips for advanced usage.
 
@@ -1924,9 +1937,10 @@ CPU graph capture currently supports:
   :meth:`Tape.backward() <warp.Tape.backward>`).
 - Reusable launches created with ``wp.launch(..., record_cmd=True)`` when they
   are replayed with :meth:`Launch.launch() <warp.Launch.launch>`.
-- Memory copies (:func:`wp.copy() <warp.copy>`) and zero-initialization
-  (:meth:`array.zero_() <warp.array.zero_>`), plus contiguous
-  :meth:`array.fill_() <warp.array.fill_>`.
+- Memory copies (:func:`wp.copy() <warp.copy>`), and :meth:`array.zero_() <warp.array.zero_>`
+  and :meth:`array.fill_() <warp.array.fill_>` on contiguous arrays, strided views, and
+  :class:`wp.indexedarray <warp.indexedarray>`. Indexed fills read the index arrays on each
+  replay.
 - Host library helpers including
   :func:`wp.utils.array_sum() <warp.utils.array_sum>`,
   :func:`wp.utils.array_inner() <warp.utils.array_inner>`,
@@ -1978,10 +1992,11 @@ Important CPU graph behavior and current limitations:
   ``run_count`` array during CPU graph capture; the host-return form (``run_count=None``)
   raises :exc:`NotImplementedError`, because its capture-time host integer cannot
   represent the replay-time result.
-- Non-contiguous :func:`wp.copy() <warp.copy>`, non-contiguous
-  :meth:`array.fill_() <warp.array.fill_>`, and fills on
-  :class:`wp.indexedarray <warp.indexedarray>` / ``wp.fabricarray`` raise
-  :exc:`NotImplementedError` inside a CPU :class:`ScopedCapture`.
+- Non-contiguous :func:`wp.copy() <warp.copy>`, and :meth:`array.fill_() <warp.array.fill_>`
+  or :meth:`array.zero_() <warp.array.zero_>` on arrays with negative strides or on
+  ``wp.fabricarray`` / ``wp.indexedfabricarray``, raise :exc:`NotImplementedError` inside a CPU
+  :class:`ScopedCapture`. So do strided and indexed fills with a value that holds an array, a
+  non-zero ``wp.handle``, or a texture, directly or in a struct field.
 - Reusable launches with array parameters must be updated through Warp-level
   setters such as :meth:`Launch.set_param_at_index() <warp.Launch.set_param_at_index>`.
   Raw ctype array parameters passed through
@@ -2033,7 +2048,7 @@ API Capture: Saving and Loading Graphs
     surface, the C ``wp_apic_*`` API, and the recorded operation set are all
     subject to change without a formal deprecation cycle. The writer and loader
     must use the same Warp version. The current writer and reader use format
-    version 19, which adds BSR compression records.
+    version 20, which adds records for strided and indexed array fills.
     Recapture graphs saved with earlier formats.
 
 The APIC operation stream lets Warp serialize a supported captured graph to
@@ -2055,8 +2070,9 @@ mechanism), and ``apic=True`` simply enables
 
 On CUDA, ``apic=True`` records the following supported operations so saved
 graphs replay them from current inputs: kernel launches (forward, adjoint, and reusable
-``record_cmd=True`` launches), contiguous same-device memory copies and memsets, contiguous
-:meth:`array.fill_() <warp.array.fill_>`,
+``record_cmd=True`` launches), contiguous same-device memory copies and memsets,
+:meth:`array.fill_() <warp.array.fill_>` on contiguous arrays, strided views, and
+:class:`wp.indexedarray <warp.indexedarray>`,
 :func:`wp.utils.array_sum() <warp.utils.array_sum>`,
 :func:`wp.utils.array_inner() <warp.utils.array_inner>`,
 :func:`wp.utils.array_scan() <warp.utils.array_scan>`,
@@ -2098,8 +2114,10 @@ region:
 - :meth:`HashGrid.build() <warp.HashGrid.build>`, because ``HashGrid``
   resources and their process-local IDs cannot yet be serialized. Use
   ``apic=False`` for live CUDA graph capture.
-- Non-contiguous :meth:`array.fill_() <warp.array.fill_>`, indexed/Fabric ``fill_()``, and
-  contiguous fills whose value is larger than 3968 bytes.
+- :meth:`array.fill_() <warp.array.fill_>` on arrays with negative strides or on Fabric
+  arrays, fills whose value is larger than 3968 bytes, and strided and indexed fills with a
+  value that holds an array, a non-zero ``wp.handle``, or a texture, directly or in a struct
+  field.
 - The host-return form of :func:`wp.utils.runlength_encode() <warp.utils.runlength_encode>`
   (``run_count=None``).
 - :func:`wp.copy() <warp.copy>` other than a contiguous same-device copy: cross-device copies
@@ -2512,14 +2530,22 @@ options, controls, and platform-specific notes.
 Current limitations of API Capture:
 
 - Only :class:`wp.Mesh <warp.Mesh>` object handles are serialized.
-  :class:`wp.Volume <warp.Volume>`, :class:`wp.Bvh <warp.Bvh>`, and
-  :class:`wp.HashGrid <warp.HashGrid>` handles are not yet supported.
+  Serialization of :class:`wp.Volume <warp.Volume>`, :class:`wp.Bvh <warp.Bvh>`, and
+  :class:`wp.HashGrid <warp.HashGrid>` resources is not yet supported.
+  Passing a nonzero ID for one of these resources as a scalar ``wp.handle`` argument
+  or a ``wp.handle`` struct field makes :func:`wp.capture_save() <warp.capture_save>`
+  attempt to register it as a mesh and raise :class:`RuntimeError`.
+  Non-mesh IDs in arrays with ``dtype=wp.handle``, including views created with
+  ``.view(wp.handle)``, are not rejected by :func:`wp.capture_save() <warp.capture_save>`.
+  The referenced resources are not serialized, and their IDs are not remapped.
+  A successful save does not imply that loading or replaying the graph will work.
 - A mesh ID is remapped to the reloaded mesh only when its type is
   :class:`wp.handle <warp.handle>`:
   a ``wp.handle`` kernel parameter or struct field,
-  or an element of an array whose dtype is ``wp.handle`` or a struct with ``wp.handle`` fields.
-  A mesh ID passed as ``wp.uint64`` is saved as a plain integer
-  and is not valid when the graph is loaded in another process.
+  or an element of an array whose dtype is ``wp.handle`` or a struct with ``wp.handle`` fields
+  (see :ref:`object_handle_arrays` for creating handle arrays and views).
+  Object IDs passed as ``wp.uint64`` are saved as plain integers, are not remapped,
+  and are not valid when the graph is loaded in another process.
 - Mesh IDs written into an array by :meth:`array.fill_() <warp.array.fill_>` during a capture
   are not remapped when the graph is loaded.
   Write them with a kernel that takes the mesh as a ``wp.handle`` argument instead.
@@ -2572,6 +2598,59 @@ scratch, while providing high-performance on the GPU.
 
     See the :ref:`Object Lifetime Pitfall<object lifetime pitfall>` section below for more information.
 
+.. _object_handle_arrays:
+
+Object Handles
+##############
+
+Pass a spatial computing object's ``id`` to kernels as :class:`wp.handle <warp.handle>`.
+Use this type for scalar parameters, struct fields, and array elements.
+The example below passes an array of Mesh IDs:
+
+.. testcode:: object_handle_arrays
+
+    import warp as wp
+
+    @wp.kernel
+    def mesh_points(mesh_ids: wp.array[wp.handle], points: wp.array[wp.vec3]):
+        i = wp.tid()
+        points[i] = wp.mesh_get_point(mesh_ids[i], 0)
+
+
+    # Keep the Mesh objects alive while their IDs are used.
+    meshes = [
+        wp.Mesh(
+            points=wp.array([[1, 2, 3], [2, 2, 3], [1, 3, 3]], dtype=wp.vec3, device="cpu"),
+            indices=wp.array([0, 1, 2], dtype=int, device="cpu"),
+        )
+    ]
+    mesh_ids = wp.array([mesh.id for mesh in meshes], dtype=wp.handle, device="cpu")
+    points = wp.empty(len(meshes), dtype=wp.vec3, device="cpu")
+    wp.launch(mesh_points, dim=len(meshes), inputs=[mesh_ids], outputs=[points], device="cpu")
+    print(points.numpy().tolist())
+
+.. testoutput:: object_handle_arrays
+
+    [[1.0, 2.0, 3.0]]
+
+Both the array's ``dtype=wp.handle`` and the kernel's ``wp.array[wp.handle]`` annotation matter.
+Changing a kernel annotation does not change an existing array's dtype.
+For an existing array of 64-bit integer IDs, ``mesh_ids = integer_ids.view(wp.handle)``
+creates a zero-copy view with the handle dtype.
+See :ref:`object_handle_interop` for external arrays.
+
+Existing ``wp.uint64`` object IDs continue to work without warnings outside APIC,
+including ordinary CUDA graph capture and replay.
+
+A ``wp.handle`` does not keep the referenced object alive (see :ref:`object lifetime pitfall`).
+See :ref:`apic_save_load` for resource serialization requirements and limitations.
+
+.. note::
+
+    :func:`wp.tile_load() <warp.tile_load>` and :func:`wp.tile_store() <warp.tile_store>`
+    do not yet support arrays with ``dtype=wp.handle``.
+    Handle arrays work with ordinary kernel array indexing, as shown above.
+
 Meshes
 ######
 
@@ -2582,10 +2661,8 @@ Warp provides a :class:`wp.Mesh <warp.Mesh>` class to manage triangle mesh data.
 .. note::
     Mesh objects maintain references to their input geometry buffers. All buffers should live on the same device.
 
-Meshes can be passed to kernels using their ``id`` attribute, which is a ``uint64`` value that uniquely identifies
-the mesh.
-To save a captured graph that uses a mesh with :func:`wp.capture_save() <warp.capture_save>`,
-type the ID as :class:`wp.handle <warp.handle>` instead (see :ref:`apic_save_load`).
+Meshes can be passed to kernels using their ``id`` attribute, which uniquely identifies the mesh.
+Annotate the kernel parameter as :class:`wp.handle <warp.handle>`.
 Once inside a kernel, you can perform geometric queries against the mesh such as ray-casts or closest-point lookups.
 For example, the result object returned by :func:`wp.mesh_query_point() <warp._src.lang.mesh_query_point>` stores the
 hit face and barycentric coordinates, which can be passed to
@@ -2605,7 +2682,7 @@ hit face and barycentric coordinates, which can be passed to
     closest = wp.empty_like(query_points)
 
     @wp.kernel
-    def closest_point_example(mesh: wp.uint64, query_points: wp.array[wp.vec3], closest: wp.array[wp.vec3]):
+    def closest_point_example(mesh: wp.handle, query_points: wp.array[wp.vec3], closest: wp.array[wp.vec3]):
         tid = wp.tid()
         query = wp.mesh_query_point(mesh, query_points[tid], max_dist=10.0)
         if query.result:
@@ -2637,7 +2714,7 @@ face normal, face index, and barycentric coordinates:
 
     @wp.kernel
     def raycast_example(
-        mesh: wp.uint64,
+        mesh: wp.handle,
         ray_origins: wp.array[wp.vec3],
         ray_dirs: wp.array[wp.vec3],
         hit_normals: wp.array[wp.vec3],
@@ -2700,7 +2777,7 @@ Neighbors can then be iterated over inside the kernel code using
 
     @wp.kernel
     def count_neighbors_example(
-        grid: wp.uint64,
+        grid: wp.handle,
         points: wp.array[wp.vec3],
         radius: float,
         neighbor_count: wp.array[int],
@@ -2774,7 +2851,7 @@ Inside kernels, pass the desired group id directly to :func:`wp.hash_grid_query(
 
     @wp.kernel
     def count_group_neighbors(
-        grid: wp.uint64,
+        grid: wp.handle,
         points: wp.array[wp.vec3],
         groups: wp.array[wp.int32],
         radius: float,
@@ -2850,7 +2927,7 @@ Below we give an example of creating a Volume object from an existing NanoVDB fi
 To sample the volume inside a kernel we pass a reference to it by ID, and use the built-in sampling modes::
 
     @wp.kernel
-    def sample_grid(volume: wp.uint64,
+    def sample_grid(volume: wp.handle,
                     points: wp.array[wp.vec3],
                     samples: wp.array[float]):
 
@@ -2872,7 +2949,7 @@ Warp also supports NanoVDB index grids, which provide a memory-efficient lineari
 to values in arbitrarily shaped arrays::
 
     @wp.kernel
-    def sample_index_grid(volume: wp.uint64,
+    def sample_index_grid(volume: wp.handle,
                          points: wp.array[wp.vec3],
                          voxel_values: wp.array[Any]):
 
@@ -2999,7 +3076,7 @@ An example of performing a ray traversal on the data structure is as follows:
 
     @wp.kernel
     def bvh_query_ray(
-        bvh_id: wp.uint64,
+        bvh_id: wp.handle,
         start: wp.vec3,
         dir: wp.vec3,
         bounds_intersected: wp.array[bool],
@@ -3023,7 +3100,7 @@ An example of performing a ray traversal on the data structure is as follows:
         device="cuda:0",
     )
 
-The Warp kernel ``bvh_query_ray`` is launched with a single thread, provided the unique :class:`wp.uint64 <warp.uint64>`
+The Warp kernel ``bvh_query_ray`` is launched with a single thread, provided the unique :class:`wp.handle <warp.handle>`
 identifier of the :class:`wp.Bvh <warp.Bvh>` object, parameters describing the ray, and an array to store the results.
 In ``bvh_query_ray``, :func:`wp.bvh_query_ray() <warp._src.lang.bvh_query_ray>` is called once to obtain an object that is stored in the
 variable ``query``. An integer is also allocated as ``bounds_nr`` to store the volume index of the traversal.
@@ -3040,7 +3117,7 @@ a specified bounding box.
 
     @wp.kernel
     def bvh_query_aabb(
-        bvh_id: wp.uint64,
+        bvh_id: wp.handle,
         lower: wp.vec3,
         upper: wp.vec3,
         bounds_intersected: wp.array[bool],
@@ -3075,7 +3152,7 @@ Object Lifetime Pitfall
 
 When working with spatial computing primitives like :class:`wp.HashGrid <warp.HashGrid>` and :class:`wp.Bvh <warp.Bvh>`,
 it's crucial to understand how Python's garbage collection interacts with these objects.
-The following example demonstrate a common mistake and how to avoid it.
+The following example shows a common mistake and how to avoid it.
 
 **Common Pitfall**: Creating objects in loops and only storing their IDs
 
@@ -3096,11 +3173,11 @@ The following example demonstrate a common mistake and how to avoid it.
         hash_grid_objects.append(grid)  # Keep the object alive
     
     # Create Warp array for kernel execution when needed
-    grid_ids_array = wp.array([x.id for x in hash_grid_objects], dtype=wp.uint64, device="cuda")
+    grid_ids_array = wp.array([x.id for x in hash_grid_objects], dtype=wp.handle, device="cuda")
     
     wp.launch(my_kernel, dim=10, inputs=[grid_ids_array])
 
-**Why This Happens**: When you only store the ``id`` attribute (which is a :class:`wp.uint64 <warp.uint64>` pointer),
+**Why This Happens**: When you only store the ``id`` attribute (an object reference represented by :class:`wp.handle <warp.handle>`),
 Python's garbage collector may free the original object if no other references exist. This leads to 
 undefined behavior when the kernel tries to access the freed memory.
 
@@ -3110,11 +3187,7 @@ undefined behavior when the kernel tries to access the freed memory.
 2. **Creating objects in functions** and returning only the ID  
 3. **Creating objects as temporary variables** that get overwritten
 
-Always maintain references to spatial computing primitive objects
-(like :class:`wp.HashGrid <warp.HashGrid>`, :class:`wp.Bvh <warp.Bvh>`, etc.) rather than just their ID values.
-This is especially important in loops, functions, and temporary variables where object scope might be unclear.
-
-When a graph captures a :class:`wp.HashGrid <warp.HashGrid>` ID, the caller must
+**Graph capture**: When a graph captures a :class:`wp.HashGrid <warp.HashGrid>` ID, the caller must
 keep the ``HashGrid`` alive until every graph that captures its ID is destroyed.
 This caller-ownership contract is the same for live CPU and CUDA graphs. The
 graph retains the array inputs captured by ``HashGrid.build()``, including

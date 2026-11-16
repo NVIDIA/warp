@@ -183,17 +183,16 @@ The ``warp-lang[examples]`` extra installs dependencies used by many Warp exampl
 
 Some Warp examples and USD rendering features import the OpenUSD ``pxr`` modules. If those modules
 are missing, Python may report ``ModuleNotFoundError: No module named 'pxr'``. The error reports the
-import name; the PyPI distributions that provide these modules are ``usd-core`` and ``usd-exchange``.
+import name; the PyPI distribution that provides these modules is ``usd-core``.
 
-The ``warp-lang[examples]`` extra uses platform markers to install ``usd-core`` where supported and
-``usd-exchange`` on supported platforms without a compatible ``usd-core`` wheel.
+The ``warp-lang[examples]`` extra installs ``usd-core`` on every platform
+that has a compatible ``usd-core`` wheel.
+Windows ARM64 has none.
 
-``usd-exchange`` includes its own OpenUSD runtime and ``pxr`` modules. Do not install it alongside
-``usd-core``. Both packages install files to the same locations, which can cause import or runtime
-failures.
-
-``usd-exchange`` has its own release version, separate from the version of the OpenUSD runtime it
-includes. After installation, call ``pxr.Usd.GetVersion()`` to query the OpenUSD version.
+Earlier Warp releases installed ``usd-exchange`` instead of ``usd-core``
+on Linux aarch64 with Python 3.12 and earlier.
+Because pip does not remove it on upgrade,
+run ``pip uninstall usd-exchange`` before upgrading such an environment with pip.
 
 Some examples need extra packages. Check the example's source file to see what else you need to
 install. For JAX and PyTorch, follow the official

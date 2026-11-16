@@ -8,9 +8,11 @@ import ctypes
 import enum
 import functools
 import inspect
+import itertools
 import math
 import operator
 import struct
+import sys
 import types
 import zlib
 from collections.abc import Callable, Mapping, Sequence
@@ -403,10 +405,27 @@ class uint64(int_base):
 
 
 class handle(uint64):
-    """Type for object handles (Mesh, Volume, BVH) in kernel parameters, struct fields, and arrays.
+    """Object handle type for meshes, volumes, BVHs, and hash grids.
 
-    Behaves identically to ``uint64`` but allows APIC to detect which
-    values need pointer remapping during graph replay.
+    Use this type for scalar object IDs in kernel parameters and struct fields,
+    for example ``mesh: wp.handle``.
+
+    For arrays of object IDs, annotate kernel parameters as ``wp.array[wp.handle]``
+    and construct the arrays with ``dtype=wp.handle``. An annotation alone does not
+    change an array's dtype.
+    An existing Warp array of 64-bit integer IDs can be reinterpreted with
+    ``ids.view(wp.handle)`` without copying its storage.
+
+    Handles use the same native 64-bit representation as :class:`warp.uint64`.
+    See :ref:`object_handle_arrays` for legacy integer compatibility and
+    :ref:`apic_save_load` for resource serialization requirements and limitations.
+
+    A handle does not keep its object alive. Keep the corresponding
+    :class:`warp.Mesh`, :class:`warp.Volume`, :class:`warp.Bvh`, or
+    :class:`warp.HashGrid` alive while its handle is in use.
+
+    :func:`warp.tile_load` and :func:`warp.tile_store` do not yet support
+    arrays with ``dtype=wp.handle``. Handle arrays support ordinary kernel indexing.
     """
 
     _wp_native_name_ = "uint64"
@@ -800,6 +819,260 @@ def _is_bit_converted_float(dtype):
     return dtype is float16 or dtype is bfloat16
 
 
+def _decode_bit_converted_floats(bits: np.ndarray, scalar_type: type) -> np.ndarray:
+    """Return the values of float16 or bfloat16 bits as a NumPy array."""
+    if scalar_type is float16:
+        return bits.view(np.float16)
+    return _np_bfloat16_bits_to_float32(bits)
+
+
+# Whether NumPy reads float16 and bfloat16 composite values as their values rather than
+# their stored bits. Python 3.12 is the first to let these types export a buffer of their own.
+_NUMPY_READS_BIT_CONVERTED_FLOATS = sys.version_info >= (3, 12)
+
+
+def _export_float16_composite_buffer(self, flags):
+    """Export the stored bits of a float16 composite value as the float16 values that they encode."""
+    return ctypes.Array.__buffer__(self, flags).cast("B").cast("e")
+
+
+def _refuse_bfloat16_composite_buffer(self, flags):
+    """Refuse to export a bfloat16 composite value as a buffer, so that NumPy reads it through ``__array__()``."""
+    raise BufferError("No buffer format describes bfloat16 values")
+
+
+def _read_bfloat16_composite_array(self, dtype=None, copy=None):
+    """Return the values of a bfloat16 composite value as a new float32 NumPy array."""
+    if copy is False:
+        raise ValueError("bfloat16 values can only be read into a new array")
+    values = _np_bfloat16_bits_to_float32(np.frombuffer(ctypes.Array.__buffer__(self, 0), dtype=np.uint16))
+    return values if dtype is None else values.astype(dtype, copy=False)
+
+
+# Types that NumPy reads as scalars even though some of them are sequences.
+_NUMPY_SCALAR_TYPES = (float, int, complex, str, bytes, np.generic)
+
+# Types that NumPy never reads as sequences of items.
+_NUMPY_NON_SEQUENCE_TYPES = (*_NUMPY_SCALAR_TYPES, np.ndarray, ctypes.Array)
+
+_PySequence_Check = ctypes.pythonapi.PySequence_Check
+_PySequence_Check.argtypes = (ctypes.py_object,)
+_PySequence_Check.restype = ctypes.c_int
+
+_PyObject_CheckBuffer = ctypes.pythonapi.PyObject_CheckBuffer
+_PyObject_CheckBuffer.argtypes = (ctypes.py_object,)
+_PyObject_CheckBuffer.restype = ctypes.c_int
+
+# Most dimensions NumPy allows in an array (32 before NumPy 2). Deeper inputs are left
+# for NumPy to reject, which also stops the walk through sequences that contain themselves.
+_NUMPY_MAX_DIMS = 64
+
+# How many composite values have their bytes joined at a time. A join holds memory for
+# every value that it joins until it returns, which slows down longer joins.
+_COMPOSITE_JOIN_BATCH_COUNT = 65_536
+
+
+def _is_numpy_sequence(value) -> builtins.bool:
+    """Check if NumPy reads a value as a sequence of items, like a list, rather than as a scalar or an array.
+
+    NumPy reads strings as scalars, and objects with a buffer or an array interface as
+    arrays. It reads other objects as sequences when they support indexing and ``len()``.
+    """
+    if (
+        isinstance(value, (str, bytes))
+        or _PyObject_CheckBuffer(value)
+        or hasattr(value, "__array__")
+        or hasattr(value, "__array_interface__")
+        or hasattr(value, "__array_struct__")
+        or not _PySequence_Check(value)
+    ):
+        return False
+    try:
+        len(value)
+    except Exception:
+        return False
+    return True
+
+
+def _read_numpy_sequences(value, max_depth):
+    """Read every sequence in ``value`` that NumPy would read, down to ``max_depth`` levels, into a tuple."""
+    if max_depth >= 0 and (type(value) in (list, tuple) or _is_numpy_sequence(value)):
+        return tuple(map(_read_numpy_sequences, value, itertools.repeat(max_depth - 1)))
+    return value
+
+
+@functools.cache
+def _get_composite_buffer_dtypes(composite_type: type) -> tuple[np.dtype, np.dtype]:
+    """Return the NumPy dtypes of a composite value's raw bytes and of its stored scalars."""
+    return np.dtype((np.void, ctypes.sizeof(composite_type))), np.dtype(composite_type._type_)
+
+
+def _is_composite_cast_left_to_numpy(composite_type: type, dtype) -> builtins.bool:
+    """Check if NumPy must read composite values of a type one at a time to cast them to ``dtype``.
+
+    NumPy's results for NaN, infinite, and out-of-range float32 and float64 values cast to an
+    integer type depend on how it splits the cast, so these casts stay as NumPy does them.
+    """
+    return dtype is not None and composite_type._wp_scalar_type_ in (float32, float64) and np.dtype(dtype).kind in "iu"
+
+
+def _copy_composite_values(values, count: int, composite_type: type) -> np.ndarray:
+    """Copy ``count`` composite values of one type into a NumPy array of their values, one row per value."""
+    bytes_dtype, scalar_dtype = _get_composite_buffer_dtypes(composite_type)
+    if composite_type._wp_is_bit_converted_ and _NUMPY_READS_BIT_CONVERTED_FLOATS:
+        # These values don't export their stored bits, so read them through the base type.
+        result = np.fromiter(map(ctypes.Array.__buffer__, values, itertools.repeat(0)), dtype=bytes_dtype, count=count)
+        result = result.view(scalar_dtype).reshape(count, -1)
+    else:
+        if count <= _COMPOSITE_JOIN_BATCH_COUNT:
+            buffer = bytearray().join(values)
+        else:
+            # Join slices of a list, which take less time to join than batches read from an iterator.
+            if type(values) not in (list, tuple):
+                values = list(values)
+            buffer = bytearray()
+            for start in range(0, count, _COMPOSITE_JOIN_BATCH_COUNT):
+                buffer += b"".join(values[start : start + _COMPOSITE_JOIN_BATCH_COUNT])
+        result = np.ndarray((count, composite_type._length_), scalar_dtype, buffer)
+    if composite_type._wp_is_bit_converted_:
+        return _decode_bit_converted_floats(result, composite_type._wp_scalar_type_)
+    return result
+
+
+def _convert_composites_to_numpy(data, dtype=None, max_depth=_NUMPY_MAX_DIMS):
+    """Replace the composite values (vectors, matrices, quaternions, transformations) in ``data`` with NumPy arrays.
+
+    NumPy reads composite values one at a time, which is much slower than copying a whole
+    sequence of them at once. Before Python 3.12, it also reads float16 and bfloat16 ones
+    through their raw ``uint16`` bits, as if the bits were the values.
+
+    Args:
+        data: The data to convert.
+        dtype: The NumPy type that the result gets cast to, if any.
+        max_depth: How many levels of sequences NumPy still allows inside ``data``.
+            Anything deeper is left as is.
+    """
+    # Only plain lists and tuples skip NumPy's array protocols: it reads their subclasses
+    # through them when they define one, like any other object.
+    if type(data) not in (list, tuple):
+        if not _NUMPY_READS_BIT_CONVERTED_FLOATS and getattr(data, "_wp_is_bit_converted_", False):
+            return _decode_bit_converted_floats(np.frombuffer(data, dtype=np.uint16), data._wp_scalar_type_)
+        if isinstance(data, np.ndarray) or not _is_numpy_sequence(data):
+            return data
+        # Another sequence, which gets read once into a tuple, as NumPy would.
+        data = tuple(data)
+
+    # A flat sequence of one composite type, the usual case.
+    if data:
+        item_type = type(data[0])
+        if hasattr(item_type, "_wp_generic_type_hint_") and operator.countOf(map(type, data), item_type) == len(data):
+            if _is_composite_cast_left_to_numpy(item_type, dtype):
+                return data
+            return _copy_composite_values(data, len(data), item_type)
+
+    # NumPy only accepts nested sequences whose items at each depth have the same shape,
+    # and reads a composite value as one dimension of scalars, so composite values can
+    # only sit at the one depth that the first item of each sequence reveals.
+    depth = 0
+    first = data
+    while True:
+        while type(first) in (list, tuple):
+            if not first or depth == max_depth:
+                return data
+            first = first[0]
+            depth += 1
+
+        if isinstance(first, _NUMPY_SCALAR_TYPES):
+            # A scalar, so the sequences one depth up hold the scalars.
+            depth -= 1
+        elif isinstance(first, ctypes.Array):
+            pass
+        elif isinstance(first, np.ndarray):
+            depth += first.ndim - 1
+        elif isinstance(first, scalar_and_bool_types):
+            depth -= 1
+        elif _is_numpy_sequence(first):
+            if isinstance(first, (list, tuple)):
+                # A list or tuple subclass, like a named tuple, which gets probed in place
+                # rather than read into a tuple.
+                if not first or depth == max_depth:
+                    return data
+                first = first[0]
+                depth += 1
+                continue
+            # Another sequence: read each one once into a tuple, as NumPy would, and start over.
+            return _convert_composites_to_numpy(_read_numpy_sequences(data, max_depth), dtype, max_depth)
+        else:
+            # Another scalar, or an array-like that NumPy reads as an array.
+            depth += np.ndim(first) - 1
+        break
+
+    if depth <= 0 or (_NUMPY_READS_BIT_CONVERTED_FLOATS and not isinstance(first, ctypes.Array)):
+        # No composite values, or from Python 3.12, no sequence of them to copy in a single pass.
+        return data
+
+    # Gather the sequences that hold the items at that depth, descending only through
+    # lists and tuples so that no other iterable gets consumed.
+    rows = data
+    levels = []
+    for i in range(depth - 1):
+        if i:
+            rows = tuple(itertools.chain.from_iterable(rows))
+        row_types = set(map(type, rows))
+        if not row_types.issubset((list, tuple)):
+            if not all(issubclass(t, _NUMPY_NON_SEQUENCE_TYPES) for t in row_types.difference((list, tuple))):
+                others = itertools.compress(rows, map(operator.not_, map((list, tuple).__contains__, map(type, rows))))
+                if any(map(_is_numpy_sequence, others)):
+                    # Another sequence: read each one once into a tuple, as NumPy would, and start over.
+                    return _convert_composites_to_numpy(_read_numpy_sequences(data, max_depth), dtype, max_depth)
+            if row_types.isdisjoint((list, tuple)):
+                # No list or tuple to hold composite values at the next depth.
+                return data
+            levels = None
+            rows = tuple(itertools.compress(rows, map((list, tuple).__contains__, map(type, rows))))
+        if levels is not None:
+            levels.append(rows)
+
+    # The shape of the sequences while every one at each depth has the same length.
+    shape = [len(data)]
+    for level in levels or ():
+        lengths = set(map(len, level))
+        if len(lengths) != 1:
+            levels = None
+            break
+        shape.append(lengths.pop())
+    count = math.prod(shape) if levels is not None else sum(map(len, rows))
+
+    # The type of the items at that depth, if they all have the same one.
+    item_type = None
+    if count:
+        if depth == 1:
+            first_type = type(data[0])
+        else:
+            first_type = type(rows[0][0] if rows[0] else next(itertools.chain.from_iterable(rows)))
+        items = data if depth == 1 else itertools.chain.from_iterable(rows)
+        if operator.countOf(map(type, items), first_type) == count:
+            item_type = first_type
+
+    if item_type is not None:
+        if not type_is_composite(item_type) or _is_composite_cast_left_to_numpy(item_type, dtype):
+            return data
+        if levels is not None:
+            values = data if depth == 1 else itertools.chain.from_iterable(rows)
+            return _copy_composite_values(values, count, item_type).reshape(*shape, -1)
+        if _NUMPY_READS_BIT_CONVERTED_FLOATS or not item_type._wp_is_bit_converted_:
+            return data
+    elif _NUMPY_READS_BIT_CONVERTED_FLOATS or not any(
+        getattr(t, "_wp_is_bit_converted_", False)
+        for t in set(map(type, data if depth == 1 else itertools.chain.from_iterable(rows)))
+    ):
+        return data
+
+    # Before Python 3.12, float16 and bfloat16 values that NumPy can't take in a single pass
+    # get replaced one sequence at a time.
+    return tuple(map(_convert_composites_to_numpy, data, itertools.repeat(dtype), itertools.repeat(max_depth - 1)))
+
+
 def safe_len(obj):
     try:
         return len(obj)
@@ -995,6 +1268,15 @@ def vector(length, dtype):
                 return x
 
         _wp_is_bit_converted_ = _is_bit_converted_float(_wp_scalar_type_)
+
+        # NumPy reads composite values through the buffer that they export, which would
+        # otherwise hold the stored bits of float16 and bfloat16 values.
+        if _wp_is_bit_converted_ and _NUMPY_READS_BIT_CONVERTED_FLOATS:
+            if _wp_scalar_type_ is float16:
+                __buffer__ = _export_float16_composite_buffer
+            else:
+                __buffer__ = _refuse_bfloat16_composite_buffer
+                __array__ = _read_bfloat16_composite_array
 
         def __init__(self, *args):
             num_args = len(args)
@@ -1244,6 +1526,15 @@ def matrix(shape, dtype):
                 return x
 
         _wp_is_bit_converted_ = _is_bit_converted_float(_wp_scalar_type_)
+
+        # NumPy reads composite values through the buffer that they export, which would
+        # otherwise hold the stored bits of float16 and bfloat16 values.
+        if _wp_is_bit_converted_ and _NUMPY_READS_BIT_CONVERTED_FLOATS:
+            if _wp_scalar_type_ is float16:
+                __buffer__ = _export_float16_composite_buffer
+            else:
+                __buffer__ = _refuse_bfloat16_composite_buffer
+                __array__ = _read_bfloat16_composite_array
 
         def __init__(self, *args):
             num_args = len(args)
@@ -3095,7 +3386,7 @@ def scalars_equal_generic(a, b, match_generic=True):
         if a is Float and b is Float:
             return True
 
-    # handle and uint64 are interchangeable (handle is a semantic alias for uint64)
+    # Preserve legacy uint64 object IDs while handle identifies resource references.
     if (a is handle and b is uint64) or (a is uint64 and b is handle):
         return True
 
@@ -3759,11 +4050,25 @@ class array(Array[DType, NDim]):
             self._ref = data
             return
 
+        # Whether to convert the composite values in the data before NumPy reads it: always
+        # before Python 3.12, where NumPy would read float16 and bfloat16 ones as their stored
+        # bits, and from then on only for sequences of them, which get copied in a single pass.
+        if isinstance(data, np.ndarray):
+            convert_composites = False
+        elif _NUMPY_READS_BIT_CONVERTED_FLOATS and (type(data) is list or type(data) is tuple):
+            # Sequences of composite values start with one, or with a nested sequence.
+            first = data[0] if data else None
+            if isinstance(first, (list, tuple)):
+                first = first[0] if first else None
+            convert_composites = isinstance(first, (ctypes.Array, list, tuple))
+        else:
+            convert_composites = True
+
         # convert input data to ndarray (handles lists, tuples, etc.) and determine dtype
         if dtype is Any:
             # infer dtype from data
             try:
-                arr = np.asarray(data)
+                arr = np.asarray(_convert_composites_to_numpy(data) if convert_composites else data)
             except Exception as e:
                 raise RuntimeError(f"Failed to convert input data to an array: {e}") from e
             dtype = np_dtype_to_warp_type.get(arr.dtype)
@@ -3871,9 +4176,16 @@ class array(Array[DType, NDim]):
                     elif ml_bf16 is not None and isinstance(data, np.ndarray) and data.dtype == ml_bf16:
                         arr = data.view(np.uint16)
                     else:
-                        arr = _np_float32_to_bfloat16_bits(np.asarray(data, dtype=np.float32))
+                        arr = _np_float32_to_bfloat16_bits(
+                            np.asarray(
+                                _convert_composites_to_numpy(data, np.float32) if convert_composites else data,
+                                dtype=np.float32,
+                            )
+                        )
                 else:
-                    arr = np.asarray(data, dtype=npdtype)
+                    arr = np.asarray(
+                        _convert_composites_to_numpy(data, npdtype) if convert_composites else data, dtype=npdtype
+                    )
             except Exception as e:
                 raise RuntimeError(f"Failed to convert input data to an array with type {npdtype}: {e}") from e
 
@@ -3942,15 +4254,29 @@ class array(Array[DType, NDim]):
         else:
             # copy data into a new array
             self._init_new(dtype, shape, None, device, pinned)
-            src = array(
-                ptr=arr.ctypes.data,
-                dtype=dtype,
-                shape=shape,
-                strides=strides,
-                device="cpu",
-                copy=False,
-            )
-            warp.copy(self, src)
+            runtime = warp._src.context.runtime
+            if arr.flags.c_contiguous and runtime._apic_capture is None:
+                # The new array is contiguous too, so copy the bytes directly rather than
+                # through a temporary source array and the general-purpose copy.
+                if self.capacity:
+                    if device.is_cuda:
+                        result = runtime.core.wp_memcpy_h2d(
+                            device.context, self.ptr, arr.ctypes.data, self.capacity, device.stream.cuda_stream
+                        )
+                    else:
+                        result = runtime.core.wp_memcpy_h2h(self.ptr, arr.ctypes.data, self.capacity)
+                    if not result:
+                        raise RuntimeError(f"Warp copy error: {runtime.get_error_string()}")
+            else:
+                src = array(
+                    ptr=arr.ctypes.data,
+                    dtype=dtype,
+                    shape=shape,
+                    strides=strides,
+                    device="cpu",
+                    copy=False,
+                )
+                warp.copy(self, src)
 
     def _init_from_ptr(self, ptr, dtype, shape, strides, capacity, device, pinned, deleter):
         try:
@@ -4611,8 +4937,6 @@ class array(Array[DType, NDim]):
         if self.size == 0:
             return
 
-        self._apic_ensure_tracked()
-
         # try to convert the given value to the array dtype
         try:
             if isinstance(self.dtype, warp._src.codegen.Struct):
@@ -4653,38 +4977,18 @@ class array(Array[DType, NDim]):
         cvalue_ptr = ctypes.pointer(cvalue)
         cvalue_size = ctypes.sizeof(cvalue)
 
+        if self.is_contiguous:
+            _check_fill_capturable(self.device, cvalue_size)
+        else:
+            _check_fill_capturable(self.device, cvalue_size, self.strides, self.dtype, value)
+        self._apic_ensure_tracked()
+
         # prefer using memtile for contiguous arrays, because it should be faster than generic fill
         if self.is_contiguous:
-            # Large multi-byte fills (> WP_FILL_VALUE_INLINE_BYTES_2 = 3968 bytes,
-            # defined in warp/native/warp.cu -- keep the literal below in sync)
-            # take a capturable_tmp_alloc fallback in wp_memtile_device (pause/resume
-            # + device staging) that the APIC byte-stream rebuild cannot reproduce,
-            # so a saved CUDA graph could not replay them. Surface the limitation
-            # instead of recording an unreplayable op. Small fills embed the value
-            # inline in the byte stream and replay fine.
-            apic_capture = warp._src.context._get_apic_capture_for_device(self.device)
-            if (
-                cvalue_size > 3968  # WP_FILL_VALUE_INLINE_BYTES_2 (warp/native/warp.cu)
-                and self.device.is_cuda
-                and apic_capture is not None
-            ):
-                raise NotImplementedError(
-                    "APIC capture does not yet support fill_() with values larger than 3968 bytes on CUDA arrays; "
-                    "use a smaller element type or move the fill outside the capture."
-                )
             self.device.memtile(self.ptr, cvalue_ptr, cvalue_size, self.size)
         else:
-            # The non-contiguous fill path (wp_array_fill_host / wp_array_fill_device)
-            # does not record into the APIC byte stream, so it would silently execute
-            # once at capture time and never replay. Surface the limitation now
-            # instead of producing wrong output at replay. Applies to both CPU
-            # (record-only) and CUDA (record-and-execute) captures.
-            apic_capture = warp._src.context._get_apic_capture_for_device(self.device)
-            if apic_capture is not None:
-                raise NotImplementedError(
-                    "APIC capture does not yet support fill_() on non-contiguous arrays; "
-                    "fill the underlying contiguous array first or move the fill outside the capture."
-                )
+            # During an APIC capture on this device, the native fill records an array-fill
+            # operation: record-only on CPU, record-and-execute on CUDA.
             carr = self.__ctype__()
             carr_ptr = ctypes.pointer(carr)
 
@@ -4941,6 +5245,10 @@ class array(Array[DType, NDim]):
                 # view an array of signed integers as unsigned integers
                 ai = wp.ones(10, dtype=wp.int32)
                 au = ai.view(wp.uint32)
+
+                # reinterpret legacy object ID storage (illustrative IDs, not valid resources)
+                ids = wp.array([1, 2], dtype=wp.uint64)
+                handles = ids.view(wp.handle)
 
                 # view an array of vec4 as quat or mat22
                 av = wp.ones(10, dtype=wp.vec4)
@@ -5420,16 +5728,21 @@ class noncontiguous_array_base(Array[DType, NDim]):
         except Exception as e:
             raise ValueError(f"Failed to convert the value to the array data type: {e}") from e
 
-        # The indexed/fabric fill path (wp_array_fill_host / wp_array_fill_device)
-        # does not record into the APIC byte stream yet, so it would silently
-        # execute once at capture time and never replay. Surface the limitation
-        # now instead of producing wrong output at replay.
         apic_capture = warp._src.context._get_apic_capture_for_device(self.device)
         if apic_capture is not None:
-            raise NotImplementedError(
-                "APIC capture does not yet support fill_() on wp.indexedarray / wp.fabricarray; "
-                "fill the underlying contiguous array first or move the fill outside the capture."
-            )
+            # During an APIC capture on this device, the native fill records an indexed
+            # array as an array-fill operation. Fabric buckets are raw pointers outside the
+            # APIC region model, so a Fabric fill would run once at capture time and never
+            # replay. Surface that limitation instead of producing wrong output at replay.
+            if self.type_id != ARRAY_TYPE_INDEXED:
+                raise NotImplementedError(
+                    "APIC capture does not yet support fill_() on wp.fabricarray / wp.indexedfabricarray; "
+                    "fill the underlying contiguous array first or move the fill outside the capture."
+                )
+            _check_fill_capturable(self.device, ctypes.sizeof(cvalue), self.data.strides, self.dtype, value)
+            apic_capture.track_array(self.data)
+            for indices in self.indices:
+                apic_capture.track_array(indices)
 
         cvalue_ptr = ctypes.pointer(cvalue)
         cvalue_size = ctypes.sizeof(cvalue)
@@ -5443,6 +5756,89 @@ class noncontiguous_array_base(Array[DType, NDim]):
             )
         else:
             warp._src.context.runtime.core.wp_array_fill_host(ctype_ptr, self.type_id, cvalue_ptr, cvalue_size)
+
+
+# Largest fill value, in bytes, that CUDA fills pass to their kernels by value.
+# Must match WP_FILL_VALUE_INLINE_BYTES_2 in warp/native/warp.cu.
+_FILL_VALUE_INLINE_BYTES = 3968
+
+
+def _fill_value_references_memory(dtype, value) -> builtins.bool:
+    """Return whether a fill value holds a non-null array, a non-zero ``wp.handle``, or a texture.
+
+    The value can be a handle itself, or a struct with such fields. Fill records store the
+    value's bytes, which a saved graph doesn't relocate, so a loaded graph would keep the
+    capturing process's pointers and handles.
+
+    Args:
+        dtype: The data type of the filled array.
+        value: The value passed to ``fill_()``.
+    """
+    if dtype is handle:
+        return builtins.bool(dtype._type_(getattr(value, "value", value)).value)
+    if not isinstance(dtype, warp._src.codegen.Struct) or not isinstance(value, dtype.cls):
+        return False
+    cvalue = value.__ctype__()
+    for name, var in dtype.vars.items():
+        if isinstance(var.type, warp._src.codegen.Struct):
+            if _fill_value_references_memory(var.type, getattr(value, name)):
+                return True
+        elif matches_array_class(var.type, array):
+            if getattr(cvalue, name).data:
+                return True
+        elif matches_array_class(var.type, indexedarray):
+            descriptor = getattr(cvalue, name)
+            if descriptor.data.data or any(descriptor.indices):
+                return True
+        elif is_array(var.type):
+            # Fabric arrays hold bucket pointers.
+            if getattr(value, name) is not None:
+                return True
+        elif var.type is handle:
+            if getattr(cvalue, name):
+                return True
+        elif warp._src.codegen._is_texture_type(var.type):
+            if getattr(cvalue, name).tex:
+                return True
+    return False
+
+
+def _check_fill_capturable(
+    device, value_size: int, strides: Sequence[int] = (), dtype: type | None = None, value: Any = None
+) -> None:
+    """Raise :exc:`NotImplementedError` if an APIC capture on ``device`` cannot record a fill.
+
+    A CUDA fill of a larger value stages it through ``capturable_tmp_alloc`` (pause/resume
+    plus device staging), which the APIC byte-stream rebuild cannot reproduce, so a saved
+    graph could not replay it. Smaller values are embedded in the byte stream. Strided and
+    indexed fills record their layout with non-negative strides only, and their value only
+    if it holds no array, non-zero handle, or texture, which a saved graph would not relocate.
+
+    Args:
+        device: The device of the filled array.
+        value_size: Size of the fill value in bytes.
+        strides: Byte strides of the filled memory, empty for a contiguous fill.
+        dtype: Data type of a strided or indexed fill, ``None`` for a contiguous fill.
+        value: Value of a strided or indexed fill, ``None`` for a contiguous fill.
+    """
+    if warp._src.context._get_apic_capture_for_device(device) is None:
+        return
+    if any(stride < 0 for stride in strides):
+        raise NotImplementedError(
+            "APIC capture does not yet support fill_() on arrays with negative strides; "
+            "move the fill outside the capture."
+        )
+    if _fill_value_references_memory(dtype, value):
+        raise NotImplementedError(
+            "APIC capture does not yet support fill_() on strided or indexed arrays with values that hold "
+            "arrays, non-zero wp.handle values, or textures; write the values with a kernel or move the fill "
+            "outside the capture."
+        )
+    if device.is_cuda and value_size > _FILL_VALUE_INLINE_BYTES:
+        raise NotImplementedError(
+            f"APIC capture does not yet support fill_() with values larger than {_FILL_VALUE_INLINE_BYTES} bytes "
+            "on CUDA arrays; use a smaller element type or move the fill outside the capture."
+        )
 
 
 # helper to check index array properties
@@ -6120,7 +6516,8 @@ class Bvh:
         Depending on which device the input bounds live, it can be either a CPU tree or a GPU tree.
 
         Attributes:
-            id: Unique identifier for this BVH object, can be passed to kernels.
+            id: Object ID to pass to kernel parameters and struct fields of type :class:`warp.handle`.
+              Keep this BVH alive while its ID is in use.
             device: Device this object lives on, all buffers must live on the same device.
 
         Args:
@@ -6418,7 +6815,8 @@ class Mesh:
         """Class representing a triangle mesh.
 
         Attributes:
-            id: Unique identifier for this mesh object, can be passed to kernels.
+            id: Object ID to pass to kernel parameters and struct fields of type :class:`warp.handle`.
+              Keep this mesh alive while its ID is in use.
             device: Device this object lives on, all buffers must live on the same device.
 
         Args:
@@ -6676,6 +7074,10 @@ class Volume:
 
     def __init__(self, data: array, copy: builtins.bool = True):
         """Class representing a sparse grid.
+
+        Attributes:
+            id: Object ID to pass to kernel parameters and struct fields of type :class:`warp.handle`.
+              Keep this volume alive while its ID is in use.
 
         Args:
             data: Array of bytes representing the volume in NanoVDB format.
@@ -8261,7 +8663,8 @@ class HashGrid:
         """Class representing a hash grid object for accelerated point queries.
 
         Attributes:
-            id: Unique identifier for this hash grid object, can be passed to kernels.
+            id: Object ID to pass to kernel parameters and struct fields of type :class:`warp.handle`.
+              Keep this hash grid alive while its ID is in use.
             device: Device this object lives on, all buffers must live on the same device.
             dtype: Scalar data type (float16, float32, or float64).
 

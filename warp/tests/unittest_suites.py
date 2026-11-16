@@ -135,12 +135,17 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.fem.test_fem_shape import TestFemShape
     from warp.tests.geometry.test_bvh import TestBvh
     from warp.tests.geometry.test_delaunay import TestDelaunay
+    from warp.tests.geometry.test_geometry_obb import TestGeometryOBB
     from warp.tests.geometry.test_hash_grid import TestHashGrid
+    from warp.tests.geometry.test_intersect_aabb import TestIntersectAABB
+    from warp.tests.geometry.test_intersect_tri import TestIntersectTri
     from warp.tests.geometry.test_marching_cubes import TestMarchingCubes
     from warp.tests.geometry.test_mesh import TestMesh
+    from warp.tests.geometry.test_mesh_intersect_hash import TestMeshIntersectHash
     from warp.tests.geometry.test_mesh_query_aabb import TestMeshQueryAABBMethods
     from warp.tests.geometry.test_mesh_query_point import TestMeshQueryPoint
     from warp.tests.geometry.test_mesh_query_ray import TestMeshQueryRay
+    from warp.tests.geometry.test_self_intersect_tri_tri import TestSelfIntersectTriTri
     from warp.tests.geometry.test_sparse_marching_cubes import TestSparseMarchingCubes
     from warp.tests.geometry.test_surface_nets import TestSurfaceNets
     from warp.tests.geometry.test_swept_volume import TestSweptVolume
@@ -229,6 +234,20 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_indexedarray import TestIndexedArray
     from warp.tests.test_intersect import TestIntersect
     from warp.tests.test_iter import TestIter
+    from warp.tests.test_jet import TestJet, TestJetSpace
+    from warp.tests.test_jet_ops import (
+        TestJetComponentWise,
+        TestJetDecompositions,
+        TestJetDegenerateDerivatives,
+        TestJetFemBuiltins,
+        TestJetIndexing,
+        TestJetMatrix,
+        TestJetMixedOperands,
+        TestJetNativeConventions,
+        TestJetOps,
+        TestJetReverseThroughJets,
+        TestJetValue,
+    )
     from warp.tests.test_kernel_cache import TestKernelCache
     from warp.tests.test_large import TestLarge
     from warp.tests.test_launch import TestLaunch
@@ -417,6 +436,19 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestIntersect,
         TestIter,
         TestJax,
+        TestJet,
+        TestJetSpace,
+        TestJetOps,
+        TestJetMatrix,
+        TestJetMixedOperands,
+        TestJetComponentWise,
+        TestJetValue,
+        TestJetFemBuiltins,
+        TestJetDecompositions,
+        TestJetIndexing,
+        TestJetDegenerateDerivatives,
+        TestJetNativeConventions,
+        TestJetReverseThroughJets,
         TestKernelAttributes,
         TestKernelCache,
         TestLarge,
@@ -425,6 +457,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestLinearSolvers,
         TestLogger,
         TestLValue,
+        TestGeometryOBB,
         TestMarchingCubes,
         TestSparseMarchingCubes,
         TestSurfaceNets,
@@ -439,6 +472,10 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestCudaMaxRegisters,
         TestMempool,
         TestMesh,
+        TestIntersectAABB,
+        TestIntersectTri,
+        TestSelfIntersectTriTri,
+        TestMeshIntersectHash,
         TestMeshQueryAABBMethods,
         TestMeshQueryPoint,
         TestMeshQueryRay,
@@ -603,6 +640,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.deterministic.test_deterministic_scatter import TestDeterministicScatter
     from warp.tests.fem.test_fem_linalg import TestFemLinalg
     from warp.tests.geometry.test_bvh import TestBvh
+    from warp.tests.geometry.test_geometry_obb import TestGeometryOBB
     from warp.tests.geometry.test_grouped_bvh import TestGroupedBvh
     from warp.tests.geometry.test_hash_grid import TestHashGrid
     from warp.tests.geometry.test_marching_cubes import TestMarchingCubes
@@ -889,6 +927,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestUnifiedMemory,
         TestFemLinalg,
         TestHashGrid,
+        TestGeometryOBB,
         TestMarchingCubes,
         TestSurfaceNets,
         TestVolume,
@@ -1051,7 +1090,6 @@ def llvm_cuda_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoade
     mathdx = "llvm_cuda can't link mathdx code."
     no_align = "cuda_crt.h lacks __align__."
     no_atomic_bitwise = "cuda_crt.h lacks atomicAnd/atomicOr/atomicXor."
-    no_atomic_min_max = "cuda_crt.h lacks atomicMin/atomicMax for unsigned and 64-bit integers."
     no_shfl_64 = "cuda_crt.h lacks __shfl_down_sync/__shfl_xor_sync for 64-bit types."
     no_shfl_up = "cuda_crt.h lacks __shfl_up_sync."
     shared_ctor = "tile.h declares a __shared__ variable whose type has a constructor."
@@ -1077,10 +1115,7 @@ def llvm_cuda_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoade
         "warp.tests.fem.test_fem_integrate.TestFemIntegrate": [no_shfl_64],
         "warp.tests.fem.test_fem_multi_env.TestFemMultiEnv": [no_atomic_bitwise],
         "warp.tests.fem.test_fem_quadrature.TestFemQuadrature": [no_shfl_64],
-        "warp.tests.geometry.test_delaunay.TestDelaunay": [no_atomic_min_max],
-        "warp.tests.geometry.test_swept_volume.TestSweptVolume": [no_atomic_min_max],
         "warp.tests.test_apic.TestApic": [mathdx, aot_apic],
-        "warp.tests.test_atomic.TestAtomic": [no_atomic_min_max],
         "warp.tests.test_atomic_bitwise.TestAtomicBitwise": [no_atomic_bitwise],
         "warp.tests.test_codegen.TestCodeGen": [ulp],
         "warp.tests.test_composite_component_adjoint.TestCompositeComponentAdjoint": [no_atomic_bitwise],

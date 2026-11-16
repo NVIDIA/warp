@@ -2349,6 +2349,19 @@ WP_API void wp_array_fill_device(void* context, void* arr_ptr, int arr_type, con
 
     ContextGuard guard(context);
 
+    // Record-and-execute a strided or indexed fill under CUDA APIC capture: record the
+    // layout and value into the byte stream, then fall through so the live fill issues
+    // onto the captured stream. Only values the by-value kernels take are recordable;
+    // the Python fill_() path rejects larger ones under CUDA APIC capture. Recording
+    // runs under the fill's context, so a fill on another device is not recorded.
+    APICState* apic_state = wp_apic_get_cuda_recording_state();
+    if (apic_state && (arr_type == wp::ARRAY_TYPE_REGULAR || arr_type == wp::ARRAY_TYPE_INDEXED) && value_size > 0
+        && static_cast<size_t>(value_size) <= WP_FILL_VALUE_INLINE_BYTES_2) {
+        apic_record_array_fill(
+            apic_state, /*live=*/true, arr_ptr, arr_type, value_ptr, static_cast<uint32_t>(value_size)
+        );
+    }
+
     void* value_devptr = NULL;
     bool free_devptr = true;
 
@@ -4433,7 +4446,10 @@ static const char* get_graph_node_type_name(CUgraphNodeType type)
 // check if a graph can be launched as a child graph
 static bool is_valid_child_graph(void* child_graph)
 {
-    // disallowed child graph nodes according to the documentation of cuGraphAddChildGraphNode()
+    // Node types that cudaGraphAddChildGraphNode() rejects because it clones the
+    // child graph. CUDA 12.9+ accepts alloc/free nodes if the child is moved into
+    // the parent instead, but moving consumes the caller's graph. Conditional
+    // nodes are rejected either way.
     static const std::unordered_set<CUgraphNodeType> disallowed_nodes {
         CU_GRAPH_NODE_TYPE_MEM_ALLOC,
         CU_GRAPH_NODE_TYPE_MEM_FREE,

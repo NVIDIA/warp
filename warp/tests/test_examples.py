@@ -289,6 +289,12 @@ add_example_test(
     devices=test_devices,
     test_options={"usd_required": True},
 )
+add_example_test(
+    TestGeometryExamples,
+    name="geometry.example_oriented_bounding_box",
+    devices=test_devices,
+    test_options={"usd_required": True},
+)
 
 
 class TestOptimExamples(unittest.TestCase):
@@ -333,6 +339,12 @@ add_example_test(
     name="optim.example_navier_stokes_perturbation",
     devices=cuda_test_devices_with_mempool,
     test_options={"headless": True, "train_iters": 5, "lead_steps": 5, "spin_up_steps": 10},
+)
+add_example_test(
+    TestOptimExamples,
+    name="optim.example_implicit_projection",
+    devices=test_devices,
+    test_options={"headless": True, "num_points": 16, "steps": 8},
 )
 
 

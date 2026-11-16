@@ -56,6 +56,7 @@ Scalar Math
    tan
    tanh
    trunc
+   value
 
 Vector Math
 -----------
@@ -382,6 +383,7 @@ Utility
    block_dim
    breakpoint
    cast
+   empty
    expect_near
    len
    lerp

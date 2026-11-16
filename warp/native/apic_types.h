@@ -10,10 +10,10 @@
 // APIC Format Constants
 // =============================================================================
 
-#define APIC_FORMAT_VERSION 19
+#define APIC_FORMAT_VERSION 20
 // The loader also requires the producing Warp version, so require recapture
 // rather than decode older layouts.
-#define APIC_MIN_SUPPORTED_FORMAT_VERSION 19
+#define APIC_MIN_SUPPORTED_FORMAT_VERSION 20
 #define APIC_UNSIGNED_LAUNCH_BOUNDS_VERSION 16
 #define APIC_MAGIC "WRP1"
 #define APIC_MAGIC_VALUE 0x31505257  // "WRP1" as little-endian uint32
@@ -51,6 +51,7 @@ enum APICOpType : uint32_t {
     APIC_OP_HASH_GRID_UPDATE = 19,  // wp_hash_grid_update_host
     APIC_OP_BSR_COMPRESS = 20,  // wp_bsr_compress_inplace_host/device
     APIC_OP_CHILD_GRAPH = 21,  // Graph branch of wp.capture_if/capture_while (live CPU only)
+    APIC_OP_ARRAY_FILL = 22,  // wp_array_fill_host/device (strided or indexed arr.fill_)
 };
 
 enum APICReductionKind : uint8_t {
@@ -329,6 +330,31 @@ struct APICMemtileRecord {
     // followed by srcsize bytes of inline value data
 };  // 32 bytes fixed
 static_assert(sizeof(APICMemtileRecord) == 32, "APICMemtileRecord must remain 32 bytes");
+
+// Strided or indexed array fill (variable: trailing inline value blob of value_size bytes).
+// Records a wp_array_fill_host / wp_array_fill_device call on a non-contiguous
+// wp.array or a wp.indexedarray, so replay writes the value through the index
+// arrays' replay-time contents. A strided array is an indexed array without
+// index arrays. Dimension d of the fill selects shape[d] elements: the indices
+// read from its index region when indices_region_id[d] >= 0, otherwise all
+// data_shape[d] elements of the underlying array. Fields past ndim are zero,
+// and their index regions are -1.
+struct APICArrayFillRecord {
+    APICOpHeader header;  // op_type = APIC_OP_ARRAY_FILL
+    int32_t data_region_id;
+    uint32_t value_size;  // bytes per element
+    uint64_t data_offset;  // byte offset of the underlying array's first element
+    uint8_t ndim;  // 1..APIC_MAX_DIMS
+    uint8_t flags;  // reserved, must be 0
+    uint8_t _pad[6];
+    int32_t shape[APIC_MAX_DIMS];  // filled extent: the index count of an indexed dimension
+    int32_t data_shape[APIC_MAX_DIMS];  // extent of the underlying array
+    int32_t strides[APIC_MAX_DIMS];  // byte strides of the underlying array, non-negative
+    int32_t indices_region_id[APIC_MAX_DIMS];  // int32 index array per dimension, -1 if none
+    uint64_t indices_offset[APIC_MAX_DIMS];
+    // followed by value_size bytes of inline value data
+};  // 128 bytes fixed
+static_assert(sizeof(APICArrayFillRecord) == 128, "APICArrayFillRecord must remain 128 bytes");
 
 // In-graph allocation (fixed size)
 struct APICAllocRecord {

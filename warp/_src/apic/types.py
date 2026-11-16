@@ -31,6 +31,7 @@ APIC_OP_BVH_REBUILD = 18
 APIC_OP_HASH_GRID_UPDATE = 19
 APIC_OP_BSR_COMPRESS = 20
 APIC_OP_CHILD_GRAPH = 21
+APIC_OP_ARRAY_FILL = 22
 
 
 # Scalar element types (must match APICType in apic_types.h).
@@ -70,6 +71,7 @@ class APICCudaCompileRecipe(ctypes.Structure):
     """Semantic NVRTC options needed for APIC guest compilation."""
 
     _pack_ = 1
+    _layout_ = "ms"
     _fields_ = [
         ("debug", ctypes.c_uint8),
         ("optimization_level", ctypes.c_uint8),
@@ -93,6 +95,7 @@ class APICLaunchParamRecord(ctypes.Structure):
     """
 
     _pack_ = 1
+    _layout_ = "ms"
     _fields_ = [
         ("param_index", ctypes.c_uint16),
         ("num_relocs", ctypes.c_uint16),
@@ -117,6 +120,7 @@ class APICLaunchPtrLocation(ctypes.Structure):
     """
 
     _pack_ = 1
+    _layout_ = "ms"
     _fields_ = [
         ("value_byte_offset", ctypes.c_uint32),
         ("region_id", ctypes.c_int32),

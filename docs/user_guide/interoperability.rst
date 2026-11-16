@@ -150,6 +150,70 @@ On CUDA, the same pattern works with CuPy, PyTorch, or any framework that expose
 
 When passing CUDA arrays, ensure the device on which the arrays reside matches the device on which the kernel is launched.
 
+.. _object_handle_interop:
+
+Object Handle Arrays
+--------------------
+
+External integer arrays do not carry Warp object-reference metadata.
+When sharing :class:`~warp.Mesh`, :class:`~warp.Volume`, :class:`~warp.Bvh`, or
+:class:`~warp.HashGrid` IDs, create a Warp array with
+``dtype=wp.handle`` or an explicit :meth:`array.view(wp.handle) <warp.array.view>`
+before passing it to a kernel annotated with ``wp.array[wp.handle]``.
+
+For example, construct a handle array from NumPy data with an explicit dtype:
+
+.. code:: python
+
+    # Keep the Mesh objects alive while these IDs are used.
+    numpy_ids = np.array([mesh.id for mesh in meshes], dtype=np.uint64)
+    mesh_ids = wp.array(numpy_ids, dtype=wp.handle, device="cpu")
+
+For an existing Warp array of 64-bit integer IDs, ``mesh_ids = integer_ids.view(wp.handle)``
+returns a zero-copy view; the original array keeps its dtype.
+
+Warp's NumPy imports accept ``dtype=wp.handle`` directly. PyTorch, JAX, Paddle, and DLPack imports
+require an integer dtype followed by a handle view. The table uses ``source`` for
+the external array and ``handles`` for a Warp array with ``dtype=wp.handle``.
+Use ``np.uint64`` storage for the NumPy row and signed 64-bit integer storage for
+the other rows. Call ``jax.config.update("jax_enable_x64", True)`` before
+creating JAX arrays to preserve all 64 bits of each ID. The integer views
+reinterpret the bits without a numeric cast.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 12 48 40
+
+   * - Interface
+     - Import into Warp
+     - Export from Warp
+   * - NumPy
+     - ``wp.from_numpy(source, dtype=wp.handle)`` or
+       ``wp.array(source, dtype=wp.handle, device="cpu")``
+     - ``handles.numpy()``
+   * - PyTorch
+     - ``wp.from_torch(source, dtype=wp.int64).view(wp.handle)``
+     - ``wp.to_torch(handles.view(wp.int64))``
+   * - JAX
+     - ``wp.from_jax(source, dtype=wp.int64).view(wp.handle)``
+     - ``wp.to_jax(handles.view(wp.int64))``
+   * - Paddle
+     - ``wp.from_paddle(source, dtype=wp.int64).view(wp.handle)``
+     - ``wp.to_paddle(handles.view(wp.int64))``
+   * - DLPack
+     - ``wp.from_dlpack(source, dtype=wp.int64).view(wp.handle)``
+     - ``wp.to_dlpack(handles.view(wp.int64))``
+
+The DLPack export returns a single-use capsule for the receiving framework's
+consumer. Consult each converter's dtype, device, and ownership rules.
+Direct handle support in the converters is tracked in
+`GH-2292 <https://github.com/NVIDIA/warp/issues/2292>`_.
+
+External integer storage does not identify referenced objects or keep them alive, and sharing
+an ID does not make it valid in another process.
+See :ref:`object_handle_arrays` for kernel and struct declarations and :ref:`apic_save_load`
+for the mesh-only resource serialization currently supported by API Capture.
+
 NumPy
 -----
 

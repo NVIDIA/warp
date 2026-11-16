@@ -281,37 +281,51 @@ def test_graph_fill_replay(test, device):
     np.testing.assert_array_equal(arr.numpy(), expected)
 
 
-def test_graph_fill_noncontiguous_cpu_rejected(test, device):
-    """Reject a non-contiguous ``fill_()`` during CPU APIC capture with a clear ``NotImplementedError``.
+def test_graph_fill_noncontiguous_replay(test, device):
+    """Verify a captured ``fill_()`` of a strided view re-executes on every graph replay.
 
-    Non-contiguous ``arr.fill_()`` during CPU APIC capture has no recording path yet. Surfacing a clear
-    ``NotImplementedError`` prevents it from silently producing wrong replay output, the user-visible symptom that
-    motivated ``wp_memtile_host`` recording in the first place.
+    The array is mutated between launches, so the view can only end up at ``fill_value`` if the captured
+    ``fill_()`` re-executes on every replay. The rest of the array must keep the mutated values.
     """
-    if not device.is_cpu:
-        test.skipTest("CPU-only: CUDA fills go through wp_array_fill_device")
     arr = wp.zeros((4, 4), dtype=wp.int32, device=device)
     sliced = arr[:, 0]  # strided view; not contiguous
     assert not sliced.is_contiguous
 
     wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, force_module_load=False):
-        with test.assertRaises(NotImplementedError):
-            sliced.fill_(42)
+    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+        sliced.fill_(42)
+
+    arr.fill_(-1)
+    wp.capture_launch(capture.graph)
+    expected = np.full((4, 4), -1, dtype=np.int32)
+    expected[:, 0] = 42
+    np.testing.assert_array_equal(arr.numpy(), expected)
+
+    arr.zero_()
+    wp.capture_launch(capture.graph)
+    expected = np.zeros((4, 4), dtype=np.int32)
+    expected[:, 0] = 42
+    np.testing.assert_array_equal(arr.numpy(), expected)
 
 
-def test_graph_fill_indexed_cpu_rejected(test, device):
-    """Reject indexed-array fills during CPU APIC capture."""
-    if not device.is_cpu:
-        test.skipTest("CPU-only: CUDA indexed fill APIC rejection is covered in test_apic")
+def test_graph_fill_indexed_replay(test, device):
+    """Verify a captured indexed-array ``fill_()`` re-executes on every replay through the current indices."""
     arr = wp.zeros(8, dtype=wp.int32, device=device)
     idx = wp.array([0, 2, 4, 6], dtype=wp.int32, device=device)
     indexed = wp.indexedarray(arr, [idx])
 
     wp.load_module(device=device)
-    with wp.ScopedCapture(device=device, force_module_load=False):
-        with test.assertRaises(NotImplementedError):
-            indexed.fill_(42)
+    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+        indexed.fill_(42)
+
+    arr.fill_(-1)
+    wp.capture_launch(capture.graph)
+    np.testing.assert_array_equal(arr.numpy(), np.array([42, -1, 42, -1, 42, -1, 42, -1], dtype=np.int32))
+
+    idx.assign(np.array([1, 3, 5, 7], dtype=np.int32))
+    arr.fill_(-1)
+    wp.capture_launch(capture.graph)
+    np.testing.assert_array_equal(arr.numpy(), np.array([-1, 42, -1, 42, -1, 42, -1, 42], dtype=np.int32))
 
 
 def test_graph_copy_noncontiguous_cpu_rejected(test, device):
@@ -1465,16 +1479,11 @@ add_function_test(TestGraph, "test_graph_memset", test_graph_memset, devices=dev
 add_function_test(TestGraph, "test_graph_fill_replay", test_graph_fill_replay, devices=devices)
 add_function_test(
     TestGraph,
-    "test_graph_fill_noncontiguous_cpu_rejected",
-    test_graph_fill_noncontiguous_cpu_rejected,
+    "test_graph_fill_noncontiguous_replay",
+    test_graph_fill_noncontiguous_replay,
     devices=devices,
 )
-add_function_test(
-    TestGraph,
-    "test_graph_fill_indexed_cpu_rejected",
-    test_graph_fill_indexed_cpu_rejected,
-    devices=devices,
-)
+add_function_test(TestGraph, "test_graph_fill_indexed_replay", test_graph_fill_indexed_replay, devices=devices)
 add_function_test(
     TestGraph,
     "test_graph_copy_noncontiguous_cpu_rejected",

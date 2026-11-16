@@ -110,15 +110,26 @@ void wp_apic_end_recording(APICState* state)
     }
 }
 
+void wp_apic_set_cuda_context(APICState* state, void* context)
+{
+    if (state)
+        state->cuda_context = context;
+}
+
 // Host (CPU) capture hooks: return the active state only for a CPU capture, so
 // a host op invoked during a CUDA APIC capture runs live instead of recording
 // into the CUDA byte stream.
 APICState* wp_apic_get_recording_state() { return (g_apic_state && g_apic_state->is_cpu) ? g_apic_state : nullptr; }
 
-// Device (CUDA) capture hooks: mirror of the above for the CUDA side.
+// Device (CUDA) capture hooks: mirror of the above for the CUDA side, which
+// also declines ops issued under another device's context.
 APICState* wp_apic_get_cuda_recording_state()
 {
-    return (g_apic_state && !g_apic_state->is_cpu) ? g_apic_state : nullptr;
+    if (!g_apic_state || g_apic_state->is_cpu)
+        return nullptr;
+    if (g_apic_state->cuda_context && g_apic_state->cuda_context != wp_cuda_context_get_current())
+        return nullptr;
+    return g_apic_state;
 }
 
 uint32_t wp_apic_get_operation_count(APICState* state) { return state ? state->operation_count : 0; }
@@ -504,6 +515,67 @@ void apic_record_memtile(
     if (srcsize > 0 && value_ptr)
         state->append_bytes(value_ptr, srcsize);
     state->operation_count++;
+}
+
+bool apic_record_array_fill(
+    APICState* state, bool live, const void* arr_ptr, int arr_type, const void* value_ptr, uint32_t value_size
+)
+{
+    if (!state || !arr_ptr || !value_ptr)
+        return false;
+
+    const wp::array_t<void>* arr;
+    const int* shape;
+    const int* const* indices = nullptr;
+    if (arr_type == wp::ARRAY_TYPE_REGULAR) {
+        arr = static_cast<const wp::array_t<void>*>(arr_ptr);
+        shape = arr->shape.dims;
+    } else if (arr_type == wp::ARRAY_TYPE_INDEXED) {
+        const auto* ia = static_cast<const wp::indexedarray_t<void>*>(arr_ptr);
+        arr = &ia->arr;
+        shape = ia->shape.dims;
+        indices = ia->indices;
+    } else {
+        return false;
+    }
+    if (arr->ndim < 1 || arr->ndim > APIC_MAX_DIMS)
+        return false;
+
+    APICArrayFillRecord rec = {};
+    rec.header.op_type = APIC_OP_ARRAY_FILL;
+    rec.header.total_size = static_cast<uint32_t>(sizeof(rec) + value_size);
+    rec.value_size = value_size;
+    rec.ndim = static_cast<uint8_t>(arr->ndim);
+    for (int d = 0; d < APIC_MAX_DIMS; d++)
+        rec.indices_region_id[d] = -1;
+    for (int d = 0; d < arr->ndim; d++) {
+        rec.shape[d] = shape[d];
+        rec.data_shape[d] = arr->shape.dims[d];
+        rec.strides[d] = arr->strides[d];
+        // Placeholder until the index array resolves, so validation sees an indexed dimension.
+        if (indices && indices[d])
+            rec.indices_region_id[d] = 0;
+    }
+    if (!apic_array_fill_record_valid(rec))
+        return false;
+
+    auto resolve = live ? apic_resolve_live_ptr : apic_resolve_host_ptr;
+    APICAddress data = resolve(state, reinterpret_cast<uint64_t>(arr->data), apic_array_fill_data_bytes(rec));
+    rec.data_region_id = data.region_id;
+    rec.data_offset = data.offset;
+    for (int d = 0; d < arr->ndim; d++) {
+        if (rec.indices_region_id[d] < 0)
+            continue;
+        uint64_t index_bytes = static_cast<uint64_t>(rec.shape[d]) * sizeof(int32_t);
+        APICAddress index = resolve(state, reinterpret_cast<uint64_t>(indices[d]), index_bytes);
+        rec.indices_region_id[d] = index.region_id;
+        rec.indices_offset[d] = index.offset;
+    }
+
+    state->append_bytes(&rec, sizeof(rec));
+    state->append_bytes(value_ptr, value_size);
+    state->operation_count++;
+    return true;
 }
 
 void apic_record_alloc(APICState* state, int32_t region_id, uint64_t size)
@@ -2080,6 +2152,22 @@ bool apic_validate_operation_stream(
             }
             break;
         }
+        case APIC_OP_ARRAY_FILL: {
+            if (op_end < op_start + sizeof(APICArrayFillRecord)) {
+                fprintf(stderr, "Warp APIC error: array fill record overflow at operation %u\n", i);
+                return false;
+            }
+            const APICArrayFillRecord* rec = reinterpret_cast<const APICArrayFillRecord*>(ptr);
+            if (header->total_size != sizeof(APICArrayFillRecord) + static_cast<uint64_t>(rec->value_size)) {
+                fprintf(stderr, "Warp APIC error: array fill record size invalid at operation %u\n", i);
+                return false;
+            }
+            if (!apic_array_fill_record_valid(*rec)) {
+                fprintf(stderr, "Warp APIC error: invalid array fill layout at operation %u\n", i);
+                return false;
+            }
+            break;
+        }
         case APIC_OP_ALLOC:
             if (op_end < op_start + sizeof(APICAllocRecord)) {
                 fprintf(stderr, "Warp APIC error: alloc record overflow at operation %u\n", i);
@@ -2826,6 +2914,21 @@ static bool apic_cpu_replay_stream(
             break;
         }
 
+        case APIC_OP_ARRAY_FILL: {
+            const APICArrayFillRecord* rec = reinterpret_cast<const APICArrayFillRecord*>(ptr);
+            wp::indexedarray_t<void> ia;
+            if (!apic_array_fill_descriptor(*rec, resolve_ptr, &ia)) {
+                wp::set_error_string("Warp APIC error: array fill pointer resolution failed at operation %u", i);
+                return false;
+            }
+            // g_apic_state is null during replay, so this call executes
+            // the fill instead of re-recording it.
+            wp_array_fill_host(
+                &ia, wp::ARRAY_TYPE_INDEXED, ptr + sizeof(APICArrayFillRecord), static_cast<int>(rec->value_size)
+            );
+            break;
+        }
+
         case APIC_OP_ALLOC:
             break;
 
@@ -3395,9 +3498,23 @@ apic_cpu_replay_container(Container* c, Resolver resolve, HandleRemap remap_hand
     );
 }
 
+// Replay calls the same entry points the CPU capture hooks intercept, so
+// replaying during a CPU capture would re-record the graph into it, dropping
+// kernel launches and fixing conditionals at capture time.
+static bool apic_check_cpu_replay_allowed()
+{
+    if (wp_apic_get_recording_state()) {
+        wp::set_error_string("Warp APIC error: cannot replay a CPU graph while a CPU graph capture is recording");
+        return false;
+    }
+    return true;
+}
+
 bool wp_apic_cpu_replay_state(APICState* state)
 {
     if (!state)
+        return false;
+    if (!apic_check_cpu_replay_allowed())
         return false;
     if (state->operation_stream.empty())
         return true;
@@ -3422,6 +3539,8 @@ bool wp_apic_cpu_replay_state(APICState* state)
 bool wp_apic_cpu_replay_graph(APICGraph* graph)
 {
     if (!graph)
+        return false;
+    if (!apic_check_cpu_replay_allowed())
         return false;
     if (graph->operation_stream.empty())
         return true;
