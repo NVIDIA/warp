@@ -4304,21 +4304,28 @@ def test_capture_if_cpu(test, device):
 
 
 def test_save_load_capture_if_cuda(test, device):
-    """Rebuild CUDA APIC conditional operations during graph loading.
+    """Preserve persistent conditional callback allocations during graph loading.
 
     CUDA loaded-graph replay DOES support APIC conditional ops --
     apic_replay_ops_into_cuda_capture rebuilds the conditional nodes from the
-    byte stream. Save/load a capture_if graph and confirm the recorded branch
-    runs on the rebuilt graph."""
+    byte stream. Callback allocations retain their contents outside capture,
+    so a saved graph must snapshot their current data rather than regenerate it."""
     if not wp.is_conditional_graph_supported():
         test.skipTest("CUDA conditional graph nodes require Toolkit and driver 12.4+")
 
     n = 4
     out = wp.zeros(n, dtype=float, device=device)
+    scratch_out = wp.zeros_like(out)
     cond = wp.array([1], dtype=wp.int32, device=device)  # selects on_true at capture
+    # Keep conditional save/load coverage when capture-time allocation is disabled.
+    scratch = None if device.is_mempool_enabled else wp.empty_like(out)
 
     def on_true():
+        nonlocal scratch
         wp.launch(write_value_kernel, dim=n, inputs=[out, 11.0], device=device)
+        if scratch is None:
+            scratch = wp.empty_like(out)
+        wp.copy(scratch_out, scratch)
 
     def on_false():
         wp.launch(write_value_kernel, dim=n, inputs=[out, 22.0], device=device)
@@ -4327,9 +4334,18 @@ def test_save_load_capture_if_cuda(test, device):
     with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
         wp.capture_if(cond, on_true=on_true, on_false=on_false)
 
+    # The callback backing persists after capture, and this write is not recorded.
+    scratch.fill_(7.0)
+    wp.capture_launch(capture.graph)
+    np.testing.assert_allclose(scratch_out.numpy(), np.full(n, 7.0, dtype=np.float32))
+    out.zero_()
+    scratch_out.zero_()
+
     with tempfile.TemporaryDirectory() as tmpdir:
         path = os.path.join(tmpdir, "capture_if")
-        wp.capture_save(capture.graph, path, outputs={"out": out})
+        wp.capture_save(
+            capture.graph, path, inputs={"scratch": scratch}, outputs={"out": out, "scratch_out": scratch_out}
+        )
 
         loaded = wp.capture_load(path, device=device)
         wp.capture_launch(loaded)
@@ -4338,6 +4354,8 @@ def test_save_load_capture_if_cuda(test, device):
         result = wp.zeros(n, dtype=float, device=device)
         loaded.get_param("out", result)
         np.testing.assert_allclose(result.numpy(), np.full(n, 11.0, dtype=np.float32))
+        loaded.get_param("scratch_out", result)
+        np.testing.assert_allclose(result.numpy(), np.full(n, 7.0, dtype=np.float32))
 
 
 def test_capture_while_cpu(test, device):

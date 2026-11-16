@@ -3707,7 +3707,8 @@ bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
                     wp_free_host(tmp_info.ptr);
             }
         }
-        if (g_captures.empty())
+        // An external owner must end its failed capture before queued releases can run.
+        if (g_captures.empty() && !external)
             run_deferred_actions();
     };
 
@@ -4514,6 +4515,29 @@ bool wp_cuda_graph_check_conditional_body(void* body_graph)
                 "Conditional body graph contains an unsupported operation (%s)", get_graph_node_type_name(node_type)
             );
             return false;
+        } else if (node_type == CU_GRAPH_NODE_TYPE_MEMCPY) {
+            cudaMemcpy3DParms params = {};
+            if (!check_cuda(cudaGraphMemcpyNodeGetParams(nodes[i], &params)))
+                return false;
+
+            // Do not query device operands: a parent graph allocation may not be mapped yet.
+            const void* host_ptr = NULL;
+            if (params.kind == cudaMemcpyHostToDevice)
+                host_ptr = params.srcPtr.ptr;
+            else if (params.kind == cudaMemcpyDeviceToHost)
+                host_ptr = params.dstPtr.ptr;
+            if (host_ptr) {
+                cudaPointerAttributes attributes = {};
+                if (!check_cuda(cudaPointerGetAttributes(&attributes, host_ptr)))
+                    return false;
+                if (attributes.type == cudaMemoryTypeUnregistered) {
+                    wp::set_error_string(
+                        "Conditional body graph contains an unsupported operation "
+                        "(memory copy involving pageable host memory)"
+                    );
+                    return false;
+                }
+            }
         } else if (node_type == CU_GRAPH_NODE_TYPE_GRAPH) {
             // check nested child graphs recursively
             cudaGraph_t child_graph = NULL;

@@ -133,6 +133,40 @@ def test_invalid_free_during_capture_reports_error(test, device):
         test.skipTest("The driver does not report invalid stream-ordered frees")
     test.assertIn("invalid argument", free_invalid(during_capture=True))
 
+    # Warp must leave queued frees alone until an external owner ends a failed capture.
+    driver = _load_cuda_driver()
+    if driver is None:
+        test.skipTest("CUDA driver library not found")
+    driver.cuStreamBeginCapture_v2.argtypes = [ctypes.c_void_p, ctypes.c_int]
+    driver.cuStreamEndCapture.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p)]
+    with wp.ScopedDevice(device):
+        stream = wp.get_stream(device)
+        test.assertEqual(driver.cuStreamBeginCapture_v2(stream.cuda_stream, int(wp.CaptureMode.THREAD_LOCAL)), 0)
+        stderr = StdErrCapture()
+        stderr.begin()
+        try:
+            wp.capture_begin(stream=stream, external=True, force_module_load=False)
+            core.wp_free_device_async(device.context, ctypes.addressof(host_buffer), None)
+            test.assertFalse(core.wp_cuda_context_synchronize(device.context))
+            with test.assertRaisesRegex(RuntimeError, "CUDA graph capture failed"):
+                wp.capture_end(stream=stream)
+            test.assertTrue(stream.is_capturing)
+        finally:
+            graph = ctypes.c_void_p()
+            ended = driver.cuStreamEndCapture(stream.cuda_stream, ctypes.byref(graph))
+            core.wp_cuda_context_check(device.context)
+            stderr.end()
+        test.assertNotEqual(ended, 0)
+        test.assertFalse(graph.value)
+
+        stderr.begin()
+        try:
+            wp.synchronize_device(device)
+            core.wp_cuda_context_check(device.context)
+        finally:
+            output = stderr.end()
+        test.assertIn("invalid argument", output)
+
 
 def test_release_other_device_during_capture_keeps_current_device(test, device):
     """Releasing another device's resources during capture must not change the current device."""

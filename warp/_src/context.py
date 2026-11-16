@@ -13715,6 +13715,7 @@ def capture_begin(
 
     # Attach APIC capture state if recording
     if apic_capture is not None:
+        apic_capture._cuda_capture_id = capture_id
         graph.apic = True
         graph.apic_state = apic_capture.apic_state
         graph._apic_capture = apic_capture
@@ -14067,6 +14068,10 @@ def capture_if(
     With CUDA memory pools enabled, arrays created in a callback body receive persistent backing at capture
     time. The backing is retained until both the array and its owning graph are released; it is reused on
     every replay. Separately captured :class:`Graph` bodies must not contain memory allocation nodes.
+
+    CUDA conditional bodies cannot copy to or from pageable host memory. In particular, :meth:`warp.array.fill_`
+    values larger than 3968 bytes require unsupported staging and are rejected during conditional capture.
+    Such fills remain supported in a top-level capture.
 
     Args:
         condition: Warp array holding the condition value.

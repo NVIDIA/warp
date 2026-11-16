@@ -1054,6 +1054,8 @@ def test_body_allocation_lifetime(test, device: DeviceLike):
                     condition = wp.zeros(1, dtype=wp.int32)
                     result = wp.zeros(4, dtype=wp.float32)
                     holder = {}
+                    wp.synchronize_device()
+                    baseline = wp.get_mempool_used_mem_current(device)
 
                     def body(result=result, holder=holder, condition=condition):
                         temporary = wp.empty_like(result)
@@ -1088,6 +1090,8 @@ def test_body_allocation_lifetime(test, device: DeviceLike):
                         holder["temporary"].fill_(3.0)
                         np.testing.assert_array_equal(holder["temporary"].numpy(), np.full(4, 3.0))
                         holder.clear()
+                    wp.synchronize_device()
+                    test.assertLessEqual(wp.get_mempool_used_mem_current(device), baseline)
 
 
 @unittest.skipUnless(wp.is_conditional_graph_supported(), "Conditional graph nodes not supported")
@@ -1097,7 +1101,20 @@ def test_failed_body_allocation_lifetime(test, device: DeviceLike):
         wp.load_module(device=device)
         condition = wp.ones(1, dtype=wp.int32)
         result = wp.zeros(4, dtype=wp.float32)
-        for failure in ("callback", "capture_end"):
+        inline_type = wp.types.vector(length=992, dtype=wp.float32)
+        large_type = wp.types.vector(length=1000, dtype=wp.float32)
+        inline_result = wp.empty(2, dtype=inline_type)
+        large_result = wp.empty(2, dtype=large_type)
+        # The inline limit works in a callback; larger values still work in the parent graph.
+        with wp.ScopedCapture(force_module_load=False) as fill_capture:
+            large_result.fill_(large_type(7.0))
+            wp.capture_if(condition, on_true=lambda: inline_result.fill_(inline_type(3.0)))
+        wp.capture_launch(fill_capture.graph)
+        np.testing.assert_array_equal(large_result.numpy(), np.full((2, 1000), 7.0, dtype=np.float32))
+        np.testing.assert_array_equal(inline_result.numpy(), np.full((2, 992), 3.0, dtype=np.float32))
+        del fill_capture
+
+        for failure in ("callback", "capture_end", "large_fill"):
             for retain_array in (False, True):
                 with test.subTest(failure=failure, retain_array=retain_array):
                     wp.synchronize_device()
@@ -1111,9 +1128,15 @@ def test_failed_body_allocation_lifetime(test, device: DeviceLike):
                             holder["temporary"] = temporary
                         if failure == "callback":
                             raise ValueError("rejected callback")
+                        if failure == "large_fill":
+                            large_result.fill_(large_type(7.0))
 
                     error = ValueError if failure == "callback" else RuntimeError
-                    message = "rejected callback" if failure == "callback" else "CUDA graph capture failed"
+                    message = {
+                        "callback": "rejected callback",
+                        "capture_end": "CUDA graph capture failed",
+                        "large_fill": "pageable host memory",
+                    }[failure]
                     stderr = StdErrCapture()
                     stderr.begin()
                     try:
@@ -1122,10 +1145,11 @@ def test_failed_body_allocation_lifetime(test, device: DeviceLike):
                                 force_module_load=False, capture_mode=wp.CaptureMode.THREAD_LOCAL
                             ) as capture:
                                 wp.capture_if(condition, on_true=body)
-                                # Invalidate only the parent: its conditional body must remain valid during teardown.
-                                test.assertFalse(
-                                    wp._src.context.runtime.core.wp_cuda_context_synchronize(device.context)
-                                )
+                                if failure == "capture_end":
+                                    # Invalidate only the parent; keep its conditional body valid during teardown.
+                                    test.assertFalse(
+                                        wp._src.context.runtime.core.wp_cuda_context_synchronize(device.context)
+                                    )
                     finally:
                         diagnostics = stderr.end()  # Expected capture errors, not invalid graph releases.
                     test.assertNotIn("invalid argument", diagnostics)
