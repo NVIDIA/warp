@@ -262,6 +262,8 @@ inline unsigned int radix_float_to_int(float f)
 {
     unsigned int i;
     memcpy(&i, &f, sizeof(i));
+    if ((i & 0x7fffffffu) == 0)
+        return 0x80000000u;
     unsigned int mask = (unsigned int)(-(int)(i >> 31)) | 0x80000000;
     return i ^ mask;
 }
@@ -270,6 +272,8 @@ inline uint64_t radix_double_to_int(double f)
 {
     uint64_t i;
     memcpy(&i, &f, sizeof(i));
+    if ((i & 0x7fffffffffffffffull) == 0)
+        return 0x8000000000000000ull;
     uint64_t mask = (uint64_t)(-(int64_t)(i >> 63)) | 0x8000000000000000ull;
     return i ^ mask;
 }
