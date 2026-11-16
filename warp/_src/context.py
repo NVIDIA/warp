@@ -3511,6 +3511,9 @@ class ModuleBuilder:
         # propagate used_by_backward_kernel now that the full call graph is known
         self._propagate_used_by_backward_kernel()
 
+        # caller operations can change a callee's tile storage after the call was built
+        self._propagate_forward_shared_memory()
+
         # propagate callee replay/reverse shared-memory needs into backward-kernel sizing
         self._propagate_backward_shared_memory()
 
@@ -3729,6 +3732,17 @@ class ModuleBuilder:
                     )
                 if not callee.is_builtin() and (not reverse or callee.custom_grad_func is None):
                     worklist.append((callee.adj, not reverse))
+
+    def _propagate_forward_shared_memory(self):
+        # Tile types can be shared between a callee's return value and its caller.
+        # Read their final storage requirements after all functions are built.
+        # build_function() registers callees before callers, so a single pass also
+        # propagates changes through nested calls; kernels are the roots.
+        for obj in (*self.functions, *self.kernels):
+            adj = obj.adj
+            for callee in adj.called_user_functions:
+                # Retain the call-site maximum, including builtin LTO scratch.
+                adj.alloc_shared_extra(callee.adj.get_total_required_shared())
 
     def _propagate_backward_shared_memory(self):
         # a backward call site replays the callee's forward, then calls its reverse; the two frames

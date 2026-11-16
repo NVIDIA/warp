@@ -1973,6 +1973,49 @@ class TestCodeGen(unittest.TestCase):
         builder.codegen("cuda")
         return builder.build_meta()
 
+    def test_returned_tile_storage_updates_forward_shared_memory(self):
+        """Size a callee's frame after its returned tile is promoted to shared storage."""
+
+        @wp.func
+        def double_tile(a: wp.array[float]):
+            tile = wp.tile_load(a, shape=16)
+            return wp.tile_map(wp.add, tile, tile)
+
+        @wp.kernel(module="unique", enable_backward=False)
+        def broadcast_returned_tile(a: wp.array[float], out: wp.array2d[float]):
+            tile = double_tile(a)
+            wp.tile_store(out, wp.tile_broadcast(tile, shape=(2, 16)))
+
+        # Metadata generation needs no CUDA device or kernel launch. A wrong
+        # reservation must fail this assertion before it can cause an invalid access.
+        meta = self._build_cuda_meta(broadcast_returned_tile)
+        forward_name = codegen.cuda_kernel_forward_name(broadcast_returned_tile)
+        # The caller and callee each own a 16-float tile. Broadcast is a view.
+        self.assertEqual(meta[forward_name + "_smem_bytes"], 2 * 16 * 4)
+
+    def test_returned_tile_storage_updates_nested_forward_shared_memory(self):
+        """Propagate a late storage change through every simultaneously active frame."""
+
+        @wp.func
+        def double_tile(a: wp.array[float]):
+            tile = wp.tile_load(a, shape=16)
+            return wp.tile_map(wp.add, tile, tile)
+
+        @wp.func
+        def nested_double_tile(a: wp.array[float]):
+            return double_tile(a)
+
+        @wp.kernel(module="unique", enable_backward=False)
+        def broadcast_returned_tile(a: wp.array[float], out: wp.array2d[float]):
+            tile = nested_double_tile(a)
+            wp.tile_store(out, wp.tile_broadcast(tile, shape=(2, 16)))
+
+        meta = self._build_cuda_meta(broadcast_returned_tile)
+        forward_name = codegen.cuda_kernel_forward_name(broadcast_returned_tile)
+        # The caller, wrapper and leaf each own a 16-float tile. Recomputing only
+        # the immediate callee would still omit the leaf's frame.
+        self.assertEqual(meta[forward_name + "_smem_bytes"], 3 * 16 * 4)
+
     def test_max_unroll_uses_range_trip_count(self):
         """Verify ``max_unroll`` is compared against the exact trip count of constant ``range()`` loops."""
 
