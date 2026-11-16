@@ -7782,12 +7782,12 @@ cuda_kernel_template_forward = """
 {line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {max_registers_str}{forward_name}(
     {forward_args})
 {{
-{forward_smem_spilling_str}{line_directive}    wp::tile_shared_storage_t tile_mem;
+{forward_smem_spilling_str}{line_directive}    {forward_tile_storage_str}
 
 {line_directive}    const size_t _idx = static_cast<size_t>(blockIdx.z * gridDim.y + blockIdx.y) * static_cast<size_t>(gridDim.x * blockDim.x) + static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x);
 {line_directive}    if (_idx >= dim.size) return;
             // reset shared memory allocator
-{line_directive}    wp::tile_shared_storage_t::init();
+{line_directive}    {forward_tile_reset_str}
 
 {forward_body}{line_directive}}}
 
@@ -7798,12 +7798,12 @@ cuda_kernel_template_backward = """
 {line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {max_registers_str}{backward_name}(
     {reverse_args})
 {{
-{backward_smem_spilling_str}{line_directive}    wp::tile_shared_storage_t tile_mem;
+{backward_smem_spilling_str}{line_directive}    {backward_tile_storage_str}
 
 {line_directive}    const size_t _idx = static_cast<size_t>(blockIdx.z * gridDim.y + blockIdx.y) * static_cast<size_t>(gridDim.x * blockDim.x) + static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x);
 {line_directive}    if (_idx >= dim.size) return;
             // reset shared memory allocator
-{line_directive}    wp::tile_shared_storage_t::init();
+{line_directive}    {backward_tile_reset_str}
 
 {reverse_body}{line_directive}}}
 
@@ -7814,14 +7814,14 @@ cuda_kernel_template_forward_grid_stride = """
 {line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {max_registers_str}{forward_name}(
     {forward_args})
 {{
-{forward_smem_spilling_str}{line_directive}    wp::tile_shared_storage_t tile_mem;
+{forward_smem_spilling_str}{line_directive}    {forward_tile_storage_str}
 
 {line_directive}    for (size_t _idx = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
 {line_directive}         _idx < dim.size;
 {line_directive}         _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
     {{
             // reset shared memory allocator
-{line_directive}        wp::tile_shared_storage_t::init();
+{line_directive}        {forward_tile_reset_str}
 
 {forward_body}{line_directive}    }}
 {line_directive}}}
@@ -7833,14 +7833,14 @@ cuda_kernel_template_backward_grid_stride = """
 {line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {max_registers_str}{backward_name}(
     {reverse_args})
 {{
-{backward_smem_spilling_str}{line_directive}    wp::tile_shared_storage_t tile_mem;
+{backward_smem_spilling_str}{line_directive}    {backward_tile_storage_str}
 
 {line_directive}    for (size_t _idx = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
 {line_directive}         _idx < dim.size;
 {line_directive}         _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
     {{
             // reset shared memory allocator
-{line_directive}        wp::tile_shared_storage_t::init();
+{line_directive}        {backward_tile_reset_str}
 
 {reverse_body}{line_directive}    }}
 {line_directive}}}
@@ -8989,6 +8989,12 @@ def codegen_kernel(kernel, device, options):
     ):
         forward_smem_spilling_str = "    WP_ENABLE_SMEM_SPILLING();\n"
 
+    # The tile allocator keeps per-thread offsets in static shared memory, so only entry points that use it get one.
+    forward_tile_storage_str = forward_tile_reset_str = ""
+    if adj.get_total_required_shared() > 0:
+        forward_tile_storage_str = "wp::tile_shared_storage_t tile_mem;"
+        forward_tile_reset_str = "wp::tile_shared_storage_t::init();"
+
     # Generate cluster_dims string for CUDA kernels.
     # 1 is the implicit default and is treated as a no-op so that
     # kernels without cluster_dim produce byte-identical source to pre-feature.
@@ -9039,6 +9045,8 @@ def codegen_kernel(kernel, device, options):
             "cluster_dims_str": cluster_dims_str,
             "max_registers_str": max_registers_str,
             "forward_smem_spilling_str": forward_smem_spilling_str,
+            "forward_tile_storage_str": forward_tile_storage_str,
+            "forward_tile_reset_str": forward_tile_reset_str,
         }
     )
     template += template_forward
@@ -9071,11 +9079,17 @@ def codegen_kernel(kernel, device, options):
             and adj.get_total_required_shared_backward() == 0
         ):
             backward_smem_spilling_str = "    WP_ENABLE_SMEM_SPILLING();\n"
+        backward_tile_storage_str = backward_tile_reset_str = ""
+        if adj.get_total_required_shared_backward() > 0:
+            backward_tile_storage_str = "wp::tile_shared_storage_t tile_mem;"
+            backward_tile_reset_str = "wp::tile_shared_storage_t::init();"
         template_fmt_args.update(
             {
                 "reverse_args": indent(reverse_args),
                 "reverse_body": reverse_body,
                 "backward_smem_spilling_str": backward_smem_spilling_str,
+                "backward_tile_storage_str": backward_tile_storage_str,
+                "backward_tile_reset_str": backward_tile_reset_str,
             }
         )
         template += template_backward

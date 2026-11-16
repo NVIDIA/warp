@@ -158,6 +158,22 @@ def test_tile_static_shared_memory_query(test, device):
     test.assertEqual(warp_context.runtime.core.wp_cuda_get_kernel_static_shared_memory(device.context, None), -1)
 
 
+@wp.kernel
+def no_shared_tile_kernel(x: wp.array[float], y: wp.array[float]):
+    i = wp.tid()
+    y[i] = 2.0 * x[i]
+
+
+def test_kernel_without_shared_tiles_reserves_no_shared_memory(test, device):
+    """Check that a kernel without shared tiles reserves no static shared memory."""
+    module_exec = no_shared_tile_kernel.module.load(device, STATIC_QUERY_BLOCK_DIM)
+    hooks = module_exec.get_kernel_hooks(no_shared_tile_kernel)
+
+    for entry_point in (hooks.forward, hooks.backward):
+        static_bytes = warp_context.runtime.core.wp_cuda_get_kernel_static_shared_memory(device.context, entry_point)
+        test.assertEqual(static_bytes, 0)
+
+
 def test_tile_shared_mem_overflow_message(test, device):
     """Check that the over-budget warning names a maximum the kernel can actually reach."""
     BLOCK_DIM = 64
@@ -1272,6 +1288,11 @@ def test_tile_custom_grad_extra_shared(test, device):
     test.assertGreaterEqual(hooks.backward_smem_bytes, scratch_bytes)
     test.assertLess(hooks.backward_smem_bytes, 2 * scratch_bytes)
 
+    # likewise, only the backward entry point carries the allocator's per-thread offsets
+    get_static_bytes = warp_context.runtime.core.wp_cuda_get_kernel_static_shared_memory
+    test.assertEqual(get_static_bytes(device.context, hooks.forward), 0)
+    test.assertGreaterEqual(get_static_bytes(device.context, hooks.backward), 4 * 64)
+
 
 def test_tile_custom_grad_shared_forward(test, device):
     """Test a custom func_grad on a function whose forward itself owns a shared tile.
@@ -1373,6 +1394,12 @@ add_function_test(
     TestTileSharedMemory,
     "test_tile_static_shared_memory_query",
     test_tile_static_shared_memory_query,
+    devices=devices,
+)
+add_function_test(
+    TestTileSharedMemory,
+    "test_kernel_without_shared_tiles_reserves_no_shared_memory",
+    test_kernel_without_shared_tiles_reserves_no_shared_memory,
     devices=devices,
 )
 add_function_test(TestTileSharedMemory, "test_tile_shared_mem_graph", test_tile_shared_mem_graph, devices=devices)
