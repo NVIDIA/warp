@@ -251,8 +251,13 @@ add_function_test(TestClangCUDA, "test_launch_bounds_kernel", test_launch_bounds
 bf16_devices = [d for d in devices if d.arch >= 80]
 add_function_test(TestClangCUDA, "test_bf16_round_trip", test_bf16_round_trip, devices=bf16_devices)
 add_function_test(TestClangCUDA, "test_bf16_arithmetic", test_bf16_arithmetic, devices=bf16_devices)
+# the native compiler reports the invalid source on stderr, which CheckOutput can capture as stdout on Windows
 add_function_test(
-    TestClangCUDA, "test_invalid_native_func_compile_error", test_invalid_native_func_compile_error, devices=devices
+    TestClangCUDA,
+    "test_invalid_native_func_compile_error",
+    test_invalid_native_func_compile_error,
+    devices=devices,
+    check_output=False,
 )
 
 if __name__ == "__main__":

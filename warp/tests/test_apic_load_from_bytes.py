@@ -582,11 +582,14 @@ add_function_test(
     test_load_from_bytes_missing_module,
     devices=devices_with_cuda_graph_module_load,
 )
+# The native module loaders write the rejected-module diagnostics directly to stderr,
+# which CheckOutput can capture as stdout on Windows.
 add_function_test(
     TestApicLoadFromBytes,
     "test_load_from_bytes_bad_module",
     test_load_from_bytes_bad_module,
     devices=devices_with_cuda_graph_module_load,
+    check_output=False,
 )
 
 add_function_test(
@@ -595,11 +598,14 @@ add_function_test(
     test_load_from_bytes_ptx_module,
     devices=cuda_devices_with_cuda_graph_module_load,
 )
+# The CUDA module loader writes the rejected-module diagnostics directly to stderr, which
+# CheckOutput can capture as stdout on Windows.
 add_function_test(
     TestApicLoadFromBytes,
     "test_load_from_bytes_empty_native_module",
     test_load_from_bytes_empty_native_module,
     devices=cuda_devices_with_cuda_graph_module_load,
+    check_output=False,
 )
 add_function_test(
     TestApicLoadFromBytes,
