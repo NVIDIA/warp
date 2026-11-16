@@ -260,8 +260,11 @@ add_example_test(TestCoreExamples, name="core.example_wave", devices=test_device
 add_example_test(
     TestCoreExamples,
     name="core.example_fft_poisson_navier_stokes_2d",
-    devices=cuda_test_devices,
-    test_options={"headless": True, "num_steps": 100, "sim_substeps": 10},
+    devices=test_devices,
+    test_options={"headless": True},
+    test_options_cuda={"num_steps": 100, "sim_substeps": 10},
+    # Lower resolution and fewer steps on CPU so the test finishes in reasonable time.
+    test_options_cpu={"resolution": 64, "num_steps": 30, "sim_substeps": 5},
 )
 add_example_test(
     TestCoreExamples,
