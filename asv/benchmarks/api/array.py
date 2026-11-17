@@ -134,6 +134,7 @@ class ArrayFromList:
     param_names = ("kind",)
     repeat = 15  # Samples have low variance at 1-60 ms each.
     number = 1
+    rounds = 4  # Per-process speed varies with memory layout; four rounds stop one slow process moving the median.
 
     @setup_once
     def setup(self, kind):

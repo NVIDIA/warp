@@ -30,6 +30,7 @@ class NonContiguousFillCPU:
     param_names = ("layout", "num_elements")
     repeat = 15
     number = 50  # Amortize timer overhead for the 3-13 us fills of 4096 elements.
+    rounds = 4  # Per-process speed varies with memory layout; four rounds stop one slow process moving the median.
 
     @setup_once
     def setup(self, layout, num_elements):
