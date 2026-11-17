@@ -2447,6 +2447,17 @@ current offsets, row counts, columns, and values.</p></li>
 current <code class="docutils literal notranslate"><span class="pre">lowers</span></code> / <code class="docutils literal notranslate"><span class="pre">uppers</span></code> so a captured graph queries the updated tree.
 For CPU graphs, these operations are live-only and cannot be saved (see the
 limitations below).</p></li>
+<li><p>Mesh updates (<a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh.refit" title="warp.Mesh.refit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">wp.Mesh.refit()</span></code></a> and assignments to
+<a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh.points" title="warp.Mesh.points"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Mesh.points</span></code></a> or <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh.velocities" title="warp.Mesh.velocities"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Mesh.velocities</span></code></a>),
+applied on replay in capture order and against the current point data, so a
+captured graph queries the updated mesh. Like BVH updates, they are live-only.</p></li>
+<li><p>Volume topology updates (<a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume.rebuild" title="warp.Volume.rebuild"><code class="xref py py-meth docutils literal notranslate"><span class="pre">wp.Volume.rebuild()</span></code></a>, and rebuildable
+<a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume.allocate_by_tiles" title="warp.Volume.allocate_by_tiles"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Volume.allocate_by_tiles()</span></code></a> /
+<a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume.allocate_by_voxels" title="warp.Volume.allocate_by_voxels"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Volume.allocate_by_voxels()</span></code></a> called inside the capture)
+and the coordinate queries <a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume.get_tiles" title="warp.Volume.get_tiles"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Volume.get_tiles()</span></code></a> and
+<a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume.get_voxels" title="warp.Volume.get_voxels"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Volume.get_voxels()</span></code></a>, re-run on replay against the
+current points, point mask, and status arrays. Allocation reserves the volume’s
+storage at capture time; its topology is built on every replay. These are live-only too.</p></li>
 <li><p>Live CPU graphs record <a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid.build" title="warp.HashGrid.build"><code class="xref py py-meth docutils literal notranslate"><span class="pre">HashGrid.build()</span></code></a> in
 operation order. Each replay reads the current contents of the normalized
 point and optional group arrays, and the first replay may allocate or grow
@@ -2486,6 +2497,12 @@ or <a class="reference internal" href="../api_reference/_generated/warp.array.ht
 <code class="docutils literal notranslate"><span class="pre">wp.fabricarray</span></code> / <code class="docutils literal notranslate"><span class="pre">wp.indexedfabricarray</span></code>, raise <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#NotImplementedError" title="(in Python v3.15)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a> inside a CPU
 <a class="reference internal" href="../api_reference/_generated/warp.ScopedCapture.html#warp.ScopedCapture" title="warp.ScopedCapture"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScopedCapture</span></code></a>. So do strided and indexed fills with a value that holds an array, a
 non-zero <code class="docutils literal notranslate"><span class="pre">wp.handle</span></code>, or a texture, directly or in a struct field.</p></li>
+<li><p>Building a <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Mesh</span></code></a> or <a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh" title="warp.Bvh"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Bvh</span></code></a>, and allocating a
+volume without rebuild capacity with <a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume.allocate_by_tiles" title="warp.Volume.allocate_by_tiles"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Volume.allocate_by_tiles()</span></code></a> or
+<a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume.allocate_by_voxels" title="warp.Volume.allocate_by_voxels"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Volume.allocate_by_voxels()</span></code></a>, raise <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#NotImplementedError" title="(in Python v3.15)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">NotImplementedError</span></code></a>
+inside a CPU <a class="reference internal" href="../api_reference/_generated/warp.ScopedCapture.html#warp.ScopedCapture" title="warp.ScopedCapture"><code class="xref py py-class docutils literal notranslate"><span class="pre">ScopedCapture</span></code></a>. These run on the host and cannot be recorded, so they would
+run once at capture time and never on replay. Build meshes, BVHs, and volumes before the capture
+and update them inside it with the recorded operations listed above.</p></li>
 <li><p>Reusable launches with array parameters must be updated through Warp-level
 setters such as <a class="reference internal" href="../api_reference/_generated/warp.Launch.html#warp.Launch.set_param_at_index" title="warp.Launch.set_param_at_index"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Launch.set_param_at_index()</span></code></a>.
 Raw ctype array parameters passed through
@@ -2502,11 +2519,19 @@ count after replay, or avoid the readback inside the captured region.</p></li>
 the sparse status during a live CUDA graph capture (it requires a device-to-host
 readback) or during CPU graph capture (a recorded status update is applied only
 on replay). Read the status after replay instead.</p></li>
-<li><p><a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh.refit" title="warp.Bvh.refit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">wp.Bvh.refit()</span></code></a> and
-<a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh.rebuild" title="warp.Bvh.rebuild"><code class="xref py py-meth docutils literal notranslate"><span class="pre">wp.Bvh.rebuild()</span></code></a> have APIC records only for live
-CPU graphs. Their BVH handle is process-local, so
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh.refit" title="warp.Bvh.refit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">wp.Bvh.refit()</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.Bvh.html#warp.Bvh.rebuild" title="warp.Bvh.rebuild"><code class="xref py py-meth docutils literal notranslate"><span class="pre">wp.Bvh.rebuild()</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh.refit" title="warp.Mesh.refit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">wp.Mesh.refit()</span></code></a>,
+assignments to <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh.points" title="warp.Mesh.points"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Mesh.points</span></code></a> or
+<a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh.velocities" title="warp.Mesh.velocities"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Mesh.velocities</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume.rebuild" title="warp.Volume.rebuild"><code class="xref py py-meth docutils literal notranslate"><span class="pre">wp.Volume.rebuild()</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume.get_tiles" title="warp.Volume.get_tiles"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Volume.get_tiles()</span></code></a>, and
+<a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume.get_voxels" title="warp.Volume.get_voxels"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Volume.get_voxels()</span></code></a> have APIC records only for live
+CPU graphs. Their BVH, mesh, or volume handle is process-local, so
 <a class="reference internal" href="../api_reference/_generated/warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.capture_save()</span></code></a> rejects a graph that records
-either operation.</p></li>
+any of these operations.</p></li>
+<li><p>Recorded operations take effect only when the graph is launched. For example,
+after capturing <code class="docutils literal notranslate"><span class="pre">mesh.points</span> <span class="pre">=</span> <span class="pre">new_points</span></code>, <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh.points" title="warp.Mesh.points"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Mesh.points</span></code></a>
+returns <code class="docutils literal notranslate"><span class="pre">new_points</span></code> immediately, but kernels launched outside the graph keep
+seeing the previous points until the first replay.</p></li>
 <li><p>Recording is scoped to the capture’s device: a host (CPU) helper op invoked while a CUDA
 graph capture is active executes immediately instead of being recorded into the CUDA graph,
 and vice versa.</p></li>
@@ -3287,7 +3312,8 @@ The values for a Volume object can be modified in a Warp kernel using <a class="
 <p class="admonition-title">Note</p>
 <p>Volumes created with <code class="docutils literal notranslate"><span class="pre">rebuildable=True</span></code> or explicit capacity arguments reserve persistent storage and can update
 their sparse topology in place with <a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume.rebuild" title="warp.Volume.rebuild"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Volume.rebuild()</span></code></a>. Allocation and rebuild of these
-volumes can be captured in CUDA graphs when CUDA memory-pool allocation is supported and enabled. Exact,
+volumes can be captured in CPU graphs, and in CUDA graphs when CUDA memory-pool allocation is supported and
+enabled. Exact,
 non-rebuildable volume allocation and active-topology queries such as
 <a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume.get_active_stats" title="warp.Volume.get_active_stats"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Volume.get_active_stats()</span></code></a> require device synchronization and must occur
 outside CUDA graph capture.</p>
@@ -3552,11 +3578,18 @@ undefined behavior when the kernel tries to access the freed memory.</p>
 <li><p><strong>Creating objects in functions</strong> and returning only the ID</p></li>
 <li><p><strong>Creating objects as temporary variables</strong> that get overwritten</p></li>
 </ol>
-<p><strong>Graph capture</strong>: When a graph captures a <a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.HashGrid</span></code></a> ID, the caller must
-keep the <code class="docutils literal notranslate"><span class="pre">HashGrid</span></code> alive until every graph that captures its ID is destroyed.
-This caller-ownership contract is the same for live CPU and CUDA graphs. The
-graph retains the array inputs captured by <code class="docutils literal notranslate"><span class="pre">HashGrid.build()</span></code>, including
-normalized views and their backing allocations.</p>
+<p><strong>Graph capture</strong>: When a graph captures a <a class="reference internal" href="../api_reference/_generated/warp.HashGrid.html#warp.HashGrid" title="warp.HashGrid"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.HashGrid</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Mesh</span></code></a>,
+or <a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume" title="warp.Volume"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Volume</span></code></a> ID, the caller must keep that object alive until every graph
+that captures its ID is destroyed.
+This caller-ownership contract is the same for live CPU and CUDA graphs.</p>
+<p>The graph itself keeps alive the arrays that these operations record:</p>
+<ul class="simple">
+<li><p>The inputs of <code class="docutils literal notranslate"><span class="pre">HashGrid.build()</span></code>, including normalized views and their backing allocations.</p></li>
+<li><p>The arrays assigned to <a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh.points" title="warp.Mesh.points"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Mesh.points</span></code></a> or
+<a class="reference internal" href="../api_reference/_generated/warp.Mesh.html#warp.Mesh.velocities" title="warp.Mesh.velocities"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Mesh.velocities</span></code></a>, and the arrays they replace.</p></li>
+<li><p>The arrays passed to <a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume.rebuild" title="warp.Volume.rebuild"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Volume.rebuild()</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume.get_tiles" title="warp.Volume.get_tiles"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Volume.get_tiles()</span></code></a>, or <a class="reference internal" href="../api_reference/_generated/warp.Volume.html#warp.Volume.get_voxels" title="warp.Volume.get_voxels"><code class="xref py py-meth docutils literal notranslate"><span class="pre">Volume.get_voxels()</span></code></a>.</p></li>
+</ul>
 </section>
 </section>
 <section id="isosurface-extraction">

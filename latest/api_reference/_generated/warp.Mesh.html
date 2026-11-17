@@ -512,7 +512,7 @@
 <h1>warp.Mesh<a class="headerlink" href="#warp-mesh" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.Mesh">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Mesh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6789-L7022"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Mesh" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Mesh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6796-L7089"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Mesh" title="Link to this definition">#</a></dt>
 <dd><p>Triangle mesh for collision detection, ray casting, and spatial queries.</p>
 <p>Class representing a triangle mesh.</p>
 <dl class="py attribute">
@@ -549,6 +549,10 @@ value based on the <code class="docutils literal notranslate"><span class="pre">
 <li><p><strong>groups</strong> – Optional array of triangle group indices of data type <a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.int32</span></code></a>.
 Should be a 1D array with shape <code class="docutils literal notranslate"><span class="pre">(num_tris)</span></code>.</p></li>
 </ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#NotImplementedError" title="(in Python v3.15)"><strong>NotImplementedError</strong></a> – If called during CPU graph capture, which cannot record the build. Build the mesh
+    before capture and update it with <a class="reference internal" href="#warp.Mesh.refit" title="warp.Mesh.refit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">refit()</span></code></a> or by assigning <a class="reference internal" href="#warp.Mesh.points" title="warp.Mesh.points"><code class="xref py py-attr docutils literal notranslate"><span class="pre">points</span></code></a> instead.</p>
 </dd>
 </dl>
 <p class="rubric">Methods</p>
@@ -592,27 +596,39 @@ Should be a 1D array with shape <code class="docutils literal notranslate"><span
 
 <dl class="py method">
 <dt class="sig sig-object py" id="warp.Mesh.refit">
-<span class="sig-name descname"><span class="pre">refit</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6948-L6959"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Mesh.refit" title="Link to this definition">#</a></dt>
+<span class="sig-name descname"><span class="pre">refit</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6962-L6978"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Mesh.refit" title="Link to this definition">#</a></dt>
 <dd><p>Refit the BVH to points.</p>
 <p>This should be called after users modify the <code class="docutils literal notranslate"><span class="pre">points</span></code> data.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Under a CPU graph capture the refit is recorded and re-run on replay against the
+current <code class="docutils literal notranslate"><span class="pre">points</span></code>. Such a graph is replay-only and cannot be serialized
+with <a class="reference internal" href="warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.capture_save()</span></code></a>.</p>
+</div>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Mesh.points">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">points</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6961-L6970"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Mesh.points" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">points</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L7014-L7027"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Mesh.points" title="Link to this definition">#</a></dt>
 <dd><p>The array of mesh’s vertex positions of type <a class="reference internal" href="warp.vec3.html#warp.vec3" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a>.</p>
 <p>The <cite>Mesh.points</cite> property has a custom setter method. Users can modify the vertex positions in-place,
 but <a class="reference internal" href="#warp.Mesh.refit" title="warp.Mesh.refit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">refit()</span></code></a> must be called manually after such modifications. Alternatively, assigning a new array
 to this property is also supported. The new array must have the same shape as the original, and once assigned,
 The <a class="reference internal" href="#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">Mesh</span></code></a> will automatically perform a refit operation based on the new vertex positions.</p>
+<p>Under a CPU graph capture, an assignment is recorded and applied on each replay, in capture order, followed by
+the refit. The property returns the new array immediately, but kernels see it only once the graph is
+launched. Such a graph is replay-only and cannot be serialized with <a class="reference internal" href="warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.capture_save()</span></code></a>.</p>
 </dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="warp.Mesh.velocities">
-<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">velocities</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6994-L7001"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Mesh.velocities" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">velocities</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L7054-L7065"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Mesh.velocities" title="Link to this definition">#</a></dt>
 <dd><p>The array of mesh’s velocities of type <a class="reference internal" href="warp.vec3.html#warp.vec3" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a>.</p>
 <p>This is a property with a custom setter method. Users can modify the velocities in-place,
 or assign a new array to this property. No refitting is needed for changing velocities.</p>
+<p>Under a CPU graph capture, an assignment is recorded and applied on each replay, in capture order. The property
+returns the new array immediately, but kernels see it only once the graph is launched. Such a graph is
+replay-only and cannot be serialized with <a class="reference internal" href="warp.capture_save.html#warp.capture_save" title="warp.capture_save"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.capture_save()</span></code></a>.</p>
 </dd></dl>
 
 </dd></dl>
