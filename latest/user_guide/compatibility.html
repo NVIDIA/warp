@@ -433,8 +433,8 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp.html">warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_autograd.html">warp.autograd</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_build_experimental.html">warp.build_experimental</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_config.html">warp.config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_experimental.html">warp.experimental</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_fem.html">warp.fem</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_geometry.html">warp.geometry</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../api_reference/warp_optim.html">warp.optim</a></li>
@@ -909,7 +909,8 @@ regularly published externally, but may be at our discretion.</p></li>
 <ul class="simple">
 <li><p><strong>Experimental</strong>: A new feature that is still under active development.
 It is available for early adopters to test and provide feedback, but its design may change with little or no notice,
-including in bugfix releases.</p></li>
+including in bugfix releases. Experimental modules live under <a class="reference internal" href="../api_reference/warp_experimental.html#module-warp.experimental" title="warp.experimental"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.experimental</span></code></a> and must be imported
+explicitly (for example, <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">warp.experimental.build</span></code>).</p></li>
 <li><p><strong>Stable</strong>: The default state for most features. Changes to stable features follow our deprecation timeline
 and backward compatibility guarantees.</p></li>
 <li><p><strong>Deprecated</strong>: A feature that is scheduled for removal in a future release.

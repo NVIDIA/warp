@@ -11,7 +11,6 @@ Submodules
 
 These modules are automatically available when you ``import warp``.
 
-- :mod:`warp.build_experimental`
 - :mod:`warp.config`
 - :mod:`warp.types`
 - :mod:`warp.utils`
@@ -22,6 +21,7 @@ Additional Submodules
 These modules must be explicitly imported (e.g., ``import warp.autograd``).
 
 - :mod:`warp.autograd`
+- :mod:`warp.experimental`
 - :mod:`warp.fem`
 - :mod:`warp.geometry`
 - :mod:`warp.optim`

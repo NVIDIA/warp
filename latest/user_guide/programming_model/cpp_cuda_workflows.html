@@ -433,8 +433,8 @@
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp.html">warp</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_autograd.html">warp.autograd</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_build_experimental.html">warp.build_experimental</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_config.html">warp.config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_experimental.html">warp.experimental</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_fem.html">warp.fem</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_geometry.html">warp.geometry</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_optim.html">warp.optim</a></li>
@@ -937,7 +937,9 @@ safety, and portability.</p></li>
 <div class="admonition-experimental admonition">
 <p class="admonition-title">Experimental</p>
 <p>The external-compilation APIs described in this section are experimental
-and may change without deprecation in future releases.</p>
+and may change without deprecation in future releases. The registration
+functions live in <a class="reference internal" href="../../api_reference/warp_experimental_build.html#module-warp.experimental.build" title="warp.experimental.build"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.experimental.build</span></code></a>, which must be imported
+explicitly.</p>
 </div>
 <p>Extra build inputs for a module can be grouped in
 <a class="reference internal" href="../../api_reference/_generated/warp.ModuleBuildOptions.html#warp.ModuleBuildOptions" title="warp.ModuleBuildOptions"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ModuleBuildOptions</span></code></a>:</p>
@@ -985,6 +987,7 @@ arguments and return values, Warp struct fields, and array dtypes. Define the
 host ABI with <a class="reference external" href="https://docs.python.org/3/library/ctypes.html#ctypes.Structure" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ctypes.Structure</span></code></a> and register the same class:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">ctypes</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp.experimental.build</span>
 
 <span class="k">class</span><span class="w"> </span><span class="nc">Color</span><span class="p">(</span><span class="n">ctypes</span><span class="o">.</span><span class="n">Structure</span><span class="p">):</span>
     <span class="n">_fields_</span> <span class="o">=</span> <span class="p">[</span>
@@ -993,7 +996,7 @@ host ABI with <a class="reference external" href="https://docs.python.org/3/libr
         <span class="p">(</span><span class="s2">"b"</span><span class="p">,</span> <span class="n">ctypes</span><span class="o">.</span><span class="n">c_float</span><span class="p">),</span>
     <span class="p">]</span>
 
-<span class="n">wp</span><span class="o">.</span><span class="n">build_experimental</span><span class="o">.</span><span class="n">add_native_type</span><span class="p">(</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">experimental</span><span class="o">.</span><span class="n">build</span><span class="o">.</span><span class="n">add_native_type</span><span class="p">(</span>
     <span class="n">Color</span><span class="p">,</span>
     <span class="n">native_name</span><span class="o">=</span><span class="s2">"render::Color"</span><span class="p">,</span>
     <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s2">"r"</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="s2">"g"</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="s2">"b"</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">},</span>
@@ -1016,7 +1019,7 @@ their members and captured constants are not exposed. Warp does not manage
 resources referenced by opaque values; the external package remains
 responsible for their ownership and lifetime.</p>
 <p>Native value types do not automatically gain arithmetic or differentiation.
-Register operations explicitly with <a class="reference internal" href="../../api_reference/_generated/warp.build_experimental.add_builtin.html#warp.build_experimental.add_builtin" title="warp.build_experimental.add_builtin"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.build_experimental.add_builtin()</span></code></a>,
+Register operations explicitly with <a class="reference internal" href="../../api_reference/_generated/warp.experimental.build.add_builtin.html#warp.experimental.build.add_builtin" title="warp.experimental.build.add_builtin"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.experimental.build.add_builtin()</span></code></a>,
 and leave <code class="docutils literal notranslate"><span class="pre">requires_grad</span></code> disabled on Warp arrays containing native value types.</p>
 <p>A native value can provide context to a Warp function. For example, this helper
 uses a native <code class="docutils literal notranslate"><span class="pre">Color</span></code> without differentiating the color itself:</p>
@@ -1033,7 +1036,7 @@ differentiable.</p>
 </section>
 <section id="external-function-signatures">
 <h2>External Function Signatures<a class="headerlink" href="#external-function-signatures" title="Link to this heading">#</a></h2>
-<p>Use <a class="reference internal" href="../../api_reference/_generated/warp.build_experimental.add_builtin.html#warp.build_experimental.add_builtin" title="warp.build_experimental.add_builtin"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.build_experimental.add_builtin()</span></code></a> to give an external C++ function
+<p>Use <a class="reference internal" href="../../api_reference/_generated/warp.experimental.build.add_builtin.html#warp.experimental.build.add_builtin" title="warp.experimental.build.add_builtin"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.experimental.build.add_builtin()</span></code></a> to give an external C++ function
 a Python name, ordered argument types, and a return type. Omit the return type
 for C++ <code class="docutils literal notranslate"><span class="pre">void</span></code>. The returned handle supports positional and keyword calls.</p>
 <p>Use <code class="docutils literal notranslate"><span class="pre">wp.ref[T]</span></code> for a mutable C++ <code class="docutils literal notranslate"><span class="pre">T&amp;</span></code> argument. Given this header declaration:</p>
@@ -1045,7 +1048,7 @@ for C++ <code class="docutils literal notranslate"><span class="pre">void</span>
 </pre></div>
 </div>
 <p>Register it in Python:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">write</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">build_experimental</span><span class="o">.</span><span class="n">add_builtin</span><span class="p">(</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">write</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">experimental</span><span class="o">.</span><span class="n">build</span><span class="o">.</span><span class="n">add_builtin</span><span class="p">(</span>
     <span class="s2">"my_addon_write"</span><span class="p">,</span>
     <span class="p">{</span><span class="s2">"output"</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">ref</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span> <span class="s2">"value"</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">},</span>
     <span class="n">native_name</span><span class="o">=</span><span class="s2">"my_addon::write"</span><span class="p">,</span>
@@ -1105,8 +1108,9 @@ Start by registering the C++ operation. Warp finds its derivative by adding
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp.experimental.build</span>
 
-<span class="n">square</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">build_experimental</span><span class="o">.</span><span class="n">add_builtin</span><span class="p">(</span>
+<span class="n">square</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">experimental</span><span class="o">.</span><span class="n">build</span><span class="o">.</span><span class="n">add_builtin</span><span class="p">(</span>
     <span class="s2">"external_framework_square"</span><span class="p">,</span>
     <span class="n">input_types</span><span class="o">=</span><span class="p">{</span><span class="s2">"x"</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">},</span>
     <span class="n">value_type</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
@@ -1173,7 +1177,7 @@ into input gradients. Here the loss gradient is one, giving <code class="docutil
 <span class="p">}</span>
 </pre></div>
 </div>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">root</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">build_experimental</span><span class="o">.</span><span class="n">add_builtin</span><span class="p">(</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">root</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">experimental</span><span class="o">.</span><span class="n">build</span><span class="o">.</span><span class="n">add_builtin</span><span class="p">(</span>
     <span class="s2">"external_framework_root"</span><span class="p">,</span>
     <span class="p">{</span><span class="s2">"x"</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">},</span>
     <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span>
@@ -1256,6 +1260,7 @@ kernels. For example, <code class="docutils literal notranslate"><span class="pr
 <span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
 
 <span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp.experimental.build</span>
 
 <span class="n">include_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s2">"include"</span>
 <span class="n">header</span> <span class="o">=</span> <span class="n">include_dir</span> <span class="o">/</span> <span class="s2">"my_addon.h"</span>
@@ -1269,13 +1274,13 @@ kernels. For example, <code class="docutils literal notranslate"><span class="pr
     <span class="p">]</span>
 
 
-<span class="n">wp</span><span class="o">.</span><span class="n">build_experimental</span><span class="o">.</span><span class="n">add_native_type</span><span class="p">(</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">experimental</span><span class="o">.</span><span class="n">build</span><span class="o">.</span><span class="n">add_native_type</span><span class="p">(</span>
     <span class="n">Color</span><span class="p">,</span>
     <span class="n">native_name</span><span class="o">=</span><span class="s2">"my_addon::Color"</span><span class="p">,</span>
     <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s2">"r"</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="s2">"g"</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="s2">"b"</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">},</span>
     <span class="n">initializer</span><span class="o">=</span><span class="s2">"aggregate"</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="n">wp</span><span class="o">.</span><span class="n">build_experimental</span><span class="o">.</span><span class="n">add_builtin</span><span class="p">(</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">experimental</span><span class="o">.</span><span class="n">build</span><span class="o">.</span><span class="n">add_builtin</span><span class="p">(</span>
     <span class="s2">"my_addon_scale_color"</span><span class="p">,</span>
     <span class="p">{</span><span class="s2">"value"</span><span class="p">:</span> <span class="n">Color</span><span class="p">,</span> <span class="s2">"factor"</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">},</span>
     <span class="n">Color</span><span class="p">,</span>
