@@ -370,7 +370,8 @@ def _make_jet_space(width: int, dtype):
 
     @wp.func
     def jet_atan(a: JetScalar) -> JetScalar:
-        return _lift1(wp.atan(a.value), dtype(1.0) / (dtype(1.0) + a.value * a.value), a)
+        x = Compute(a.value)
+        return _lift1_wide(wp.atan(a.value), Compute(1.0) / (Compute(1.0) + x * x), a)
 
     @wp.func
     def jet_exp(a: JetScalar) -> JetScalar:
@@ -389,9 +390,16 @@ def _make_jet_space(width: int, dtype):
     @wp.func
     def jet_atan2(y: JetScalar, x: JetScalar) -> JetScalar:
         # Like native atan2(), the derivatives are zero at the origin.
-        d = x.value * x.value + y.value * y.value
-        if d > dtype(0.0):
-            return JetScalar(wp.atan2(y.value, x.value), (x.value * y.grad - y.value * x.grad) / d)
+        wx = Compute(x.value)
+        wy = Compute(y.value)
+        d = wx * wx + wy * wy
+        if d > Compute(0.0):
+            # The derivative is (x y.grad - y x.grad) / d with d = x^2 + y^2. Keep this order:
+            # scaling the terms first rounded them differently once CUDA fused one into the
+            # subtraction, so equal contributions stopped cancelling. Float16 forms it in
+            # float32, where float16 values cannot overflow or underflow it.
+            grad = (wx * ComputeGrad(y.grad) - wy * ComputeGrad(x.grad)) / d
+            return JetScalar(wp.atan2(y.value, x.value), Grad(grad))
         return JetScalar(wp.atan2(y.value, x.value), Grad())
 
     @wp.func
@@ -904,35 +912,64 @@ def _make_jet_space(width: int, dtype):
         # Like native wp.length(), a zero-length vector has a zero gradient. The square
         # root's derivative is infinite there and would turn the zero gradient into NaN.
         # Only an exact zero is special: a NaN length stays NaN, as in native.
-        length_sq = jet_dot(v, v)
-        if length_sq.value == dtype(0.0):
+        x = Compute(v.value[0])
+        y = Compute(v.value[1])
+        length = wp.sqrt(x * x + y * y)
+        if length == Compute(0.0):
             return JetScalar(dtype(0.0), Grad())
-        return jet_sqrt(length_sq)
+        # The gradient is the unit vector applied to the component gradients.
+        inv_length = Compute(1.0) / length
+        grad = (x * inv_length) * ComputeGrad(v.grad[0]) + (y * inv_length) * ComputeGrad(v.grad[1])
+        return JetScalar(dtype(length), Grad(grad))
 
     @wp.func
     def jet_length(v: JetVec3) -> JetScalar:
         # Like native wp.length(), a zero-length vector has a zero gradient. The square
         # root's derivative is infinite there and would turn the zero gradient into NaN.
         # Only an exact zero is special: a NaN length stays NaN, as in native.
-        length_sq = jet_dot(v, v)
-        if length_sq.value == dtype(0.0):
+        x = Compute(v.value[0])
+        y = Compute(v.value[1])
+        z = Compute(v.value[2])
+        length = wp.sqrt(x * x + y * y + z * z)
+        if length == Compute(0.0):
             return JetScalar(dtype(0.0), Grad())
-        return jet_sqrt(length_sq)
+        # The gradient is the unit vector applied to the component gradients.
+        inv_length = Compute(1.0) / length
+        grad = (
+            (x * inv_length) * ComputeGrad(v.grad[0])
+            + (y * inv_length) * ComputeGrad(v.grad[1])
+            + (z * inv_length) * ComputeGrad(v.grad[2])
+        )
+        return JetScalar(dtype(length), Grad(grad))
 
     @wp.func
     def jet_normalize(v: JetVec2) -> JetVec2:
         # Like the native normalize(), a zero-length vector normalizes to zero.
-        length_sq = jet_dot(v, v)
-        if length_sq.value > dtype(0.0):
-            return jet_div(v, jet_sqrt(length_sq))
+        length = jet_length(v)
+        if wp.static(Compute is not dtype):
+            # A float16 vector can be longer than the float16 maximum although its unit
+            # vector is representable. Scaling by a power of two is exact and leaves the
+            # unit vector and its derivatives unchanged, so normalize v / 256 instead.
+            if wp.isinf(length.value):
+                scaled = jet_mul(v, dtype(0.00390625))
+                return jet_div(scaled, jet_length(scaled))
+        if length.value > dtype(0.0):
+            return jet_div(v, length)
         return JetVec2(NativeVec2(), GradVec2())
 
     @wp.func
     def jet_normalize(v: JetVec3) -> JetVec3:
         # Like the native normalize(), a zero-length vector normalizes to zero.
-        length_sq = jet_dot(v, v)
-        if length_sq.value > dtype(0.0):
-            return jet_div(v, jet_sqrt(length_sq))
+        length = jet_length(v)
+        if wp.static(Compute is not dtype):
+            # A float16 vector can be longer than the float16 maximum although its unit
+            # vector is representable. Scaling by a power of two is exact and leaves the
+            # unit vector and its derivatives unchanged, so normalize v / 256 instead.
+            if wp.isinf(length.value):
+                scaled = jet_mul(v, dtype(0.00390625))
+                return jet_div(scaled, jet_length(scaled))
+        if length.value > dtype(0.0):
+            return jet_div(v, length)
         return JetVec3(NativeVec3(), GradVec3())
 
     # ------------------------------------------------------------------
@@ -2820,8 +2857,9 @@ def _make_jet_space2(width: int, dtype):
 
     @wp.func
     def jet_atan(a: Jet2Scalar) -> Jet2Scalar:
-        u = dtype(1.0) / (dtype(1.0) + a.value * a.value)
-        return _lift(wp.atan(a.value), u, -dtype(2.0) * a.value * u * u, a)
+        x = Compute(a.value)
+        u = Compute(1.0) / (Compute(1.0) + x * x)
+        return _lift_wide(wp.atan(a.value), u, -Compute(2.0) * x * u * u, a)
 
     @wp.func
     def _pow_const(a: Jet2Scalar, p: dtype) -> Jet2Scalar:
@@ -2892,19 +2930,45 @@ def _make_jet_space2(width: int, dtype):
         return Jet2Scalar(value, fu * u.grad + fv * v.grad, hess)
 
     @wp.func
+    def _lift2_wide(
+        value: dtype,
+        fu: Compute,
+        fv: Compute,
+        fuu: Compute,
+        fvv: Compute,
+        fuv: Compute,
+        u: Jet2Scalar,
+        v: Jet2Scalar,
+    ) -> Jet2Scalar:
+        # _lift2 with F's partials in the compute type, applied there and rounded once.
+        gu = ComputeGrad(u.grad)
+        gv = ComputeGrad(v.grad)
+        ouv = wp.outer(gu, gv)
+        hess = (
+            fu * ComputeHess(u.hess)
+            + fv * ComputeHess(v.hess)
+            + fuu * wp.outer(gu, gu)
+            + fvv * wp.outer(gv, gv)
+            + fuv * (ouv + wp.transpose(ouv))
+        )
+        return Jet2Scalar(value, Grad(fu * gu + fv * gv), Hess(hess))
+
+    @wp.func
     def jet_atan2(y: Jet2Scalar, x: Jet2Scalar) -> Jet2Scalar:
         # Like native atan2(), the derivatives are zero at the origin.
-        d = x.value * x.value + y.value * y.value
-        if not (d > dtype(0.0)):
+        wx = Compute(x.value)
+        wy = Compute(y.value)
+        d = wx * wx + wy * wy
+        if not (d > Compute(0.0)):
             return Jet2Scalar(wp.atan2(y.value, x.value), Grad(), Hess())
         d2 = d * d
-        return _lift2(
+        return _lift2_wide(
             wp.atan2(y.value, x.value),
-            x.value / d,  # d/dy
-            -y.value / d,  # d/dx
-            -dtype(2.0) * x.value * y.value / d2,  # d2/dy2
-            dtype(2.0) * x.value * y.value / d2,  # d2/dx2
-            (y.value * y.value - x.value * x.value) / d2,  # d2/dydx
+            wx / d,  # d/dy
+            -wy / d,  # d/dx
+            -Compute(2.0) * wx * wy / d2,  # d2/dy2
+            Compute(2.0) * wx * wy / d2,  # d2/dx2
+            (wy * wy - wx * wx) / d2,  # d2/dydx
             y,
             x,
         )
@@ -3307,35 +3371,94 @@ def _make_jet_space2(width: int, dtype):
     def jet_length(v: Jet2Vec2) -> Jet2Scalar:
         # Like native wp.length(), a zero-length vector has a zero gradient, and its
         # Hessian, which is undefined there, is taken as zero too.
-        length_sq = jet_dot(v, v)
-        if length_sq.value == dtype(0.0):
+        x = Compute(v.x.value)
+        y = Compute(v.y.value)
+        length = wp.sqrt(x * x + y * y)
+        if length == Compute(0.0):
             return Jet2Scalar(dtype(0.0), Grad(), Hess())
-        return jet_sqrt(length_sq)
+        # With unit vector u and component gradients g_i, the gradient is sum u_i g_i and the
+        # Hessian is sum u_i H_i + (sum g_i g_i^T - grad grad^T) / length. Scaling one factor of
+        # each outer product by 1 / length keeps every intermediate no larger than its term.
+        # For float16 all of it is formed in float32 and rounded once, since the outer products
+        # can overflow and cancel even when the Hessian fits.
+        inv_length = Compute(1.0) / length
+        ux = x * inv_length
+        uy = y * inv_length
+        gx = ComputeGrad(v.x.grad)
+        gy = ComputeGrad(v.y.grad)
+        grad = ux * gx + uy * gy
+        hess = (
+            ux * ComputeHess(v.x.hess)
+            + uy * ComputeHess(v.y.hess)
+            + wp.outer(gx, inv_length * gx)
+            + wp.outer(gy, inv_length * gy)
+            - wp.outer(grad, inv_length * grad)
+        )
+        return Jet2Scalar(dtype(length), Grad(grad), Hess(hess))
 
     @wp.func
     def jet_length(v: Jet2Vec3) -> Jet2Scalar:
         # Like native wp.length(), a zero-length vector has a zero gradient, and its
         # Hessian, which is undefined there, is taken as zero too.
-        length_sq = jet_dot(v, v)
-        if length_sq.value == dtype(0.0):
+        x = Compute(v.x.value)
+        y = Compute(v.y.value)
+        z = Compute(v.z.value)
+        length = wp.sqrt(x * x + y * y + z * z)
+        if length == Compute(0.0):
             return Jet2Scalar(dtype(0.0), Grad(), Hess())
-        return jet_sqrt(length_sq)
+        # With unit vector u and component gradients g_i, the gradient is sum u_i g_i and the
+        # Hessian is sum u_i H_i + (sum g_i g_i^T - grad grad^T) / length. Scaling one factor of
+        # each outer product by 1 / length keeps every intermediate no larger than its term.
+        # For float16 all of it is formed in float32 and rounded once, since the outer products
+        # can overflow and cancel even when the Hessian fits.
+        inv_length = Compute(1.0) / length
+        ux = x * inv_length
+        uy = y * inv_length
+        uz = z * inv_length
+        gx = ComputeGrad(v.x.grad)
+        gy = ComputeGrad(v.y.grad)
+        gz = ComputeGrad(v.z.grad)
+        grad = ux * gx + uy * gy + uz * gz
+        hess = (
+            ux * ComputeHess(v.x.hess)
+            + uy * ComputeHess(v.y.hess)
+            + uz * ComputeHess(v.z.hess)
+            + wp.outer(gx, inv_length * gx)
+            + wp.outer(gy, inv_length * gy)
+            + wp.outer(gz, inv_length * gz)
+            - wp.outer(grad, inv_length * grad)
+        )
+        return Jet2Scalar(dtype(length), Grad(grad), Hess(hess))
 
     @wp.func
     def jet_normalize(v: Jet2Vec2) -> Jet2Vec2:
         # Like the native normalize(), a zero-length vector normalizes to zero.
-        length_sq = jet_dot(v, v)
-        if length_sq.value > dtype(0.0):
-            return jet_div(v, jet_sqrt(length_sq))
+        length = jet_length(v)
+        if wp.static(Compute is not dtype):
+            # A float16 vector can be longer than the float16 maximum although its unit
+            # vector is representable. Scaling by a power of two is exact and leaves the
+            # unit vector and its derivatives unchanged, so normalize v / 256 instead.
+            if wp.isinf(length.value):
+                scaled = jet_mul(v, dtype(0.00390625))
+                return jet_div(scaled, jet_length(scaled))
+        if length.value > dtype(0.0):
+            return jet_div(v, length)
         zero = scalar_constant(dtype(0.0))
         return Jet2Vec2(zero, zero)
 
     @wp.func
     def jet_normalize(v: Jet2Vec3) -> Jet2Vec3:
         # Like the native normalize(), a zero-length vector normalizes to zero.
-        length_sq = jet_dot(v, v)
-        if length_sq.value > dtype(0.0):
-            return jet_div(v, jet_sqrt(length_sq))
+        length = jet_length(v)
+        if wp.static(Compute is not dtype):
+            # A float16 vector can be longer than the float16 maximum although its unit
+            # vector is representable. Scaling by a power of two is exact and leaves the
+            # unit vector and its derivatives unchanged, so normalize v / 256 instead.
+            if wp.isinf(length.value):
+                scaled = jet_mul(v, dtype(0.00390625))
+                return jet_div(scaled, jet_length(scaled))
+        if length.value > dtype(0.0):
+            return jet_div(v, length)
         zero = scalar_constant(dtype(0.0))
         return Jet2Vec3(zero, zero, zero)
 

@@ -1865,6 +1865,84 @@ def _derivatives(op, c, v):
     return k / v, -k / v**2
 
 
+J1H2 = wp.JetSpace(2, dtype=wp.float16)
+J2H2 = wp.JetSpace2(2, dtype=wp.float16)
+J1VH = wp.JetSpace(wp.vec3h)
+
+
+@wp.kernel
+def float16_squares_kernel(
+    points: wp.array[wp.float16],
+    atan_derivs: wp.array[wp.vec3],
+    atan2_derivs: wp.array[wp.vec4],
+    atan2_hessians: wp.array[wp.mat22],
+):
+    # atan and atan2 at (v, v), whose squared arguments leave the float16 range.
+    i = wp.tid()
+    v = points[i]
+    a1 = wp.atan(J1H.variable(v, 0))
+    a2 = wp.atan(J2H.variable(v, 0))
+    atan_derivs[i] = wp.vec3(float(a1.grad[0]), float(a2.grad[0]), float(a2.hess[0, 0]))
+    b1 = wp.atan2(J1H2.variable(v, 1), J1H2.variable(v, 0))
+    b2 = wp.atan2(J2H2.variable(v, 1), J2H2.variable(v, 0))
+    atan2_derivs[i] = wp.vec4(float(b1.grad[0]), float(b1.grad[1]), float(b2.grad[0]), float(b2.grad[1]))
+    atan2_hessians[i] = wp.mat22(wp.mat22h(b2.hess))
+
+
+@wp.kernel
+def float16_norms_kernel(v: wp.vec3d, first: wp.array[wp.mat33d], second: wp.array[wp.mat33d]):
+    # Rows hold the length's value and gradient and the normalized vector, at both orders.
+    j1 = J1VH.seed(wp.vec3h(v))
+    length1 = wp.length(j1)
+    first[0] = wp.matrix_from_rows(
+        wp.vec3d(wp.float64(length1.value), 0.0, 0.0), wp.vec3d(length1.grad), wp.vec3d(wp.normalize(j1).value)
+    )
+    vh = J2VH.seed(wp.vec3h(v))
+    length2 = wp.length(vh)
+    unit2 = wp.normalize(vh)
+    second[0] = wp.matrix_from_rows(
+        wp.vec3d(wp.float64(length2.value), 0.0, 0.0),
+        wp.vec3d(length2.grad),
+        wp.vec3d(wp.float64(unit2[0].value), wp.float64(unit2[1].value), wp.float64(unit2[2].value)),
+    )
+
+
+@wp.kernel
+def float16_overlong_unit_kernel(v: wp.vec3d, units: wp.array[wp.vec3d], unit_grads: wp.array[wp.vec3d]):
+    # The unit vector and the gradient of its first component, at both orders.
+    j1 = wp.normalize(J1VH.seed(wp.vec3h(v)))
+    j2 = wp.normalize(J2VH.seed(wp.vec3h(v)))
+    units[0] = wp.vec3d(j1.value)
+    units[1] = wp.vec3d(wp.float64(j2[0].value), wp.float64(j2[1].value), wp.float64(j2[2].value))
+    unit_grads[0] = wp.vec3d(j1.grad[0])
+    unit_grads[1] = wp.vec3d(j2[0].grad)
+
+
+J2HV1 = wp.JetSpace2(1, dtype=wp.float16)
+
+
+@wp.kernel(enable_backward=False)
+def float16_cancellation_kernel(points: wp.array[float], seeds: wp.array[float], out: wp.array[float]):
+    # atan2 at (0.001, 0.001) with equal gradients of 1000: the partial products overflow float16
+    # but cancel exactly, so the derivative is 0.
+    g = wp.vector(wp.float16(1000.0), length=1)
+    a = wp.atan2(J1H.with_grad(wp.float16(0.001), g), J1H.with_grad(wp.float16(0.001), g))
+    out[0] = float(a.grad[0])
+    # The length of (2^-16 x, 0, 0) is locally x, so its Hessian is 0, although the scaled
+    # gradients' outer products overflow float16.
+    x = J2HV1.variable(wp.float16(1.52587890625e-05), 0)  # 2^-16
+    zero = J2HV1.constant(wp.float16(0.0))
+    out[1] = float(wp.length(J2HV1.make_vec3(x, zero, zero)).hess[0, 0])
+    out[2] = float(wp.length(J2HV1.make_vec2(x, zero)).hess[0, 0])
+    # In float32, atan2 at (p, p) with equal x and y gradients: the perturbation only changes
+    # the radius, so the derivative is exactly 0, also when CUDA fuses a product into the
+    # subtraction. The inputs come from arrays so they are not folded at compile time.
+    for k in range(3):
+        g32 = wp.vec2(seeds[k], 0.0)
+        a32 = wp.atan2(J2.with_grad(points[k], g32), J2.with_grad(points[k], g32))
+        out[3 + k] = a32.grad[0]
+
+
 @wp.kernel
 def svd2_polar_kernel(scale: float, direction: wp.mat22, out: wp.array[float]):
     # The polar factor U V^T of a scaled identity, differentiated along a rotation generator.
@@ -2009,6 +2087,95 @@ class TestJetNativeConventions(unittest.TestCase):
             out = wp.zeros(1, dtype=float, device=device)
             wp.launch(float32_small_denominator_kernel, dim=1, outputs=[out], device=device)
             self.assertAlmostEqual(float(out.numpy()[0]), -1.0, places=5)
+
+    def test_float16_atan_keeps_representable_derivatives(self):
+        """Keep float16 atan and atan2 derivatives where squaring their arguments overflows or underflows."""
+        points = np.array([1.0, 256.0, 1000.0, 2.0**-14])
+        h = 1.0 / (1.0 + points**2)
+        expected_atan = np.stack([h, h, -2.0 * points * h * h], axis=1)
+        half = 1.0 / (2.0 * points)
+        expected_atan2 = np.stack([-half, half, -half, half], axis=1)
+        # The Hessian at (v, v) is [[1, 0], [0, -1]] / (2 v^2). For the smallest v it really is past
+        # the float16 range, so only the other points are checked.
+        quarter = 1.0 / (2.0 * points[:-1] ** 2)
+        expected_hessians = np.zeros((len(points) - 1, 2, 2))
+        expected_hessians[:, 0, 0] = quarter
+        expected_hessians[:, 1, 1] = -quarter
+        for device in DEVICES:
+            atan_derivs = wp.zeros(len(points), dtype=wp.vec3, device=device)
+            atan2_derivs = wp.zeros(len(points), dtype=wp.vec4, device=device)
+            atan2_hessians = wp.zeros(len(points), dtype=wp.mat22, device=device)
+            wp.launch(
+                float16_squares_kernel,
+                dim=len(points),
+                inputs=[wp.array(points, dtype=wp.float16, device=device)],
+                outputs=[atan_derivs, atan2_derivs, atan2_hessians],
+                device=device,
+            )
+            # Compare against references rounded to float16, which may be subnormal.
+            for name, got, want in (
+                ("atan", atan_derivs.numpy(), expected_atan),
+                ("atan2", atan2_derivs.numpy(), expected_atan2),
+                ("atan2 Hessian", atan2_hessians.numpy()[:-1], expected_hessians),
+            ):
+                rounded = want.astype(np.float16).astype(np.float64)
+                np.testing.assert_allclose(got, rounded, rtol=2e-3, atol=1e-7, err_msg=name)
+
+    def test_float16_norms_of_large_vectors(self):
+        """Keep float16 jet lengths and unit vectors finite when squaring a component overflows float16."""
+        values = np.array([300.0, 400.0, 0.0])
+        unit = values / 500.0
+        # The gradient of the length is the unit vector.
+        expected = np.array([[500.0, 0.0, 0.0], unit, unit])
+        for device in DEVICES:
+            first = wp.zeros(1, dtype=wp.mat33d, device=device)
+            second = wp.zeros(1, dtype=wp.mat33d, device=device)
+            hessians_h = wp.zeros(2, dtype=wp.mat33d, device=device)
+            hessians_d = wp.zeros(2, dtype=wp.mat33d, device=device)
+            wp.launch(float16_norms_kernel, dim=1, inputs=[wp.vec3d(values)], outputs=[first, second], device=device)
+            wp.launch(
+                small_norm_hessian_kernel,
+                dim=1,
+                inputs=[wp.vec3d(values)],
+                outputs=[hessians_h, hessians_d],
+                device=device,
+            )
+            np.testing.assert_allclose(first.numpy()[0], expected, rtol=1e-3, atol=1e-3, err_msg="first order")
+            np.testing.assert_allclose(second.numpy()[0], expected, rtol=1e-3, atol=1e-3, err_msg="second order")
+            got, want = hessians_h.numpy(), hessians_d.numpy()
+            # The Hessian entries are of order 1 / length^2, near the float16 subnormal range.
+            for name, g, w in zip(("length", "normalize"), got, want, strict=True):
+                np.testing.assert_allclose(g, w, rtol=2.0e-2, atol=2.0e-2 * np.abs(w).max(), err_msg=name)
+
+    def test_float16_cancellations_stay_finite(self):
+        """Keep atan2 and length derivatives finite where intermediate products overflow, in float16 and float32."""
+        for device in DEVICES:
+            out = wp.zeros(6, dtype=float, device=device)
+            points = wp.array([1.0, 1.0, 1.0e-10], dtype=float, device=device)
+            seeds = wp.array([3.0, 1.0e30, 1.0e30], dtype=float, device=device)
+            wp.launch(float16_cancellation_kernel, dim=1, inputs=[points, seeds], outputs=[out], device=device)
+            np.testing.assert_array_equal(out.numpy(), np.zeros(6))
+
+    def test_float16_unit_vectors_of_overlong_vectors(self):
+        """Normalize float16 jets whose length exceeds the float16 maximum, as native normalize() does."""
+        values = np.array([60000.0, 60000.0, 0.0])
+        length = np.linalg.norm(values)
+        unit = values / length
+        # The gradient of the first component of the unit vector is (e_0 - u_0 u) / length.
+        unit_grad = (np.eye(3)[0] - unit[0] * unit) / length
+        for device in DEVICES:
+            units = wp.zeros(2, dtype=wp.vec3d, device=device)
+            unit_grads = wp.zeros(2, dtype=wp.vec3d, device=device)
+            wp.launch(
+                float16_overlong_unit_kernel,
+                dim=1,
+                inputs=[wp.vec3d(values)],
+                outputs=[units, unit_grads],
+                device=device,
+            )
+            np.testing.assert_allclose(units.numpy(), [unit, unit], rtol=1e-3, atol=1e-3)
+            # The gradient entries are float16 subnormals, with a spacing of about 6e-8.
+            np.testing.assert_allclose(unit_grads.numpy(), [unit_grad, unit_grad], rtol=2e-2, atol=1e-7)
 
     def test_svd2_polar_factor_at_repeated_singular_values(self):
         """Keep the derivative of the svd2 polar factor U V^T at repeated singular values, as native svd2 does."""
