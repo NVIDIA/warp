@@ -607,7 +607,7 @@ direction:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">Jcoord</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">JetSpace</span><span class="p">((</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">))</span>  <span class="c1"># width 2: one direction per input</span>
 <span class="n">Jdir</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">JetSpace</span><span class="p">((</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="n">width</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>  <span class="c1"># width 1: one chosen direction</span>
 
-<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">enable_backward</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">sum_difference_kernel</span><span class="p">(</span>
     <span class="n">jacobian</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">Jcoord</span><span class="o">.</span><span class="n">grad_type_scalar</span><span class="p">],</span>
     <span class="n">jacobian_times_direction</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">Jdir</span><span class="o">.</span><span class="n">grad_type_scalar</span><span class="p">],</span>
@@ -662,7 +662,7 @@ residual’s Jacobian:</p>
     <span class="n">end_pos</span> <span class="o">=</span> <span class="n">elbow_pos</span> <span class="o">+</span> <span class="n">wp</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">forearm</span><span class="p">)</span> <span class="o">*</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec2</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span> <span class="o">+</span> <span class="n">wp</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">forearm</span><span class="p">)</span> <span class="o">*</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec2</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">end_pos</span> <span class="o">-</span> <span class="n">target_pos</span>
 
-<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">enable_backward</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">residual_jacobian_kernel</span><span class="p">(</span>
     <span class="n">base_pos</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec2</span><span class="p">],</span>
     <span class="n">shoulder</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
@@ -735,7 +735,7 @@ Jacobian times that direction, the shoulder column printed above minus the elbow
 translates, the end of the arm moves exactly as the elbow does:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">Jd</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">JetSpace</span><span class="p">((</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span> <span class="n">width</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
 
-<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">enable_backward</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">directional_derivative_kernel</span><span class="p">(</span>
     <span class="n">base_pos</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec2</span><span class="p">],</span>
     <span class="n">shoulder</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span>
@@ -772,7 +772,7 @@ instead of slot types, as in <code class="docutils literal notranslate"><span cl
 scalar jet with value <code class="docutils literal notranslate"><span class="pre">x</span></code> and a unit derivative along <code class="docutils literal notranslate"><span class="pre">direction</span></code>.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">Jn</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">JetSpace</span><span class="p">(</span><span class="mi">4</span><span class="p">)</span>  <span class="c1"># four scalars, width 4</span>
 
-<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">enable_backward</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">sum_of_cubes_gradient_kernel</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array2d</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">gradient</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">Jn</span><span class="o">.</span><span class="n">grad_type_scalar</span><span class="p">]):</span>
     <span class="n">tid</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
     <span class="n">total</span> <span class="o">=</span> <span class="n">Jn</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
@@ -810,7 +810,7 @@ and <code class="docutils literal notranslate"><span class="pre">vec3</span></co
     <span class="n">d</span> <span class="o">=</span> <span class="n">a</span> <span class="o">-</span> <span class="n">b</span>
     <span class="k">return</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">length</span><span class="p">(</span><span class="n">d</span><span class="p">)</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
 
-<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">enable_backward</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">hessian_kernel</span><span class="p">(</span>
     <span class="n">x0</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
     <span class="n">x1</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
@@ -873,7 +873,7 @@ respect to the inputs is the Hessian-vector product <span class="math notranslat
     <span class="n">jet_x0</span><span class="p">,</span> <span class="n">jet_x1</span> <span class="o">=</span> <span class="n">J1</span><span class="o">.</span><span class="n">directional</span><span class="p">(</span><span class="n">x0</span><span class="p">,</span> <span class="n">x1</span><span class="p">,</span> <span class="n">v0</span><span class="p">,</span> <span class="n">v1</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">spring_energy</span><span class="p">(</span><span class="n">jet_x0</span><span class="p">,</span> <span class="n">jet_x1</span><span class="p">)</span><span class="o">.</span><span class="n">grad</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 
-<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">enable_backward</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">grad_over_jet_hessian_kernel</span><span class="p">(</span>
     <span class="n">x0</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
     <span class="n">x1</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
@@ -967,7 +967,7 @@ kernel launches through arrays:</p>
 <p>Both reverse-over-forward methods build the Hessian one row at a time, as Hessian-vector products with unit vectors.
 Seeding the width-1 jet with any other vector <span class="math notranslate nohighlight">\(v\)</span> gives <span class="math notranslate nohighlight">\(H v\)</span> from a single backward pass, without forming
 the Hessian:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">enable_backward</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">hessian_vector_product_kernel</span><span class="p">(</span>
     <span class="n">x0</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
     <span class="n">x1</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
@@ -1133,6 +1133,18 @@ state is <span class="math notranslate nohighlight">\(O(k^2)\)</span> and NVCC c
 slice) with CUDA 12.9, the tetrahedron module of <code class="docutils literal notranslate"><span class="pre">benchmark_jet_hessian_mesh.py</span></code>, which holds the second-order kernel
 alongside the first-order routes, took about 8.5 minutes to compile on a cold cache. When compile time matters, in-kernel <code class="docutils literal notranslate"><span class="pre">wp.grad</span></code> over a first-order jet
 gives the same Hessian with state that grows linearly in <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p>
+<p>A kernel that gets its derivatives from jets has no use for a reverse-mode adjoint,
+unless you also differentiate the kernel itself,
+as in the <code class="docutils literal notranslate"><span class="pre">wp.Tape</span></code> over <code class="docutils literal notranslate"><span class="pre">wp.JetSpace</span></code> example above.
+For every other jet kernel, pass <code class="docutils literal notranslate"><span class="pre">enable_backward=False</span></code> to <a class="reference internal" href="../api_reference/_generated/warp.kernel_decorator.html#warp.kernel" title="warp.kernel"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.kernel</span></code></a>,
+as the examples in this guide do,
+or set it for a whole module with <code class="docutils literal notranslate"><span class="pre">wp.set_module_options({&quot;enable_backward&quot;:</span> <span class="pre">False})</span></code>.
+Otherwise Warp also generates the adjoint of every jet operation in the kernel,
+and that adjoint code can take longer to compile than the forward code.
+The same holds for a kernel that calls <a class="reference internal" href="../api_reference/_generated/warp.grad.html#warp.grad" title="warp.grad"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.grad</span></code></a> on a function of jets.
+<a class="reference internal" href="../api_reference/_generated/warp.grad.html#warp.grad" title="warp.grad"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.grad</span></code></a> evaluates the gradient in the forward pass,
+and Warp warns when such a call appears in a kernel that keeps its adjoint,
+because the call does not take part in that kernel’s backward pass.</p>
 <p id="jets-jacobian-performance"><strong>Jacobian of a many-output function</strong> (<code class="docutils literal notranslate"><span class="pre">benchmark_jet_jacobian.py</span></code>). Take a forward model with <code class="docutils literal notranslate"><span class="pre">k</span> <span class="pre">=</span> <span class="pre">3</span></code> parameters
 that integrates a damped pendulum for 16 steps and then reads out <code class="docutils literal notranslate"><span class="pre">m</span></code> values of the final state, at 200,000 points. The
 integration is shared by all <code class="docutils literal notranslate"><span class="pre">m</span></code> readouts. The jet runs it once on a width-3 jet and evaluates every readout on that
@@ -1219,7 +1231,7 @@ differentiates through every step:</p>
     <span class="n">axes2</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">cw_mul</span><span class="p">(</span><span class="n">axes</span><span class="p">,</span> <span class="n">axes</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">wp</span><span class="o">.</span><span class="n">cw_div</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">cw_mul</span><span class="p">(</span><span class="n">axes2</span><span class="p">,</span> <span class="n">query</span><span class="p">),</span> <span class="n">axes2</span> <span class="o">+</span> <span class="n">t</span> <span class="o">*</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">1.0</span><span class="p">))</span>
 
-<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">enable_backward</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">ellipsoid_point_jacobian_kernel</span><span class="p">(</span>
     <span class="n">query</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
     <span class="n">axes</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span>
@@ -1255,7 +1267,7 @@ gives the derivative of the root as</p>
 <p>One more Newton step, taken on the jet query from the converged plain <span class="math notranslate nohighlight">\(t\)</span>, computes exactly this: its value stays
 <span class="math notranslate nohighlight">\(t\)</span>, and since <span class="math notranslate nohighlight">\(f\)</span> vanishes there, its gradients are <span class="math notranslate nohighlight">\(-(\partial f / \partial t)^{-1}\)</span> times those
 of <span class="math notranslate nohighlight">\(f\)</span>. The same generic functions serve both passes:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">enable_backward</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">ellipsoid_point_implicit_jacobian_kernel</span><span class="p">(</span>
     <span class="n">query</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span>
     <span class="n">axes</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span>

@@ -65,7 +65,7 @@ direction:
     Jcoord = wp.JetSpace((wp.float32, wp.float32))  # width 2: one direction per input
     Jdir = wp.JetSpace((wp.float32, wp.float32), width=1)  # width 1: one chosen direction
 
-    @wp.kernel
+    @wp.kernel(enable_backward=False)
     def sum_difference_kernel(
         jacobian: wp.array[Jcoord.grad_type_scalar],
         jacobian_times_direction: wp.array[Jdir.grad_type_scalar],
@@ -124,7 +124,7 @@ residual's Jacobian:
         end_pos = elbow_pos + wp.cos(forearm) * wp.vec2(1.0, 0.0) + wp.sin(forearm) * wp.vec2(0.0, 1.0)
         return end_pos - target_pos
 
-    @wp.kernel
+    @wp.kernel(enable_backward=False)
     def residual_jacobian_kernel(
         base_pos: wp.array[wp.vec2],
         shoulder: wp.array[float],
@@ -206,7 +206,7 @@ translates, the end of the arm moves exactly as the elbow does:
 
     Jd = wp.JetSpace((wp.float32, wp.float32), width=1)
 
-    @wp.kernel
+    @wp.kernel(enable_backward=False)
     def directional_derivative_kernel(
         base_pos: wp.array[wp.vec2],
         shoulder: wp.array[float],
@@ -247,7 +247,7 @@ scalar jet with value ``x`` and a unit derivative along ``direction``.
 
     Jn = wp.JetSpace(4)  # four scalars, width 4
 
-    @wp.kernel
+    @wp.kernel(enable_backward=False)
     def sum_of_cubes_gradient_kernel(x: wp.array2d[float], gradient: wp.array[Jn.grad_type_scalar]):
         tid = wp.tid()
         total = Jn.constant(0.0)
@@ -288,7 +288,7 @@ and ``vec3`` slots. A second-order scalar jet carries its value, its gradient ``
         d = a - b
         return 0.5 * (wp.length(d) - 1.0) ** 2
 
-    @wp.kernel
+    @wp.kernel(enable_backward=False)
     def hessian_kernel(
         x0: wp.array[wp.vec3],
         x1: wp.array[wp.vec3],
@@ -358,7 +358,7 @@ respect to the inputs is the Hessian-vector product :math:`H v`. With :math:`v` 
         jet_x0, jet_x1 = J1.directional(x0, x1, v0, v1)
         return spring_energy(jet_x0, jet_x1).grad[0]
 
-    @wp.kernel
+    @wp.kernel(enable_backward=False)
     def grad_over_jet_hessian_kernel(
         x0: wp.array[wp.vec3],
         x1: wp.array[wp.vec3],
@@ -459,7 +459,7 @@ the Hessian:
 
 .. testcode::
 
-    @wp.kernel
+    @wp.kernel(enable_backward=False)
     def hessian_vector_product_kernel(
         x0: wp.array[wp.vec3],
         x1: wp.array[wp.vec3],
@@ -607,6 +607,19 @@ slice) with CUDA 12.9, the tetrahedron module of ``benchmark_jet_hessian_mesh.py
 alongside the first-order routes, took about 8.5 minutes to compile on a cold cache. When compile time matters, in-kernel ``wp.grad`` over a first-order jet
 gives the same Hessian with state that grows linearly in ``k``.
 
+A kernel that gets its derivatives from jets has no use for a reverse-mode adjoint,
+unless you also differentiate the kernel itself,
+as in the ``wp.Tape`` over ``wp.JetSpace`` example above.
+For every other jet kernel, pass ``enable_backward=False`` to :func:`@wp.kernel <kernel>`,
+as the examples in this guide do,
+or set it for a whole module with ``wp.set_module_options({"enable_backward": False})``.
+Otherwise Warp also generates the adjoint of every jet operation in the kernel,
+and that adjoint code can take longer to compile than the forward code.
+The same holds for a kernel that calls :func:`wp.grad <grad>` on a function of jets.
+:func:`wp.grad <grad>` evaluates the gradient in the forward pass,
+and Warp warns when such a call appears in a kernel that keeps its adjoint,
+because the call does not take part in that kernel's backward pass.
+
 .. _jets_jacobian_performance:
 
 **Jacobian of a many-output function** (``benchmark_jet_jacobian.py``). Take a forward model with ``k = 3`` parameters
@@ -700,7 +713,7 @@ differentiates through every step:
         axes2 = wp.cw_mul(axes, axes)
         return wp.cw_div(wp.cw_mul(axes2, query), axes2 + t * wp.vec3(1.0))
 
-    @wp.kernel
+    @wp.kernel(enable_backward=False)
     def ellipsoid_point_jacobian_kernel(
         query: wp.array[wp.vec3],
         axes: wp.vec3,
@@ -742,7 +755,7 @@ of :math:`f`. The same generic functions serve both passes:
 
 .. testcode::
 
-    @wp.kernel
+    @wp.kernel(enable_backward=False)
     def ellipsoid_point_implicit_jacobian_kernel(
         query: wp.array[wp.vec3],
         axes: wp.vec3,
