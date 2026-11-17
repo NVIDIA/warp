@@ -70,4 +70,5 @@ Follow Google-style docstrings. Use doctest for code examples where practical.
 - Put new experimental modules under `warp/experimental/<area>.py` (imported as `warp.experimental.<area>`), not as top-level `warp/<name>_experimental.py` modules. Keep `warp/experimental/__init__.py` free of imports so one experimental module's optional dependencies do not affect `import warp` or the others.
 - `warp._src.utils` imports `warp._src.context` at module level—importing from `utils` in early-loaded modules (e.g., `texture.py`) causes circular imports. Use lazy imports (`from warp._src.utils import ... # noqa: PLC0415` inside functions) when needed.
 - Use the `DeviceLike` type annotation (from `warp._src.context`) for `device` parameters. In modules where importing it at runtime would create a circular import, import it under `TYPE_CHECKING`.
+- Prefer `Literal` strings for new mode and algorithm parameters, and `enum.IntEnum` for values passed to kernels or native code.
 - Native bindings use ctypes; function signatures are registered in `Runtime.__init__` in `warp/_src/context.py`.
