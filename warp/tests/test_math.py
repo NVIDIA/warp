@@ -7,7 +7,7 @@ from typing import Any, NamedTuple
 import numpy as np
 
 import warp as wp
-from warp.tests.unittest_utils import add_function_test, assert_np_equal, get_test_devices
+from warp.tests.unittest_utils import add_function_test, assert_np_equal, get_test_devices, run_test_in_subprocess
 
 TAIT_BRYAN_SEQUENCES = (
     (0, 1, 2),
@@ -257,6 +257,10 @@ def empty_slice_norms_kernel(
 
 def test_norms_of_empty_slices(test, device):
     """Return zero lengths and empty unit vectors for empty vector slices, and propagate their gradients."""
+    # A debug-mode CUDA kernel can corrupt release kernels compiled later in the same process.
+    if wp.get_device(device).is_cuda and run_test_in_subprocess(test):
+        return
+
     v = wp.array([[3.0, 4.0, 0.0]], dtype=wp.vec3, device=device, requires_grad=True)
     h = wp.array([[3.0, 4.0, 0.0]], dtype=wp.vec3h, device=device, requires_grad=True)
     lengths = wp.zeros(2, dtype=float, device=device, requires_grad=True)
