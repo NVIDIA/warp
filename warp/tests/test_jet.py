@@ -39,7 +39,7 @@ def local_energy(a: Any, b: Any):
     return wp.sin(a * b) + 0.1 * (a * a * a) + wp.exp(b)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def local_gradient(z: wp.array2d[float], grad_g: wp.array[J2.grad_type_scalar]):
     i = wp.tid()
 
@@ -57,7 +57,7 @@ def local_directional(z: wp.array2d[float], d: wp.array2d[float], out: wp.array[
     out[i] = local_energy(a, b).grad[0]
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def local_value(z: wp.array2d[float], out: wp.array[float]):
     i = wp.tid()
     out[i] = local_energy(J2.variable(z[i, 0], 0), J2.variable(z[i, 1], 1)).value
@@ -220,7 +220,7 @@ def spring_energy(x0: J6.vec3, x1: J6.vec3) -> J6.scalar:
     return 0.5 * r * r
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def spring_gradient(
     x0: wp.array[wp.vec3],
     x1: wp.array[wp.vec3],
@@ -259,7 +259,7 @@ def test_jet_spring_gradient(test, device):
 # ----------------------------------------------------------------------------
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def extract_and_geometry(out: wp.array[float]):
     v, w = J6.seed(wp.vec3(3.0, 5.0, 0.0), wp.vec3(0.0, 2.0, 4.0))
 
@@ -312,7 +312,7 @@ def width3_energy(a: J3.scalar, b: J3.scalar) -> J3.scalar:
     return a * b + a
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def width3_kernel(out: wp.array[float]):
     g = width3_energy(J3.variable(2.0, 0), J3.variable(3.0, 1))
     out[0] = g.value
@@ -339,7 +339,7 @@ def energy_f64(a: J2D.scalar, b: J2D.scalar) -> J2D.scalar:
     return wp.sin(a * b) + wp.exp(b)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def kernel_f64(out: wp.array[wp.float64]):
     g = energy_f64(J2D.variable(wp.float64(0.7), 0), J2D.variable(wp.float64(-0.4), 1))
     out[0] = g.value
@@ -654,7 +654,7 @@ J_SINGLE = wp.JetSpace(wp.vec3)
 J_DIR = wp.JetSpace((wp.vec3, wp.vec3), width=1)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def seed_mixed_slots(out_v: wp.array2d[float], out_s: wp.array[float], out_m: wp.array2d[float]):
     v, s, m = J_MIXED.seed(wp.vec2(1.0, 2.0), 3.0, wp.mat22(4.0, 5.0, 6.0, 7.0))
 
@@ -681,7 +681,7 @@ def test_jet_seed_mixed_slots(test, device):
     np.testing.assert_array_equal(out_m.numpy(), identity[3:7])
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def seed_single_slot(out: wp.array2d[float]):
     p = J_SINGLE.seed(wp.vec3(1.0, 2.0, 3.0))
 
@@ -705,7 +705,7 @@ def spring_energy_dir(x0: J_DIR.vec3, x1: J_DIR.vec3) -> J_DIR.scalar:
     return 0.5 * r * r
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def spring_directional(
     x0: wp.array[wp.vec3],
     x1: wp.array[wp.vec3],
@@ -721,7 +721,7 @@ def spring_directional(
     out[i] = spring_energy_dir(a, b).grad[0]
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def spring_directional_basis(
     x0: wp.array[wp.vec3],
     x1: wp.array[wp.vec3],
@@ -911,7 +911,7 @@ def test_jet_in_kernel_grad_hessian_vector(test, device):
     np.testing.assert_allclose(hv_seeded.numpy().reshape(m, 6), expected, rtol=1.0e-4, atol=1.0e-5)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def jet2_seed(
     z: wp.array2d[float],
     val: wp.array[float],
@@ -966,7 +966,7 @@ def spring_energy_generic(x0: Any, x1: Any):
     return 0.5 * r * r
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def jet2_spring_hessian(x0: wp.array[wp.vec3], x1: wp.array[wp.vec3], hess: wp.array3d[float]):
     i = wp.tid()
     a, b = J2_SPRING.seed(x0[i], x1[i])
@@ -976,7 +976,7 @@ def jet2_spring_hessian(x0: wp.array[wp.vec3], x1: wp.array[wp.vec3], hess: wp.a
             hess[i, p, q] = h[p, q]
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def jet1_spring_gradient_generic(x0: wp.array[wp.vec3], x1: wp.array[wp.vec3], grad: wp.array[J6.grad_type_scalar]):
     i = wp.tid()
     a, b = J6.seed(x0[i], x1[i])
@@ -1126,7 +1126,7 @@ def vec2_ops_energy_np(z):
     )
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def jet2_vec3_ops(
     p: wp.array[wp.vec3],
     val: wp.array[float],
@@ -1142,7 +1142,7 @@ def jet2_vec3_ops(
             hess[i, a, b] = e.hess[a, b]
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def jet2_vec2_ops(
     q: wp.array[wp.vec2],
     s: wp.array[float],

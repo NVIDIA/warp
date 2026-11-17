@@ -9,6 +9,11 @@
 # takes far longer than a test should. CUDA coverage of the jets comes from
 # test_jet.py, which runs on CPU and CUDA, and from the implicit-projection
 # example test; the jet benchmarks only report their errors.
+#
+# All tests share one TestCase class. The parallel test runner hands each class
+# to its own process, and every process that starts before the module is in the
+# kernel cache builds the whole module itself. Kernels that no test runs in
+# reverse mode set enable_backward=False, since their adjoints only add build time.
 
 import unittest
 from typing import Any
@@ -184,7 +189,7 @@ def _run_hess(kernel, z_np, device):
 # --------------------------------------------------------------------------
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def jet_pow_jet_exponent(z: wp.array2d[float], grad: wp.array[J2.grad_type_scalar]):
     i = wp.tid()
     a = J2.variable(z[i, 0], 0)
@@ -192,7 +197,7 @@ def jet_pow_jet_exponent(z: wp.array2d[float], grad: wp.array[J2.grad_type_scala
     grad[i] = wp.pow(a, b).grad
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def jet_pow_const_exponent(z: wp.array[float], grad: wp.array2d[float]):
     # Degenerate constant exponents at a zero base: p * a**(p-1) and
     # p (p-1) a**(p-2) are 0 * inf there for p == 0 and p == 1.
@@ -205,7 +210,7 @@ def jet_pow_const_exponent(z: wp.array[float], grad: wp.array2d[float]):
     grad[i, 4] = wp.pow(a, 1).grad[0]
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def jet2_pow_const_exponent(z: wp.array[float], grad: wp.array2d[float], hess: wp.array2d[float]):
     i = wp.tid()
     a = J2_2ND.variable(z[i], 0)
@@ -226,7 +231,7 @@ def jet2_pow_const_exponent(z: wp.array[float], grad: wp.array2d[float], hess: w
     hess[i, 3] = e2.hess[0, 0]
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def jet2_pow_jet_exponent(z: wp.array2d[float], grad: wp.array2d[float], hess: wp.array3d[float]):
     i = wp.tid()
     a = J2_2ND.variable(z[i, 0], 0)
@@ -258,7 +263,7 @@ def mixed_scalar_np(z):
     return np.power(z[:, 0], 2.5) + np.arctan2(z[:, 0], 0.75) + np.arctan2(1.25, z[:, 1])
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def jet_mixed(z: wp.array2d[float], val: wp.array[float], grad: wp.array[J2.grad_type_scalar]):
     i = wp.tid()
     e = mixed_scalar_ops(J2.variable(z[i, 0], 0), J2.variable(z[i, 1], 1))
@@ -266,7 +271,7 @@ def jet_mixed(z: wp.array2d[float], val: wp.array[float], grad: wp.array[J2.grad
     grad[i] = e.grad
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def jet2_mixed(z: wp.array2d[float], val: wp.array[float], grad: wp.array2d[float], hess: wp.array3d[float]):
     i = wp.tid()
     e = mixed_scalar_ops2(J2_2ND.variable(z[i, 0], 0), J2_2ND.variable(z[i, 1], 1))
@@ -292,7 +297,7 @@ J12 = wp.JetSpace((wp.vec3,) * 4)  # a tetrahedron's four nodes
 # --------------------------------------------------------------------------
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def jet_mat22_matmul(z: wp.array2d[float], out: wp.array[J4.grad_type_scalar]):
     i = wp.tid()
     # A = [[z0, z2], [z1, z3]], built from its two seeded columns. Both
@@ -387,202 +392,6 @@ def jet_triangle_rect(z: wp.array2d[float], grad: wp.array[J9.grad_type_scalar])
     tr = wp.trace(s)
     e = tr + tr / wp.determinant(s)
     grad[i] = e.grad
-
-
-class TestJetMatrix(unittest.TestCase):
-    def test_mat22_det_trace(self):
-        """Check mat22 determinant and trace derivatives against finite differences."""
-        rng = np.random.default_rng(0)
-        a = (rng.standard_normal((5, 4)) + np.array([2.0, 0.1, 0.1, 2.0])).astype(np.float32)  # well-conditioned
-        det_g = wp.zeros(5, dtype=J4.grad_type_scalar, device="cpu")
-        tr_g = wp.zeros(5, dtype=J4.grad_type_scalar, device="cpu")
-        wp.launch(
-            jet_mat22_detrace,
-            dim=5,
-            inputs=[wp.array(a, dtype=float, device="cpu")],
-            outputs=[det_g, tr_g],
-            device="cpu",
-        )
-        m = a.astype(np.float64)
-        # d det / d(m00,m01,m10,m11) = (m11, -m10, -m01, m00); d trace = (1,0,0,1)
-        det_expected = np.stack([m[:, 3], -m[:, 2], -m[:, 1], m[:, 0]], axis=1)
-        tr_expected = np.tile([1.0, 0.0, 0.0, 1.0], (5, 1))
-        np.testing.assert_allclose(det_g.numpy().reshape(5, 4), det_expected, rtol=1e-5, atol=1e-6)
-        np.testing.assert_allclose(tr_g.numpy().reshape(5, 4), tr_expected, rtol=1e-5, atol=1e-6)
-
-    def test_mat33_tet_energy(self):
-        """Check a mat33 tetrahedron energy gradient against finite differences."""
-        rng = np.random.default_rng(1)
-        rest = np.array([0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1], np.float32)  # unit reference tet
-        z = (rest + 0.05 * rng.standard_normal((6, 12))).astype(np.float32)
-        grad = wp.zeros(6, dtype=J12.grad_type_scalar, device="cpu")
-        wp.launch(jet_tet, dim=6, inputs=[wp.array(z, dtype=float, device="cpu")], outputs=[grad], device="cpu")
-        np.testing.assert_allclose(
-            grad.numpy().reshape(6, 12), _grad_fd(tet_np, z.astype(np.float64)), rtol=1e-3, atol=1e-4
-        )
-
-    def test_mat33_inverse(self):
-        """Check the mat33 inverse derivative against finite differences."""
-        rng = np.random.default_rng(2)
-        a = (np.eye(3) + 0.3 * rng.standard_normal((4, 3, 3))).astype(np.float32).reshape(4, 9)
-        out = wp.zeros((4, 9, 9), dtype=float, device="cpu")
-        wp.launch(
-            jet_mat33_inverse, dim=4, inputs=[wp.array(a, dtype=float, device="cpu")], outputs=[out], device="cpu"
-        )
-        got = out.numpy()
-        # FD of inv(A) w.r.t. each entry, compared to d(inv[r,c])/d(entry k).
-        h = 1e-4
-        for n in range(4):
-            A = a[n].reshape(3, 3).astype(np.float64)
-            for k in range(9):
-                r, c = k // 3, k % 3
-                ap = A.copy()
-                ap[r, c] += h
-                am = A.copy()
-                am[r, c] -= h
-                dinv = (np.linalg.inv(ap) - np.linalg.inv(am)) / (2 * h)  # 3x3
-                np.testing.assert_allclose(got[n, :, k], dinv.reshape(9), rtol=1e-3, atol=1e-4)
-
-    def test_mat32_triangle(self):
-        """Check a rectangular mat32 triangle energy gradient against finite differences."""
-        rng = np.random.default_rng(3)
-        rest = np.array([0, 0, 0, 1, 0, 0, 0.5, 0.8660254, 0], np.float32)
-        z = (rest + 0.1 * rng.standard_normal((5, 9))).astype(np.float32)
-        grad = wp.zeros(5, dtype=J9.grad_type_scalar, device="cpu")
-        wp.launch(
-            jet_triangle_rect, dim=5, inputs=[wp.array(z, dtype=float, device="cpu")], outputs=[grad], device="cpu"
-        )
-        np.testing.assert_allclose(
-            grad.numpy().reshape(5, 9), _grad_fd(triangle_rect_np, z.astype(np.float64)), rtol=1e-3, atol=1e-4
-        )
-
-    def test_mat22_matmul(self):
-        """Check mat22 * mat22 and mat22 * vec2 derivatives against finite differences.
-
-        ``mat22`` is part of the public namespace and is what a rectangular
-        ``mat23 * mat32`` product returns, so ordinary 2D matrix algebra has to
-        work on the result.
-        """
-        rng = np.random.default_rng(0)
-        z = (rng.standard_normal((5, 4)) + np.array([2.0, 0.1, 0.1, 2.0])).astype(np.float32)
-        out = wp.zeros(5, dtype=J4.grad_type_scalar, device="cpu")
-        wp.launch(jet_mat22_matmul, dim=5, inputs=[wp.array(z, dtype=float, device="cpu")], outputs=[out], device="cpu")
-        np.testing.assert_allclose(
-            out.numpy().reshape(5, 4), _grad_fd(mat22_matmul_np, z.astype(np.float64)), rtol=1e-3, atol=1e-4
-        )
-
-
-class TestJetOps(unittest.TestCase):
-    def test_first_order_smooth(self):
-        """Check first-order gradients of the smooth op surface against finite differences."""
-        z64 = Z_NP.astype(np.float64)
-        for device in DEVICES:
-            val, grad = _run_grad(jet_smooth, Z_NP, device)
-            np.testing.assert_allclose(val, smooth_np(z64), rtol=1.0e-5, atol=1.0e-6)
-            np.testing.assert_allclose(grad, _grad_fd(smooth_np, z64), rtol=1.0e-3, atol=1.0e-4)
-
-    def test_first_order_branch(self):
-        """Check first-order gradients of the branching builtins against finite differences."""
-        z64 = ZB_NP.astype(np.float64)
-        for device in DEVICES:
-            val, grad = _run_grad(jet_branch, ZB_NP, device)
-            np.testing.assert_allclose(val, branch_np(z64), rtol=1.0e-5, atol=1.0e-6)
-            np.testing.assert_allclose(grad, _grad_fd(branch_np, z64), rtol=1.0e-4, atol=1.0e-5)
-
-    def test_second_order_smooth(self):
-        """Check second-order gradients and Hessians of the smooth ops against finite differences."""
-        z64 = Z_NP.astype(np.float64)
-        for device in DEVICES:
-            val, grad, hess = _run_hess(jet2_g3, Z_NP, device)
-            np.testing.assert_allclose(val, g3_np(z64), rtol=1.0e-5, atol=1.0e-6)
-            np.testing.assert_allclose(grad, _grad_fd(g3_np, z64), rtol=1.0e-3, atol=1.0e-4)
-            np.testing.assert_allclose(hess, _hess_fd(g3_np, z64), rtol=1.0e-2, atol=1.0e-3)
-            np.testing.assert_allclose(hess, np.transpose(hess, (0, 2, 1)), rtol=1.0e-6, atol=1.0e-7)
-
-    def test_second_order_branch(self):
-        """Check second-order gradients and Hessians of the branching builtins against finite differences."""
-        z64 = ZB_NP.astype(np.float64)
-        for device in DEVICES:
-            val, grad, hess = _run_hess(jet2_branch, ZB_NP, device)
-            np.testing.assert_allclose(val, branch2_np(z64), rtol=1.0e-5, atol=1.0e-6)
-            np.testing.assert_allclose(grad, _grad_fd(branch2_np, z64), rtol=1.0e-3, atol=1.0e-4)
-            np.testing.assert_allclose(hess, _hess_fd(branch2_np, z64), rtol=1.0e-2, atol=1.0e-3)
-
-    def test_mixed_jet_and_constant_operands(self):
-        """Check that mixed jet/constant pow and atan2 agree at first and second order.
-
-        An energy written once against numeric literals has to compile and give
-        the same derivatives under both spaces, so the second-order overload set
-        must match the first-order one.
-        """
-        z = np.array([[0.7, 0.4], [1.3, -0.9], [0.2, 1.1]], dtype=np.float32)
-        z64 = z.astype(np.float64)
-
-        for device in DEVICES:
-            val1, grad1 = _run_grad(jet_mixed, z, device)
-            val2, grad2, hess2 = _run_hess(jet2_mixed, z, device)
-
-            np.testing.assert_allclose(val1, mixed_scalar_np(z64), rtol=1.0e-5, atol=1.0e-6)
-            np.testing.assert_allclose(val2, mixed_scalar_np(z64), rtol=1.0e-5, atol=1.0e-6)
-            np.testing.assert_allclose(grad1, _grad_fd(mixed_scalar_np, z64), rtol=1.0e-3, atol=1.0e-4)
-            np.testing.assert_allclose(grad2, grad1, rtol=1.0e-5, atol=1.0e-6)
-            np.testing.assert_allclose(hess2, _hess_fd(mixed_scalar_np, z64), rtol=1.0e-2, atol=1.0e-3)
-
-    def test_pow_with_constant_exponent_at_zero_base(self):
-        """Check that the degenerate constant exponents give finite derivatives at a zero base.
-
-        ``x**0`` is constant and ``x**1`` is linear, so their missing
-        derivatives are zero, but the general ``p a**(p-1)`` and
-        ``p (p-1) a**(p-2)`` terms reach them through ``0 * inf``.
-        """
-        for device in DEVICES:
-            z = wp.array(np.zeros(1, np.float32), dtype=float, device=device)
-
-            g1 = wp.zeros((1, 5), dtype=float, device=device)
-            wp.launch(jet_pow_const_exponent, dim=1, inputs=[z], outputs=[g1], device=device)
-            # p = 0, 1, 2 as floats, then 0, 1 as ints.
-            np.testing.assert_allclose(g1.numpy()[0], [0.0, 1.0, 0.0, 0.0, 1.0])
-
-            g2 = wp.zeros((1, 4), dtype=float, device=device)
-            h2 = wp.zeros((1, 4), dtype=float, device=device)
-            wp.launch(jet2_pow_const_exponent, dim=1, inputs=[z], outputs=[g2, h2], device=device)
-            # p = 0, 1 (int), 1.0 (float), 2.
-            np.testing.assert_allclose(g2.numpy()[0], [0.0, 1.0, 1.0, 0.0])
-            np.testing.assert_allclose(h2.numpy()[0], [0.0, 0.0, 0.0, 2.0])
-
-    def test_pow_with_jet_exponent_at_zero_base(self):
-        """Check that a jet exponent gives finite derivatives at a zero base.
-
-        d(a**b)/da = b a**(b-1) is 0 at a = 0 for b > 1, and d/db is 0 in the
-        limit, but the a**b * (b/a) factorization evaluates as 0 * inf there.
-        Finite differences cannot be the oracle at the endpoint, so the closed
-        form is used directly.
-        """
-        # Rows 2 and 3 straddle the zero base; b > 1 keeps both partials finite.
-        z = np.array([[0.0, 2.0], [0.0, 3.0], [0.5, 2.0]], dtype=np.float32)
-
-        for device in DEVICES:
-            m = z.shape[0]
-            zd = wp.array(z, dtype=float, device=device)
-
-            grad = wp.zeros(m, dtype=J2.grad_type_scalar, device=device)
-            wp.launch(jet_pow_jet_exponent, dim=m, inputs=[zd], outputs=[grad], device=device)
-            g1 = grad.numpy().reshape(m, 2)
-
-            g2 = wp.zeros((m, 2), dtype=float, device=device)
-            h2 = wp.zeros((m, 2, 2), dtype=float, device=device)
-            wp.launch(jet2_pow_jet_exponent, dim=m, inputs=[zd], outputs=[g2, h2], device=device)
-
-            self.assertTrue(np.isfinite(g1).all(), f"first-order gradient not finite: {g1}")
-            self.assertTrue(np.isfinite(g2.numpy()).all(), f"second-order gradient not finite: {g2.numpy()}")
-            self.assertTrue(np.isfinite(h2.numpy()).all(), f"second-order Hessian not finite: {h2.numpy()}")
-
-            a, b = z[:, 0].astype(np.float64), z[:, 1].astype(np.float64)
-            da = b * np.power(a, b - 1.0)
-            db = np.where(a > 0.0, np.power(a, b) * np.log(np.where(a > 0.0, a, 1.0)), 0.0)
-
-            np.testing.assert_allclose(g1, np.stack([da, db], axis=1), rtol=1.0e-5, atol=1.0e-6)
-            np.testing.assert_allclose(g2.numpy(), np.stack([da, db], axis=1), rtol=1.0e-5, atol=1.0e-6)
 
 
 # --------------------------------------------------------------------------
@@ -734,123 +543,6 @@ def _random(rng, shape):
     return rng.uniform(-1.0, 1.0, size=shape).astype(np.float32)
 
 
-class TestJetMixedOperands(unittest.TestCase):
-    def _assert_agree(self, err):
-        # Squared differences of values and gradients against the lifted form.
-        np.testing.assert_allclose(err, 0.0, atol=1.0e-10)
-
-    def test_scalar_vector_and_selection(self):
-        """Check jet-scalar times, and plain vector over, jet-scalar against lifted constants."""
-        rng = np.random.default_rng(1)
-        m = 6
-        s = rng.uniform(0.5, 1.5, size=m).astype(np.float32) * np.where(np.arange(m) % 2, 1.0, -1.0).astype(np.float32)
-        # Thresholds on both sides of s so min and max take each branch.
-        c = (s + np.where(np.arange(m) % 3 == 0, 0.25, -0.25)).astype(np.float32)
-        for device in DEVICES:
-            err = wp.zeros((m, 10), dtype=float, device=device)
-            wp.launch(
-                mixed_vec_kernel,
-                dim=m,
-                inputs=[
-                    wp.array(s, dtype=float, device=device),
-                    wp.array(_random(rng, (m, 2)), dtype=wp.vec2, device=device),
-                    wp.array(_random(rng, (m, 3)), dtype=wp.vec3, device=device),
-                    wp.array(c, dtype=float, device=device),
-                ],
-                outputs=[err],
-                device=device,
-            )
-            self._assert_agree(err.numpy())
-
-    def test_square_matrix(self):
-        """Check mat22 and mat33 products and sums with one plain operand against lifted constants."""
-        rng = np.random.default_rng(2)
-        m = 4
-        for device in DEVICES:
-            for kernel, mat, vec, n in (
-                (mixed_mat22_kernel, wp.mat22, wp.vec2, 2),
-                (mixed_mat33_kernel, wp.mat33, wp.vec3, 3),
-            ):
-                err = wp.zeros((m, 8), dtype=float, device=device)
-                wp.launch(
-                    kernel,
-                    dim=m,
-                    inputs=[
-                        wp.array(_random(rng, (m, n, n)), dtype=mat, device=device),
-                        wp.array(_random(rng, (m, n)), dtype=vec, device=device),
-                        wp.array(_random(rng, (m, n, n)), dtype=mat, device=device),
-                        wp.array(_random(rng, (m, n)), dtype=vec, device=device),
-                    ],
-                    outputs=[err],
-                    device=device,
-                )
-                self._assert_agree(err.numpy())
-
-    def test_rectangular_matrix(self):
-        """Check mat23 times mat32 with either operand plain against lifted constants."""
-        rng = np.random.default_rng(3)
-        m = 4
-        for device in DEVICES:
-            err = wp.zeros((m, 2), dtype=float, device=device)
-            wp.launch(
-                mixed_rect_kernel,
-                dim=m,
-                inputs=[
-                    wp.array(_random(rng, (m, 2, 3)), dtype=mat23, device=device),
-                    wp.array(_random(rng, (m, 3, 2)), dtype=mat32, device=device),
-                    wp.array(_random(rng, (m, 2, 3)), dtype=mat23, device=device),
-                    wp.array(_random(rng, (m, 3, 2)), dtype=mat32, device=device),
-                ],
-                outputs=[err],
-                device=device,
-            )
-            self._assert_agree(err.numpy())
-
-    def test_plain_operand_adjoints(self):
-        """Check that reverse mode through mixed products reaches the plain operands."""
-        rng = np.random.default_rng(4)
-        m = 3
-        a_np = _random(rng, (m, 3, 3))
-        v_np = _random(rng, (m, 3))
-        pm_np = _random(rng, (m, 3, 3))
-        pv_np = _random(rng, (m, 3))
-        da_np = _random(rng, (m, 2, 3, 3))
-        dv_np = _random(rng, (m, 2, 3))
-        w_np = _random(rng, (m, 3))
-        weights_np = _random(rng, (m, 3, 2))
-
-        # y = A pv + Pm v carries y.grad[:, q] = dA_q pv + Pm dv_q along direction q.
-        pv_grad = np.einsum("mrk,mr->mk", a_np, w_np) + np.einsum("mqrk,mrq->mk", da_np, weights_np)
-        pm_grad = np.einsum("mr,mk->mrk", w_np, v_np) + np.einsum("mrq,mqk->mrk", weights_np, dv_np)
-
-        for device in DEVICES:
-            pm = wp.array(pm_np, dtype=wp.mat33, requires_grad=True, device=device)
-            pv = wp.array(pv_np, dtype=wp.vec3, requires_grad=True, device=device)
-            out = wp.zeros(m, dtype=float, requires_grad=True, device=device)
-            tape = wp.Tape()
-            with tape:
-                wp.launch(
-                    mixed_mat33_adjoint_kernel,
-                    dim=m,
-                    inputs=[
-                        wp.array(a_np, dtype=wp.mat33, device=device),
-                        wp.array(v_np, dtype=wp.vec3, device=device),
-                        pm,
-                        pv,
-                        wp.array(da_np, dtype=wp.mat33, device=device),
-                        wp.array(dv_np, dtype=wp.vec3, device=device),
-                        wp.array(w_np, dtype=wp.vec3, device=device),
-                        wp.array(weights_np, dtype=JM3.grad_type_vec3, device=device),
-                    ],
-                    outputs=[out],
-                    device=device,
-                )
-            tape.backward(grads={out: wp.ones(m, dtype=float, device=device)})
-
-            np.testing.assert_allclose(pv.grad.numpy(), pv_grad, rtol=1.0e-5, atol=1.0e-6)
-            np.testing.assert_allclose(pm.grad.numpy(), pm_grad, rtol=1.0e-5, atol=1.0e-6)
-
-
 # --------------------------------------------------------------------------
 # Component-wise products, checked against the same product assembled from
 # per-component scalar operations, for first- and second-order vector jets
@@ -975,40 +667,6 @@ def cw_second_order_kernel(
     err[i, 11] = jet2_vec3_err(wp.cw_div(pa3, b3), cw_div_by_components(pa3, b3, x3, y3, z3))
 
 
-class TestJetComponentWise(unittest.TestCase):
-    def _launch(self, kernel):
-        rng = np.random.default_rng(5)
-        m = 5
-
-        def operand(n):
-            # Magnitudes in [0.5, 1.5] with random signs keep the divisors away from zero.
-            return (rng.uniform(0.5, 1.5, size=(m, n)) * rng.choice([-1.0, 1.0], size=(m, n))).astype(np.float32)
-
-        for device in DEVICES:
-            err = wp.zeros((m, 12), dtype=float, device=device)
-            wp.launch(
-                kernel,
-                dim=m,
-                inputs=[
-                    wp.array(operand(2), dtype=wp.vec2, device=device),
-                    wp.array(operand(2), dtype=wp.vec2, device=device),
-                    wp.array(operand(3), dtype=wp.vec3, device=device),
-                    wp.array(operand(3), dtype=wp.vec3, device=device),
-                ],
-                outputs=[err],
-                device=device,
-            )
-            np.testing.assert_allclose(err.numpy(), 0.0, atol=1.0e-9)
-
-    def test_first_order(self):
-        """Check first-order cw_mul and cw_div against per-component products, with either operand plain."""
-        self._launch(cw_first_order_kernel)
-
-    def test_second_order(self):
-        """Check second-order cw_mul and cw_div against per-component products, with either operand plain."""
-        self._launch(cw_second_order_kernel)
-
-
 # --------------------------------------------------------------------------
 # wp.value: one generic function that branches on plain floats and on jets.
 # --------------------------------------------------------------------------
@@ -1039,32 +697,6 @@ def generic_relu_kernel(
     r = generic_relu(b)
     grad_2nd[i] = r.grad
     hess[i] = r.hess
-
-
-class TestJetValue(unittest.TestCase):
-    def test_generic_branch(self):
-        """Check that wp.value lets one generic function branch on floats and on first- and second-order jets."""
-        x_np = np.array([0.7, -0.3], dtype=np.float32)
-        on = (x_np > 0).astype(np.float32)
-        for device in DEVICES:
-            out32 = wp.zeros(2, dtype=float, device=device)
-            out64 = wp.zeros(2, dtype=wp.float64, device=device)
-            grad_1st = wp.zeros(2, dtype=J2.grad_type_scalar, device=device)
-            grad_2nd = wp.zeros(2, dtype=J2_2ND.grad_type_scalar, device=device)
-            hess = wp.zeros(2, dtype=J2_2ND.hess_type_scalar, device=device)
-            wp.launch(
-                generic_relu_kernel,
-                dim=2,
-                inputs=[wp.array(x_np, dtype=float, device=device)],
-                outputs=[out32, out64, grad_1st, grad_2nd, hess],
-                device=device,
-            )
-            np.testing.assert_allclose(out32.numpy(), x_np * on)
-            np.testing.assert_allclose(out64.numpy(), x_np * on, rtol=1.0e-6)
-            # x0 * x1 at (x, 1) has value x, gradient (1, x) and Hessian [[0, 1], [1, 0]].
-            np.testing.assert_allclose(grad_1st.numpy(), np.stack([on, x_np * on], axis=1), rtol=1.0e-6)
-            np.testing.assert_allclose(grad_2nd.numpy(), np.stack([on, x_np * on], axis=1), rtol=1.0e-6)
-            np.testing.assert_allclose(hess.numpy(), on[:, None, None] * np.array([[0.0, 1.0], [1.0, 0.0]]))
 
 
 # --------------------------------------------------------------------------
@@ -1238,7 +870,867 @@ def assigned_directional_derivative_kernel(
     out[0] = assigned_directional_derivative(x[0], F[0], dx, dF)
 
 
-class TestJetFemBuiltins(unittest.TestCase):
+# --------------------------------------------------------------------------
+# Decompositions: the jet's directional derivative of a weighted sum of the
+# factors must equal reverse mode's <A_bar, dA> (the same analytic rules), and
+# central differences at a matrix with well-separated singular values.
+# --------------------------------------------------------------------------
+
+JD3 = wp.JetSpace((wp.mat33,), width=1)
+JD2 = wp.JetSpace((wp.mat22,), width=1)
+
+
+@wp.func
+def svd3_objective(A: Any, Ubar: wp.mat33, sbar: wp.vec3, Vbar: wp.mat33):
+    U, s, V = wp.svd3(A)
+    return wp.ddot(Ubar, U) + wp.dot(sbar, s) + wp.ddot(Vbar, V)
+
+
+@wp.func
+def svd2_objective(A: Any, Ubar: wp.mat22, sbar: wp.vec2, Vbar: wp.mat22):
+    U, s, V = wp.svd2(A)
+    return wp.ddot(Ubar, U) + wp.dot(sbar, s) + wp.ddot(Vbar, V)
+
+
+@wp.func
+def eig3_objective(A: Any, Qbar: wp.mat33, dbar: wp.vec3, unused: wp.mat33):
+    Q, d = wp.eig3(A)
+    return wp.ddot(Qbar, Q) + wp.dot(dbar, d)
+
+
+@wp.kernel(enable_backward=False)
+def svd3_jet_kernel(A: wp.mat33, dA: wp.mat33, Ubar: wp.mat33, sbar: wp.vec3, Vbar: wp.mat33, out: wp.array[float]):
+    out[0] = svd3_objective(JD3.directional(A, dA), Ubar, sbar, Vbar).grad[0]
+
+
+@wp.kernel
+def svd3_plain_kernel(A: wp.array[wp.mat33], Ubar: wp.mat33, sbar: wp.vec3, Vbar: wp.mat33, out: wp.array[float]):
+    out[0] = svd3_objective(A[0], Ubar, sbar, Vbar)
+
+
+@wp.kernel(enable_backward=False)
+def svd2_jet_kernel(A: wp.mat22, dA: wp.mat22, Ubar: wp.mat22, sbar: wp.vec2, Vbar: wp.mat22, out: wp.array[float]):
+    out[0] = svd2_objective(JD2.directional(A, dA), Ubar, sbar, Vbar).grad[0]
+
+
+@wp.kernel
+def svd2_plain_kernel(A: wp.array[wp.mat22], Ubar: wp.mat22, sbar: wp.vec2, Vbar: wp.mat22, out: wp.array[float]):
+    out[0] = svd2_objective(A[0], Ubar, sbar, Vbar)
+
+
+@wp.kernel(enable_backward=False)
+def eig3_jet_kernel(A: wp.mat33, dA: wp.mat33, Qbar: wp.mat33, dbar: wp.vec3, unused: wp.mat33, out: wp.array[float]):
+    out[0] = eig3_objective(JD3.directional(A, dA), Qbar, dbar, unused).grad[0]
+
+
+@wp.kernel
+def eig3_plain_kernel(A: wp.array[wp.mat33], Qbar: wp.mat33, dbar: wp.vec3, unused: wp.mat33, out: wp.array[float]):
+    out[0] = eig3_objective(A[0], Qbar, dbar, unused)
+
+
+@wp.func
+def indexed_energy(s: Any, v: Any, F: Any, negative: bool):
+    W = wp.mat33(0.3, -0.2, 0.5, 0.1, 0.7, -0.4, -0.6, 0.2, 0.9)
+    w = v
+    G = F
+    H = F
+    if negative:
+        w[-1] = s
+        G[0, -1] = s
+        H[-1] = v
+        e = v[-2] * F[0, -1] + wp.dot(F[-1], v)
+    else:
+        w[2] = s
+        G[0, 2] = s
+        H[2] = v
+        e = v[1] * F[0, 2] + wp.dot(F[2], v)
+    return e + wp.dot(w, wp.vec3(1.0, 2.0, 3.0)) + wp.ddot(G, W) + 2.0 * wp.ddot(H, W)
+
+
+@wp.kernel(enable_backward=False)
+def negative_index_kernel(
+    x_F: wp.mat33, values: wp.array[float], grads: wp.array[JF.grad_type_scalar], plain: wp.array[float]
+):
+    x_s = 1.7
+    x_v = wp.vec3(0.6, -0.8, 1.3)
+    for k in range(2):
+        s, v, F = JF.seed(x_s, x_v, x_F)
+        e = indexed_energy(s, v, F, k == 0)
+        values[k] = e.value
+        grads[k] = e.grad
+        plain[k] = indexed_energy(x_s, x_v, x_F, k == 0)
+
+
+@wp.func
+def indexed_energy2(s: Any, v: Any, negative: bool):
+    w = v
+    if negative:
+        w[-2] = s
+    else:
+        w[1] = s
+    e = wp.dot(w, wp.vec3(1.0, 2.0, 3.0))
+    return e * e
+
+
+@wp.kernel(enable_backward=False)
+def negative_index2_kernel(
+    values: wp.array[float], grads: wp.array[J2F.grad_type_scalar], hessians: wp.array[J2F.hess_type_scalar]
+):
+    for k in range(2):
+        s, v = J2F.seed(1.7, wp.vec3(0.6, -0.8, 1.3))
+        e = indexed_energy2(s, v, k == 0)
+        values[k] = e.value
+        grads[k] = e.grad
+        hessians[k] = e.hess
+
+
+@wp.kernel(enable_backward=False)
+def normalize_zero_kernel(
+    values: wp.array[float],
+    grads: wp.array[J1F.grad_type_scalar],
+    grads2: wp.array[J2F.grad_type_scalar],
+    hessians2: wp.array[J2F.hess_type_scalar],
+):
+    c = wp.vec3(1.0, 2.0, 3.0)
+    _s, v = J1F.seed(1.7, wp.vec3(0.0, 0.0, 0.0))
+    e = wp.dot(wp.normalize(v), c)
+    values[0] = e.value
+    grads[0] = e.grad
+    _s2, v2 = J2F.seed(1.7, wp.vec3(0.0, 0.0, 0.0))
+    e2 = wp.dot(wp.normalize(v2), c)
+    values[1] = e2.value
+    grads2[0] = e2.grad
+    hessians2[0] = e2.hess
+    values[2] = wp.dot(wp.normalize(wp.vec3(0.0, 0.0, 0.0)), c)
+
+
+@wp.func
+def degenerate_derivatives(s: Any, v: Any, zero_exponent: Any, one_exponent: Any):
+    # Each term sits where a naive derivative formula evaluates 0 * inf or 0 * log(0): the
+    # length of a zero vector, a zero base raised to 0 or 1 given as plain floats and as
+    # constant jets, and a plain zero base raised to a jet exponent.
+    return (
+        wp.length(v)
+        + wp.pow(s, 0.0)
+        + wp.pow(s, zero_exponent)
+        + wp.pow(s, 1.0)
+        + wp.pow(s, one_exponent)
+        + wp.pow(0.0, s + 2.0)
+    )
+
+
+@wp.kernel(enable_backward=False)
+def degenerate_derivatives_kernel(
+    values: wp.array[float],
+    grads: wp.array[J1F.grad_type_scalar],
+    grads2: wp.array[J2F.grad_type_scalar],
+    hessians2: wp.array[J2F.hess_type_scalar],
+):
+    s, v = J1F.seed(0.0, wp.vec3(0.0, 0.0, 0.0))
+    e = degenerate_derivatives(s, v, J1F.constant(0.0), J1F.constant(1.0))
+    values[0] = e.value
+    grads[0] = e.grad
+    s2, v2 = J2F.seed(0.0, wp.vec3(0.0, 0.0, 0.0))
+    e2 = degenerate_derivatives(s2, v2, J2F.constant(0.0), J2F.constant(1.0))
+    values[1] = e2.value
+    grads2[0] = e2.grad
+    hessians2[0] = e2.hess
+
+
+# Points where native Warp picks a derivative convention: the origin of atan2, zero and NaN
+# for abs, ties and NaN operands for min/max, both clamp bounds, and asin/acos outside [-1, 1].
+NATIVE_CONVENTION_POINTS = np.array(
+    [
+        [0.0, 0.0],
+        [2.0, 2.0],
+        [2.0, np.nan],
+        [np.nan, 2.0],
+        [1.0, 0.0],
+        [-1.0, 0.0],
+        [2.0, -2.0],
+        [-2.0, 0.0],
+    ],
+    dtype=np.float32,
+)
+NATIVE_CONVENTION_OPS = 7  # atan2, abs, min, max, clamp, asin, acos
+BINARY_OPS = (0, 2, 3)  # atan2, min, max also take mixed plain/jet operands
+
+
+@wp.func
+def native_convention_op(k: int, a: Any, b: Any):
+    if k == 0:
+        return wp.atan2(a, b)
+    if k == 1:
+        return wp.abs(a)
+    if k == 2:
+        return wp.min(a, b)
+    if k == 3:
+        return wp.max(a, b)
+    if k == 4:
+        return wp.clamp(a, -1.0, 1.0)
+    if k == 5:
+        return wp.asin(a)
+    return wp.acos(a)
+
+
+@wp.func
+def native_convention_binary_op(k: int, a: Any, b: Any):
+    # The ops of BINARY_OPS, for mixed plain/jet operands.
+    if k == 0:
+        return wp.atan2(a, b)
+    if k == 2:
+        return wp.min(a, b)
+    return wp.max(a, b)
+
+
+@wp.kernel
+def native_convention_kernel(points: wp.array[wp.vec2], values: wp.array2d[float], grads: wp.array2d[wp.vec2]):
+    p, k = wp.tid()
+    out = native_convention_op(k, points[p][0], points[p][1])
+    values[p, k] = out
+    grads[p, k] = wp.vec2(0.0)
+
+
+@wp.kernel(enable_backward=False)
+def jet_convention_kernel(
+    points: wp.array[wp.vec2],
+    values: wp.array2d[float],
+    grads: wp.array2d[wp.vec2],
+    mixed_grads: wp.array2d[wp.vec2],
+    values2: wp.array2d[float],
+    grads2: wp.array2d[wp.vec2],
+    hessians2: wp.array2d[wp.mat22],
+    mixed_grads2: wp.array2d[wp.vec2],
+):
+    p, k = wp.tid()
+    x = points[p][0]
+    y = points[p][1]
+
+    a, b = J2.seed(x, y)
+    out = native_convention_op(k, a, b)
+    values[p, k] = out.value
+    grads[p, k] = wp.vec2(out.grad[0], out.grad[1])
+    # Mixed operands: the derivative with respect to the jet operand alone.
+    mixed_grads[p, k] = wp.vec2(
+        native_convention_binary_op(k, a, y).grad[0], native_convention_binary_op(k, x, b).grad[1]
+    )
+
+    a2, b2 = J2_2ND.seed(x, y)
+    out2 = native_convention_op(k, a2, b2)
+    values2[p, k] = out2.value
+    grads2[p, k] = wp.vec2(out2.grad[0], out2.grad[1])
+    hessians2[p, k] = wp.mat22(out2.hess[0, 0], out2.hess[0, 1], out2.hess[1, 0], out2.hess[1, 1])
+    mixed_grads2[p, k] = wp.vec2(
+        native_convention_binary_op(k, a2, y).grad[0], native_convention_binary_op(k, x, b2).grad[1]
+    )
+
+
+J1H = wp.JetSpace(1, dtype=wp.float16)
+J2H = wp.JetSpace2(1, dtype=wp.float16)
+J2VH = wp.JetSpace2(wp.vec3h)
+J2VD = wp.JetSpace2(wp.vec3d)
+JSVD = wp.JetSpace(wp.mat22, width=1)
+
+
+@wp.kernel(enable_backward=False)
+def small_denominator_kernel(c: wp.float16, c32: float, values: wp.array[float]):
+    # Each quotient of a value by itself is 1, even where 1 / c overflows.
+    j = J1H.constant(c)
+    j2 = J2H.constant(c)
+    values[0] = float((j / j).value)
+    values[1] = float((c / j).value)
+    values[2] = float((j2 / j2).value)
+    values[3] = float((c / j2).value)
+    k = J2.constant(c32)
+    values[4] = (k / k).value
+
+
+@wp.kernel(enable_backward=False)
+def small_norm_hessian_kernel(v: wp.vec3d, hessians_h: wp.array[wp.mat33d], hessians_d: wp.array[wp.mat33d]):
+    # The length and a component of the normalized vector, in float16 and in float64.
+    vh = J2VH.seed(wp.vec3h(v))
+    vd = J2VD.seed(v)
+    hessians_h[0] = wp.mat33d(wp.length(vh).hess)
+    hessians_h[1] = wp.mat33d(wp.normalize(vh)[1].hess)
+    hessians_d[0] = wp.length(vd).hess
+    hessians_d[1] = wp.normalize(vd)[1].hess
+
+
+SMALL_ARGUMENT_OPS = ("div", "pow", "log", "log2", "log10", "cbrt")
+J1SCALAR32 = wp.JetSpace(1)
+
+
+@wp.kernel(enable_backward=False)
+def float16_derivative_kernel(
+    ops: wp.array[int],
+    xs: wp.array[wp.float16],
+    gs: wp.array[wp.float16],
+    cs: wp.array[wp.float16],
+    out: wp.array2d[float],
+):
+    # Columns: first-order value, gradient, and result gradient; second-order value, gradient,
+    # result gradient, and result Hessian. c is the numerator for div and the exponent for pow.
+    i = wp.tid()
+    op = ops[i]
+    g = gs[i]
+    c = cs[i]
+    a = J1H.with_grad(xs[i], wp.vector(g, length=1))
+    b = J2H.variable(xs[i] / g, 0) * g
+    r1 = a
+    r2 = b
+    if op == 0:
+        r1 = c / a
+        r2 = c / b
+    elif op == 1:
+        r1 = wp.pow(a, c)
+        r2 = wp.pow(b, c)
+    elif op == 2:
+        r1 = wp.log(a)
+        r2 = wp.log(b)
+    elif op == 3:
+        r1 = wp.log2(a)
+        r2 = wp.log2(b)
+    elif op == 4:
+        r1 = wp.log10(a)
+        r2 = wp.log10(b)
+    else:
+        r1 = wp.cbrt(a)
+        r2 = wp.cbrt(b)
+    out[i, 0] = float(a.value)
+    out[i, 1] = float(a.grad[0])
+    out[i, 2] = float(r1.grad[0])
+    out[i, 3] = float(b.value)
+    out[i, 4] = float(b.grad[0])
+    out[i, 5] = float(r2.grad[0])
+    out[i, 6] = float(r2.hess[0, 0])
+
+
+@wp.kernel(enable_backward=False)
+def float32_small_denominator_kernel(out: wp.array[float]):
+    # 1 / a at a = 1e-20 with gradient 1e-30: the derivative -1 / a**2 overflows float32,
+    # but its product with the gradient, -1e10, fits.
+    a = J1SCALAR32.with_grad(1.0e-20, wp.vector(1.0e-30, length=1))
+    out[0] = (1.0 / a).grad[0] * 1.0e-10
+
+
+def _derivatives(op, c, v):
+    """Return the first and second derivatives of op at v, in float64."""
+    if op == "div":
+        return -c / v**2, 2.0 * c / v**3
+    if op == "pow":
+        return c * v ** (c - 1.0), c * (c - 1.0) * v ** (c - 2.0)
+    if op == "cbrt":
+        return np.cbrt(v) / (3.0 * v), -2.0 * np.cbrt(v) / (9.0 * v**2)
+    k = {"log": 1.0, "log2": 1.0 / np.log(2.0), "log10": 1.0 / np.log(10.0)}[op]
+    return k / v, -k / v**2
+
+
+J1H2 = wp.JetSpace(2, dtype=wp.float16)
+J2H2 = wp.JetSpace2(2, dtype=wp.float16)
+J1VH = wp.JetSpace(wp.vec3h)
+
+
+@wp.kernel(enable_backward=False)
+def float16_squares_kernel(
+    points: wp.array[wp.float16],
+    atan_derivs: wp.array[wp.vec3],
+    atan2_derivs: wp.array[wp.vec4],
+    atan2_hessians: wp.array[wp.mat22],
+):
+    # atan and atan2 at (v, v), whose squared arguments leave the float16 range.
+    i = wp.tid()
+    v = points[i]
+    a1 = wp.atan(J1H.variable(v, 0))
+    a2 = wp.atan(J2H.variable(v, 0))
+    atan_derivs[i] = wp.vec3(float(a1.grad[0]), float(a2.grad[0]), float(a2.hess[0, 0]))
+    b1 = wp.atan2(J1H2.variable(v, 1), J1H2.variable(v, 0))
+    b2 = wp.atan2(J2H2.variable(v, 1), J2H2.variable(v, 0))
+    atan2_derivs[i] = wp.vec4(float(b1.grad[0]), float(b1.grad[1]), float(b2.grad[0]), float(b2.grad[1]))
+    atan2_hessians[i] = wp.mat22(wp.mat22h(b2.hess))
+
+
+@wp.kernel(enable_backward=False)
+def float16_norms_kernel(v: wp.vec3d, first: wp.array[wp.mat33d], second: wp.array[wp.mat33d]):
+    # Rows hold the length's value and gradient and the normalized vector, at both orders.
+    j1 = J1VH.seed(wp.vec3h(v))
+    length1 = wp.length(j1)
+    first[0] = wp.matrix_from_rows(
+        wp.vec3d(wp.float64(length1.value), 0.0, 0.0), wp.vec3d(length1.grad), wp.vec3d(wp.normalize(j1).value)
+    )
+    vh = J2VH.seed(wp.vec3h(v))
+    length2 = wp.length(vh)
+    unit2 = wp.normalize(vh)
+    second[0] = wp.matrix_from_rows(
+        wp.vec3d(wp.float64(length2.value), 0.0, 0.0),
+        wp.vec3d(length2.grad),
+        wp.vec3d(wp.float64(unit2[0].value), wp.float64(unit2[1].value), wp.float64(unit2[2].value)),
+    )
+
+
+@wp.kernel(enable_backward=False)
+def float16_overlong_unit_kernel(v: wp.vec3d, units: wp.array[wp.vec3d], unit_grads: wp.array[wp.vec3d]):
+    # The unit vector and the gradient of its first component, at both orders.
+    j1 = wp.normalize(J1VH.seed(wp.vec3h(v)))
+    j2 = wp.normalize(J2VH.seed(wp.vec3h(v)))
+    units[0] = wp.vec3d(j1.value)
+    units[1] = wp.vec3d(wp.float64(j2[0].value), wp.float64(j2[1].value), wp.float64(j2[2].value))
+    unit_grads[0] = wp.vec3d(j1.grad[0])
+    unit_grads[1] = wp.vec3d(j2[0].grad)
+
+
+J2HV1 = wp.JetSpace2(1, dtype=wp.float16)
+
+
+@wp.kernel(enable_backward=False)
+def float16_cancellation_kernel(points: wp.array[float], seeds: wp.array[float], out: wp.array[float]):
+    # atan2 at (0.001, 0.001) with equal gradients of 1000: the partial products overflow float16
+    # but cancel exactly, so the derivative is 0.
+    g = wp.vector(wp.float16(1000.0), length=1)
+    a = wp.atan2(J1H.with_grad(wp.float16(0.001), g), J1H.with_grad(wp.float16(0.001), g))
+    out[0] = float(a.grad[0])
+    # The length of (2^-16 x, 0, 0) is locally x, so its Hessian is 0, although the scaled
+    # gradients' outer products overflow float16.
+    x = J2HV1.variable(wp.float16(1.52587890625e-05), 0)  # 2^-16
+    zero = J2HV1.constant(wp.float16(0.0))
+    out[1] = float(wp.length(J2HV1.make_vec3(x, zero, zero)).hess[0, 0])
+    out[2] = float(wp.length(J2HV1.make_vec2(x, zero)).hess[0, 0])
+    # In float32, atan2 at (p, p) with equal x and y gradients: the perturbation only changes
+    # the radius, so the derivative is exactly 0, also when CUDA fuses a product into the
+    # subtraction. The inputs come from arrays so they are not folded at compile time.
+    for k in range(3):
+        g32 = wp.vec2(seeds[k], 0.0)
+        a32 = wp.atan2(J2.with_grad(points[k], g32), J2.with_grad(points[k], g32))
+        out[3 + k] = a32.grad[0]
+
+
+@wp.kernel(enable_backward=False)
+def svd2_polar_kernel(scale: float, direction: wp.mat22, out: wp.array[float]):
+    # The polar factor U V^T of a scaled identity, differentiated along a rotation generator.
+    A = JSVD.directional(wp.identity(n=2, dtype=float) * scale, direction)
+    U, _s, V = wp.svd2(A)
+    R = U * wp.transpose(V)
+    out[0] = R.grad[2, 0]
+
+
+J1S = wp.JetSpace(1)
+J2S = wp.JetSpace2(1)
+INVERSE_TRIG_POINTS = np.array([-2.0, -1.0, 0.0, 0.5, 1.0, 2.0], dtype=np.float32)
+
+
+@wp.kernel
+def native_inverse_trig_kernel(x: wp.array[float], out: wp.array2d[float]):
+    i = wp.tid()
+    out[0, i] = wp.asin(x[i])
+    out[1, i] = wp.acos(x[i])
+
+
+@wp.kernel
+def jet_inverse_trig_kernel(x: wp.array[float], values: wp.array2d[float], derivatives: wp.array2d[float]):
+    # Rows: asin and acos over a first-order jet, then over a second-order jet.
+    i = wp.tid()
+    a = J1S.seed(x[i])
+    a2 = J2S.seed(x[i])
+    s = wp.asin(a)
+    c = wp.acos(a)
+    s2 = wp.asin(a2)
+    c2 = wp.acos(a2)
+    values[0, i] = s.value
+    values[1, i] = c.value
+    values[2, i] = s2.value
+    values[3, i] = c2.value
+    derivatives[0, i] = s.grad[0]
+    derivatives[1, i] = c.grad[0]
+    derivatives[2, i] = s2.grad[0]
+    derivatives[3, i] = c2.grad[0]
+
+
+@wp.kernel(enable_backward=False)
+def nan_length_kernel(values: wp.array[float]):
+    v = wp.vec3(wp.nan, 0.0, 0.0)
+    _s, jv = J1F.seed(0.0, v)
+    _s2, jv2 = J2F.seed(0.0, v)
+    values[0] = wp.length(jv).value
+    values[1] = wp.length(jv2).value
+    values[2] = wp.length(v)
+
+
+def _row_input_gradient(kernel, x_np, outputs_shape, out_index, row, device):
+    """Return the input gradient of one output row, by reverse mode through ``kernel``."""
+    x = wp.array(x_np, dtype=float, requires_grad=True, device=device)
+    outputs = [wp.zeros(shape, dtype=float, requires_grad=True, device=device) for shape in outputs_shape]
+    tape = wp.Tape()
+    with tape:
+        wp.launch(kernel, dim=len(x_np), inputs=[x], outputs=outputs, device=device)
+    seed = np.zeros(outputs_shape[out_index], dtype=np.float32)
+    seed[row] = 1.0
+    tape.backward(grads={outputs[out_index]: wp.array(seed, dtype=float, device=device)})
+    return x.grad.numpy()
+
+
+class TestJetOps(unittest.TestCase):
+    def test_mat22_det_trace(self):
+        """Check mat22 determinant and trace derivatives against finite differences."""
+        rng = np.random.default_rng(0)
+        a = (rng.standard_normal((5, 4)) + np.array([2.0, 0.1, 0.1, 2.0])).astype(np.float32)  # well-conditioned
+        det_g = wp.zeros(5, dtype=J4.grad_type_scalar, device="cpu")
+        tr_g = wp.zeros(5, dtype=J4.grad_type_scalar, device="cpu")
+        wp.launch(
+            jet_mat22_detrace,
+            dim=5,
+            inputs=[wp.array(a, dtype=float, device="cpu")],
+            outputs=[det_g, tr_g],
+            device="cpu",
+        )
+        m = a.astype(np.float64)
+        # d det / d(m00,m01,m10,m11) = (m11, -m10, -m01, m00); d trace = (1,0,0,1)
+        det_expected = np.stack([m[:, 3], -m[:, 2], -m[:, 1], m[:, 0]], axis=1)
+        tr_expected = np.tile([1.0, 0.0, 0.0, 1.0], (5, 1))
+        np.testing.assert_allclose(det_g.numpy().reshape(5, 4), det_expected, rtol=1e-5, atol=1e-6)
+        np.testing.assert_allclose(tr_g.numpy().reshape(5, 4), tr_expected, rtol=1e-5, atol=1e-6)
+
+    def test_mat33_tet_energy(self):
+        """Check a mat33 tetrahedron energy gradient against finite differences."""
+        rng = np.random.default_rng(1)
+        rest = np.array([0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1], np.float32)  # unit reference tet
+        z = (rest + 0.05 * rng.standard_normal((6, 12))).astype(np.float32)
+        grad = wp.zeros(6, dtype=J12.grad_type_scalar, device="cpu")
+        wp.launch(jet_tet, dim=6, inputs=[wp.array(z, dtype=float, device="cpu")], outputs=[grad], device="cpu")
+        np.testing.assert_allclose(
+            grad.numpy().reshape(6, 12), _grad_fd(tet_np, z.astype(np.float64)), rtol=1e-3, atol=1e-4
+        )
+
+    def test_mat33_inverse(self):
+        """Check the mat33 inverse derivative against finite differences."""
+        rng = np.random.default_rng(2)
+        a = (np.eye(3) + 0.3 * rng.standard_normal((4, 3, 3))).astype(np.float32).reshape(4, 9)
+        out = wp.zeros((4, 9, 9), dtype=float, device="cpu")
+        wp.launch(
+            jet_mat33_inverse, dim=4, inputs=[wp.array(a, dtype=float, device="cpu")], outputs=[out], device="cpu"
+        )
+        got = out.numpy()
+        # FD of inv(A) w.r.t. each entry, compared to d(inv[r,c])/d(entry k).
+        h = 1e-4
+        for n in range(4):
+            A = a[n].reshape(3, 3).astype(np.float64)
+            for k in range(9):
+                r, c = k // 3, k % 3
+                ap = A.copy()
+                ap[r, c] += h
+                am = A.copy()
+                am[r, c] -= h
+                dinv = (np.linalg.inv(ap) - np.linalg.inv(am)) / (2 * h)  # 3x3
+                np.testing.assert_allclose(got[n, :, k], dinv.reshape(9), rtol=1e-3, atol=1e-4)
+
+    def test_mat32_triangle(self):
+        """Check a rectangular mat32 triangle energy gradient against finite differences."""
+        rng = np.random.default_rng(3)
+        rest = np.array([0, 0, 0, 1, 0, 0, 0.5, 0.8660254, 0], np.float32)
+        z = (rest + 0.1 * rng.standard_normal((5, 9))).astype(np.float32)
+        grad = wp.zeros(5, dtype=J9.grad_type_scalar, device="cpu")
+        wp.launch(
+            jet_triangle_rect, dim=5, inputs=[wp.array(z, dtype=float, device="cpu")], outputs=[grad], device="cpu"
+        )
+        np.testing.assert_allclose(
+            grad.numpy().reshape(5, 9), _grad_fd(triangle_rect_np, z.astype(np.float64)), rtol=1e-3, atol=1e-4
+        )
+
+    def test_mat22_matmul(self):
+        """Check mat22 * mat22 and mat22 * vec2 derivatives against finite differences.
+
+        ``mat22`` is part of the public namespace and is what a rectangular
+        ``mat23 * mat32`` product returns, so ordinary 2D matrix algebra has to
+        work on the result.
+        """
+        rng = np.random.default_rng(0)
+        z = (rng.standard_normal((5, 4)) + np.array([2.0, 0.1, 0.1, 2.0])).astype(np.float32)
+        out = wp.zeros(5, dtype=J4.grad_type_scalar, device="cpu")
+        wp.launch(jet_mat22_matmul, dim=5, inputs=[wp.array(z, dtype=float, device="cpu")], outputs=[out], device="cpu")
+        np.testing.assert_allclose(
+            out.numpy().reshape(5, 4), _grad_fd(mat22_matmul_np, z.astype(np.float64)), rtol=1e-3, atol=1e-4
+        )
+
+    def test_first_order_smooth(self):
+        """Check first-order gradients of the smooth op surface against finite differences."""
+        z64 = Z_NP.astype(np.float64)
+        for device in DEVICES:
+            val, grad = _run_grad(jet_smooth, Z_NP, device)
+            np.testing.assert_allclose(val, smooth_np(z64), rtol=1.0e-5, atol=1.0e-6)
+            np.testing.assert_allclose(grad, _grad_fd(smooth_np, z64), rtol=1.0e-3, atol=1.0e-4)
+
+    def test_first_order_branch(self):
+        """Check first-order gradients of the branching builtins against finite differences."""
+        z64 = ZB_NP.astype(np.float64)
+        for device in DEVICES:
+            val, grad = _run_grad(jet_branch, ZB_NP, device)
+            np.testing.assert_allclose(val, branch_np(z64), rtol=1.0e-5, atol=1.0e-6)
+            np.testing.assert_allclose(grad, _grad_fd(branch_np, z64), rtol=1.0e-4, atol=1.0e-5)
+
+    def test_second_order_smooth(self):
+        """Check second-order gradients and Hessians of the smooth ops against finite differences."""
+        z64 = Z_NP.astype(np.float64)
+        for device in DEVICES:
+            val, grad, hess = _run_hess(jet2_g3, Z_NP, device)
+            np.testing.assert_allclose(val, g3_np(z64), rtol=1.0e-5, atol=1.0e-6)
+            np.testing.assert_allclose(grad, _grad_fd(g3_np, z64), rtol=1.0e-3, atol=1.0e-4)
+            np.testing.assert_allclose(hess, _hess_fd(g3_np, z64), rtol=1.0e-2, atol=1.0e-3)
+            np.testing.assert_allclose(hess, np.transpose(hess, (0, 2, 1)), rtol=1.0e-6, atol=1.0e-7)
+
+    def test_second_order_branch(self):
+        """Check second-order gradients and Hessians of the branching builtins against finite differences."""
+        z64 = ZB_NP.astype(np.float64)
+        for device in DEVICES:
+            val, grad, hess = _run_hess(jet2_branch, ZB_NP, device)
+            np.testing.assert_allclose(val, branch2_np(z64), rtol=1.0e-5, atol=1.0e-6)
+            np.testing.assert_allclose(grad, _grad_fd(branch2_np, z64), rtol=1.0e-3, atol=1.0e-4)
+            np.testing.assert_allclose(hess, _hess_fd(branch2_np, z64), rtol=1.0e-2, atol=1.0e-3)
+
+    def test_mixed_jet_and_constant_operands(self):
+        """Check that mixed jet/constant pow and atan2 agree at first and second order.
+
+        An energy written once against numeric literals has to compile and give
+        the same derivatives under both spaces, so the second-order overload set
+        must match the first-order one.
+        """
+        z = np.array([[0.7, 0.4], [1.3, -0.9], [0.2, 1.1]], dtype=np.float32)
+        z64 = z.astype(np.float64)
+
+        for device in DEVICES:
+            val1, grad1 = _run_grad(jet_mixed, z, device)
+            val2, grad2, hess2 = _run_hess(jet2_mixed, z, device)
+
+            np.testing.assert_allclose(val1, mixed_scalar_np(z64), rtol=1.0e-5, atol=1.0e-6)
+            np.testing.assert_allclose(val2, mixed_scalar_np(z64), rtol=1.0e-5, atol=1.0e-6)
+            np.testing.assert_allclose(grad1, _grad_fd(mixed_scalar_np, z64), rtol=1.0e-3, atol=1.0e-4)
+            np.testing.assert_allclose(grad2, grad1, rtol=1.0e-5, atol=1.0e-6)
+            np.testing.assert_allclose(hess2, _hess_fd(mixed_scalar_np, z64), rtol=1.0e-2, atol=1.0e-3)
+
+    def test_pow_with_constant_exponent_at_zero_base(self):
+        """Check that the degenerate constant exponents give finite derivatives at a zero base.
+
+        ``x**0`` is constant and ``x**1`` is linear, so their missing
+        derivatives are zero, but the general ``p a**(p-1)`` and
+        ``p (p-1) a**(p-2)`` terms reach them through ``0 * inf``.
+        """
+        for device in DEVICES:
+            z = wp.array(np.zeros(1, np.float32), dtype=float, device=device)
+
+            g1 = wp.zeros((1, 5), dtype=float, device=device)
+            wp.launch(jet_pow_const_exponent, dim=1, inputs=[z], outputs=[g1], device=device)
+            # p = 0, 1, 2 as floats, then 0, 1 as ints.
+            np.testing.assert_allclose(g1.numpy()[0], [0.0, 1.0, 0.0, 0.0, 1.0])
+
+            g2 = wp.zeros((1, 4), dtype=float, device=device)
+            h2 = wp.zeros((1, 4), dtype=float, device=device)
+            wp.launch(jet2_pow_const_exponent, dim=1, inputs=[z], outputs=[g2, h2], device=device)
+            # p = 0, 1 (int), 1.0 (float), 2.
+            np.testing.assert_allclose(g2.numpy()[0], [0.0, 1.0, 1.0, 0.0])
+            np.testing.assert_allclose(h2.numpy()[0], [0.0, 0.0, 0.0, 2.0])
+
+    def test_pow_with_jet_exponent_at_zero_base(self):
+        """Check that a jet exponent gives finite derivatives at a zero base.
+
+        d(a**b)/da = b a**(b-1) is 0 at a = 0 for b > 1, and d/db is 0 in the
+        limit, but the a**b * (b/a) factorization evaluates as 0 * inf there.
+        Finite differences cannot be the oracle at the endpoint, so the closed
+        form is used directly.
+        """
+        # Rows 2 and 3 straddle the zero base; b > 1 keeps both partials finite.
+        z = np.array([[0.0, 2.0], [0.0, 3.0], [0.5, 2.0]], dtype=np.float32)
+
+        for device in DEVICES:
+            m = z.shape[0]
+            zd = wp.array(z, dtype=float, device=device)
+
+            grad = wp.zeros(m, dtype=J2.grad_type_scalar, device=device)
+            wp.launch(jet_pow_jet_exponent, dim=m, inputs=[zd], outputs=[grad], device=device)
+            g1 = grad.numpy().reshape(m, 2)
+
+            g2 = wp.zeros((m, 2), dtype=float, device=device)
+            h2 = wp.zeros((m, 2, 2), dtype=float, device=device)
+            wp.launch(jet2_pow_jet_exponent, dim=m, inputs=[zd], outputs=[g2, h2], device=device)
+
+            self.assertTrue(np.isfinite(g1).all(), f"first-order gradient not finite: {g1}")
+            self.assertTrue(np.isfinite(g2.numpy()).all(), f"second-order gradient not finite: {g2.numpy()}")
+            self.assertTrue(np.isfinite(h2.numpy()).all(), f"second-order Hessian not finite: {h2.numpy()}")
+
+            a, b = z[:, 0].astype(np.float64), z[:, 1].astype(np.float64)
+            da = b * np.power(a, b - 1.0)
+            db = np.where(a > 0.0, np.power(a, b) * np.log(np.where(a > 0.0, a, 1.0)), 0.0)
+
+            np.testing.assert_allclose(g1, np.stack([da, db], axis=1), rtol=1.0e-5, atol=1.0e-6)
+            np.testing.assert_allclose(g2.numpy(), np.stack([da, db], axis=1), rtol=1.0e-5, atol=1.0e-6)
+
+    def _assert_mixed_agree(self, err):
+        # Squared differences of values and gradients against the lifted form.
+        np.testing.assert_allclose(err, 0.0, atol=1.0e-10)
+
+    def test_scalar_vector_and_selection(self):
+        """Check jet-scalar times, and plain vector over, jet-scalar against lifted constants."""
+        rng = np.random.default_rng(1)
+        m = 6
+        s = rng.uniform(0.5, 1.5, size=m).astype(np.float32) * np.where(np.arange(m) % 2, 1.0, -1.0).astype(np.float32)
+        # Thresholds on both sides of s so min and max take each branch.
+        c = (s + np.where(np.arange(m) % 3 == 0, 0.25, -0.25)).astype(np.float32)
+        for device in DEVICES:
+            err = wp.zeros((m, 10), dtype=float, device=device)
+            wp.launch(
+                mixed_vec_kernel,
+                dim=m,
+                inputs=[
+                    wp.array(s, dtype=float, device=device),
+                    wp.array(_random(rng, (m, 2)), dtype=wp.vec2, device=device),
+                    wp.array(_random(rng, (m, 3)), dtype=wp.vec3, device=device),
+                    wp.array(c, dtype=float, device=device),
+                ],
+                outputs=[err],
+                device=device,
+            )
+            self._assert_mixed_agree(err.numpy())
+
+    def test_square_matrix(self):
+        """Check mat22 and mat33 products and sums with one plain operand against lifted constants."""
+        rng = np.random.default_rng(2)
+        m = 4
+        for device in DEVICES:
+            for kernel, mat, vec, n in (
+                (mixed_mat22_kernel, wp.mat22, wp.vec2, 2),
+                (mixed_mat33_kernel, wp.mat33, wp.vec3, 3),
+            ):
+                err = wp.zeros((m, 8), dtype=float, device=device)
+                wp.launch(
+                    kernel,
+                    dim=m,
+                    inputs=[
+                        wp.array(_random(rng, (m, n, n)), dtype=mat, device=device),
+                        wp.array(_random(rng, (m, n)), dtype=vec, device=device),
+                        wp.array(_random(rng, (m, n, n)), dtype=mat, device=device),
+                        wp.array(_random(rng, (m, n)), dtype=vec, device=device),
+                    ],
+                    outputs=[err],
+                    device=device,
+                )
+                self._assert_mixed_agree(err.numpy())
+
+    def test_rectangular_matrix(self):
+        """Check mat23 times mat32 with either operand plain against lifted constants."""
+        rng = np.random.default_rng(3)
+        m = 4
+        for device in DEVICES:
+            err = wp.zeros((m, 2), dtype=float, device=device)
+            wp.launch(
+                mixed_rect_kernel,
+                dim=m,
+                inputs=[
+                    wp.array(_random(rng, (m, 2, 3)), dtype=mat23, device=device),
+                    wp.array(_random(rng, (m, 3, 2)), dtype=mat32, device=device),
+                    wp.array(_random(rng, (m, 2, 3)), dtype=mat23, device=device),
+                    wp.array(_random(rng, (m, 3, 2)), dtype=mat32, device=device),
+                ],
+                outputs=[err],
+                device=device,
+            )
+            self._assert_mixed_agree(err.numpy())
+
+    def test_plain_operand_adjoints(self):
+        """Check that reverse mode through mixed products reaches the plain operands."""
+        rng = np.random.default_rng(4)
+        m = 3
+        a_np = _random(rng, (m, 3, 3))
+        v_np = _random(rng, (m, 3))
+        pm_np = _random(rng, (m, 3, 3))
+        pv_np = _random(rng, (m, 3))
+        da_np = _random(rng, (m, 2, 3, 3))
+        dv_np = _random(rng, (m, 2, 3))
+        w_np = _random(rng, (m, 3))
+        weights_np = _random(rng, (m, 3, 2))
+
+        # y = A pv + Pm v carries y.grad[:, q] = dA_q pv + Pm dv_q along direction q.
+        pv_grad = np.einsum("mrk,mr->mk", a_np, w_np) + np.einsum("mqrk,mrq->mk", da_np, weights_np)
+        pm_grad = np.einsum("mr,mk->mrk", w_np, v_np) + np.einsum("mrq,mqk->mrk", weights_np, dv_np)
+
+        for device in DEVICES:
+            pm = wp.array(pm_np, dtype=wp.mat33, requires_grad=True, device=device)
+            pv = wp.array(pv_np, dtype=wp.vec3, requires_grad=True, device=device)
+            out = wp.zeros(m, dtype=float, requires_grad=True, device=device)
+            tape = wp.Tape()
+            with tape:
+                wp.launch(
+                    mixed_mat33_adjoint_kernel,
+                    dim=m,
+                    inputs=[
+                        wp.array(a_np, dtype=wp.mat33, device=device),
+                        wp.array(v_np, dtype=wp.vec3, device=device),
+                        pm,
+                        pv,
+                        wp.array(da_np, dtype=wp.mat33, device=device),
+                        wp.array(dv_np, dtype=wp.vec3, device=device),
+                        wp.array(w_np, dtype=wp.vec3, device=device),
+                        wp.array(weights_np, dtype=JM3.grad_type_vec3, device=device),
+                    ],
+                    outputs=[out],
+                    device=device,
+                )
+            tape.backward(grads={out: wp.ones(m, dtype=float, device=device)})
+
+            np.testing.assert_allclose(pv.grad.numpy(), pv_grad, rtol=1.0e-5, atol=1.0e-6)
+            np.testing.assert_allclose(pm.grad.numpy(), pm_grad, rtol=1.0e-5, atol=1.0e-6)
+
+    def _launch_component_wise(self, kernel):
+        rng = np.random.default_rng(5)
+        m = 5
+
+        def operand(n):
+            # Magnitudes in [0.5, 1.5] with random signs keep the divisors away from zero.
+            return (rng.uniform(0.5, 1.5, size=(m, n)) * rng.choice([-1.0, 1.0], size=(m, n))).astype(np.float32)
+
+        for device in DEVICES:
+            err = wp.zeros((m, 12), dtype=float, device=device)
+            wp.launch(
+                kernel,
+                dim=m,
+                inputs=[
+                    wp.array(operand(2), dtype=wp.vec2, device=device),
+                    wp.array(operand(2), dtype=wp.vec2, device=device),
+                    wp.array(operand(3), dtype=wp.vec3, device=device),
+                    wp.array(operand(3), dtype=wp.vec3, device=device),
+                ],
+                outputs=[err],
+                device=device,
+            )
+            np.testing.assert_allclose(err.numpy(), 0.0, atol=1.0e-9)
+
+    def test_first_order(self):
+        """Check first-order cw_mul and cw_div against per-component products, with either operand plain."""
+        self._launch_component_wise(cw_first_order_kernel)
+
+    def test_second_order(self):
+        """Check second-order cw_mul and cw_div against per-component products, with either operand plain."""
+        self._launch_component_wise(cw_second_order_kernel)
+
+    def test_generic_branch(self):
+        """Check that wp.value lets one generic function branch on floats and on first- and second-order jets."""
+        x_np = np.array([0.7, -0.3], dtype=np.float32)
+        on = (x_np > 0).astype(np.float32)
+        for device in DEVICES:
+            out32 = wp.zeros(2, dtype=float, device=device)
+            out64 = wp.zeros(2, dtype=wp.float64, device=device)
+            grad_1st = wp.zeros(2, dtype=J2.grad_type_scalar, device=device)
+            grad_2nd = wp.zeros(2, dtype=J2_2ND.grad_type_scalar, device=device)
+            hess = wp.zeros(2, dtype=J2_2ND.hess_type_scalar, device=device)
+            wp.launch(
+                generic_relu_kernel,
+                dim=2,
+                inputs=[wp.array(x_np, dtype=float, device=device)],
+                outputs=[out32, out64, grad_1st, grad_2nd, hess],
+                device=device,
+            )
+            np.testing.assert_allclose(out32.numpy(), x_np * on)
+            np.testing.assert_allclose(out64.numpy(), x_np * on, rtol=1.0e-6)
+            # x0 * x1 at (x, 1) has value x, gradient (1, x) and Hessian [[0, 1], [1, 0]].
+            np.testing.assert_allclose(grad_1st.numpy(), np.stack([on, x_np * on], axis=1), rtol=1.0e-6)
+            np.testing.assert_allclose(grad_2nd.numpy(), np.stack([on, x_np * on], axis=1), rtol=1.0e-6)
+            np.testing.assert_allclose(hess.numpy(), on[:, None, None] * np.array([[0.0, 1.0], [1.0, 0.0]]))
+
     def test_square_matrix_ops(self):
         """Check mat33 entry, row, product, ddot, outer, diagonal and assignment overloads against central differences."""
         for device in DEVICES:
@@ -1364,67 +1856,7 @@ class TestJetFemBuiltins(unittest.TestCase):
             expected = np.stack([np.concatenate([[ds[i]], dx[i]]) for i in range(2)])
             np.testing.assert_allclose(grad.numpy(), expected, rtol=1.0e-5, atol=1.0e-6)
 
-
-# --------------------------------------------------------------------------
-# Decompositions: the jet's directional derivative of a weighted sum of the
-# factors must equal reverse mode's <A_bar, dA> (the same analytic rules), and
-# central differences at a matrix with well-separated singular values.
-# --------------------------------------------------------------------------
-
-JD3 = wp.JetSpace((wp.mat33,), width=1)
-JD2 = wp.JetSpace((wp.mat22,), width=1)
-
-
-@wp.func
-def svd3_objective(A: Any, Ubar: wp.mat33, sbar: wp.vec3, Vbar: wp.mat33):
-    U, s, V = wp.svd3(A)
-    return wp.ddot(Ubar, U) + wp.dot(sbar, s) + wp.ddot(Vbar, V)
-
-
-@wp.func
-def svd2_objective(A: Any, Ubar: wp.mat22, sbar: wp.vec2, Vbar: wp.mat22):
-    U, s, V = wp.svd2(A)
-    return wp.ddot(Ubar, U) + wp.dot(sbar, s) + wp.ddot(Vbar, V)
-
-
-@wp.func
-def eig3_objective(A: Any, Qbar: wp.mat33, dbar: wp.vec3, unused: wp.mat33):
-    Q, d = wp.eig3(A)
-    return wp.ddot(Qbar, Q) + wp.dot(dbar, d)
-
-
-@wp.kernel(enable_backward=False)
-def svd3_jet_kernel(A: wp.mat33, dA: wp.mat33, Ubar: wp.mat33, sbar: wp.vec3, Vbar: wp.mat33, out: wp.array[float]):
-    out[0] = svd3_objective(JD3.directional(A, dA), Ubar, sbar, Vbar).grad[0]
-
-
-@wp.kernel
-def svd3_plain_kernel(A: wp.array[wp.mat33], Ubar: wp.mat33, sbar: wp.vec3, Vbar: wp.mat33, out: wp.array[float]):
-    out[0] = svd3_objective(A[0], Ubar, sbar, Vbar)
-
-
-@wp.kernel(enable_backward=False)
-def svd2_jet_kernel(A: wp.mat22, dA: wp.mat22, Ubar: wp.mat22, sbar: wp.vec2, Vbar: wp.mat22, out: wp.array[float]):
-    out[0] = svd2_objective(JD2.directional(A, dA), Ubar, sbar, Vbar).grad[0]
-
-
-@wp.kernel
-def svd2_plain_kernel(A: wp.array[wp.mat22], Ubar: wp.mat22, sbar: wp.vec2, Vbar: wp.mat22, out: wp.array[float]):
-    out[0] = svd2_objective(A[0], Ubar, sbar, Vbar)
-
-
-@wp.kernel(enable_backward=False)
-def eig3_jet_kernel(A: wp.mat33, dA: wp.mat33, Qbar: wp.mat33, dbar: wp.vec3, unused: wp.mat33, out: wp.array[float]):
-    out[0] = eig3_objective(JD3.directional(A, dA), Qbar, dbar, unused).grad[0]
-
-
-@wp.kernel
-def eig3_plain_kernel(A: wp.array[wp.mat33], Qbar: wp.mat33, dbar: wp.vec3, unused: wp.mat33, out: wp.array[float]):
-    out[0] = eig3_objective(A[0], Qbar, dbar, unused)
-
-
-class TestJetDecompositions(unittest.TestCase):
-    def _check(self, jet_kernel, plain_kernel, mat, vec, A_np, dA_np, seed):
+    def _check_decomposition(self, jet_kernel, plain_kernel, mat, vec, A_np, dA_np, seed):
         rng = np.random.default_rng(seed)
         n = A_np.shape[0]
         weights = [
@@ -1473,21 +1905,21 @@ class TestJetDecompositions(unittest.TestCase):
         rng = np.random.default_rng(7)
         A = rng.uniform(-1.0, 1.0, (3, 3)).astype(np.float32)
         dA = rng.uniform(-1.0, 1.0, (3, 3)).astype(np.float32)
-        self._check(svd3_jet_kernel, svd3_plain_kernel, wp.mat33, wp.vec3, A, dA, seed=8)
+        self._check_decomposition(svd3_jet_kernel, svd3_plain_kernel, wp.mat33, wp.vec3, A, dA, seed=8)
 
     def test_svd2(self):
         """Check the svd2 jet against reverse mode and central differences."""
         rng = np.random.default_rng(9)
         A = rng.uniform(-1.0, 1.0, (2, 2)).astype(np.float32)
         dA = rng.uniform(-1.0, 1.0, (2, 2)).astype(np.float32)
-        self._check(svd2_jet_kernel, svd2_plain_kernel, wp.mat22, wp.vec2, A, dA, seed=10)
+        self._check_decomposition(svd2_jet_kernel, svd2_plain_kernel, wp.mat22, wp.vec2, A, dA, seed=10)
 
     def test_eig3(self):
         """Check the eig3 jet of a symmetric matrix against reverse mode and central differences."""
         rng = np.random.default_rng(11)
         B = rng.uniform(-1.0, 1.0, (3, 3)).astype(np.float32)
         dB = rng.uniform(-1.0, 1.0, (3, 3)).astype(np.float32)
-        self._check(eig3_jet_kernel, eig3_plain_kernel, wp.mat33, wp.vec3, B + B.T, dB + dB.T, seed=12)
+        self._check_decomposition(eig3_jet_kernel, eig3_plain_kernel, wp.mat33, wp.vec3, B + B.T, dB + dB.T, seed=12)
 
     def test_eig3_repeated_eigenvalues(self):
         """Check that the eig3 jet of the identity keeps finite derivatives with exact eigenvalue derivatives."""
@@ -1513,84 +1945,6 @@ class TestJetDecompositions(unittest.TestCase):
             )
             np.testing.assert_allclose(out.numpy()[0], np.trace(dA), rtol=1.0e-5, atol=1.0e-5)
 
-
-@wp.func
-def indexed_energy(s: Any, v: Any, F: Any, negative: bool):
-    W = wp.mat33(0.3, -0.2, 0.5, 0.1, 0.7, -0.4, -0.6, 0.2, 0.9)
-    w = v
-    G = F
-    H = F
-    if negative:
-        w[-1] = s
-        G[0, -1] = s
-        H[-1] = v
-        e = v[-2] * F[0, -1] + wp.dot(F[-1], v)
-    else:
-        w[2] = s
-        G[0, 2] = s
-        H[2] = v
-        e = v[1] * F[0, 2] + wp.dot(F[2], v)
-    return e + wp.dot(w, wp.vec3(1.0, 2.0, 3.0)) + wp.ddot(G, W) + 2.0 * wp.ddot(H, W)
-
-
-@wp.kernel
-def negative_index_kernel(
-    x_F: wp.mat33, values: wp.array[float], grads: wp.array[JF.grad_type_scalar], plain: wp.array[float]
-):
-    x_s = 1.7
-    x_v = wp.vec3(0.6, -0.8, 1.3)
-    for k in range(2):
-        s, v, F = JF.seed(x_s, x_v, x_F)
-        e = indexed_energy(s, v, F, k == 0)
-        values[k] = e.value
-        grads[k] = e.grad
-        plain[k] = indexed_energy(x_s, x_v, x_F, k == 0)
-
-
-@wp.func
-def indexed_energy2(s: Any, v: Any, negative: bool):
-    w = v
-    if negative:
-        w[-2] = s
-    else:
-        w[1] = s
-    e = wp.dot(w, wp.vec3(1.0, 2.0, 3.0))
-    return e * e
-
-
-@wp.kernel
-def negative_index2_kernel(
-    values: wp.array[float], grads: wp.array[J2F.grad_type_scalar], hessians: wp.array[J2F.hess_type_scalar]
-):
-    for k in range(2):
-        s, v = J2F.seed(1.7, wp.vec3(0.6, -0.8, 1.3))
-        e = indexed_energy2(s, v, k == 0)
-        values[k] = e.value
-        grads[k] = e.grad
-        hessians[k] = e.hess
-
-
-@wp.kernel
-def normalize_zero_kernel(
-    values: wp.array[float],
-    grads: wp.array[J1F.grad_type_scalar],
-    grads2: wp.array[J2F.grad_type_scalar],
-    hessians2: wp.array[J2F.hess_type_scalar],
-):
-    c = wp.vec3(1.0, 2.0, 3.0)
-    _s, v = J1F.seed(1.7, wp.vec3(0.0, 0.0, 0.0))
-    e = wp.dot(wp.normalize(v), c)
-    values[0] = e.value
-    grads[0] = e.grad
-    _s2, v2 = J2F.seed(1.7, wp.vec3(0.0, 0.0, 0.0))
-    e2 = wp.dot(wp.normalize(v2), c)
-    values[1] = e2.value
-    grads2[0] = e2.grad
-    hessians2[0] = e2.hess
-    values[2] = wp.dot(wp.normalize(wp.vec3(0.0, 0.0, 0.0)), c)
-
-
-class TestJetIndexing(unittest.TestCase):
     def test_negative_indices(self):
         """Check that negative vector and matrix indices read and assign the same jet components as native types."""
         for device in DEVICES:
@@ -1624,41 +1978,6 @@ class TestJetIndexing(unittest.TestCase):
             np.testing.assert_array_equal(grads2.numpy(), np.zeros((1, 4)))
             np.testing.assert_array_equal(hessians2.numpy(), np.zeros((1, 4, 4)))
 
-
-@wp.func
-def degenerate_derivatives(s: Any, v: Any, zero_exponent: Any, one_exponent: Any):
-    # Each term sits where a naive derivative formula evaluates 0 * inf or 0 * log(0): the
-    # length of a zero vector, a zero base raised to 0 or 1 given as plain floats and as
-    # constant jets, and a plain zero base raised to a jet exponent.
-    return (
-        wp.length(v)
-        + wp.pow(s, 0.0)
-        + wp.pow(s, zero_exponent)
-        + wp.pow(s, 1.0)
-        + wp.pow(s, one_exponent)
-        + wp.pow(0.0, s + 2.0)
-    )
-
-
-@wp.kernel
-def degenerate_derivatives_kernel(
-    values: wp.array[float],
-    grads: wp.array[J1F.grad_type_scalar],
-    grads2: wp.array[J2F.grad_type_scalar],
-    hessians2: wp.array[J2F.hess_type_scalar],
-):
-    s, v = J1F.seed(0.0, wp.vec3(0.0, 0.0, 0.0))
-    e = degenerate_derivatives(s, v, J1F.constant(0.0), J1F.constant(1.0))
-    values[0] = e.value
-    grads[0] = e.grad
-    s2, v2 = J2F.seed(0.0, wp.vec3(0.0, 0.0, 0.0))
-    e2 = degenerate_derivatives(s2, v2, J2F.constant(0.0), J2F.constant(1.0))
-    values[1] = e2.value
-    grads2[0] = e2.grad
-    hessians2[0] = e2.hess
-
-
-class TestJetDegenerateDerivatives(unittest.TestCase):
     def test_finite_derivatives_at_zero(self):
         """Return the finite derivatives native Warp gives where naive jet formulas produce 0 * inf."""
         for device in DEVICES:
@@ -1676,283 +1995,6 @@ class TestJetDegenerateDerivatives(unittest.TestCase):
             np.testing.assert_array_equal(grads2.numpy()[0], expected_grad)
             np.testing.assert_array_equal(hessians2.numpy()[0], np.zeros((4, 4)))
 
-
-# Points where native Warp picks a derivative convention: the origin of atan2, zero and NaN
-# for abs, ties and NaN operands for min/max, both clamp bounds, and asin/acos outside [-1, 1].
-NATIVE_CONVENTION_POINTS = np.array(
-    [
-        [0.0, 0.0],
-        [2.0, 2.0],
-        [2.0, np.nan],
-        [np.nan, 2.0],
-        [1.0, 0.0],
-        [-1.0, 0.0],
-        [2.0, -2.0],
-        [-2.0, 0.0],
-    ],
-    dtype=np.float32,
-)
-NATIVE_CONVENTION_OPS = 7  # atan2, abs, min, max, clamp, asin, acos
-BINARY_OPS = (0, 2, 3)  # atan2, min, max also take mixed plain/jet operands
-
-
-@wp.func
-def native_convention_op(k: int, a: Any, b: Any):
-    if k == 0:
-        return wp.atan2(a, b)
-    if k == 1:
-        return wp.abs(a)
-    if k == 2:
-        return wp.min(a, b)
-    if k == 3:
-        return wp.max(a, b)
-    if k == 4:
-        return wp.clamp(a, -1.0, 1.0)
-    if k == 5:
-        return wp.asin(a)
-    return wp.acos(a)
-
-
-@wp.func
-def native_convention_binary_op(k: int, a: Any, b: Any):
-    # The ops of BINARY_OPS, for mixed plain/jet operands.
-    if k == 0:
-        return wp.atan2(a, b)
-    if k == 2:
-        return wp.min(a, b)
-    return wp.max(a, b)
-
-
-@wp.kernel
-def native_convention_kernel(points: wp.array[wp.vec2], values: wp.array2d[float], grads: wp.array2d[wp.vec2]):
-    p, k = wp.tid()
-    out = native_convention_op(k, points[p][0], points[p][1])
-    values[p, k] = out
-    grads[p, k] = wp.vec2(0.0)
-
-
-@wp.kernel
-def jet_convention_kernel(
-    points: wp.array[wp.vec2],
-    values: wp.array2d[float],
-    grads: wp.array2d[wp.vec2],
-    mixed_grads: wp.array2d[wp.vec2],
-    values2: wp.array2d[float],
-    grads2: wp.array2d[wp.vec2],
-    hessians2: wp.array2d[wp.mat22],
-    mixed_grads2: wp.array2d[wp.vec2],
-):
-    p, k = wp.tid()
-    x = points[p][0]
-    y = points[p][1]
-
-    a, b = J2.seed(x, y)
-    out = native_convention_op(k, a, b)
-    values[p, k] = out.value
-    grads[p, k] = wp.vec2(out.grad[0], out.grad[1])
-    # Mixed operands: the derivative with respect to the jet operand alone.
-    mixed_grads[p, k] = wp.vec2(
-        native_convention_binary_op(k, a, y).grad[0], native_convention_binary_op(k, x, b).grad[1]
-    )
-
-    a2, b2 = J2_2ND.seed(x, y)
-    out2 = native_convention_op(k, a2, b2)
-    values2[p, k] = out2.value
-    grads2[p, k] = wp.vec2(out2.grad[0], out2.grad[1])
-    hessians2[p, k] = wp.mat22(out2.hess[0, 0], out2.hess[0, 1], out2.hess[1, 0], out2.hess[1, 1])
-    mixed_grads2[p, k] = wp.vec2(
-        native_convention_binary_op(k, a2, y).grad[0], native_convention_binary_op(k, x, b2).grad[1]
-    )
-
-
-J1H = wp.JetSpace(1, dtype=wp.float16)
-J2H = wp.JetSpace2(1, dtype=wp.float16)
-J2VH = wp.JetSpace2(wp.vec3h)
-J2VD = wp.JetSpace2(wp.vec3d)
-JSVD = wp.JetSpace(wp.mat22, width=1)
-
-
-@wp.kernel
-def small_denominator_kernel(c: wp.float16, c32: float, values: wp.array[float]):
-    # Each quotient of a value by itself is 1, even where 1 / c overflows.
-    j = J1H.constant(c)
-    j2 = J2H.constant(c)
-    values[0] = float((j / j).value)
-    values[1] = float((c / j).value)
-    values[2] = float((j2 / j2).value)
-    values[3] = float((c / j2).value)
-    k = J2.constant(c32)
-    values[4] = (k / k).value
-
-
-@wp.kernel
-def small_norm_hessian_kernel(v: wp.vec3d, hessians_h: wp.array[wp.mat33d], hessians_d: wp.array[wp.mat33d]):
-    # The length and a component of the normalized vector, in float16 and in float64.
-    vh = J2VH.seed(wp.vec3h(v))
-    vd = J2VD.seed(v)
-    hessians_h[0] = wp.mat33d(wp.length(vh).hess)
-    hessians_h[1] = wp.mat33d(wp.normalize(vh)[1].hess)
-    hessians_d[0] = wp.length(vd).hess
-    hessians_d[1] = wp.normalize(vd)[1].hess
-
-
-SMALL_ARGUMENT_OPS = ("div", "pow", "log", "log2", "log10", "cbrt")
-J1SCALAR32 = wp.JetSpace(1)
-
-
-@wp.kernel(enable_backward=False)
-def float16_derivative_kernel(
-    ops: wp.array[int],
-    xs: wp.array[wp.float16],
-    gs: wp.array[wp.float16],
-    cs: wp.array[wp.float16],
-    out: wp.array2d[float],
-):
-    # Columns: first-order value, gradient, and result gradient; second-order value, gradient,
-    # result gradient, and result Hessian. c is the numerator for div and the exponent for pow.
-    i = wp.tid()
-    op = ops[i]
-    g = gs[i]
-    c = cs[i]
-    a = J1H.with_grad(xs[i], wp.vector(g, length=1))
-    b = J2H.variable(xs[i] / g, 0) * g
-    r1 = a
-    r2 = b
-    if op == 0:
-        r1 = c / a
-        r2 = c / b
-    elif op == 1:
-        r1 = wp.pow(a, c)
-        r2 = wp.pow(b, c)
-    elif op == 2:
-        r1 = wp.log(a)
-        r2 = wp.log(b)
-    elif op == 3:
-        r1 = wp.log2(a)
-        r2 = wp.log2(b)
-    elif op == 4:
-        r1 = wp.log10(a)
-        r2 = wp.log10(b)
-    else:
-        r1 = wp.cbrt(a)
-        r2 = wp.cbrt(b)
-    out[i, 0] = float(a.value)
-    out[i, 1] = float(a.grad[0])
-    out[i, 2] = float(r1.grad[0])
-    out[i, 3] = float(b.value)
-    out[i, 4] = float(b.grad[0])
-    out[i, 5] = float(r2.grad[0])
-    out[i, 6] = float(r2.hess[0, 0])
-
-
-@wp.kernel(enable_backward=False)
-def float32_small_denominator_kernel(out: wp.array[float]):
-    # 1 / a at a = 1e-20 with gradient 1e-30: the derivative -1 / a**2 overflows float32,
-    # but its product with the gradient, -1e10, fits.
-    a = J1SCALAR32.with_grad(1.0e-20, wp.vector(1.0e-30, length=1))
-    out[0] = (1.0 / a).grad[0] * 1.0e-10
-
-
-def _derivatives(op, c, v):
-    """Return the first and second derivatives of op at v, in float64."""
-    if op == "div":
-        return -c / v**2, 2.0 * c / v**3
-    if op == "pow":
-        return c * v ** (c - 1.0), c * (c - 1.0) * v ** (c - 2.0)
-    if op == "cbrt":
-        return np.cbrt(v) / (3.0 * v), -2.0 * np.cbrt(v) / (9.0 * v**2)
-    k = {"log": 1.0, "log2": 1.0 / np.log(2.0), "log10": 1.0 / np.log(10.0)}[op]
-    return k / v, -k / v**2
-
-
-J1H2 = wp.JetSpace(2, dtype=wp.float16)
-J2H2 = wp.JetSpace2(2, dtype=wp.float16)
-J1VH = wp.JetSpace(wp.vec3h)
-
-
-@wp.kernel
-def float16_squares_kernel(
-    points: wp.array[wp.float16],
-    atan_derivs: wp.array[wp.vec3],
-    atan2_derivs: wp.array[wp.vec4],
-    atan2_hessians: wp.array[wp.mat22],
-):
-    # atan and atan2 at (v, v), whose squared arguments leave the float16 range.
-    i = wp.tid()
-    v = points[i]
-    a1 = wp.atan(J1H.variable(v, 0))
-    a2 = wp.atan(J2H.variable(v, 0))
-    atan_derivs[i] = wp.vec3(float(a1.grad[0]), float(a2.grad[0]), float(a2.hess[0, 0]))
-    b1 = wp.atan2(J1H2.variable(v, 1), J1H2.variable(v, 0))
-    b2 = wp.atan2(J2H2.variable(v, 1), J2H2.variable(v, 0))
-    atan2_derivs[i] = wp.vec4(float(b1.grad[0]), float(b1.grad[1]), float(b2.grad[0]), float(b2.grad[1]))
-    atan2_hessians[i] = wp.mat22(wp.mat22h(b2.hess))
-
-
-@wp.kernel
-def float16_norms_kernel(v: wp.vec3d, first: wp.array[wp.mat33d], second: wp.array[wp.mat33d]):
-    # Rows hold the length's value and gradient and the normalized vector, at both orders.
-    j1 = J1VH.seed(wp.vec3h(v))
-    length1 = wp.length(j1)
-    first[0] = wp.matrix_from_rows(
-        wp.vec3d(wp.float64(length1.value), 0.0, 0.0), wp.vec3d(length1.grad), wp.vec3d(wp.normalize(j1).value)
-    )
-    vh = J2VH.seed(wp.vec3h(v))
-    length2 = wp.length(vh)
-    unit2 = wp.normalize(vh)
-    second[0] = wp.matrix_from_rows(
-        wp.vec3d(wp.float64(length2.value), 0.0, 0.0),
-        wp.vec3d(length2.grad),
-        wp.vec3d(wp.float64(unit2[0].value), wp.float64(unit2[1].value), wp.float64(unit2[2].value)),
-    )
-
-
-@wp.kernel
-def float16_overlong_unit_kernel(v: wp.vec3d, units: wp.array[wp.vec3d], unit_grads: wp.array[wp.vec3d]):
-    # The unit vector and the gradient of its first component, at both orders.
-    j1 = wp.normalize(J1VH.seed(wp.vec3h(v)))
-    j2 = wp.normalize(J2VH.seed(wp.vec3h(v)))
-    units[0] = wp.vec3d(j1.value)
-    units[1] = wp.vec3d(wp.float64(j2[0].value), wp.float64(j2[1].value), wp.float64(j2[2].value))
-    unit_grads[0] = wp.vec3d(j1.grad[0])
-    unit_grads[1] = wp.vec3d(j2[0].grad)
-
-
-J2HV1 = wp.JetSpace2(1, dtype=wp.float16)
-
-
-@wp.kernel(enable_backward=False)
-def float16_cancellation_kernel(points: wp.array[float], seeds: wp.array[float], out: wp.array[float]):
-    # atan2 at (0.001, 0.001) with equal gradients of 1000: the partial products overflow float16
-    # but cancel exactly, so the derivative is 0.
-    g = wp.vector(wp.float16(1000.0), length=1)
-    a = wp.atan2(J1H.with_grad(wp.float16(0.001), g), J1H.with_grad(wp.float16(0.001), g))
-    out[0] = float(a.grad[0])
-    # The length of (2^-16 x, 0, 0) is locally x, so its Hessian is 0, although the scaled
-    # gradients' outer products overflow float16.
-    x = J2HV1.variable(wp.float16(1.52587890625e-05), 0)  # 2^-16
-    zero = J2HV1.constant(wp.float16(0.0))
-    out[1] = float(wp.length(J2HV1.make_vec3(x, zero, zero)).hess[0, 0])
-    out[2] = float(wp.length(J2HV1.make_vec2(x, zero)).hess[0, 0])
-    # In float32, atan2 at (p, p) with equal x and y gradients: the perturbation only changes
-    # the radius, so the derivative is exactly 0, also when CUDA fuses a product into the
-    # subtraction. The inputs come from arrays so they are not folded at compile time.
-    for k in range(3):
-        g32 = wp.vec2(seeds[k], 0.0)
-        a32 = wp.atan2(J2.with_grad(points[k], g32), J2.with_grad(points[k], g32))
-        out[3 + k] = a32.grad[0]
-
-
-@wp.kernel
-def svd2_polar_kernel(scale: float, direction: wp.mat22, out: wp.array[float]):
-    # The polar factor U V^T of a scaled identity, differentiated along a rotation generator.
-    A = JSVD.directional(wp.identity(n=2, dtype=float) * scale, direction)
-    U, _s, V = wp.svd2(A)
-    R = U * wp.transpose(V)
-    out[0] = R.grad[2, 0]
-
-
-class TestJetNativeConventions(unittest.TestCase):
     def test_match_native_derivative_conventions(self):
         """Match native reverse-mode derivatives where native Warp picks a convention, at both jet orders."""
         n = len(NATIVE_CONVENTION_POINTS)
@@ -2186,63 +2228,6 @@ class TestJetNativeConventions(unittest.TestCase):
                 wp.launch(svd2_polar_kernel, dim=1, inputs=[scale, rotation], outputs=[out], device=device)
                 self.assertAlmostEqual(float(out.numpy()[0]), expected, places=5, msg=f"A = {scale} I")
 
-
-J1S = wp.JetSpace(1)
-J2S = wp.JetSpace2(1)
-INVERSE_TRIG_POINTS = np.array([-2.0, -1.0, 0.0, 0.5, 1.0, 2.0], dtype=np.float32)
-
-
-@wp.kernel
-def native_inverse_trig_kernel(x: wp.array[float], out: wp.array2d[float]):
-    i = wp.tid()
-    out[0, i] = wp.asin(x[i])
-    out[1, i] = wp.acos(x[i])
-
-
-@wp.kernel
-def jet_inverse_trig_kernel(x: wp.array[float], values: wp.array2d[float], derivatives: wp.array2d[float]):
-    # Rows: asin and acos over a first-order jet, then over a second-order jet.
-    i = wp.tid()
-    a = J1S.seed(x[i])
-    a2 = J2S.seed(x[i])
-    s = wp.asin(a)
-    c = wp.acos(a)
-    s2 = wp.asin(a2)
-    c2 = wp.acos(a2)
-    values[0, i] = s.value
-    values[1, i] = c.value
-    values[2, i] = s2.value
-    values[3, i] = c2.value
-    derivatives[0, i] = s.grad[0]
-    derivatives[1, i] = c.grad[0]
-    derivatives[2, i] = s2.grad[0]
-    derivatives[3, i] = c2.grad[0]
-
-
-@wp.kernel
-def nan_length_kernel(values: wp.array[float]):
-    v = wp.vec3(wp.nan, 0.0, 0.0)
-    _s, jv = J1F.seed(0.0, v)
-    _s2, jv2 = J2F.seed(0.0, v)
-    values[0] = wp.length(jv).value
-    values[1] = wp.length(jv2).value
-    values[2] = wp.length(v)
-
-
-def _row_input_gradient(kernel, x_np, outputs_shape, out_index, row, device):
-    """Return the input gradient of one output row, by reverse mode through ``kernel``."""
-    x = wp.array(x_np, dtype=float, requires_grad=True, device=device)
-    outputs = [wp.zeros(shape, dtype=float, requires_grad=True, device=device) for shape in outputs_shape]
-    tape = wp.Tape()
-    with tape:
-        wp.launch(kernel, dim=len(x_np), inputs=[x], outputs=outputs, device=device)
-    seed = np.zeros(outputs_shape[out_index], dtype=np.float32)
-    seed[row] = 1.0
-    tape.backward(grads={outputs[out_index]: wp.array(seed, dtype=float, device=device)})
-    return x.grad.numpy()
-
-
-class TestJetReverseThroughJets(unittest.TestCase):
     def test_inverse_trig_reverse_mode_through_jets(self):
         """Backpropagate through jet asin/acos to the native input gradients, with finite gradients through their derivatives."""
         n = len(INVERSE_TRIG_POINTS)
