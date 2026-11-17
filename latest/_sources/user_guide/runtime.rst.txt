@@ -561,6 +561,12 @@ Use ``wp.uint64`` for ordinary unsigned integers and raw pointers.
 
 Use :func:`wp.dtype_to_numpy() <warp.dtype_to_numpy>` to convert Warp scalar types to NumPy dtype specifications. See :ref:`numpy-scalar-dtypes` for examples and behavior across NumPy versions.
 
+Builtins return :class:`wp.float16 <warp.float16>` results for float16 arguments but may compute in float32 internally.
+Squaring a float16 value overflows above about 256 and rounds to zero below about 2\ :sup:`-12`, so functions that square their
+arguments, such as :func:`wp.length() <warp.length>`, :func:`wp.normalize() <warp.normalize>`, :func:`wp.atan() <warp.atan>`,
+and :func:`wp.atan2() <warp.atan2>`, form those squares in float32 for their values, their gradients, and their
+:ref:`forward-mode jet <forward_mode_jets>` derivatives.
+
 bfloat16 and NumPy Interop
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
