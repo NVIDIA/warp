@@ -3,6 +3,7 @@
 
 import os
 import tempfile
+import time
 import unittest
 
 import numpy as np
@@ -1043,6 +1044,20 @@ def body_with_alloc():
     wp.zeros(10)
 
 
+def _assert_mempool_reclaimed(test, device, baseline):
+    # CUDA synchronization cannot wait for user-object destructors. Drain callbacks
+    # as they arrive, as in test_capture_release._drain_graph_destroy_callbacks.
+    deadline = time.monotonic() + 10.0
+    while True:
+        wp.synchronize_device(device)
+        used = wp.get_mempool_used_mem_current(device)
+        if used <= baseline:
+            return
+        if time.monotonic() >= deadline:
+            test.assertLessEqual(used, baseline, "Graph-owned backing was not reclaimed")
+        time.sleep(0.01)
+
+
 @unittest.skipUnless(wp.is_conditional_graph_supported(), "Conditional graph nodes not supported")
 def test_body_allocation_lifetime(test, device: DeviceLike):
     """Callable bodies own persistent backing across replay and either destruction order."""
@@ -1090,8 +1105,8 @@ def test_body_allocation_lifetime(test, device: DeviceLike):
                         holder["temporary"].fill_(3.0)
                         np.testing.assert_array_equal(holder["temporary"].numpy(), np.full(4, 3.0))
                         holder.clear()
-                    wp.synchronize_device()
-                    test.assertLessEqual(wp.get_mempool_used_mem_current(device), baseline)
+                    _assert_mempool_reclaimed(test, device, baseline)
+                    del body  # Drop default-argument references before the next baseline.
 
 
 @unittest.skipUnless(wp.is_conditional_graph_supported(), "Conditional graph nodes not supported")
@@ -1112,8 +1127,7 @@ def test_failed_body_allocation_lifetime(test, device: DeviceLike):
         wp.capture_launch(fill_capture.graph)
         np.testing.assert_array_equal(large_result.numpy(), np.full((2, 1000), 7.0, dtype=np.float32))
         np.testing.assert_array_equal(inline_result.numpy(), np.full((2, 992), 3.0, dtype=np.float32))
-        del fill_capture
-
+        # Keep fill_capture alive so its deferred release cannot affect the baselines.
         for failure in ("callback", "capture_end", "large_fill"):
             for retain_array in (False, True):
                 with test.subTest(failure=failure, retain_array=retain_array):
@@ -1160,8 +1174,7 @@ def test_failed_body_allocation_lifetime(test, device: DeviceLike):
                         holder["temporary"].fill_(3.0)
                         np.testing.assert_array_equal(holder["temporary"].numpy(), np.full(4, 3.0))
                         holder.clear()
-                    wp.synchronize_device()
-                    test.assertLessEqual(wp.get_mempool_used_mem_current(device), baseline)
+                    _assert_mempool_reclaimed(test, device, baseline)
                     with wp.ScopedCapture(force_module_load=False) as recovery:
                         result.fill_(5.0)
                     wp.capture_launch(recovery.graph)
