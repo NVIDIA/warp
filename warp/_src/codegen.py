@@ -3091,14 +3091,24 @@ class Adjoint:
                 if type(raw) in warp._src.types.scalar_types:
                     raw = raw.value
                 if isinstance(raw, builtins.int) or (isinstance(raw, builtins.float) and not math.isnan(raw)):
-                    # Repurpose the original arg variable: change its type to
-                    # the 64-bit target and clear its constant so it emits as
-                    # an uninitialized variable of the correct type, avoiding
-                    # compiler warnings from narrowing a 64-bit literal.
-                    arg.type = func.value_type
-                    arg.constant = None
-                    adj.add_forward(f"var_{arg} = {constant_str(func.value_type(raw))};")
-                    return return_value(arg)
+                    # A literal argument's Var belongs to this call alone, so
+                    # repurpose it as the 64-bit output: it then never emits a
+                    # narrowing constant initializer. Any other constant Var
+                    # (a named or global constant, an unrolled loop index) is
+                    # shared through the symbol table, and retyping it would
+                    # change every other use, e.g. `BINS - 1` after
+                    # `wp.float64(BINS)`; give the result its own Var instead.
+                    arg_node = next(iter(bound_arg_nodes.values()), None)
+                    owned_literal = isinstance(arg_node, ast.Constant) or (
+                        isinstance(arg_node, ast.UnaryOp)
+                        and isinstance(arg_node.op, ast.USub)
+                        and isinstance(arg_node.operand, ast.Constant)
+                    )
+                    output = arg if owned_literal else adj.add_var(func.value_type)
+                    output.type = func.value_type
+                    output.constant = None
+                    adj.add_forward(f"var_{output} = {constant_str(func.value_type(raw))};")
+                    return return_value(output)
 
         # if it is a user-function then build it recursively
         if not func_is_builtin:
