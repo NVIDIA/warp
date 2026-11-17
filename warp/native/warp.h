@@ -147,6 +147,10 @@ WP_API int wp_mesh_set_points_device(uint64_t id, wp::array_t<wp::vec3> points);
 WP_API void wp_mesh_set_velocities_host(uint64_t id, wp::array_t<wp::vec3> velocities);
 WP_API void wp_mesh_set_velocities_device(uint64_t id, wp::array_t<wp::vec3> velocities);
 
+// Data pointers the host mesh reads its points and velocities from.
+WP_API uint64_t wp_mesh_get_points_ptr_host(uint64_t id);
+WP_API uint64_t wp_mesh_get_velocities_ptr_host(uint64_t id);
+
 // Hash grid (type: 0=float16, 1=float32, 2=float64)
 WP_API uint64_t wp_hash_grid_create_host(int type, int dim_x, int dim_y, int dim_z);
 WP_API void wp_hash_grid_destroy_host(uint64_t id, int type);

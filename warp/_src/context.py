@@ -7764,6 +7764,11 @@ class Runtime:
             self.core.wp_mesh_set_velocities_host.argtypes = [ctypes.c_uint64, warp._src.types.array_t]
             self.core.wp_mesh_set_velocities_device.argtypes = [ctypes.c_uint64, warp._src.types.array_t]
 
+            self.core.wp_mesh_get_points_ptr_host.argtypes = [ctypes.c_uint64]
+            self.core.wp_mesh_get_points_ptr_host.restype = ctypes.c_uint64
+            self.core.wp_mesh_get_velocities_ptr_host.argtypes = [ctypes.c_uint64]
+            self.core.wp_mesh_get_velocities_ptr_host.restype = ctypes.c_uint64
+
             # Hash grid (type arg matches HashGridTypeId enum in hashgrid.cpp)
             self.core.wp_hash_grid_create_host.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int]
             self.core.wp_hash_grid_create_host.restype = ctypes.c_uint64
@@ -13583,6 +13588,18 @@ def _get_apic_capture_for_device(device: Device) -> APICapture | None:
     if apic_capture is not None and apic_capture.device == device:
         return apic_capture
     return None
+
+
+def _raise_if_cpu_capturing(device: Device, op_name: str) -> None:
+    """Raise :exc:`NotImplementedError` if a CPU graph capture is recording on ``device``.
+
+    CPU graph capture is record-only: a host operation without an APIC record would run once, at record time,
+    against capture-time data, and never re-run on replay.
+    """
+    if device.is_cpu and _get_apic_capture_for_device(device) is not None:
+        raise NotImplementedError(
+            f"{op_name} cannot be recorded during CPU graph capture; call it before capture_begin()"
+        )
 
 
 def capture_begin(

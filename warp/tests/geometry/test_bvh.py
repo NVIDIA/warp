@@ -1227,6 +1227,20 @@ def test_tile_bvh_query_ray_dense(test, device):
             )
 
 
+def test_bvh_construction_cpu_capture_raises(test, device):
+    """Reject building a BVH during CPU graph capture, where the build would never re-run on replay."""
+    lowers = wp.array([(0.0, 0.0, 0.0)], dtype=wp.vec3, device=device)
+    uppers = wp.array([(1.0, 1.0, 1.0)], dtype=wp.vec3, device=device)
+
+    with test.assertRaisesRegex(NotImplementedError, r"wp\.Bvh\(\) cannot be recorded during CPU graph capture"):
+        with wp.ScopedCapture(device=device, force_module_load=False):
+            wp.Bvh(lowers, uppers)
+
+    # The capture ended cleanly, so eager construction works again.
+    bvh = wp.Bvh(lowers, uppers)
+    test.assertNotEqual(bvh.id, 0)
+
+
 devices = get_test_devices()
 cuda_devices = get_cuda_test_devices()
 cuda_devices_with_mempool = get_cuda_test_devices_with_mempool()
@@ -1338,6 +1352,12 @@ class TestBvh(unittest.TestCase):
 
 
 add_function_test(TestBvh, "test_bvh_aabb", test_bvh_query_aabb, devices=devices)
+add_function_test(
+    TestBvh,
+    "test_bvh_construction_cpu_capture_raises",
+    test_bvh_construction_cpu_capture_raises,
+    devices=[d for d in devices if d.is_cpu],
+)
 add_function_test(TestBvh, "test_bvh_ray", test_bvh_query_ray, devices=devices)
 add_function_test(TestBvh, "test_bvh_sphere", test_bvh_query_sphere, devices=devices)
 add_function_test(TestBvh, "test_bvh_capsule", test_bvh_query_capsule, devices=devices)

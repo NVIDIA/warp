@@ -1962,6 +1962,17 @@ CPU graph capture currently supports:
   current ``lowers`` / ``uppers`` so a captured graph queries the updated tree.
   For CPU graphs, these operations are live-only and cannot be saved (see the
   limitations below).
+- Mesh updates (:meth:`wp.Mesh.refit() <warp.Mesh.refit>` and assignments to
+  :attr:`Mesh.points <warp.Mesh.points>` or :attr:`Mesh.velocities <warp.Mesh.velocities>`),
+  applied on replay in capture order and against the current point data, so a
+  captured graph queries the updated mesh. Like BVH updates, they are live-only.
+- Volume topology updates (:meth:`wp.Volume.rebuild() <warp.Volume.rebuild>`, and rebuildable
+  :meth:`Volume.allocate_by_tiles() <warp.Volume.allocate_by_tiles>` /
+  :meth:`Volume.allocate_by_voxels() <warp.Volume.allocate_by_voxels>` called inside the capture)
+  and the coordinate queries :meth:`Volume.get_tiles() <warp.Volume.get_tiles>` and
+  :meth:`Volume.get_voxels() <warp.Volume.get_voxels>`, re-run on replay against the
+  current points, point mask, and status arrays. Allocation reserves the volume's
+  storage at capture time; its topology is built on every replay. These are live-only too.
 - Live CPU graphs record :meth:`HashGrid.build() <warp.HashGrid.build>` in
   operation order. Each replay reads the current contents of the normalized
   point and optional group arrays, and the first replay may allocate or grow
@@ -2003,6 +2014,12 @@ Important CPU graph behavior and current limitations:
   ``wp.fabricarray`` / ``wp.indexedfabricarray``, raise :exc:`NotImplementedError` inside a CPU
   :class:`ScopedCapture`. So do strided and indexed fills with a value that holds an array, a
   non-zero ``wp.handle``, or a texture, directly or in a struct field.
+- Building a :class:`wp.Mesh <warp.Mesh>` or :class:`wp.Bvh <warp.Bvh>`, and allocating a
+  volume without rebuild capacity with :meth:`Volume.allocate_by_tiles() <warp.Volume.allocate_by_tiles>` or
+  :meth:`Volume.allocate_by_voxels() <warp.Volume.allocate_by_voxels>`, raise :exc:`NotImplementedError`
+  inside a CPU :class:`ScopedCapture`. These run on the host and cannot be recorded, so they would
+  run once at capture time and never on replay. Build meshes, BVHs, and volumes before the capture
+  and update them inside it with the recorded operations listed above.
 - Reusable launches with array parameters must be updated through Warp-level
   setters such as :meth:`Launch.set_param_at_index() <warp.Launch.set_param_at_index>`.
   Raw ctype array parameters passed through
@@ -2019,11 +2036,19 @@ Important CPU graph behavior and current limitations:
   the sparse status during a live CUDA graph capture (it requires a device-to-host
   readback) or during CPU graph capture (a recorded status update is applied only
   on replay). Read the status after replay instead.
-- :meth:`wp.Bvh.refit() <warp.Bvh.refit>` and
-  :meth:`wp.Bvh.rebuild() <warp.Bvh.rebuild>` have APIC records only for live
-  CPU graphs. Their BVH handle is process-local, so
+- :meth:`wp.Bvh.refit() <warp.Bvh.refit>`,
+  :meth:`wp.Bvh.rebuild() <warp.Bvh.rebuild>`, :meth:`wp.Mesh.refit() <warp.Mesh.refit>`,
+  assignments to :attr:`Mesh.points <warp.Mesh.points>` or
+  :attr:`Mesh.velocities <warp.Mesh.velocities>`, :meth:`wp.Volume.rebuild() <warp.Volume.rebuild>`,
+  :meth:`Volume.get_tiles() <warp.Volume.get_tiles>`, and
+  :meth:`Volume.get_voxels() <warp.Volume.get_voxels>` have APIC records only for live
+  CPU graphs. Their BVH, mesh, or volume handle is process-local, so
   :func:`wp.capture_save() <warp.capture_save>` rejects a graph that records
-  either operation.
+  any of these operations.
+- Recorded operations take effect only when the graph is launched. For example,
+  after capturing ``mesh.points = new_points``, :attr:`Mesh.points <warp.Mesh.points>`
+  returns ``new_points`` immediately, but kernels launched outside the graph keep
+  seeing the previous points until the first replay.
 - Recording is scoped to the capture's device: a host (CPU) helper op invoked while a CUDA
   graph capture is active executes immediately instead of being recorded into the CUDA graph,
   and vice versa.
@@ -2909,7 +2934,8 @@ The values for a Volume object can be modified in a Warp kernel using :func:`wp.
 .. note::
     Volumes created with ``rebuildable=True`` or explicit capacity arguments reserve persistent storage and can update
     their sparse topology in place with :meth:`Volume.rebuild() <warp.Volume.rebuild>`. Allocation and rebuild of these
-    volumes can be captured in CUDA graphs when CUDA memory-pool allocation is supported and enabled. Exact,
+    volumes can be captured in CPU graphs, and in CUDA graphs when CUDA memory-pool allocation is supported and
+    enabled. Exact,
     non-rebuildable volume allocation and active-topology queries such as
     :meth:`Volume.get_active_stats() <warp.Volume.get_active_stats>` require device synchronization and must occur
     outside CUDA graph capture.
@@ -3193,11 +3219,18 @@ undefined behavior when the kernel tries to access the freed memory.
 2. **Creating objects in functions** and returning only the ID  
 3. **Creating objects as temporary variables** that get overwritten
 
-**Graph capture**: When a graph captures a :class:`wp.HashGrid <warp.HashGrid>` ID, the caller must
-keep the ``HashGrid`` alive until every graph that captures its ID is destroyed.
-This caller-ownership contract is the same for live CPU and CUDA graphs. The
-graph retains the array inputs captured by ``HashGrid.build()``, including
-normalized views and their backing allocations.
+**Graph capture**: When a graph captures a :class:`wp.HashGrid <warp.HashGrid>`, :class:`wp.Mesh <warp.Mesh>`,
+or :class:`wp.Volume <warp.Volume>` ID, the caller must keep that object alive until every graph
+that captures its ID is destroyed.
+This caller-ownership contract is the same for live CPU and CUDA graphs.
+
+The graph itself keeps alive the arrays that these operations record:
+
+- The inputs of ``HashGrid.build()``, including normalized views and their backing allocations.
+- The arrays assigned to :attr:`Mesh.points <warp.Mesh.points>` or
+  :attr:`Mesh.velocities <warp.Mesh.velocities>`, and the arrays they replace.
+- The arrays passed to :meth:`Volume.rebuild() <warp.Volume.rebuild>`,
+  :meth:`Volume.get_tiles() <warp.Volume.get_tiles>`, or :meth:`Volume.get_voxels() <warp.Volume.get_voxels>`.
 
 Isosurface Extraction
 ---------------------

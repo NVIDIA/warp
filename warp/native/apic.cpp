@@ -1062,6 +1062,148 @@ void apic_record_hash_grid_update(
     state->operation_count++;
 }
 
+// Register the live region spanned by a strided 1D view and return the address
+// of its logical first element. Returns an empty address (region -1) for an
+// empty or null view.
+static APICAddress
+apic_resolve_live_strided(APICState* state, const void* data, int32_t count, int32_t stride, uint64_t element_size)
+{
+    APICAddress address;
+    if (count <= 0 || !data)
+        return address;
+
+    const uint64_t logical_address = reinterpret_cast<uint64_t>(data);
+    uint64_t low_address;
+    uint64_t span_size;
+    if (apic_compute_strided_span(count, stride, element_size, logical_address, &low_address, &span_size)) {
+        address = apic_resolve_live_ptr(state, low_address, span_size);
+        address.offset += logical_address - low_address;
+    }
+    return address;
+}
+
+void apic_record_mesh_refit(APICState* state, uint64_t mesh_id)
+{
+    if (!state)
+        return;
+    APICMeshUpdateRecord rec = {};
+    rec.header.op_type = APIC_OP_MESH_REFIT;
+    rec.header.total_size = sizeof(rec);
+    rec.mesh_id = mesh_id;
+    rec.data_region_id = -1;
+    rec.grad_region_id = -1;
+    state->append_bytes(&rec, sizeof(rec));
+    state->operation_count++;
+}
+
+void apic_record_mesh_set_array(
+    APICState* state,
+    APICOpType op_type,
+    uint64_t mesh_id,
+    const void* data,
+    const void* grad,
+    int32_t count,
+    int32_t stride,
+    uint16_t flags
+)
+{
+    if (!state)
+        return;
+
+    // Mesh updates are live-only (the handle is process-local), so retain region
+    // IDs without snapshotting the backing allocations, as HashGrid updates do.
+    const APICAddress data_address = apic_resolve_live_strided(state, data, count, stride, sizeof(wp::vec3));
+    const APICAddress grad_address = apic_resolve_live_strided(state, grad, count, stride, sizeof(wp::vec3));
+
+    APICMeshUpdateRecord rec = {};
+    rec.header.op_type = op_type;
+    rec.header.total_size = sizeof(rec);
+    rec.mesh_id = mesh_id;
+    rec.data_region_id = data_address.region_id;
+    rec.grad_region_id = grad_address.region_id;
+    rec.data_offset = data_address.offset;
+    rec.grad_offset = grad_address.offset;
+    rec.count = count;
+    rec.stride = stride;
+    rec.flags = flags;
+    state->append_bytes(&rec, sizeof(rec));
+    state->operation_count++;
+}
+
+void apic_record_volume_rebuild(
+    APICState* state,
+    APICVolumeRebuildKind kind,
+    uint64_t volume_id,
+    const void* points,
+    int32_t num_points,
+    const int32_t* point_mask,
+    const float transform[9],
+    const float translation[3],
+    bool points_in_world_space,
+    const void* bg_value,
+    uint32_t bg_value_size,
+    const char* bg_value_type,
+    const uint32_t* status
+)
+{
+    if (!state)
+        return;
+
+    // Volume rebuilds are live-only (the handle is process-local), so retain
+    // region IDs without snapshotting the backing allocations.
+    const APICAddress points_address = apic_resolve_live_strided(state, points, num_points, 12, 12);
+    const APICAddress mask_address
+        = apic_resolve_live_strided(state, point_mask, num_points, sizeof(int32_t), sizeof(int32_t));
+    const APICAddress status_address = apic_resolve_live_strided(state, status, 1, sizeof(uint32_t), sizeof(uint32_t));
+
+    APICVolumeRebuildRecord rec = {};
+    rec.header.op_type = APIC_OP_VOLUME_REBUILD;
+    rec.header.total_size = sizeof(rec);
+    rec.volume_id = volume_id;
+    rec.points_region_id = points_address.region_id;
+    rec.point_mask_region_id = mask_address.region_id;
+    rec.points_offset = points_address.offset;
+    rec.point_mask_offset = mask_address.offset;
+    rec.status_region_id = status_address.region_id;
+    rec.num_points = num_points;
+    rec.status_offset = status_address.offset;
+    memcpy(rec.transform, transform, sizeof(rec.transform));
+    memcpy(rec.translation, translation, sizeof(rec.translation));
+    rec.kind = kind;
+    rec.points_in_world_space = points_in_world_space ? 1 : 0;
+    // An oversized background value keeps its true size so stream validation
+    // rejects the record instead of replaying a truncated value.
+    rec.bg_value_size = bg_value ? bg_value_size : 0;
+    if (bg_value)
+        memcpy(rec.bg_value, bg_value, std::min<size_t>(bg_value_size, sizeof(rec.bg_value)));
+    if (bg_value_type)
+        strncpy(rec.bg_value_type, bg_value_type, sizeof(rec.bg_value_type) - 1);
+    state->append_bytes(&rec, sizeof(rec));
+    state->operation_count++;
+}
+
+void apic_record_volume_get_coords(
+    APICState* state, APICOpType op_type, uint64_t volume_id, const void* out, uint64_t out_size
+)
+{
+    if (!state)
+        return;
+
+    APICAddress out_address;
+    if (out && out_size > 0)
+        out_address = apic_resolve_live_ptr(state, reinterpret_cast<uint64_t>(out), out_size);
+
+    APICVolumeGetCoordsRecord rec = {};
+    rec.header.op_type = op_type;
+    rec.header.total_size = sizeof(rec);
+    rec.volume_id = volume_id;
+    rec.out_region_id = out_address.region_id;
+    rec.out_offset = out_address.offset;
+    rec.out_size = out_address.region_id >= 0 ? out_size : 0;
+    state->append_bytes(&rec, sizeof(rec));
+    state->operation_count++;
+}
+
 // ============================================================================
 // Conditional / Loop branch capture (APIC_OP_IF / APIC_OP_WHILE)
 // ============================================================================
@@ -2392,6 +2534,77 @@ bool apic_validate_operation_stream(
                 return false;
             }
             break;
+        case APIC_OP_MESH_REFIT:
+        case APIC_OP_MESH_SET_POINTS:
+        case APIC_OP_MESH_SET_VELOCITIES: {
+            if (header->total_size != sizeof(APICMeshUpdateRecord)) {
+                fprintf(stderr, "Warp APIC error: invalid mesh record size at operation %u\n", i);
+                return false;
+            }
+            const auto* rec = reinterpret_cast<const APICMeshUpdateRecord*>(ptr);
+            if (rec->mesh_id == 0 || rec->count < 0 || rec->data_region_id == 0 || rec->data_region_id < -1
+                || rec->grad_region_id == 0 || rec->grad_region_id < -1) {
+                fprintf(stderr, "Warp APIC error: invalid mesh record metadata at operation %u\n", i);
+                return false;
+            }
+            if (header->op_type == APIC_OP_MESH_REFIT) {
+                if (rec->count != 0 || rec->data_region_id != -1 || rec->grad_region_id != -1) {
+                    fprintf(stderr, "Warp APIC error: invalid mesh refit record at operation %u\n", i);
+                    return false;
+                }
+                break;
+            }
+            uint64_t low_offset;
+            uint64_t span_size;
+            if ((rec->count > 0 && rec->data_region_id < 1)
+                || !apic_compute_strided_span(
+                    rec->count, rec->stride, sizeof(wp::vec3), rec->data_offset, &low_offset, &span_size
+                )
+                || (rec->grad_region_id >= 1
+                    && !apic_compute_strided_span(
+                        rec->count, rec->stride, sizeof(wp::vec3), rec->grad_offset, &low_offset, &span_size
+                    ))) {
+                fprintf(stderr, "Warp APIC error: invalid mesh array span at operation %u\n", i);
+                return false;
+            }
+            break;
+        }
+        case APIC_OP_VOLUME_REBUILD: {
+            if (header->total_size != sizeof(APICVolumeRebuildRecord)) {
+                fprintf(stderr, "Warp APIC error: invalid volume rebuild record size at operation %u\n", i);
+                return false;
+            }
+            const auto* rec = reinterpret_cast<const APICVolumeRebuildRecord*>(ptr);
+            const bool has_bg_value = rec->kind == APIC_VOLUME_REBUILD_TILES;
+            if (rec->volume_id == 0 || rec->num_points < 0 || rec->kind > APIC_VOLUME_REBUILD_ACTIVE_VOXELS
+                || rec->points_in_world_space > 1 || rec->bg_value_size > sizeof(rec->bg_value)
+                || (has_bg_value && rec->bg_value_size == 0) || (!has_bg_value && rec->bg_value_size != 0)
+                || rec->bg_value_type[sizeof(rec->bg_value_type) - 1] != '\0') {
+                fprintf(stderr, "Warp APIC error: invalid volume rebuild metadata at operation %u\n", i);
+                return false;
+            }
+            if (rec->points_region_id == 0 || rec->points_region_id < -1 || rec->point_mask_region_id == 0
+                || rec->point_mask_region_id < -1 || rec->status_region_id == 0 || rec->status_region_id < -1
+                || (rec->num_points > 0 && rec->points_region_id < 1)) {
+                fprintf(stderr, "Warp APIC error: invalid volume rebuild region id at operation %u\n", i);
+                return false;
+            }
+            break;
+        }
+        case APIC_OP_VOLUME_GET_TILES:
+        case APIC_OP_VOLUME_GET_VOXELS: {
+            if (header->total_size != sizeof(APICVolumeGetCoordsRecord)) {
+                fprintf(stderr, "Warp APIC error: invalid volume query record size at operation %u\n", i);
+                return false;
+            }
+            const auto* rec = reinterpret_cast<const APICVolumeGetCoordsRecord*>(ptr);
+            if (rec->volume_id == 0 || rec->out_region_id == 0 || rec->out_region_id < -1
+                || (rec->out_region_id == -1 && rec->out_size != 0)) {
+                fprintf(stderr, "Warp APIC error: invalid volume query metadata at operation %u\n", i);
+                return false;
+            }
+            break;
+        }
         case APIC_OP_HASH_GRID_UPDATE: {
             if (header->total_size != sizeof(APICHashGridUpdateRecord)) {
                 fprintf(stderr, "Warp APIC error: invalid HashGrid update record size at operation %u\n", i);
@@ -2525,19 +2738,47 @@ bool apic_validate_operation_stream(
     return true;
 }
 
-// Human-facing name for a BVH op type (nullptr for any non-BVH op). BVH refit /
-// rebuild replay by re-invoking a host function on a process-local BVH handle,
-// so a stream that records one cannot cross a save/load boundary; naming the op
-// makes the rejection actionable.
-static const char* apic_bvh_op_name(uint32_t op_type)
+// Human-facing name and handle kind for an op that replays by re-invoking a
+// host function on a process-local handle (BVH and mesh updates). Such a stream
+// cannot cross a save/load boundary; naming the op makes the rejection
+// actionable. Returns false for any other op.
+static bool apic_live_only_op_name(uint32_t op_type, const char** op_name, const char** handle_kind)
 {
     switch (op_type) {
     case APIC_OP_BVH_REFIT:
-        return "wp.Bvh.refit()";
+        *op_name = "wp.Bvh.refit()";
+        *handle_kind = "BVH";
+        return true;
     case APIC_OP_BVH_REBUILD:
-        return "wp.Bvh.rebuild()";
+        *op_name = "wp.Bvh.rebuild()";
+        *handle_kind = "BVH";
+        return true;
+    case APIC_OP_MESH_REFIT:
+        *op_name = "wp.Mesh.refit()";
+        *handle_kind = "mesh";
+        return true;
+    case APIC_OP_MESH_SET_POINTS:
+        *op_name = "wp.Mesh.points assignment";
+        *handle_kind = "mesh";
+        return true;
+    case APIC_OP_MESH_SET_VELOCITIES:
+        *op_name = "wp.Mesh.velocities assignment";
+        *handle_kind = "mesh";
+        return true;
+    case APIC_OP_VOLUME_REBUILD:
+        *op_name = "wp.Volume.rebuild()";
+        *handle_kind = "volume";
+        return true;
+    case APIC_OP_VOLUME_GET_TILES:
+        *op_name = "wp.Volume.get_tiles()";
+        *handle_kind = "volume";
+        return true;
+    case APIC_OP_VOLUME_GET_VOXELS:
+        *op_name = "wp.Volume.get_voxels()";
+        *handle_kind = "volume";
+        return true;
     default:
-        return nullptr;
+        return false;
     }
 }
 
@@ -2560,6 +2801,12 @@ static uint32_t apic_stream_first_nonserializable_op(const uint8_t* data, uint32
         case APIC_OP_BVH_REBUILD:
         case APIC_OP_HASH_GRID_UPDATE:
         case APIC_OP_CHILD_GRAPH:
+        case APIC_OP_MESH_REFIT:
+        case APIC_OP_MESH_SET_POINTS:
+        case APIC_OP_MESH_SET_VELOCITIES:
+        case APIC_OP_VOLUME_REBUILD:
+        case APIC_OP_VOLUME_GET_TILES:
+        case APIC_OP_VOLUME_GET_VOXELS:
             return header->op_type;
         case APIC_OP_IF:
         case APIC_OP_WHILE: {
@@ -3321,6 +3568,124 @@ static bool apic_cpu_replay_stream(
             break;
         }
 
+        case APIC_OP_MESH_REFIT: {
+            const auto* rec = reinterpret_cast<const APICMeshUpdateRecord*>(ptr);
+            // g_apic_state is null during replay, so this re-runs the real refit
+            // against the replay-time points. Same entry point wp.Mesh.refit()
+            // dispatches to.
+            wp_mesh_refit_host(remap_handle(rec->mesh_id));
+            break;
+        }
+
+        case APIC_OP_MESH_SET_POINTS:
+        case APIC_OP_MESH_SET_VELOCITIES: {
+            const auto* rec = reinterpret_cast<const APICMeshUpdateRecord*>(ptr);
+            wp::array_t<wp::vec3> array;
+            array.ndim = 1;
+            array.shape.dims[0] = rec->count;
+            array.strides[0] = rec->stride;
+            array.flags = rec->flags;
+            if (rec->count > 0) {
+                const int32_t region_ids[2] = { rec->data_region_id, rec->grad_region_id };
+                const uint64_t offsets[2] = { rec->data_offset, rec->grad_offset };
+                wp::vec3* resolved[2] = { nullptr, nullptr };
+                for (int k = 0; k < 2; ++k) {
+                    if (region_ids[k] < 0)
+                        continue;
+                    uint64_t low_offset;
+                    uint64_t span_size;
+                    if (!apic_compute_strided_span(
+                            rec->count, rec->stride, sizeof(wp::vec3), offsets[k], &low_offset, &span_size
+                        )) {
+                        fprintf(stderr, "Warp APIC error: mesh array span invalid at operation %u\n", i);
+                        return false;
+                    }
+                    void* low_data = resolve_ptr(region_ids[k], low_offset, span_size);
+                    if (!low_data) {
+                        fprintf(stderr, "Warp APIC error: mesh array resolution failed at operation %u\n", i);
+                        return false;
+                    }
+                    resolved[k]
+                        = reinterpret_cast<wp::vec3*>(static_cast<uint8_t*>(low_data) + (offsets[k] - low_offset));
+                }
+                array.data = resolved[0];
+                array.grad = resolved[1];
+            }
+            if (header->op_type == APIC_OP_MESH_SET_POINTS)
+                wp_mesh_set_points_host(remap_handle(rec->mesh_id), array);
+            else
+                wp_mesh_set_velocities_host(remap_handle(rec->mesh_id), array);
+            break;
+        }
+
+        case APIC_OP_VOLUME_REBUILD: {
+            const auto* rec = reinterpret_cast<const APICVolumeRebuildRecord*>(ptr);
+            const uint64_t point_count = static_cast<uint64_t>(rec->num_points);
+            void* points = rec->num_points > 0
+                ? resolve_ptr(rec->points_region_id, rec->points_offset, point_count * 12)
+                : nullptr;
+            void* point_mask = rec->point_mask_region_id >= 0 && rec->num_points > 0
+                ? resolve_ptr(rec->point_mask_region_id, rec->point_mask_offset, point_count * sizeof(int32_t))
+                : nullptr;
+            void* status = rec->status_region_id >= 0
+                ? resolve_ptr(rec->status_region_id, rec->status_offset, sizeof(uint32_t))
+                : nullptr;
+            if ((rec->num_points > 0 && !points)
+                || (rec->point_mask_region_id >= 0 && rec->num_points > 0 && !point_mask)
+                || (rec->status_region_id >= 0 && !status)) {
+                fprintf(stderr, "Warp APIC error: volume rebuild pointer resolution failed at operation %u\n", i);
+                return false;
+            }
+            // The native entry points take mutable transform buffers.
+            float transform[9];
+            float translation[3];
+            memcpy(transform, rec->transform, sizeof(transform));
+            memcpy(translation, rec->translation, sizeof(translation));
+            const uint64_t volume_id = remap_handle(rec->volume_id);
+            const bool in_world_space = rec->points_in_world_space != 0;
+            // g_apic_state is null during replay, so these execute the real
+            // rebuild. Same entry points wp.Volume.rebuild() dispatches to.
+            switch (rec->kind) {
+            case APIC_VOLUME_REBUILD_TILES:
+                wp_volume_rebuild_from_tiles_host(
+                    volume_id, points, rec->num_points, static_cast<const int32_t*>(point_mask), transform, translation,
+                    in_world_space, rec->bg_value, rec->bg_value_size, rec->bg_value_type,
+                    static_cast<uint32_t*>(status)
+                );
+                break;
+            case APIC_VOLUME_REBUILD_INDEX_TILES:
+                wp_volume_index_rebuild_from_tiles_host(
+                    volume_id, points, rec->num_points, static_cast<const int32_t*>(point_mask), transform, translation,
+                    in_world_space, static_cast<uint32_t*>(status)
+                );
+                break;
+            default:
+                wp_volume_rebuild_from_active_voxels_host(
+                    volume_id, points, rec->num_points, static_cast<const int32_t*>(point_mask), transform, translation,
+                    in_world_space, static_cast<uint32_t*>(status)
+                );
+                break;
+            }
+            break;
+        }
+
+        case APIC_OP_VOLUME_GET_TILES:
+        case APIC_OP_VOLUME_GET_VOXELS: {
+            const auto* rec = reinterpret_cast<const APICVolumeGetCoordsRecord*>(ptr);
+            if (rec->out_region_id < 0)
+                break;
+            void* out = resolve_ptr(rec->out_region_id, rec->out_offset, rec->out_size);
+            if (!out) {
+                fprintf(stderr, "Warp APIC error: volume query pointer resolution failed at operation %u\n", i);
+                return false;
+            }
+            if (header->op_type == APIC_OP_VOLUME_GET_TILES)
+                wp_volume_get_tiles_host(remap_handle(rec->volume_id), out);
+            else
+                wp_volume_get_voxels_host(remap_handle(rec->volume_id), out);
+            break;
+        }
+
         case APIC_OP_HASH_GRID_UPDATE: {
             const auto* rec = reinterpret_cast<const APICHashGridUpdateRecord*>(ptr);
             uint64_t point_element_size;
@@ -3620,12 +3985,14 @@ bool wp_apic_state_save(APICState* state, const char* path, int target_arch, voi
     // unwinding do not count.
     const uint32_t nonserializable_op
         = apic_stream_first_nonserializable_op(state->operation_stream.data(), state->operation_count);
-    if (const char* bvh_op = apic_bvh_op_name(nonserializable_op)) {
+    const char* live_only_op;
+    const char* handle_kind;
+    if (apic_live_only_op_name(nonserializable_op, &live_only_op, &handle_kind)) {
         wp::set_error_string(
-            "Warp APIC error: Cannot serialize a captured graph that records %s: the BVH handle is process-local and "
+            "Warp APIC error: Cannot serialize a captured graph that records %s: the %s handle is process-local and "
             "cannot be "
             "saved to a .wrp. Replay the captured graph in-process instead of saving it.",
-            bvh_op
+            live_only_op, handle_kind
         );
         return false;
     }
@@ -4109,12 +4476,14 @@ static APICGraph* apic_load_graph_from_image(
         // since a loaded graph cannot reconstruct the live BVH pointer or grid_id.
         const uint32_t nonserializable_op
             = apic_stream_first_nonserializable_op(operation_stream.data(), operation_count);
-        if (const char* bvh_op = apic_bvh_op_name(nonserializable_op)) {
+        const char* live_only_op;
+        const char* handle_kind;
+        if (apic_live_only_op_name(nonserializable_op, &live_only_op, &handle_kind)) {
             wp::set_error_string(
-                "Warp APIC error: Cannot load a captured graph that records %s: the BVH handle is process-local and "
+                "Warp APIC error: Cannot load a captured graph that records %s: the %s handle is process-local and "
                 "cannot be "
                 "reconstructed from a .wrp.",
-                bvh_op
+                live_only_op, handle_kind
             );
             return nullptr;
         }

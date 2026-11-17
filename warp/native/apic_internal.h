@@ -615,6 +615,49 @@ void apic_record_bvh_refit(APICState* state, uint64_t bvh_id);
 // construction algorithm (a BVH_CONSTRUCTOR_* value).
 void apic_record_bvh_rebuild(APICState* state, uint64_t bvh_id, int32_t constructor_type);
 
+// Records a wp_mesh_refit_host() call. ``mesh_id`` is a live mesh handle,
+// replayed in-process by re-invoking wp_mesh_refit_host().
+void apic_record_mesh_refit(APICState* state, uint64_t mesh_id);
+
+// Records a wp_mesh_set_points_host() (APIC_OP_MESH_SET_POINTS) or
+// wp_mesh_set_velocities_host() (APIC_OP_MESH_SET_VELOCITIES) call with the
+// assigned 1D vec3 array and its wp::array_t flags.
+void apic_record_mesh_set_array(
+    APICState* state,
+    APICOpType op_type,
+    uint64_t mesh_id,
+    const void* data,
+    const void* grad,
+    int32_t count,
+    int32_t stride,
+    uint16_t flags
+);
+
+// Records a host volume rebuild of the given APICVolumeRebuildKind. The
+// transform, translation, and background value are copied into the record.
+void apic_record_volume_rebuild(
+    APICState* state,
+    APICVolumeRebuildKind kind,
+    uint64_t volume_id,
+    const void* points,
+    int32_t num_points,
+    const int32_t* point_mask,
+    const float transform[9],
+    const float translation[3],
+    bool points_in_world_space,
+    const void* bg_value,
+    uint32_t bg_value_size,
+    const char* bg_value_type,
+    const uint32_t* status
+);
+
+// Records a wp_volume_get_tiles_host() (APIC_OP_VOLUME_GET_TILES) or
+// wp_volume_get_voxels_host() (APIC_OP_VOLUME_GET_VOXELS) call that may write
+// up to ``out_size`` bytes at ``out``.
+void apic_record_volume_get_coords(
+    APICState* state, APICOpType op_type, uint64_t volume_id, const void* out, uint64_t out_size
+);
+
 void apic_record_hash_grid_update(
     APICState* state,
     uint64_t grid_id,

@@ -6373,6 +6373,95 @@ def test_capture_with_bvh_rebuild_save_rejected(test, device):
         test.assertFalse(os.path.exists(path + ".wrp"))
 
 
+def _make_triangle_mesh(device):
+    points = wp.array([(0.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, 1.0, 0.0)], dtype=wp.vec3, device=device)
+    velocities = wp.zeros(3, dtype=wp.vec3, device=device)
+    indices = wp.array([0, 1, 2], dtype=wp.int32, device=device)
+    return wp.Mesh(points=points, indices=indices, velocities=velocities)
+
+
+def _assert_capture_save_rejected(test, graph, name, pattern):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, name)
+        with test.assertRaisesRegex(RuntimeError, pattern):
+            wp.capture_save(graph, path)
+        test.assertFalse(os.path.exists(path + ".wrp"))
+
+
+def test_capture_with_mesh_refit_save_rejected(test, device):
+    """Reject saving a graph that records a mesh refit, which replays against a process-local mesh handle."""
+    mesh = _make_triangle_mesh(device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        mesh.refit()
+
+    _assert_capture_save_rejected(test, capture.graph, "mesh_refit_should_not_save", r"wp\.Mesh\.refit\(\)")
+
+
+def test_capture_with_mesh_points_save_rejected(test, device):
+    """Reject saving a graph that records a mesh points assignment."""
+    mesh = _make_triangle_mesh(device)
+    new_points = wp.clone(mesh.points)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        mesh.points = new_points
+
+    _assert_capture_save_rejected(test, capture.graph, "mesh_points_should_not_save", r"wp\.Mesh\.points")
+
+
+def test_capture_with_mesh_velocities_save_rejected(test, device):
+    """Reject saving a graph that records a mesh velocities assignment."""
+    mesh = _make_triangle_mesh(device)
+    new_velocities = wp.clone(mesh.velocities)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        mesh.velocities = new_velocities
+
+    _assert_capture_save_rejected(test, capture.graph, "mesh_velocities_should_not_save", r"wp\.Mesh\.velocities")
+
+
+def _make_rebuildable_voxel_volume(device):
+    return wp.Volume.allocate_by_voxels(
+        wp.array([[0, 0, 0]], dtype=wp.int32, device=device),
+        voxel_size=1.0,
+        device=device,
+        rebuildable=True,
+        max_active_voxels=2,
+        max_leaf_nodes=2,
+        max_lower_nodes=2,
+        max_upper_nodes=2,
+    )
+
+
+def test_capture_with_volume_rebuild_save_rejected(test, device):
+    """Reject saving a graph that records a volume rebuild, which replays against a process-local volume handle."""
+    volume = _make_rebuildable_voxel_volume(device)
+    points = wp.array([[1, 2, 3]], dtype=wp.int32, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        volume.rebuild(points)
+
+    _assert_capture_save_rejected(test, capture.graph, "volume_rebuild_should_not_save", r"wp\.Volume\.rebuild\(\)")
+
+
+def test_capture_with_volume_get_voxels_save_rejected(test, device):
+    """Reject saving a graph that records a volume voxel query."""
+    volume = _make_rebuildable_voxel_volume(device)
+    voxels = wp.zeros((2, 3), dtype=wp.int32, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        volume.get_voxels(out=voxels)
+
+    _assert_capture_save_rejected(
+        test, capture.graph, "volume_get_voxels_should_not_save", r"wp\.Volume\.get_voxels\(\)"
+    )
+
+
 def test_discarded_bvh_op_does_not_block_save(test, device):
     """Verify that a BVH op discarded when a branch body unwinds must not block a later save.
 
@@ -6441,6 +6530,36 @@ add_function_test(
     TestApic,
     "test_capture_with_bvh_rebuild_save_rejected",
     test_capture_with_bvh_rebuild_save_rejected,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_with_mesh_refit_save_rejected",
+    test_capture_with_mesh_refit_save_rejected,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_with_mesh_points_save_rejected",
+    test_capture_with_mesh_points_save_rejected,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_with_mesh_velocities_save_rejected",
+    test_capture_with_mesh_velocities_save_rejected,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_with_volume_rebuild_save_rejected",
+    test_capture_with_volume_rebuild_save_rejected,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestApic,
+    "test_capture_with_volume_get_voxels_save_rejected",
+    test_capture_with_volume_get_voxels_save_rejected,
     devices=[d for d in devices if d.is_cpu],
 )
 add_function_test(

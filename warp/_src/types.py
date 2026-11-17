@@ -14,6 +14,7 @@ import operator
 import struct
 import sys
 import types
+import weakref
 import zlib
 from collections.abc import Callable, Mapping, Sequence
 from typing import (
@@ -6595,6 +6596,10 @@ class Bvh:
             For grouped BVHs built with ``"sah"`` or ``"median"``, the traversal depth limit applies separately
             to each group subtree. Start queries at the desired group's root to stay within this limit.
             Traversal from the global root is not guaranteed to fit the query stack for deep grouped trees.
+
+        Raises:
+            NotImplementedError: If called during CPU graph capture, which cannot record the build. Build the BVH
+                before capture and update it with :meth:`refit` or :meth:`rebuild` instead.
         """
         if len(lowers) != len(uppers):
             raise RuntimeError("The same number of lower and upper bounds must be provided")
@@ -6615,6 +6620,8 @@ class Bvh:
                 raise RuntimeError("groups must live on the same device as lowers/uppers")
             if len(groups) != len(lowers):
                 raise RuntimeError("groups must have the same length as lowers/uppers")
+
+        warp._src.context._raise_if_cpu_capturing(lowers.device, "wp.Bvh()")
 
         self.device = lowers.device
         self.lowers = lowers
@@ -6800,6 +6807,7 @@ class Mesh:
     def __new__(cls, *args, **kwargs):
         instance = super().__new__(cls)
         instance.id = None
+        instance._capture_retained_arrays = []
         return instance
 
     def __init__(
@@ -6837,9 +6845,15 @@ class Mesh:
               value based on the ``bvh_constructor`` will be used.
             groups: Optional array of triangle group indices of data type :class:`warp.int32`.
               Should be a 1D array with shape ``(num_tris)``.
+
+        Raises:
+            NotImplementedError: If called during CPU graph capture, which cannot record the build. Build the mesh
+              before capture and update it with :meth:`refit` or by assigning :attr:`points` instead.
         """
         if points.device != indices.device:
             raise RuntimeError("Mesh points and indices must live on the same device")
+
+        warp._src.context._raise_if_cpu_capturing(points.device, "wp.Mesh()")
 
         if points.dtype != vec3 or not points.is_contiguous:
             raise RuntimeError("Mesh points should be a contiguous array of type wp.vec3")
@@ -6949,6 +6963,11 @@ class Mesh:
         """Refit the BVH to points.
 
         This should be called after users modify the ``points`` data.
+
+        Note:
+            Under a CPU graph capture the refit is recorded and re-run on replay against the
+            current ``points``. Such a graph is replay-only and cannot be serialized
+            with :func:`warp.capture_save`.
         """
 
         if self.device.is_cpu:
@@ -6958,6 +6977,40 @@ class Mesh:
                 raise RuntimeError(f"Failed to refit mesh: {self.runtime.get_error_string()}")
             self.runtime.verify_cuda_device(self.device)
 
+    def _retain_assigned_arrays(self, current, new):
+        """Keep the arrays an assignment swaps alive while the native mesh can still read them.
+
+        Under CPU graph capture, an assignment takes effect only at replay. Until then the native mesh keeps reading
+        ``current``; each replay repoints it to ``new``, and it keeps reading ``new`` after the graph is destroyed,
+        even if an eager assignment came in between. The graph keeps both arrays alive for its lifetime, and the
+        mesh keeps them until :meth:`_release_unread_arrays` finds that neither can be read anymore.
+        """
+        apic_capture = warp._src.context._get_apic_capture_for_device(self.device)
+        if apic_capture is None:
+            return
+
+        capture_ref = weakref.ref(apic_capture)
+        for arr in (current, new):
+            apic_capture.track_array(arr)
+            apic_capture.track_array(arr.grad)
+            self._capture_retained_arrays.append((capture_ref, arr))
+
+    def _release_unread_arrays(self):
+        """Release the arrays kept by :meth:`_retain_assigned_arrays` that the native mesh can no longer read.
+
+        An array stays readable while its graph is alive, since a replay can repoint the mesh to it, and while the
+        native mesh points at it.
+        """
+        read_ptrs = (
+            self.runtime.core.wp_mesh_get_points_ptr_host(self.id),
+            self.runtime.core.wp_mesh_get_velocities_ptr_host(self.id),
+        )
+        self._capture_retained_arrays = [
+            (capture_ref, arr)
+            for capture_ref, arr in self._capture_retained_arrays
+            if capture_ref() is not None or arr.ptr in read_ptrs
+        ]
+
     @property
     def points(self):
         """The array of mesh's vertex positions of type :class:`warp.vec3`.
@@ -6966,6 +7019,10 @@ class Mesh:
         but :meth:`refit` must be called manually after such modifications. Alternatively, assigning a new array
         to this property is also supported. The new array must have the same shape as the original, and once assigned,
         The :class:`Mesh` will automatically perform a refit operation based on the new vertex positions.
+
+        Under a CPU graph capture, an assignment is recorded and applied on each replay, in capture order, followed by
+        the refit. The property returns the new array immediately, but kernels see it only once the graph is
+        launched. Such a graph is replay-only and cannot be serialized with :func:`warp.capture_save`.
         """
         return self._points
 
@@ -6983,9 +7040,12 @@ class Mesh:
                 f"new points' shape is {points_new.shape}, while the old points' shape is {self._points.shape}."
             )
 
+        if self.device.is_cpu:
+            self._retain_assigned_arrays(self._points, points_new)
         self._points = points_new
         if self.device.is_cpu:
             self.runtime.core.wp_mesh_set_points_host(self.id, points_new.__ctype__())
+            self._release_unread_arrays()
         else:
             if not self.runtime.core.wp_mesh_set_points_device(self.id, points_new.__ctype__()):
                 raise RuntimeError(f"Failed to set mesh points: {self.runtime.get_error_string()}")
@@ -6997,6 +7057,10 @@ class Mesh:
 
         This is a property with a custom setter method. Users can modify the velocities in-place,
         or assign a new array to this property. No refitting is needed for changing velocities.
+
+        Under a CPU graph capture, an assignment is recorded and applied on each replay, in capture order. The property
+        returns the new array immediately, but kernels see it only once the graph is launched. Such a graph is
+        replay-only and cannot be serialized with :func:`warp.capture_save`.
         """
         return self._velocities
 
@@ -7014,9 +7078,12 @@ class Mesh:
                 f"new points' shape is {velocities_new.shape}, while the old points' shape is {self._velocities.shape}."
             )
 
+        if self.device.is_cpu:
+            self._retain_assigned_arrays(self._velocities, velocities_new)
         self._velocities = velocities_new
         if self.device.is_cpu:
             self.runtime.core.wp_mesh_set_velocities_host(self.id, velocities_new.__ctype__())
+            self._release_unread_arrays()
         else:
             self.runtime.core.wp_mesh_set_velocities_device(self.id, velocities_new.__ctype__())
             self.runtime.verify_cuda_device(self.device)
@@ -7150,6 +7217,11 @@ class Volume:
                 a new array will be allocated. ``out`` must be a contiguous array
                 of ``tile_count`` ``vec3i`` or ``tile_count x 3`` ``int32``
                 on the same device as this volume.
+
+        Note:
+            Under a CPU graph capture the query is recorded and re-run on replay, so ``out`` receives the
+            coordinates of the topology at replay time, including that of a rebuild recorded earlier in the
+            capture. Such a graph is replay-only and cannot be serialized with :func:`warp.capture_save`.
         """
 
         if self.id == 0:
@@ -7166,6 +7238,7 @@ class Volume:
             )
 
         if self.device.is_cpu:
+            self._track_capture_arrays(out)
             self.runtime.core.wp_volume_get_tiles_host(self.id, out.ptr)
         else:
             self.runtime.core.wp_volume_get_tiles_device(self.id, out.ptr)
@@ -7216,6 +7289,11 @@ class Volume:
             out: If provided, use the `out` array to store the voxel coordinates, otherwise
                 a new array will be allocated. `out` must be a contiguous array of ``voxel_count`` ``vec3i`` or ``voxel_count x 3`` ``int32``
                 on the same device as this volume.
+
+        Note:
+            Under a CPU graph capture the query is recorded and re-run on replay, so ``out`` receives the
+            coordinates of the topology at replay time, including that of a rebuild recorded earlier in the
+            capture. Such a graph is replay-only and cannot be serialized with :func:`warp.capture_save`.
         """
 
         if self.id == 0:
@@ -7232,6 +7310,7 @@ class Volume:
             )
 
         if self.device.is_cpu:
+            self._track_capture_arrays(out)
             self.runtime.core.wp_volume_get_voxels_host(self.id, out.ptr)
         else:
             self.runtime.core.wp_volume_get_voxels_device(self.id, out.ptr)
@@ -7926,6 +8005,13 @@ class Volume:
         translation_buf = (ctypes.c_float * 3)(translation[0], translation[1], translation[2])
         return transform_buf, translation_buf
 
+    def _track_capture_arrays(self, *arrays):
+        """Keep the arrays a CPU graph records for this volume alive for the graph's lifetime."""
+        apic_capture = warp._src.context._get_apic_capture_for_device(self.device)
+        if apic_capture is not None:
+            for arr in arrays:
+                apic_capture.track_array(arr)
+
     def _grid_transform_buffers(self):
         grid_info = self.get_grid_info()
         return Volume._fill_transform_buffers(None, grid_info.translation, grid_info.transform_matrix)
@@ -7994,9 +8080,11 @@ class Volume:
         reserved capacities and :meth:`get_active_stats` to inspect the current active topology.
 
         Rebuildable CUDA volumes can be allocated during CUDA graph capture when CUDA memory-pool allocation is
-        supported and enabled. Exact, non-rebuildable volume allocation is not graph-capture safe because determining
-        the exact topology size requires device synchronization. Active-topology queries such as
-        :meth:`get_active_stats` must also be performed outside graph capture.
+        supported and enabled. Rebuildable CPU volumes can be allocated during CPU graph capture: the storage is
+        reserved at capture time, and the topology is built from the points on every replay. Exact, non-rebuildable
+        volume allocation is not graph-capture safe because determining the exact topology size requires device
+        synchronization. Active-topology queries such as :meth:`get_active_stats` must also be performed outside
+        graph capture.
 
         Args:
             tile_points (:class:`warp.array`): Array of positions that define the tiles to be allocated.
@@ -8032,6 +8120,7 @@ class Volume:
             ValueError: If neither ``voxel_size`` nor ``transform`` is provided.
             ValueError: If both ``voxel_size`` and ``transform`` are provided.
             ValueError: If a rebuild capacity is not positive or does not fit in ``uint32``.
+            NotImplementedError: If a non-rebuildable volume is allocated during CPU graph capture.
 
         """
         device = warp.get_device(device)
@@ -8049,6 +8138,8 @@ class Volume:
 
         transform_buf, translation_buf = Volume._fill_transform_buffers(voxel_size, translation, transform)
         rebuildable = rebuildable or max_tiles is not None or max_lower_nodes is not None or max_upper_nodes is not None
+        if not rebuildable:
+            warp._src.context._raise_if_cpu_capturing(device, "wp.Volume.allocate_by_tiles() without rebuild capacity")
         status = _volume_rebuild_status_array(status, device) if rebuildable and status is not None else None
         max_tiles_c = _volume_rebuild_capacity(max_tiles, tile_points.shape[0], "max_tiles") if rebuildable else 0
         max_lower_nodes_c = (
@@ -8060,6 +8151,10 @@ class Volume:
         status_ptr = ctypes.c_void_p(status.ptr) if status is not None else ctypes.c_void_p(0)
         point_mask = _volume_point_mask_array(point_mask, tile_points.shape[0], device)
         point_mask_ptr = ctypes.c_void_p(0 if point_mask is None else point_mask.ptr)
+
+        if rebuildable and device.is_cpu:
+            # Under CPU graph capture, the native allocation records its rebuild from these arrays.
+            volume._track_capture_arrays(tile_points, point_mask, status)
 
         if bg_value is None:
             if volume.device.is_cuda:
@@ -8203,9 +8298,11 @@ class Volume:
         reserved capacities and :meth:`get_active_stats` to inspect the current active topology.
 
         Rebuildable CUDA volumes can be allocated during CUDA graph capture when CUDA memory-pool allocation is
-        supported and enabled. Exact, non-rebuildable volume allocation is not graph-capture safe because determining
-        the exact topology size requires device synchronization. Active-topology queries such as
-        :meth:`get_active_stats` must also be performed outside graph capture.
+        supported and enabled. Rebuildable CPU volumes can be allocated during CPU graph capture: the storage is
+        reserved at capture time, and the topology is built from the points on every replay. Exact, non-rebuildable
+        volume allocation is not graph-capture safe because determining the exact topology size requires device
+        synchronization. Active-topology queries such as :meth:`get_active_stats` must also be performed outside
+        graph capture.
 
         Unspecified node capacities use conservative sparse-grid defaults. In particular, ``max_leaf_nodes`` defaults
         to ``max_active_voxels`` because arbitrary voxel points can place one active voxel in each leaf node. For dense
@@ -8242,6 +8339,7 @@ class Volume:
             ValueError: If neither ``voxel_size`` nor ``transform`` is provided.
             ValueError: If both ``voxel_size`` and ``transform`` are provided.
             ValueError: If a rebuild capacity is not positive or does not fit in ``uint32``.
+            NotImplementedError: If a non-rebuildable volume is allocated during CPU graph capture.
         """
         device = warp.get_device(device)
 
@@ -8265,6 +8363,8 @@ class Volume:
             or max_upper_nodes is not None
         )
 
+        if not rebuildable:
+            warp._src.context._raise_if_cpu_capturing(device, "wp.Volume.allocate_by_voxels() without rebuild capacity")
         status = _volume_rebuild_status_array(status, device) if rebuildable and status is not None else None
         max_active_voxels_c = (
             _volume_rebuild_capacity(max_active_voxels, voxel_points.shape[0], "max_active_voxels")
@@ -8283,6 +8383,10 @@ class Volume:
         status_ptr = ctypes.c_void_p(status.ptr) if status is not None else ctypes.c_void_p(0)
         point_mask = _volume_point_mask_array(point_mask, voxel_points.shape[0], device)
         point_mask_ptr = ctypes.c_void_p(0 if point_mask is None else point_mask.ptr)
+
+        if rebuildable and device.is_cpu:
+            # Under CPU graph capture, the native allocation records its rebuild from these arrays.
+            volume._track_capture_arrays(voxel_points, point_mask, status)
 
         if volume.device.is_cuda:
             volume.id = volume.runtime.core.wp_volume_from_active_voxels_device(
@@ -8327,6 +8431,7 @@ class Volume:
                 max_lower_nodes_c,
                 max_upper_nodes_c,
             )
+
         return volume
 
     def rebuild(self, points: array, status: array | None = None, point_mask: array | None = None) -> array | None:
@@ -8349,6 +8454,11 @@ class Volume:
 
         Returns:
             The ``status`` array if one was provided, otherwise ``None``.
+
+        Note:
+            Under a CPU graph capture the rebuild is recorded and re-run on replay against the current ``points``,
+            ``point_mask``, and ``status``. Such a graph is replay-only and cannot be serialized with
+            :func:`warp.capture_save`.
 
         Raises:
             RuntimeError: If the volume is not rebuildable.
@@ -8383,6 +8493,8 @@ class Volume:
         point_mask_ptr = ctypes.c_void_p(0 if point_mask is None else point_mask.ptr)
         in_world_space = type_scalar_type(tile_points.dtype) is float32
         transform_buf, translation_buf = self._grid_transform_buffers()
+        if self.device.is_cpu:
+            self._track_capture_arrays(tile_points, point_mask, status)
 
         if self.is_index:
             if self.device.is_cuda:
@@ -8461,6 +8573,8 @@ class Volume:
         point_mask_ptr = ctypes.c_void_p(0 if point_mask is None else point_mask.ptr)
         in_world_space = type_scalar_type(voxel_points.dtype) is float32
         transform_buf, translation_buf = self._grid_transform_buffers()
+        if self.device.is_cpu:
+            self._track_capture_arrays(voxel_points, point_mask, status)
 
         if self.device.is_cuda:
             self.runtime.core.wp_volume_rebuild_from_active_voxels_device(
