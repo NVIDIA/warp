@@ -99,7 +99,7 @@ def tet_energy(p0: Any, p1: Any, p2: Any, p3: Any):
 # ---------------------------------------------------------------------------
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def spring_jet(x: wp.array[wp.vec3], elem: wp.array[wp.vec2i], g: wp.array[wp.vec3]):
     t = wp.tid()
     e = elem[t]
@@ -116,7 +116,7 @@ def spring_scalar(x: wp.array[wp.vec3], elem: wp.array[wp.vec2i], en: wp.array[w
     en[t] = spring_energy(x[e[0]], x[e[1]])
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def triangle_jet(x: wp.array[wp.vec3], elem: wp.array[wp.vec3i], g: wp.array[wp.vec3]):
     t = wp.tid()
     e = elem[t]
@@ -134,7 +134,7 @@ def triangle_scalar(x: wp.array[wp.vec3], elem: wp.array[wp.vec3i], en: wp.array
     en[t] = triangle_energy(x[e[0]], x[e[1]], x[e[2]])
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def tet_jet(x: wp.array[wp.vec3], elem: wp.array[wp.vec4i], g: wp.array[wp.vec3]):
     t = wp.tid()
     e = elem[t]
