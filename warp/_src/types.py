@@ -4636,7 +4636,35 @@ class array(Array[DType, NDim]):
         index_arrays = {}
 
         for idx, k in enumerate(key):
-            if isinstance(k, slice):
+            if isinstance(k, slice) and k.step is not None and k.step < 0:
+                # Negative steps walk the dimension backwards from ``start``. A missing
+                # ``stop`` means "past index 0", which -1 cannot express after normalization.
+                dim_size = self.shape[idx]
+                start, stop, step = k.start, k.stop, k.step
+                if start is None:
+                    start = dim_size - 1
+                elif start < 0:
+                    start = dim_size + start
+                if stop is None:
+                    stop = -1
+                else:
+                    if stop < 0:
+                        stop = dim_size + stop
+                    if stop < 0 or stop >= dim_size:
+                        raise RuntimeError(f"Invalid indexing in slice: {start}:{stop}:{step}")
+
+                if start < 0 or start >= dim_size:
+                    raise RuntimeError(f"Invalid indexing in slice: {start}:{stop}:{step}")
+                if stop > start:
+                    raise RuntimeError(f"Invalid indexing in slice: {start}:{stop}:{step}")
+
+                new_shape.append((start - stop - 1) // -step + 1 if start > stop else 0)
+                new_strides.append(self.strides[idx] * step)
+
+                # cast stride to int to avoid Numpy int32 overflow when adding to large pointer addresses
+                ptr_offset += int(self.strides[idx]) * start
+
+            elif isinstance(k, slice):
                 start, stop, step = k.start, k.stop, k.step
                 if start is None:
                     start = 0

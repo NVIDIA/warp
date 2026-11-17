@@ -4908,6 +4908,41 @@ class TestArray(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "slice step cannot be zero"):
             _ = array[::0]
 
+    def test_negative_step_slice_at_python_scope(self):
+        """Verify that Python-scope negative-step array slices match NumPy and in-kernel slices."""
+        np_arr = np.arange(24, dtype=np.float32).reshape(6, 4)
+        arr = wp.array(np_arr, dtype=float, device="cpu", requires_grad=True)
+
+        for key in (
+            np.s_[::-1],
+            np.s_[3::-1],
+            np.s_[5::-2],
+            np.s_[-1::-2],
+            np.s_[:0:-1],
+            np.s_[4:1:-2],
+            np.s_[-2:-5:-1],
+            np.s_[2:2:-1],
+            np.s_[1, ::-3],
+            np.s_[::-2, 3::-2],
+        ):
+            with self.subTest(key=key):
+                view = arr[key]
+                expected = np_arr[key]
+                self.assertEqual(view.shape, expected.shape)
+                assert_np_equal(view.numpy(), expected)
+                self.assertEqual(view.grad.shape, expected.shape)
+
+        # Writes through a reversed view land in the right elements.
+        arr[::-1, 3::-2].fill_(-1.0)
+        np_arr[::-1, 3::-2] = -1.0
+        assert_np_equal(arr.numpy(), np_arr)
+
+        # Out-of-range bounds still raise, as for positive steps.
+        for key in (np.s_[4::-1], np.s_[:4:-1], np.s_[:-5:-1], np.s_[1:3:-1]):
+            with self.subTest(key=key):
+                with self.assertRaisesRegex(RuntimeError, "Invalid indexing in slice"):
+                    _ = arr[0][key]
+
     def test_array_new_del(self):
         """Delete an array that was allocated without initialization."""
         instance = wp.array.__new__(wp.array)
