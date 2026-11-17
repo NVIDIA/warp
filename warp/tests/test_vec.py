@@ -710,6 +710,63 @@ def test_normalize(test, device, dtype, register_kernels=False):
         tape1.zero()
 
 
+@wp.kernel
+def length_normalize_kernel(v: wp.array[Any], lengths: wp.array[Any], units: wp.array[Any]):
+    i = wp.tid()
+    lengths[i] = wp.length(v[i])
+    units[i] = wp.normalize(v[i])
+
+
+for _vec in (wp.vec2h, wp.vec3h, wp.vec4h):
+    wp.overload(length_normalize_kernel, [wp.array[_vec], wp.array[wp.float16], wp.array[_vec]])
+
+
+def check_length_normalize_fp16(tape, x, lengths, units, dtype, ref, seed_scales, device):
+    """Check float16 length and normalize values and gradients against a float64 reference."""
+    n = len(ref)
+    ref_lengths = np.linalg.norm(ref, axis=1)
+    ref_units = ref / ref_lengths[:, None]
+    np.testing.assert_array_equal(lengths.numpy(), ref_lengths.astype(np.float16))
+    np.testing.assert_allclose(units.numpy(), ref_units.astype(np.float16), rtol=1e-3, atol=0)
+
+    tape.backward(grads={lengths: wp.ones(n, dtype=wp.float16, device=device)})
+    np.testing.assert_allclose(x.grad.numpy(), ref_units.astype(np.float16), rtol=1e-3, atol=0)
+    tape.zero()
+
+    seed = np.array([1.0, -0.5, 2.0, 0.25])[: ref.shape[1]]
+    g = np.array([seed * k for k in seed_scales])
+    tape.backward(grads={units: wp.array(g, dtype=dtype, device=device)})
+    ref_grad = (g - ref_units * np.sum(ref_units * g, axis=1, keepdims=True)) / ref_lengths[:, None]
+    np.testing.assert_allclose(x.grad.numpy(), ref_grad.astype(np.float16), rtol=2e-3, atol=0)
+    tape.zero()
+
+    # A seed parallel to the input has a zero gradient. Allow float32 rounding scaled by |seed| / length.
+    g = ref / 2.0 ** np.floor(np.log2(np.max(np.abs(ref), axis=1, keepdims=True)))
+    tape.backward(grads={units: wp.array(g, dtype=dtype, device=device)})
+    scale = ref_lengths / np.linalg.norm(g, axis=1)
+    np.testing.assert_allclose(x.grad.numpy() * scale[:, None], 0.0, atol=2.0**-20)
+    tape.zero()
+
+
+def test_length_normalize_fp16_range(test, device):
+    # Squared components overflow float16 at the first scale and underflow at the others. In the last row,
+    # the length is not a float16 value, so gradients that reuse the rounded length are wrong there.
+    # 1 / length overflows at the two smallest scales, so smaller seeds keep the gradients representable.
+    cases = ((wp.vec2h, [3, 4], [1, 1]), (wp.vec3h, [2, 3, 6], [1, 1, 1]), (wp.vec4h, [1, 2, 2, 4], [1, 1, 1, 2]))
+    scales = [2.0**7, 2.0**-12, 2.0**-20]
+    seed_scales = [1.0, 1.0, 2.0**-4, 2.0**-10]
+    for vec_type, base, tiny in cases:
+        with test.subTest(vec_type=vec_type.__name__):
+            ref = np.array([np.array(base, dtype=np.float64) * s for s in scales] + [np.array(tiny) * 2.0**-24])
+            v = wp.array(ref, dtype=vec_type, device=device, requires_grad=True)
+            lengths = wp.empty(len(ref), dtype=wp.float16, device=device, requires_grad=True)
+            units = wp.empty(len(ref), dtype=vec_type, device=device, requires_grad=True)
+            with wp.Tape() as tape:
+                wp.launch(length_normalize_kernel, dim=len(ref), inputs=[v], outputs=[lengths, units], device=device)
+
+            check_length_normalize_fp16(tape, v, lengths, units, vec_type, ref, seed_scales, device)
+
+
 def test_crossproduct(test, device, dtype, register_kernels=False):
     tol = {
         np.float16: 5.0e-3,
@@ -1443,6 +1500,7 @@ def test_vector_indexing_types():
 
 
 add_function_test(TestVec, "test_length_mismatch", test_length_mismatch, devices=devices)
+add_function_test(TestVec, "test_length_normalize_fp16_range", test_length_normalize_fp16_range, devices=devices)
 add_function_test(TestVec, "test_vector_len", test_vector_len, devices=devices)
 add_function_test(TestVec, "test_vec_extract", test_vec_extract, devices=devices)
 add_function_test(TestVec, "test_vec_assign", test_vec_assign, devices=devices)

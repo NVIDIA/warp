@@ -1079,9 +1079,23 @@ inline CUDA_CALLABLE void adj_assign_copy(
     assert(ii == SliceLength);
 }
 
+// Form float16 lengths in float32: squared components overflow above about 256 and underflow below about 2**-7.
+// Adjoints then recompute the length, because the rounded float16 result is not accurate enough.
+template <typename Type> struct length_compute_type {
+    using type = Type;
+    static constexpr bool recompute = false;
+};
+
+template <> struct length_compute_type<float16> {
+    using type = float32;
+    static constexpr bool recompute = true;
+};
+
 template <unsigned Length, typename Type> inline CUDA_CALLABLE Type length(vec_t<Length, Type> a)
 {
-    return sqrt(dot(a, a));
+    using Compute = typename length_compute_type<Type>::type;
+    vec_t<Length, Compute> c(a);
+    return Type(sqrt(dot(c, c)));
 }
 
 template <unsigned Length, typename Type> inline CUDA_CALLABLE Type length_sq(vec_t<Length, Type> a)
@@ -1092,37 +1106,47 @@ template <unsigned Length, typename Type> inline CUDA_CALLABLE Type length_sq(ve
 
 template <typename Type> inline CUDA_CALLABLE Type length(vec_t<2, Type> a)
 {
-    return sqrt(a.c[0] * a.c[0] + a.c[1] * a.c[1]);
+    using Compute = typename length_compute_type<Type>::type;
+    Compute x = Compute(a.c[0]), y = Compute(a.c[1]);
+    return Type(sqrt(x * x + y * y));
 }
 
 template <typename Type> inline CUDA_CALLABLE Type length(vec_t<3, Type> a)
 {
-    return sqrt(a.c[0] * a.c[0] + a.c[1] * a.c[1] + a.c[2] * a.c[2]);
+    using Compute = typename length_compute_type<Type>::type;
+    Compute x = Compute(a.c[0]), y = Compute(a.c[1]), z = Compute(a.c[2]);
+    return Type(sqrt(x * x + y * y + z * z));
 }
 
 template <unsigned Length, typename Type> inline CUDA_CALLABLE vec_t<Length, Type> normalize(vec_t<Length, Type> a)
 {
-    Type l = length(a);
-    if (l > Type(kEps))
-        return div(a, l);
+    using Compute = typename length_compute_type<Type>::type;
+    vec_t<Length, Compute> c(a);
+    Compute l = length(c);
+    if (l > Compute(kEps))
+        return vec_t<Length, Type>(div(c, l));
     else
         return vec_t<Length, Type>();
 }
 
 template <typename Type> inline CUDA_CALLABLE vec_t<2, Type> normalize(vec_t<2, Type> a)
 {
-    Type l = sqrt(a.c[0] * a.c[0] + a.c[1] * a.c[1]);
-    if (l > Type(kEps))
-        return vec_t<2, Type>(a.c[0] / l, a.c[1] / l);
+    using Compute = typename length_compute_type<Type>::type;
+    Compute x = Compute(a.c[0]), y = Compute(a.c[1]);
+    Compute l = sqrt(x * x + y * y);
+    if (l > Compute(kEps))
+        return vec_t<2, Type>(Type(x / l), Type(y / l));
     else
         return vec_t<2, Type>();
 }
 
 template <typename Type> inline CUDA_CALLABLE vec_t<3, Type> normalize(vec_t<3, Type> a)
 {
-    Type l = sqrt(a.c[0] * a.c[0] + a.c[1] * a.c[1] + a.c[2] * a.c[2]);
-    if (l > Type(kEps))
-        return vec_t<3, Type>(a.c[0] / l, a.c[1] / l, a.c[2] / l);
+    using Compute = typename length_compute_type<Type>::type;
+    Compute x = Compute(a.c[0]), y = Compute(a.c[1]), z = Compute(a.c[2]);
+    Compute l = sqrt(x * x + y * y + z * z);
+    if (l > Compute(kEps))
+        return vec_t<3, Type>(Type(x / l), Type(y / l), Type(z / l));
     else
         return vec_t<3, Type>();
 }
@@ -1709,8 +1733,12 @@ inline CUDA_CALLABLE void adj_extract(
 template <unsigned Length, typename Type>
 inline CUDA_CALLABLE void adj_length(vec_t<Length, Type> a, Type ret, vec_t<Length, Type>& adj_a, const Type adj_ret)
 {
-    if (ret > Type(kEps)) {
-        adj_a += div(a, ret) * adj_ret;
+    using Compute = typename length_compute_type<Type>::type;
+    vec_t<Length, Compute> c(a);
+    Compute l = length_compute_type<Type>::recompute ? length(c) : Compute(ret);
+
+    if (l > Compute(kEps)) {
+        adj_a += vec_t<Length, Type>(div(c, l) * Compute(adj_ret));
     }
 
 #if FP_CHECK
@@ -1743,12 +1771,16 @@ inline CUDA_CALLABLE void adj_normalize(
     vec_t<Length, Type> a, vec_t<Length, Type>& ret, vec_t<Length, Type>& adj_a, const vec_t<Length, Type>& adj_ret
 )
 {
-    Type d = length(a);
+    using Compute = typename length_compute_type<Type>::type;
+    vec_t<Length, Compute> c(a);
+    Compute d = length(c);
 
-    if (d > Type(kEps)) {
-        Type invd = Type(1.0f) / d;
+    if (d > Compute(kEps)) {
+        Compute invd = Compute(1.0f) / d;
+        vec_t<Length, Compute> r = length_compute_type<Type>::recompute ? c * invd : vec_t<Length, Compute>(ret);
+        vec_t<Length, Compute> g(adj_ret);
 
-        adj_a += (adj_ret * invd - ret * (dot(ret, adj_ret)) * invd);
+        adj_a += vec_t<Length, Type>(g * invd - r * (dot(r, g)) * invd);
 
 #if FP_CHECK
         if (!isfinite(adj_a)) {
