@@ -632,7 +632,150 @@ def test_capture_bvh_rebuild_grouped(test, device):
             assert_array_equal(checksums_1, checksums_brutal)
 
 
+def _grouped_subtree_stats(bvh, group_root, query_lower, query_upper):
+    """Walk the subtree under ``group_root`` on the host.
+
+    Returns (max depth, max leaf size, number of nodes whose bounds overlap the query box). The last value is the
+    work an AABB query for that box has to do.
+    """
+    import ctypes  # noqa: PLC0415
+
+    class Header(ctypes.Structure):
+        _fields_ = [("node_lowers", ctypes.c_void_p), ("node_uppers", ctypes.c_void_p)]
+
+    def read(ptr, count, dtype):
+        return wp.array(ptr=int(ptr), shape=int(count), dtype=dtype, device=bvh.device, copy=False).numpy()
+
+    header = Header.from_buffer_copy(read(bvh.id, ctypes.sizeof(Header), wp.uint8).tobytes())
+    max_nodes = 2 * len(bvh.lowers) - 1
+    lowers = read(header.node_lowers, max_nodes * 4, wp.uint32).reshape(-1, 4)
+    uppers = read(header.node_uppers, max_nodes * 4, wp.uint32).reshape(-1, 4)
+    is_leaf = (lowers[:, 3] >> 31).astype(bool)
+    left = (lowers[:, 3] & 0x7FFFFFFF).astype(np.int64)
+    right = (uppers[:, 3] & 0x7FFFFFFF).astype(np.int64)
+    node_lower = lowers[:, :3].view(np.float32)
+    node_upper = uppers[:, :3].view(np.float32)
+    frontier = np.array([group_root], dtype=np.int64)
+    depth = max_depth = max_leaf = visited = 0
+    while frontier.size:
+        max_depth = depth
+        leaves = frontier[is_leaf[frontier]]
+        if leaves.size:
+            max_leaf = max(max_leaf, int((right[leaves] - left[leaves]).max()))
+        overlap = np.all(node_lower[frontier] <= query_upper, axis=1) & np.all(
+            node_upper[frontier] >= query_lower, axis=1
+        )
+        visited += int(overlap.sum())
+        inner = frontier[~is_leaf[frontier]]
+        frontier = np.concatenate([left[inner], right[inner]])
+        depth += 1
+    return max_depth, max_leaf, visited
+
+
+def test_grouped_lbvh_adaptive_world_id_width(test, device):
+    """With adaptive_world_id_width the Morton code of a grouped LBVH is fine enough to tell small items apart."""
+    rng = np.random.default_rng(5)
+    num_groups = 16
+    per_group = 1000
+    # group g holds 1000 boxes of 10 micrometers inside a 1 mm cube at x = g, plus one 24 m box; the large boxes
+    # stretch the total bounds so that 10-bit Morton codes cannot tell the small boxes apart
+    lowers_np = []
+    uppers_np = []
+    groups_np = []
+    for g in range(num_groups):
+        small = rng.random((per_group, 3)).astype(np.float32) * 1.0e-3 + np.array([g, 0.0, 0.0], dtype=np.float32)
+        lowers_np.append(small)
+        uppers_np.append(small + np.float32(1.0e-5))
+        lowers_np.append(np.array([[-12.0, -4.5, -2.0]], dtype=np.float32))
+        uppers_np.append(np.array([[12.0, 4.5, 2.0]], dtype=np.float32))
+        groups_np.append(np.full(per_group + 1, g, dtype=np.int32))
+    lowers_np = np.vstack(lowers_np)
+    uppers_np = np.vstack(uppers_np)
+    groups_np = np.concatenate(groups_np)
+    lowers = wp.array(lowers_np, dtype=wp.vec3, device=device)
+    uppers = wp.array(uppers_np, dtype=wp.vec3, device=device)
+    groups = wp.array(groups_np, dtype=wp.int32, device=device)
+
+    query_lower = np.array([3.0 + 0.25e-3, 0.25e-3, 0.25e-3], dtype=np.float32)
+    query_upper = np.array([3.0 + 0.5e-3, 0.5e-3, 0.5e-3], dtype=np.float32)
+    expected = np.array(
+        [
+            groups_np[i] == 3 and aabb_overlap(lowers_np[i], uppers_np[i], query_lower, query_upper)
+            for i in range(len(groups_np))
+        ]
+    )
+
+    visited = {}
+    for adaptive in (True, False):
+        with test.subTest(adaptive=adaptive):
+            bvh = wp.Bvh(
+                lowers, uppers, constructor="lbvh", groups=groups, leaf_size=1, adaptive_world_id_width=adaptive
+            )
+            roots = wp.zeros(num_groups, dtype=int, device=device)
+            wp.launch(get_group_root, dim=num_groups, inputs=[bvh.id, roots], device=device)
+            depth, max_leaf, visited[adaptive] = _grouped_subtree_stats(
+                bvh, int(roots.numpy()[3]), query_lower, query_upper
+            )
+            test.assertLess(depth, 32)
+            # the position tie-break keeps runs of equal keys balanced, so no leaf is forced by the depth limit
+            test.assertEqual(max_leaf, 1)
+
+            bounds_intersected = wp.zeros(len(groups_np), dtype=int, device=device)
+            wp.launch(
+                bvh_query_aabb_group,
+                dim=1,
+                inputs=[
+                    bvh.id,
+                    wp.vec3(*query_lower),
+                    wp.vec3(*query_upper),
+                    wp.array([3], dtype=int, device=device),
+                    bounds_intersected,
+                ],
+                device=device,
+            )
+            assert_np_equal(bounds_intersected.numpy().astype(bool), expected)
+
+    # 16 groups need 4 bits, so the adaptive layout gives the Morton code 20 bits per axis and the small boxes get
+    # distinct codes; with the fixed 32-bit group field they all share one code, their subtree has no spatial
+    # order, and a small query has to visit most of its nodes
+    test.assertLess(visited[True] * 4, visited[False])
+
+
+def test_grouped_lbvh_negative_group_ids(test, device):
+    """Negative group ids build and traverse correctly with the adaptive key layout (they fall back to the fixed one).
+
+    Group-root queries are not checked: bvh_get_group_root compares ids as int while the LBVH sorts them as
+    uint32_t, which breaks the lookup for negative ids on every Warp version, with or without this flag.
+    """
+    rng = np.random.default_rng(9)
+    count = 300
+    lowers_np = (rng.random((count, 3)) * 5.0).astype(np.float32)
+    uppers_np = (lowers_np + rng.random((count, 3)) * 2.0).astype(np.float32)
+    groups_np = (np.arange(count, dtype=np.int32) % 5) - 2  # ids -2 .. 2
+    lowers = wp.array(lowers_np, dtype=wp.vec3, device=device)
+    uppers = wp.array(uppers_np, dtype=wp.vec3, device=device)
+    groups = wp.array(groups_np, dtype=wp.int32, device=device)
+
+    query_lower = np.array([1.0, 1.0, 1.0], dtype=np.float32)
+    query_upper = np.array([4.0, 4.0, 4.0], dtype=np.float32)
+    expected = np.array([aabb_overlap(lowers_np[i], uppers_np[i], query_lower, query_upper) for i in range(count)])
+    for adaptive in (True, False):
+        with test.subTest(adaptive=adaptive):
+            bvh = wp.Bvh(
+                lowers, uppers, constructor="lbvh", groups=groups, leaf_size=1, adaptive_world_id_width=adaptive
+            )
+            bounds_intersected = wp.zeros(count, dtype=int, device=device)
+            wp.launch(
+                bvh_query_aabb,
+                dim=1,
+                inputs=[bvh.id, wp.vec3(*query_lower), wp.vec3(*query_upper), bounds_intersected],
+                device=device,
+            )
+            assert_np_equal(bounds_intersected.numpy().astype(bool), expected)
+
+
 devices = get_test_devices()
+cuda_devices = get_cuda_test_devices()
 cuda_devices_with_mempool = get_cuda_test_devices_with_mempool()
 
 
@@ -668,6 +811,15 @@ add_function_test(TestGroupedBvh, "test_grouped_bvh_ray", test_bvh_query_ray, de
 add_function_test(TestGroupedBvh, "test_grouped_ray_hits_single_bound", test_ray_hits_single_bound, devices=devices)
 add_function_test(TestGroupedBvh, "test_heterogeneous_group_sizes", test_heterogeneous_group_sizes, devices=devices)
 add_function_test(TestGroupedBvh, "test_sparse_group_root_isolation", test_sparse_group_root_isolation, devices=devices)
+add_function_test(
+    TestGroupedBvh,
+    "test_grouped_lbvh_adaptive_world_id_width",
+    test_grouped_lbvh_adaptive_world_id_width,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestGroupedBvh, "test_grouped_lbvh_negative_group_ids", test_grouped_lbvh_negative_group_ids, devices=cuda_devices
+)
 
 add_function_test(
     TestGroupedBvh,

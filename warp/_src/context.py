@@ -7711,6 +7711,7 @@ class Runtime:
                 ctypes.c_int,
                 ctypes.c_void_p,
                 ctypes.c_int,
+                ctypes.c_int,
             ]
 
             self.core.wp_bvh_destroy_host.argtypes = [ctypes.c_uint64]
@@ -7745,6 +7746,7 @@ class Runtime:
                 ctypes.c_int,
                 ctypes.c_int,
                 ctypes.c_void_p,
+                ctypes.c_int,
                 ctypes.c_int,
             ]
 

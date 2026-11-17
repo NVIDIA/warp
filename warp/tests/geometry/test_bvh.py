@@ -37,6 +37,53 @@ def _host_bvh_depth(bvh, root=None):
     return deepest, header.max_depth
 
 
+class _DeviceBvhHeader(ctypes.Structure):
+    # prefix of the native BVH descriptor, through its root pointer (see warp/native/bvh.h)
+    _fields_ = [
+        ("node_lowers", ctypes.c_void_p),
+        ("node_uppers", ctypes.c_void_p),
+        ("node_parents", ctypes.c_void_p),
+        ("node_counts", ctypes.c_void_p),
+        ("primitive_indices", ctypes.c_void_p),
+        ("max_depth", ctypes.c_int),
+        ("max_nodes", ctypes.c_int),
+        ("num_nodes", ctypes.c_int),
+        ("num_leaf_nodes", ctypes.c_int),
+        ("root", ctypes.c_void_p),
+    ]
+
+
+def _device_bvh_tree_stats(bvh, root=None):
+    """Return (max depth, max leaf size) of the part of a CUDA BVH that a query starting at ``root`` can reach."""
+    device = bvh.device
+
+    def read(ptr, count, dtype):
+        return wp.array(ptr=int(ptr), shape=int(count), dtype=dtype, device=device, copy=False).numpy()
+
+    header = _DeviceBvhHeader.from_buffer_copy(read(bvh.id, ctypes.sizeof(_DeviceBvhHeader), wp.uint8).tobytes())
+    if root is None:
+        root = int(read(header.root, 1, wp.int32)[0])
+    lowers = read(header.node_lowers, header.max_nodes * 4, wp.uint32).reshape(-1, 4)[:, 3]
+    uppers = read(header.node_uppers, header.max_nodes * 4, wp.uint32).reshape(-1, 4)[:, 3]
+    is_leaf = (lowers >> 31).astype(bool)
+    left = (lowers & 0x7FFFFFFF).astype(np.int64)
+    right = (uppers & 0x7FFFFFFF).astype(np.int64)
+
+    frontier = np.array([root], dtype=np.int64)
+    depth = 0
+    max_depth = 0
+    max_leaf_size = 0
+    while frontier.size:
+        max_depth = depth
+        leaves = frontier[is_leaf[frontier]]
+        if leaves.size:
+            max_leaf_size = max(max_leaf_size, int((right[leaves] - left[leaves]).max()))
+        inner = frontier[~is_leaf[frontier]]
+        frontier = np.concatenate([left[inner], right[inner]])
+        depth += 1
+    return max_depth, max_leaf_size
+
+
 @wp.kernel
 def bvh_query_aabb(bvh_id: wp.uint64, lower: wp.vec3, upper: wp.vec3, bounds_intersected: wp.array[int]):
     query = wp.bvh_query_aabb(bvh_id, lower, upper)
@@ -1227,6 +1274,103 @@ def test_tile_bvh_query_ray_dense(test, device):
             )
 
 
+def test_lbvh_equal_keys_balanced(test, device):
+    """Primitives that share one Morton code must form a balanced subtree, not a chain (GH-2161)."""
+    for count in (33, 4096):
+        lowers = wp.zeros(count, dtype=wp.vec3, device=device)
+        uppers = wp.array(np.ones((count, 3), dtype=np.float32), dtype=wp.vec3, device=device)
+        bvh = wp.Bvh(lowers, uppers, constructor="lbvh", leaf_size=1)
+        depth, max_leaf = _device_bvh_tree_stats(bvh)
+        # a balanced split of a run of equal keys needs about log2(count) levels; the old parity rule gave count - 1
+        test.assertLessEqual(depth, int(np.ceil(np.log2(count))) + 2)
+        # no leaf was forced by the depth limit, so every leaf holds leaf_size items
+        test.assertEqual(max_leaf, 1)
+
+        bounds_intersected = wp.zeros(count, dtype=int, device=device)
+        wp.launch(
+            bvh_query_aabb,
+            dim=1,
+            inputs=[bvh.id, wp.vec3(-1.0, -1.0, -1.0), wp.vec3(2.0, 2.0, 2.0), bounds_intersected],
+            device=device,
+        )
+        test.assertEqual(int(bounds_intersected.numpy().sum()), count)
+
+
+def test_lbvh_mixed_scale_resolution(test, device):
+    """Small primitives inside a large scene must get distinct Morton codes, so no leaf is forced by the depth limit."""
+    rng = np.random.default_rng(7)
+    num_small = 20000
+    # 20k boxes of 10 micrometers inside a 1 mm cube, and two 24 m boxes around them (like a mesh in a wind tunnel)
+    small_lowers = rng.random((num_small, 3)).astype(np.float32) * 1.0e-3
+    small_uppers = small_lowers + np.float32(1.0e-5)
+    big_lowers = np.array([[-12.0, -4.5, -2.0], [-12.0, -4.5, 1.9]], dtype=np.float32)
+    big_uppers = np.array([[12.0, 4.5, -1.9], [12.0, 4.5, 2.0]], dtype=np.float32)
+    lowers_np = np.vstack([small_lowers, big_lowers])
+    uppers_np = np.vstack([small_uppers, big_uppers])
+    lowers = wp.array(lowers_np, dtype=wp.vec3, device=device)
+    uppers = wp.array(uppers_np, dtype=wp.vec3, device=device)
+
+    bvh = wp.Bvh(lowers, uppers, constructor="lbvh", leaf_size=1)
+    depth, max_leaf = _device_bvh_tree_stats(bvh)
+    test.assertLess(depth, 32)
+    # with 10-bit Morton codes all small boxes shared one code and ended up in one packed leaf of 20k items
+    test.assertEqual(max_leaf, 1)
+
+    # queries agree with a brute-force check
+    query_lower = np.array([0.25e-3, 0.25e-3, 0.25e-3], dtype=np.float32)
+    query_upper = np.array([0.5e-3, 0.5e-3, 0.5e-3], dtype=np.float32)
+    bounds_intersected = wp.zeros(len(lowers_np), dtype=int, device=device)
+    wp.launch(
+        bvh_query_aabb,
+        dim=1,
+        inputs=[bvh.id, wp.vec3(*query_lower), wp.vec3(*query_upper), bounds_intersected],
+        device=device,
+    )
+    expected = np.array(
+        [aabb_overlap(lowers_np[i], uppers_np[i], query_lower, query_upper) for i in range(len(lowers_np))]
+    )
+    assert_np_equal(bounds_intersected.numpy().astype(bool), expected)
+
+
+def test_lbvh_adaptive_world_id_width_flag(test, device):
+    """Both key layouts give correct query results, with and without groups."""
+    rng = np.random.default_rng(11)
+    num_bounds = 400
+    lowers_np = (rng.random((num_bounds, 3)) * 5.0).astype(np.float32)
+    uppers_np = (lowers_np + rng.random((num_bounds, 3)) * 5.0).astype(np.float32)
+    lowers = wp.array(lowers_np, dtype=wp.vec3, device=device)
+    uppers = wp.array(uppers_np, dtype=wp.vec3, device=device)
+    query_lower = np.array([2.0, 2.0, 2.0], dtype=np.float32)
+    query_upper = np.array([8.0, 8.0, 8.0], dtype=np.float32)
+    expected = np.array([aabb_overlap(lowers_np[i], uppers_np[i], query_lower, query_upper) for i in range(num_bounds)])
+    for groups_np in (None, np.arange(num_bounds, dtype=np.int32) % 7, np.arange(num_bounds, dtype=np.int32) - 3):
+        groups = None if groups_np is None else wp.array(groups_np, dtype=wp.int32, device=device)
+        for adaptive in (True, False):
+            with test.subTest(groups=groups_np is not None, adaptive=adaptive):
+                bvh = wp.Bvh(
+                    lowers, uppers, constructor="lbvh", groups=groups, leaf_size=1, adaptive_world_id_width=adaptive
+                )
+                test.assertEqual(bvh.adaptive_world_id_width, adaptive)
+                bounds_intersected = wp.zeros(num_bounds, dtype=int, device=device)
+                wp.launch(
+                    bvh_query_aabb,
+                    dim=1,
+                    inputs=[bvh.id, wp.vec3(*query_lower), wp.vec3(*query_upper), bounds_intersected],
+                    device=device,
+                )
+                assert_np_equal(bounds_intersected.numpy().astype(bool), expected)
+                # an in-place rebuild keeps the layout choice and the results
+                bvh.rebuild()
+                bounds_intersected.zero_()
+                wp.launch(
+                    bvh_query_aabb,
+                    dim=1,
+                    inputs=[bvh.id, wp.vec3(*query_lower), wp.vec3(*query_upper), bounds_intersected],
+                    device=device,
+                )
+                assert_np_equal(bounds_intersected.numpy().astype(bool), expected)
+
+
 devices = get_test_devices()
 cuda_devices = get_cuda_test_devices()
 cuda_devices_with_mempool = get_cuda_test_devices_with_mempool()
@@ -1351,6 +1495,11 @@ add_function_test(
     devices=devices,
 )
 add_function_test(TestBvh, "test_bvh_refit_root_leaves", test_bvh_refit_root_leaves, devices=cuda_devices)
+add_function_test(TestBvh, "test_lbvh_equal_keys_balanced", test_lbvh_equal_keys_balanced, devices=cuda_devices)
+add_function_test(TestBvh, "test_lbvh_mixed_scale_resolution", test_lbvh_mixed_scale_resolution, devices=cuda_devices)
+add_function_test(
+    TestBvh, "test_lbvh_adaptive_world_id_width_flag", test_lbvh_adaptive_world_id_width_flag, devices=cuda_devices
+)
 add_function_test(TestBvh, "test_tile_bvh_query_aabb", test_tile_bvh_query, devices=devices)
 add_function_test(TestBvh, "test_tile_bvh_query_ray", test_tile_bvh_query_ray, devices=devices)
 add_function_test(TestBvh, "test_tile_bvh_query_aabb_dense", test_tile_bvh_query_aabb_dense, devices=cuda_devices)
