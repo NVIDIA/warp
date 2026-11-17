@@ -1794,7 +1794,7 @@ def bsr_set_from_mapped_values(
             inputs=[dest.nrow, mapping._block_ends, mapping._triplet_indices, values_3d, dest.offsets],
             outputs=[dest.scalar_values],
         )
-    else:
+    elif dest.nnz > 0:
         dest.values[: dest.nnz].zero_()
         wp.launch(
             _bsr_set_from_mapped_values_atomic,
