@@ -21,7 +21,7 @@ from warp.tests.unittest_utils import (
 # ============================================================================
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture1d_f_at_centers(
     tex: wp.Texture1D,
     output: wp.array[float],
@@ -37,7 +37,7 @@ def sample_texture1d_f_at_centers(
     output[tid] = wp.texture_sample(tex, u, dtype=float)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture1d_v2_at_centers(
     tex: wp.Texture1D,
     output: wp.array[wp.vec2f],
@@ -51,7 +51,7 @@ def sample_texture1d_v2_at_centers(
     output[tid] = wp.texture_sample(tex, u, dtype=wp.vec2f)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture1d_v4_at_centers(
     tex: wp.Texture1D,
     output: wp.array[wp.vec4f],
@@ -65,7 +65,7 @@ def sample_texture1d_v4_at_centers(
     output[tid] = wp.texture_sample(tex, u, dtype=wp.vec4f)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def test_texture1d_resolution(
     tex: wp.Texture1D,
     expected_width: int,
@@ -81,7 +81,7 @@ def test_texture1d_resolution(
 # ============================================================================
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture2d_f_at_centers(
     tex: wp.Texture2D,
     output: wp.array[float],
@@ -101,7 +101,7 @@ def sample_texture2d_f_at_centers(
     output[tid] = wp.texture_sample(tex, wp.vec2f(u, v), dtype=float)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture2d_v2_at_centers(
     tex: wp.Texture2D,
     output: wp.array[wp.vec2f],
@@ -119,7 +119,7 @@ def sample_texture2d_v2_at_centers(
     output[tid] = wp.texture_sample(tex, wp.vec2f(u, v), dtype=wp.vec2f)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture2d_v4_at_centers(
     tex: wp.Texture2D,
     output: wp.array[wp.vec4f],
@@ -137,7 +137,7 @@ def sample_texture2d_v4_at_centers(
     output[tid] = wp.texture_sample(tex, wp.vec2f(u, v), dtype=wp.vec4f)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def test_texture2d_resolution(
     tex: wp.Texture2D,
     expected_width: int,
@@ -156,7 +156,7 @@ def test_texture2d_resolution(
 # ============================================================================
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture3d_f_at_centers(
     tex: wp.Texture3D,
     output: wp.array[float],
@@ -178,7 +178,7 @@ def sample_texture3d_f_at_centers(
     output[tid] = wp.texture_sample(tex, wp.vec3f(u, v, ww), dtype=float)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture3d_v2_at_centers(
     tex: wp.Texture3D,
     output: wp.array[wp.vec2f],
@@ -199,7 +199,7 @@ def sample_texture3d_v2_at_centers(
     output[tid] = wp.texture_sample(tex, wp.vec3f(u, v, ww), dtype=wp.vec2f)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture3d_v4_at_centers(
     tex: wp.Texture3D,
     output: wp.array[wp.vec4f],
@@ -220,7 +220,7 @@ def sample_texture3d_v4_at_centers(
     output[tid] = wp.texture_sample(tex, wp.vec3f(u, v, ww), dtype=wp.vec4f)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def test_texture3d_resolution(
     tex: wp.Texture3D,
     expected_width: int,
@@ -1328,7 +1328,7 @@ def test_texture3d_new_del(test, device):
 # ============================================================================
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture2d_at_uv(
     tex: wp.Texture2D,
     uvs: wp.array[wp.vec2f],
@@ -1340,7 +1340,7 @@ def sample_texture2d_at_uv(
     output[tid] = wp.texture_sample(tex, uv, dtype=float)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture3d_at_uvw(
     tex: wp.Texture3D,
     uvws: wp.array[wp.vec3f],
@@ -1966,7 +1966,7 @@ def test_texture3d_uint16_linear_interpolation(test, device):
 # ============================================================================
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture2d_outside_bounds(
     tex: wp.Texture2D,
     uvs: wp.array[wp.vec2f],
@@ -1978,7 +1978,7 @@ def sample_texture2d_outside_bounds(
     output[tid] = wp.texture_sample(tex, uv, dtype=float)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture3d_outside_bounds(
     tex: wp.Texture3D,
     uvws: wp.array[wp.vec3f],
@@ -2248,7 +2248,7 @@ def test_texture2d_mirror_linear_edge(test, device):
 # ============================================================================
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture2d_texel_coords(
     tex: wp.Texture2D,
     coords: wp.array[wp.vec2f],
@@ -2260,7 +2260,7 @@ def sample_texture2d_texel_coords(
     output[tid] = wp.texture_sample(tex, coord, dtype=float)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture3d_texel_coords(
     tex: wp.Texture3D,
     coords: wp.array[wp.vec3f],
@@ -2502,7 +2502,7 @@ class TextureStructBoth:
     multiplier: float
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture2d_from_struct(
     s: TextureStruct2D,
     uv: wp.vec2f,
@@ -2514,7 +2514,7 @@ def sample_texture2d_from_struct(
     output[tid] = value * s.scale
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture3d_from_struct(
     s: TextureStruct3D,
     uvw: wp.vec3f,
@@ -2526,7 +2526,7 @@ def sample_texture3d_from_struct(
     output[tid] = value + s.offset
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_both_textures_from_struct(
     s: TextureStructBoth,
     uv: wp.vec2f,
@@ -2763,7 +2763,7 @@ def test_texture3d_array(test, device):
 # ============================================================================
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture2d_mipmap(
     tex: wp.Texture2D,
     output: wp.array2d[wp.vec4f],
@@ -2777,7 +2777,7 @@ def sample_texture2d_mipmap(
     output[i, j] = wp.texture_sample(tex, wp.vec2f(u, v), dtype=wp.vec4f, lod=lod)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture1d_mipmap(
     tex: wp.Texture1D,
     output: wp.array[float],
@@ -2789,7 +2789,7 @@ def sample_texture1d_mipmap(
     output[tid] = wp.texture_sample(tex, u, dtype=float, lod=lod)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture3d_mipmap(
     tex: wp.Texture3D,
     output: wp.array3d[float],
