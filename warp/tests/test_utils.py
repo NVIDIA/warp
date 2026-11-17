@@ -310,7 +310,7 @@ def test_array_scan_temp_storage_errors(test, device):
         return
 
     pattern = rf"temporary storage is too small: {required} bytes required, {{}} bytes provided$"
-    with test.assertRaisesRegex(RuntimeError, pattern.format(required - 1)):
+    with suppress_native_error_output(), test.assertRaisesRegex(RuntimeError, pattern.format(required - 1)):
         wp.utils.array_scan(values, result, temp_storage=wp.empty(required - 1, dtype=wp.uint8, device=device))
 
     with test.assertRaisesRegex(RuntimeError, pattern.format(0)):

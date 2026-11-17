@@ -530,7 +530,7 @@ Hessian by reverse mode through `seed` and through a width-1 `directional`
 (against a closed form), because Warp silently zeroes adjoints that flow through
 a tuple argument and this is the property that would break first.
 
-**`warp/tests/test_jet_ops.py`** (`TestJetOps`, `TestJetMatrix`). Finite-
+**`warp/tests/test_jet_ops.py`** (`TestJetOps`). Finite-
 difference checks for the wider op surface: inverse-trig, `pow` variants, and
 value-branching builtins for both first- and second-order jets (gradient and, for
 second order, the Hessian); and matrix jets -- `mat22` determinant/trace, a `mat33`
@@ -541,7 +541,11 @@ CUDA build takes far longer than a test should (it had not finished after
 18 minutes on an RTX PRO 6000 Blackwell). CUDA coverage of the jets comes from
 `test_jet.py`, which runs on CPU and CUDA, and from the implicit-projection
 example, which runs on both in the example tests. The benchmarks also run on CUDA
-but only report their errors, so they do not count as coverage.
+but only report their errors, so they do not count as coverage. All of the
+file's tests share one `TestCase` class: the parallel test runner gives each class
+its own process, and every process that starts before the module is cached builds
+the whole module. Kernels that no test runs in reverse mode set
+`enable_backward=False`, since their adjoints only add build time.
 
 ## Benchmarks
 

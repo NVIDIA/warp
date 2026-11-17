@@ -37,5 +37,11 @@ Kernel API
    :toctree: _generated
 
    find_triangle_neighbor_edge_index
+   intersect_aabb_aabb
+   intersect_seg_aabb
+   intersect_seg_tri
+   intersect_tri_aabb
+   intersect_tri_tri
+   self_intersect_tri_tri
    super_fibonacci
    swept_volume_sdf

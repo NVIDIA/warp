@@ -318,13 +318,21 @@ for _func in (
     test_validation_failure_names_the_annotation,
     test_validation_failure_fails_the_module,
     test_validation_failure_repeats_on_relaunch,
-    test_native_failure_fails_the_module,
     test_redefinition_recovers_failed_module,
     test_launch_releases_failed_kernel,
     test_launch_tiled_releases_failed_kernel,
     test_load_module_releases_failed_kernel,
 ):
     add_function_test(TestModuleContamination, func=_func, name=_func.__name__, devices=devices)
+
+# the native compilers report the invalid snippet on stderr, which CheckOutput can capture as stdout on Windows
+add_function_test(
+    TestModuleContamination,
+    func=test_native_failure_fails_the_module,
+    name=test_native_failure_fails_the_module.__name__,
+    devices=devices,
+    check_output=False,
+)
 
 # the kernel queries only build the module on CUDA devices
 for _func in (

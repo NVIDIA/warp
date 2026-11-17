@@ -426,7 +426,9 @@ External Build Inputs
 .. admonition:: Experimental
 
     The external-compilation APIs described in this section are experimental
-    and may change without deprecation in future releases.
+    and may change without deprecation in future releases. The registration
+    functions live in :mod:`warp.experimental.build`, which must be imported
+    explicitly.
 
 Extra build inputs for a module can be grouped in
 :class:`wp.ModuleBuildOptions <warp.ModuleBuildOptions>`:
@@ -485,6 +487,7 @@ host ABI with :class:`ctypes.Structure` and register the same class:
 
     import ctypes
     import warp as wp
+    import warp.experimental.build
 
     class Color(ctypes.Structure):
         _fields_ = [
@@ -493,7 +496,7 @@ host ABI with :class:`ctypes.Structure` and register the same class:
             ("b", ctypes.c_float),
         ]
 
-    wp.build_experimental.add_native_type(
+    wp.experimental.build.add_native_type(
         Color,
         native_name="render::Color",
         fields={"r": wp.float32, "g": wp.float32, "b": wp.float32},
@@ -517,7 +520,7 @@ resources referenced by opaque values; the external package remains
 responsible for their ownership and lifetime.
 
 Native value types do not automatically gain arithmetic or differentiation.
-Register operations explicitly with :func:`warp.build_experimental.add_builtin`,
+Register operations explicitly with :func:`warp.experimental.build.add_builtin`,
 and leave ``requires_grad`` disabled on Warp arrays containing native value types.
 
 A native value can provide context to a Warp function. For example, this helper
@@ -538,7 +541,7 @@ differentiable.
 External Function Signatures
 ----------------------------
 
-Use :func:`warp.build_experimental.add_builtin` to give an external C++ function
+Use :func:`warp.experimental.build.add_builtin` to give an external C++ function
 a Python name, ordered argument types, and a return type. Omit the return type
 for C++ ``void``. The returned handle supports positional and keyword calls.
 
@@ -556,7 +559,7 @@ Register it in Python:
 
 .. code:: python
 
-    write = wp.build_experimental.add_builtin(
+    write = wp.experimental.build.add_builtin(
         "my_addon_write",
         {"output": wp.ref[wp.float32], "value": wp.float32},
         native_name="my_addon::write",
@@ -627,8 +630,9 @@ Start by registering the C++ operation. Warp finds its derivative by adding
     from pathlib import Path
 
     import warp as wp
+    import warp.experimental.build
 
-    square = wp.build_experimental.add_builtin(
+    square = wp.experimental.build.add_builtin(
         "external_framework_square",
         input_types={"x": wp.float32},
         value_type=wp.float32,
@@ -707,7 +711,7 @@ Some C++ adjoints use the forward result. For example, the derivative of
 
 .. code:: python
 
-    root = wp.build_experimental.add_builtin(
+    root = wp.experimental.build.add_builtin(
         "external_framework_root",
         {"x": wp.float32},
         wp.float32,
@@ -796,6 +800,7 @@ kernels. For example, ``my_addon.py`` can contain:
     from pathlib import Path
 
     import warp as wp
+    import warp.experimental.build
 
     include_dir = Path(__file__).parent / "include"
     header = include_dir / "my_addon.h"
@@ -809,13 +814,13 @@ kernels. For example, ``my_addon.py`` can contain:
         ]
 
 
-    wp.build_experimental.add_native_type(
+    wp.experimental.build.add_native_type(
         Color,
         native_name="my_addon::Color",
         fields={"r": wp.float32, "g": wp.float32, "b": wp.float32},
         initializer="aggregate",
     )
-    wp.build_experimental.add_builtin(
+    wp.experimental.build.add_builtin(
         "my_addon_scale_color",
         {"value": Color, "factor": wp.float32},
         Color,

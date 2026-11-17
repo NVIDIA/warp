@@ -85,9 +85,7 @@ class UsdRenderer:
     All geometry is organized under a root transform that can be scaled uniformly.
 
     Note:
-        Requires USD to be installed. Install ``usd-core`` (``pip install usd-core``)
-        or ``usd-exchange`` (``pip install usd-exchange``) on Linux aarch64 systems
-        where ``usd-core`` is not available.
+        Requires USD to be installed. Install ``usd-core`` (``pip install usd-core``).
 
     Args:
         stage: A USD stage (either a file path or a ``Usd.Stage`` object).
@@ -101,10 +99,7 @@ class UsdRenderer:
         try:
             from pxr import Gf, Sdf, Usd, UsdGeom, UsdLux  # noqa: PLC0415
         except ImportError as e:
-            raise ImportError(
-                "Failed to import pxr. Please install USD"
-                " (e.g. via `pip install usd-core`, or `pip install usd-exchange` on Linux aarch64)."
-            ) from e
+            raise ImportError("Failed to import pxr. Please install USD (e.g. via `pip install usd-core`).") from e
 
         if isinstance(stage, str):
             self.stage = stage = Usd.Stage.CreateNew(stage)

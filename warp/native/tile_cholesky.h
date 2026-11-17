@@ -34,7 +34,7 @@ namespace partitioned_gemm {
 // blocks retain the register-local diagonal: sharing adds communication without
 // eliminating a whole warp's work. FP32 uses the same register-local path.
 // All threads participate in the barriers, including cooperative CPU fibers.
-template <bool Upper, typename TileA, typename TileOut>
+template <bool Upper, bool ZeroOpposite = true, typename TileA, typename TileOut>
 inline CUDA_CALLABLE void scalar_cholesky_impl(TileA& A, TileOut& Out)
 {
     using T = typename TileA::Type;
@@ -93,8 +93,10 @@ inline CUDA_CALLABLE void scalar_cholesky_impl(TileA& A, TileOut& Out)
         }
 
         // Zero out the opposite triangle in column j -- distributed.
-        for (int k = j + 1 + WP_TILE_THREAD_IDX; k < n; k += WP_TILE_BLOCK_DIM) {
-            Out.data(idx(j, k)) = T {};
+        if constexpr (ZeroOpposite) {
+            for (int k = j + 1 + WP_TILE_THREAD_IDX; k < n; k += WP_TILE_BLOCK_DIM) {
+                Out.data(idx(j, k)) = T {};
+            }
         }
 
         WP_TILE_SYNC();
@@ -394,17 +396,17 @@ adj_tile_cholesky_impl(BkwdGemm fun_bkwd_gemm, BkwdTrsm fun_bkwd_trsm, TileOut& 
 }
 
 // Cholesky factorization (inplace) implementation.
-template <bool Upper, typename Fwd, typename TileA>
+template <bool Upper, bool ZeroOpposite, typename Fwd, typename TileA>
 CUDA_CALLABLE void tile_cholesky_inplace_impl(Fwd fun_forward, TileA& A)
 {
     static_assert(TileA::Layout::Shape::N == 2, "Expected TileA::Layout::Shape::N == 2");
     static_assert(TileA::Layout::Shape::dim(0) == TileA::Layout::Shape::dim(1), "Expected TileA to be square");
 
 #if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
-    partitioned_gemm::scalar_cholesky_impl<Upper>(A, A);
+    partitioned_gemm::scalar_cholesky_impl<Upper, ZeroOpposite>(A, A);
 #else
     if constexpr (wp_is_null_func<Fwd>::value) {
-        partitioned_gemm::scalar_cholesky_impl<Upper>(A, A);
+        partitioned_gemm::scalar_cholesky_impl<Upper, ZeroOpposite>(A, A);
     } else {
         // TODO: for batched Cholesky, need one info per batch
         __shared__ int info[1];
@@ -426,16 +428,18 @@ CUDA_CALLABLE void tile_cholesky_inplace_impl(Fwd fun_forward, TileA& A)
         }
 #endif
 
-        // Zero-out the opposite triangular part
-        WP_PRAGMA_UNROLL
-        for (int i = WP_TILE_THREAD_IDX; i < TileA::Layout::Size; i += WP_TILE_BLOCK_DIM) {
-            auto c = TileA::Layout::coord_from_linear(i);
+        // cuSolverDx leaves the opposite triangle as it was; the triangular solves don't read it
+        if constexpr (ZeroOpposite) {
+            WP_PRAGMA_UNROLL
+            for (int i = WP_TILE_THREAD_IDX; i < TileA::Layout::Size; i += WP_TILE_BLOCK_DIM) {
+                auto c = TileA::Layout::coord_from_linear(i);
 
-            if (Upper ? (c[0] > c[1]) : (c[0] < c[1]))
-                A.data(c) = 0.0;
+                if (Upper ? (c[0] > c[1]) : (c[0] < c[1]))
+                    A.data(c) = 0.0;
+            }
+
+            WP_TILE_SYNC();
         }
-
-        WP_TILE_SYNC();
     }
 #endif
 }
@@ -468,13 +472,14 @@ CUDA_CALLABLE void adj_tile_cholesky(
     adj_tile_cholesky_impl<Upper>(fun_bkwd_gemm, fun_bkwd_trsm, Out, adj_A, adj_Out);
 }
 
-// Cholesky (inplace): tile_cholesky_inplace<false>(...) for lower, tile_cholesky_inplace<true>(...) for upper
-template <bool Upper, typename Fwd, typename TileA> CUDA_CALLABLE void tile_cholesky_inplace(Fwd fun_forward, TileA& A)
+// Cholesky (inplace): tile_cholesky_inplace<Upper, ZeroOpposite>(...); Upper selects the factored triangle
+template <bool Upper, bool ZeroOpposite, typename Fwd, typename TileA>
+CUDA_CALLABLE void tile_cholesky_inplace(Fwd fun_forward, TileA& A)
 {
-    tile_cholesky_inplace_impl<Upper>(fun_forward, A);
+    tile_cholesky_inplace_impl<Upper, ZeroOpposite>(fun_forward, A);
 }
 
-template <bool Upper, typename Fwd, typename TileA, typename AdjFwd, typename AdjTileA>
+template <bool Upper, bool ZeroOpposite, typename Fwd, typename TileA, typename AdjFwd, typename AdjTileA>
 CUDA_CALLABLE void adj_tile_cholesky_inplace(Fwd fun_forward, TileA& A, AdjFwd adj_fun_forward, AdjTileA& adj_A)
 {
     // MISSINGADJOINT: apply Murray 2016 derivative in place; on entry A holds L

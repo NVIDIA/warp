@@ -1705,11 +1705,15 @@ inline CUDA_CALLABLE bfloat16 erfcinv(bfloat16 a)
 }
 #endif  // WP_NO_BFLOAT16
 
-template <typename T> struct atan2_adjoint_compute_type {
+// Type for intermediates such as squares and sums of squares. Squaring float16 values overflows above
+// about 256 and underflows below about 2^-12 even when the final result is representable, so float16
+// computes these in float32 and rounds the result back. Other types, including bfloat16, whose range
+// matches float32, compute in their own type.
+template <typename T> struct range_safe_compute_type {
     using type = T;
 };
 
-template <> struct atan2_adjoint_compute_type<float16> {
+template <> struct range_safe_compute_type<float16> {
     using type = float32;
 };
 
@@ -1810,12 +1814,14 @@ inline CUDA_CALLABLE void adj_tan(T x, T& adj_x, T adj_ret)\
 }\
 inline CUDA_CALLABLE void adj_atan(T x, T& adj_x, T adj_ret)\
 {\
-    adj_x += adj_ret /(x*x + T(1));\
+    using Compute = range_safe_compute_type<T>::type;\
+    Compute wx = Compute(x);\
+    adj_x += T(Compute(adj_ret) / (wx*wx + Compute(1)));\
 }\
 inline CUDA_CALLABLE void adj_atan2(T y, T x, T& adj_y, T& adj_x, T adj_ret)\
 {\
     /* Half squared magnitudes can overflow or underflow even when the partials are representable. */ \
-    using Compute = atan2_adjoint_compute_type<T>::type;\
+    using Compute = range_safe_compute_type<T>::type;\
     Compute wx = Compute(x), wy = Compute(y);\
     Compute d = wx*wx + wy*wy;\
     DO_IF_FPCHECK(adj_x -= T(wy/d*Compute(adj_ret));\

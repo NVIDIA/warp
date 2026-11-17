@@ -53,6 +53,7 @@ from warp.tests.unittest_utils import (
     get_test_devices_with_cuda_graph_module_load,
     get_test_devices_with_graph_capture_allocation,
     get_test_devices_with_graph_capture_allocation_and_cuda_graph_module_load,
+    suppress_native_error_output,
 )
 
 
@@ -2290,7 +2291,7 @@ def test_cuda_source_enabled_capture_load_from_bytes(test, device):
 
     filename = next(iter(modules))
     modules[filename] = b"intentionally invalid CUDA module"
-    with test.assertRaisesRegex(RuntimeError, "SHA-256 check"):
+    with suppress_native_error_output(), test.assertRaisesRegex(RuntimeError, "SHA-256 check"):
         wp.capture_load_from_bytes(wrp_data, modules, device=device)
 
 
@@ -2314,9 +2315,12 @@ def test_cuda_source_fallback_reports_missing_source(test, device):
             binary_file.write(b"intentionally invalid CUDA module")
         os.remove(os.path.join(modules_dir, artifact["source_filename"]))
 
-        with test.assertRaisesRegex(
-            RuntimeError,
-            r"packaged binary.*SHA-256 check.*generated source.*was not found",
+        with (
+            suppress_native_error_output(),
+            test.assertRaisesRegex(
+                RuntimeError,
+                r"packaged binary.*SHA-256 check.*generated source.*was not found",
+            ),
         ):
             wp.capture_load(path, device=device)
 
@@ -4495,7 +4499,10 @@ def test_capture_graph_branch_save_rejected_cpu(test, device):
                 record()
             with tempfile.TemporaryDirectory() as tmpdir:
                 path = os.path.join(tmpdir, "graph_branch_should_not_save")
-                with test.assertRaisesRegex(RuntimeError, r"wp\.capture_if\(\) or wp\.capture_while\(\)"):
+                with (
+                    suppress_native_error_output(),
+                    test.assertRaisesRegex(RuntimeError, r"wp\.capture_if\(\) or wp\.capture_while\(\)"),
+                ):
                     wp.capture_save(outer.graph, path)
                 test.assertFalse(os.path.exists(path + ".wrp"))
 
@@ -6334,7 +6341,7 @@ def test_capture_with_bvh_refit_save_rejected(test, device):
     with tempfile.TemporaryDirectory() as tmpdir:
         path = os.path.join(tmpdir, "bvh_refit_should_not_save")
         # The error must name the offending op so it is actionable.
-        with test.assertRaisesRegex(RuntimeError, r"wp\.Bvh\.refit\(\)"):
+        with suppress_native_error_output(), test.assertRaisesRegex(RuntimeError, r"wp\.Bvh\.refit\(\)"):
             wp.capture_save(capture.graph, path)
         # A rejected save must not leave a .wrp behind (an empty _modules dir may
         # remain, as on any failed capture_save).
@@ -6359,7 +6366,7 @@ def test_capture_with_bvh_rebuild_save_rejected(test, device):
     with tempfile.TemporaryDirectory() as tmpdir:
         path = os.path.join(tmpdir, "bvh_rebuild_should_not_save")
         # The error must name the offending op so it is actionable.
-        with test.assertRaisesRegex(RuntimeError, r"wp\.Bvh\.rebuild\(\)"):
+        with suppress_native_error_output(), test.assertRaisesRegex(RuntimeError, r"wp\.Bvh\.rebuild\(\)"):
             wp.capture_save(capture.graph, path)
         # A rejected save must not leave a .wrp behind (an empty _modules dir may
         # remain, as on any failed capture_save).
@@ -6454,23 +6461,28 @@ add_function_test(
     test_apic_native_save_reports_hashgrid_serialization_unsupported,
     devices=[d for d in devices if d.is_cpu],
 )
+# The APIC loader writes the next three rejections directly to stderr, which CheckOutput
+# can capture as stdout on Windows.
 add_function_test(
     TestApic,
     "test_capture_load_rejects_empty_conditional_branches_with_operations",
     test_capture_load_rejects_empty_conditional_branches_with_operations,
     devices=[d for d in devices if d.is_cpu],
+    check_output=False,
 )
 add_function_test(
     TestApic,
     "test_capture_load_rejects_memtile_span_overflow",
     test_capture_load_rejects_memtile_span_overflow,
     devices=[d for d in devices if d.is_cpu],
+    check_output=False,
 )
 add_function_test(
     TestApic,
     "test_capture_load_rejects_zero_memtile_srcsize",
     test_capture_load_rejects_zero_memtile_srcsize,
     devices=[d for d in devices if d.is_cpu],
+    check_output=False,
 )
 add_function_test(
     TestApic,
@@ -6581,11 +6593,14 @@ add_function_test(
     test_capture_save_binary_only_cuda_module,
     devices=[d for d in devices_with_cuda_graph_module_load if d.is_cuda],
 )
+# The CUDA module loader writes the rejected PTX diagnostics directly to stderr, which
+# CheckOutput can capture as stdout on Windows.
 add_function_test(
     TestApic,
     "test_capture_save_binary_only_after_source_fallback",
     test_capture_save_binary_only_after_source_fallback,
     devices=[d for d in devices_with_cuda_graph_module_load if d.is_cuda],
+    check_output=False,
 )
 add_function_test(
     TestApic,

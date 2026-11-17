@@ -3593,6 +3593,49 @@ bool wp_cuda_graph_begin_capture(void* context, void* stream, int external, int 
     return true;
 }
 
+static __global__ void graph_root_kernel() { }
+
+// Pre-R580 drivers can run a graph's first non-kernel node (e.g., a memset) before
+// earlier work in the launch stream has finished.
+static bool insert_graph_root_kernel(cudaGraph_t cuda_graph)
+{
+    size_t num_roots = 0;
+    if (!check_cuda(cudaGraphGetRootNodes(cuda_graph, NULL, &num_roots)))
+        return false;
+    std::vector<cudaGraphNode_t> roots(num_roots);
+    if (!check_cuda(cudaGraphGetRootNodes(cuda_graph, roots.data(), &num_roots)))
+        return false;
+
+    bool all_kernels = true;
+    for (cudaGraphNode_t root : roots) {
+        CUgraphNodeType node_type;
+        if (!check_cu(cuGraphNodeGetType_f(root, &node_type)))
+            return false;
+        if (node_type != CU_GRAPH_NODE_TYPE_KERNEL) {
+            all_kernels = false;
+            break;
+        }
+    }
+    if (all_kernels)
+        return true;
+
+    cudaKernelNodeParams params = {};
+    params.func = (void*)graph_root_kernel;
+    params.gridDim = dim3(1);
+    params.blockDim = dim3(1);
+
+    cudaGraphNode_t kernel_node = NULL;
+    if (!check_cuda(cudaGraphAddKernelNode(&kernel_node, cuda_graph, NULL, 0, &params)))
+        return false;
+
+    std::vector<cudaGraphNode_t> from(num_roots, kernel_node);
+#if CUDA_VERSION >= 13000
+    return check_cuda(cudaGraphAddDependencies(cuda_graph, from.data(), roots.data(), NULL, num_roots));
+#else
+    return check_cuda(cudaGraphAddDependencies(cuda_graph, from.data(), roots.data(), num_roots));
+#endif
+}
+
 bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
 {
     ContextGuard guard(context);
@@ -3725,6 +3768,11 @@ bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
     // process deferred free list if no more captures are ongoing
     if (g_captures.empty()) {
         run_deferred_actions();
+    }
+
+    if (wp_cuda_driver_version() < 13000 && !insert_graph_root_kernel(graph)) {
+        cudaGraphDestroy(graph);
+        return false;
     }
 
     if (graph_ret)

@@ -3091,14 +3091,24 @@ class Adjoint:
                 if type(raw) in warp._src.types.scalar_types:
                     raw = raw.value
                 if isinstance(raw, builtins.int) or (isinstance(raw, builtins.float) and not math.isnan(raw)):
-                    # Repurpose the original arg variable: change its type to
-                    # the 64-bit target and clear its constant so it emits as
-                    # an uninitialized variable of the correct type, avoiding
-                    # compiler warnings from narrowing a 64-bit literal.
-                    arg.type = func.value_type
-                    arg.constant = None
-                    adj.add_forward(f"var_{arg} = {constant_str(func.value_type(raw))};")
-                    return return_value(arg)
+                    # A literal argument's Var belongs to this call alone, so
+                    # repurpose it as the 64-bit output: it then never emits a
+                    # narrowing constant initializer. Any other constant Var
+                    # (a named or global constant, an unrolled loop index) is
+                    # shared through the symbol table, and retyping it would
+                    # change every other use, e.g. `BINS - 1` after
+                    # `wp.float64(BINS)`; give the result its own Var instead.
+                    arg_node = next(iter(bound_arg_nodes.values()), None)
+                    owned_literal = isinstance(arg_node, ast.Constant) or (
+                        isinstance(arg_node, ast.UnaryOp)
+                        and isinstance(arg_node.op, ast.USub)
+                        and isinstance(arg_node.operand, ast.Constant)
+                    )
+                    output = arg if owned_literal else adj.add_var(func.value_type)
+                    output.type = func.value_type
+                    output.constant = None
+                    adj.add_forward(f"var_{output} = {constant_str(func.value_type(raw))};")
+                    return return_value(output)
 
         # if it is a user-function then build it recursively
         if not func_is_builtin:
@@ -7782,12 +7792,12 @@ cuda_kernel_template_forward = """
 {line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {max_registers_str}{forward_name}(
     {forward_args})
 {{
-{forward_smem_spilling_str}{line_directive}    wp::tile_shared_storage_t tile_mem;
+{forward_smem_spilling_str}{line_directive}    {forward_tile_storage_str}
 
 {line_directive}    const size_t _idx = static_cast<size_t>(blockIdx.z * gridDim.y + blockIdx.y) * static_cast<size_t>(gridDim.x * blockDim.x) + static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x);
 {line_directive}    if (_idx >= dim.size) return;
             // reset shared memory allocator
-{line_directive}    wp::tile_shared_storage_t::init();
+{line_directive}    {forward_tile_reset_str}
 
 {forward_body}{line_directive}}}
 
@@ -7798,12 +7808,12 @@ cuda_kernel_template_backward = """
 {line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {max_registers_str}{backward_name}(
     {reverse_args})
 {{
-{backward_smem_spilling_str}{line_directive}    wp::tile_shared_storage_t tile_mem;
+{backward_smem_spilling_str}{line_directive}    {backward_tile_storage_str}
 
 {line_directive}    const size_t _idx = static_cast<size_t>(blockIdx.z * gridDim.y + blockIdx.y) * static_cast<size_t>(gridDim.x * blockDim.x) + static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x);
 {line_directive}    if (_idx >= dim.size) return;
             // reset shared memory allocator
-{line_directive}    wp::tile_shared_storage_t::init();
+{line_directive}    {backward_tile_reset_str}
 
 {reverse_body}{line_directive}}}
 
@@ -7814,14 +7824,14 @@ cuda_kernel_template_forward_grid_stride = """
 {line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {max_registers_str}{forward_name}(
     {forward_args})
 {{
-{forward_smem_spilling_str}{line_directive}    wp::tile_shared_storage_t tile_mem;
+{forward_smem_spilling_str}{line_directive}    {forward_tile_storage_str}
 
 {line_directive}    for (size_t _idx = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
 {line_directive}         _idx < dim.size;
 {line_directive}         _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
     {{
             // reset shared memory allocator
-{line_directive}        wp::tile_shared_storage_t::init();
+{line_directive}        {forward_tile_reset_str}
 
 {forward_body}{line_directive}    }}
 {line_directive}}}
@@ -7833,14 +7843,14 @@ cuda_kernel_template_backward_grid_stride = """
 {line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {max_registers_str}{backward_name}(
     {reverse_args})
 {{
-{backward_smem_spilling_str}{line_directive}    wp::tile_shared_storage_t tile_mem;
+{backward_smem_spilling_str}{line_directive}    {backward_tile_storage_str}
 
 {line_directive}    for (size_t _idx = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
 {line_directive}         _idx < dim.size;
 {line_directive}         _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
     {{
             // reset shared memory allocator
-{line_directive}        wp::tile_shared_storage_t::init();
+{line_directive}        {backward_tile_reset_str}
 
 {reverse_body}{line_directive}    }}
 {line_directive}}}
@@ -8989,6 +8999,12 @@ def codegen_kernel(kernel, device, options):
     ):
         forward_smem_spilling_str = "    WP_ENABLE_SMEM_SPILLING();\n"
 
+    # The tile allocator keeps per-thread offsets in static shared memory, so only entry points that use it get one.
+    forward_tile_storage_str = forward_tile_reset_str = ""
+    if adj.get_total_required_shared() > 0:
+        forward_tile_storage_str = "wp::tile_shared_storage_t tile_mem;"
+        forward_tile_reset_str = "wp::tile_shared_storage_t::init();"
+
     # Generate cluster_dims string for CUDA kernels.
     # 1 is the implicit default and is treated as a no-op so that
     # kernels without cluster_dim produce byte-identical source to pre-feature.
@@ -9039,6 +9055,8 @@ def codegen_kernel(kernel, device, options):
             "cluster_dims_str": cluster_dims_str,
             "max_registers_str": max_registers_str,
             "forward_smem_spilling_str": forward_smem_spilling_str,
+            "forward_tile_storage_str": forward_tile_storage_str,
+            "forward_tile_reset_str": forward_tile_reset_str,
         }
     )
     template += template_forward
@@ -9071,11 +9089,17 @@ def codegen_kernel(kernel, device, options):
             and adj.get_total_required_shared_backward() == 0
         ):
             backward_smem_spilling_str = "    WP_ENABLE_SMEM_SPILLING();\n"
+        backward_tile_storage_str = backward_tile_reset_str = ""
+        if adj.get_total_required_shared_backward() > 0:
+            backward_tile_storage_str = "wp::tile_shared_storage_t tile_mem;"
+            backward_tile_reset_str = "wp::tile_shared_storage_t::init();"
         template_fmt_args.update(
             {
                 "reverse_args": indent(reverse_args),
                 "reverse_body": reverse_body,
                 "backward_smem_spilling_str": backward_smem_spilling_str,
+                "backward_tile_storage_str": backward_tile_storage_str,
+                "backward_tile_reset_str": backward_tile_reset_str,
             }
         )
         template += template_backward

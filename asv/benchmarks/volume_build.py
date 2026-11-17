@@ -19,6 +19,7 @@ class VolumeAllocateByVoxelsCPU:
 
     repeat = 15
     number = 1
+    rounds = 4  # Per-process speed varies with memory layout; four rounds stop one slow process moving the median.
 
     @setup_once
     def setup(self):

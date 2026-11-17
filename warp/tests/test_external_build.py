@@ -1,16 +1,23 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import contextlib
 import ctypes
 import hashlib
+import io
+import subprocess
+import sys
 import tempfile
 import unittest
+import warnings
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
 import warp as wp
+import warp.experimental.build
+from warp._src import logger as _logger_module
 from warp.tests.unittest_utils import add_function_test, get_test_devices
 
 
@@ -26,56 +33,56 @@ class NativeImage(ctypes.Structure):
     _fields_ = [("handle", ctypes.c_uint64)]
 
 
-wp.build_experimental.add_native_type(
+wp.experimental.build.add_native_type(
     NativeColor,
     native_name="warp_test::Color",
     fields={"r": wp.float32, "g": wp.float32, "b": wp.float32},
     initializer="aggregate",
 )
-wp.build_experimental.add_native_type(
+wp.experimental.build.add_native_type(
     NativePixel,
     native_name="warp_test::Pixel",
     fields={"color": NativeColor, "index": wp.int32},
     initializer="aggregate",
 )
-wp.build_experimental.add_native_type(NativeImage, native_name="warp_test::Image")
-wp.build_experimental.add_builtin(
+wp.experimental.build.add_native_type(NativeImage, native_name="warp_test::Image")
+wp.experimental.build.add_builtin(
     "_test_native_scale",
     {"value": NativeColor, "scale": wp.float32},
     NativeColor,
     native_name="warp_test::scale",
 )
-wp.build_experimental.add_builtin(
+wp.experimental.build.add_builtin(
     "_test_native_image_handle",
     {"image": NativeImage},
     wp.uint64,
     native_name="warp_test::image_handle",
 )
 
-external_scale = wp.build_experimental.add_builtin(
+external_scale = wp.experimental.build.add_builtin(
     "_test_external_overloaded_scale",
     {"value": wp.float32, "factor": wp.float32},
     wp.float32,
     native_name="warp_test::scale_scalar",
 )
-wp.build_experimental.add_builtin(
+wp.experimental.build.add_builtin(
     "_test_external_overloaded_scale",
     {"value": wp.int32, "factor": wp.int32},
     wp.int32,
     native_name="warp_test::scale_scalar",
 )
-external_write = wp.build_experimental.add_builtin(
+external_write = wp.experimental.build.add_builtin(
     "_test_external_write",
     {"output": wp.ref[wp.float32], "value": wp.float32},
     native_name="warp_test::write",
 )
-external_alias = wp.build_experimental.add_builtin(
+external_alias = wp.experimental.build.add_builtin(
     "_test_external_alias",
     {"left": wp.ref[wp.float32], "right": wp.ref[wp.float32]},
     native_name="warp_test::alias",
 )
 
-external_square = wp.build_experimental.add_builtin(
+external_square = wp.experimental.build.add_builtin(
     "_test_external_square_adjoint",
     {"value": float},
     float,
@@ -84,7 +91,7 @@ external_square = wp.build_experimental.add_builtin(
 )
 
 
-external_root = wp.build_experimental.add_builtin(
+external_root = wp.experimental.build.add_builtin(
     "_test_external_root_adjoint",
     {"value": float},
     float,
@@ -92,7 +99,7 @@ external_root = wp.build_experimental.add_builtin(
     is_differentiable=True,
     adjoint_uses_forward_output=True,
 )
-external_root_product = wp.build_experimental.add_builtin(
+external_root_product = wp.experimental.build.add_builtin(
     "_test_external_root_product_adjoint",
     {"value": float, "factor": float},
     float,
@@ -100,7 +107,7 @@ external_root_product = wp.build_experimental.add_builtin(
     is_differentiable=True,
     adjoint_uses_forward_output=True,
 )
-external_roots = wp.build_experimental.add_builtin(
+external_roots = wp.experimental.build.add_builtin(
     "_test_external_roots_adjoint",
     {"value": float},
     wp.vec3,
@@ -1202,6 +1209,24 @@ def test_native_value_tape_adjoint(test, device):
     test.assertEqual(values.grad.numpy()[0], 2.0)
 
 
+@contextlib.contextmanager
+def _capture_warp_warnings():
+    """Capture Warp warnings written to stderr, bypassing the logger's deduplication."""
+    saved_warnings_seen = _logger_module._warnings_seen.copy()
+    _logger_module._warnings_seen.clear()
+    old_stderr = sys.stderr
+    stderr = io.StringIO()
+    sys.stderr = stderr
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("always", DeprecationWarning)
+            yield stderr
+    finally:
+        sys.stderr = old_stderr
+        _logger_module._warnings_seen.clear()
+        _logger_module._warnings_seen.update(saved_warnings_seen)
+
+
 class TestExternalBuild(unittest.TestCase):
     @staticmethod
     def _codegen_source(kernel, device):
@@ -1211,9 +1236,69 @@ class TestExternalBuild(unittest.TestCase):
         builder = wp._src.context.ModuleBuilder(module, options=options, hasher=hasher)
         return builder.codegen(device)
 
+    def test_experimental_build_exports(self):
+        from warp._src import external_build  # noqa: PLC0415
+
+        self.assertIs(warp.experimental.build.add_builtin, external_build.add_builtin)
+        self.assertIs(warp.experimental.build.add_native_type, external_build.add_native_type)
+        self.assertEqual(warp.experimental.build.__all__, ["add_builtin", "add_native_type"])
+
+    def test_deprecated_build_experimental_attribute(self):
+        saved_verbose = wp.config.verbose_warnings
+        wp.config.verbose_warnings = True
+        try:
+            with _capture_warp_warnings() as stderr:
+                add_builtin = wp.build_experimental.add_builtin
+        finally:
+            wp.config.verbose_warnings = saved_verbose
+        self.assertIs(add_builtin, warp.experimental.build.add_builtin)
+        output = stderr.getvalue()
+        self.assertIn(
+            "Warp DeprecationWarning: wp.build_experimental.add_builtin is deprecated and will be removed in Warp 1.24",
+            output,
+        )
+        self.assertIn("warp.experimental.build.add_builtin", output)
+        # The warning location is the caller's line, not Warp internals.
+        self.assertIn("test_external_build.py:", output)
+
+    def test_deprecated_build_experimental_from_import(self):
+        with _capture_warp_warnings() as stderr:
+            from warp.build_experimental import add_native_type  # noqa: PLC0415
+        self.assertIs(add_native_type, warp.experimental.build.add_native_type)
+        self.assertIn("wp.build_experimental.add_native_type is deprecated", stderr.getvalue())
+
+    def test_deprecated_build_experimental_star_import(self):
+        namespace = {}
+        with _capture_warp_warnings() as stderr:
+            exec("from warp.build_experimental import *", namespace)
+        self.assertIs(namespace["add_builtin"], warp.experimental.build.add_builtin)
+        self.assertIs(namespace["add_native_type"], warp.experimental.build.add_native_type)
+        self.assertIn("wp.build_experimental.add_builtin is deprecated", stderr.getvalue())
+        self.assertIn("wp.build_experimental.add_native_type is deprecated", stderr.getvalue())
+
+    def test_deprecated_build_experimental_unknown_name(self):
+        import warp.build_experimental  # noqa: PLC0415
+
+        with _capture_warp_warnings() as stderr:
+            with self.assertRaises(AttributeError) as cm:
+                warp.build_experimental.add_builtins  # noqa: B018
+        self.assertIn("warp.build_experimental", str(cm.exception))
+        self.assertNotIn("DeprecationWarning", stderr.getvalue())
+
+    def test_import_warp_skips_experimental_modules(self):
+        code = (
+            "import sys, warp, warp.experimental; "
+            "print(sorted(m for m in ('warp.build_experimental', 'warp.experimental.build') "
+            "if m in sys.modules))"
+        )
+        result = subprocess.run((sys.executable, "-c", code), capture_output=True, text=True, check=False)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip().splitlines()[-1], "[]")
+        self.assertNotIn("build_experimental", result.stderr)
+
     def test_add_builtin(self):
         name = "_test_external_square"
-        function = wp.build_experimental.add_builtin(
+        function = wp.experimental.build.add_builtin(
             name,
             {"value": wp.float32},
             wp.float32,
@@ -1229,7 +1314,7 @@ class TestExternalBuild(unittest.TestCase):
         self.assertTrue(overload.hidden)
         self.assertFalse(overload.export)
 
-        duplicate = wp.build_experimental.add_builtin(
+        duplicate = wp.experimental.build.add_builtin(
             name,
             {"value": wp.float32},
             wp.float32,
@@ -1241,7 +1326,7 @@ class TestExternalBuild(unittest.TestCase):
     def test_add_builtin_rejects_ambiguous_overloads(self):
         """Reject overloads that differ only in labels, returns, or reference qualifiers."""
         name = "_test_external_conflicting_labels"
-        function = wp.build_experimental.add_builtin(name, {"value": wp.int32}, wp.int32, native_name="external::first")
+        function = wp.experimental.build.add_builtin(name, {"value": wp.int32}, wp.int32, native_name="external::first")
         original_overloads = tuple(function.overloads)
         for inputs, result, target in (
             ({"renamed": wp.int32}, wp.int32, "external::first"),
@@ -1251,10 +1336,10 @@ class TestExternalBuild(unittest.TestCase):
         ):
             with self.subTest(inputs=inputs, result=result, target=target):
                 with self.assertRaisesRegex(RuntimeError, "conflicting external builtin"):
-                    wp.build_experimental.add_builtin(name, inputs, result, native_name=target)
+                    wp.experimental.build.add_builtin(name, inputs, result, native_name=target)
                 self.assertEqual(tuple(function.overloads), original_overloads)
 
-        duplicate = wp.build_experimental.add_builtin(name, {"value": int}, int, native_name="external::first")
+        duplicate = wp.experimental.build.add_builtin(name, {"value": int}, int, native_name="external::first")
         self.assertIs(duplicate, function)
         self.assertEqual(tuple(function.overloads), original_overloads)
         self.assertIs(function.get_overload([], {"value": wp.int32}), original_overloads[0])
@@ -1300,7 +1385,7 @@ class TestExternalBuild(unittest.TestCase):
 
     def test_external_reference_rejects_native_value_backward(self):
         """Native-value suppression of derivative calls must not bypass replay validation."""
-        mutate_color = wp.build_experimental.add_builtin(
+        mutate_color = wp.experimental.build.add_builtin(
             "_test_external_ref_color",
             {"value": wp.ref[NativeColor]},
             NativeColor,
@@ -1477,7 +1562,7 @@ class TestExternalBuild(unittest.TestCase):
 
     def test_external_derivative_registration_contract(self):
         """Validate derivative policy, forward-result requirements, and canonical aliases."""
-        register = wp.build_experimental.add_builtin
+        register = wp.experimental.build.add_builtin
         args = ("_test_external_derivative_contract", {"value": float}, float)
         function = register(*args, native_name="warp_test::square_scalar", is_differentiable=True)
         self.assertIs(register(*args, native_name="warp_test::square_scalar", is_differentiable=True), function)
@@ -1546,7 +1631,7 @@ class TestExternalBuild(unittest.TestCase):
         for result_type, generic in ((float, False), (NativeColor, False), (float, True)):
             check_native_signature(result_type, generic)
 
-        register = wp.build_experimental.add_builtin
+        register = wp.experimental.build.add_builtin
         args = ("_test_external_output_contract", {"value": float}, float)
         options = {
             "native_name": "warp_test::root_scalar",
@@ -1749,11 +1834,11 @@ class TestExternalBuild(unittest.TestCase):
 
     def test_add_builtin_validation(self):
         with self.assertRaisesRegex(ValueError, "valid Python identifier"):
-            wp.build_experimental.add_builtin("not-valid")
+            wp.experimental.build.add_builtin("not-valid")
         with self.assertRaisesRegex(ValueError, "qualified C\\+\\+ identifier"):
-            wp.build_experimental.add_builtin("_test_invalid_native_name", native_name="external::bad-name")
+            wp.experimental.build.add_builtin("_test_invalid_native_name", native_name="external::bad-name")
         with self.assertRaisesRegex(TypeError, "mapping"):
-            wp.build_experimental.add_builtin("_test_invalid_inputs", [])  # type: ignore[arg-type]
+            wp.experimental.build.add_builtin("_test_invalid_inputs", [])  # type: ignore[arg-type]
 
     def test_add_builtin_signature_uses_parameter_order_and_native_schema(self):
         class FirstValue(ctypes.Structure):
@@ -1764,7 +1849,7 @@ class TestExternalBuild(unittest.TestCase):
 
         native_name = "warp_test::BuiltinReloadedValue"
         for value_type in (FirstValue, ReloadedValue):
-            wp.build_experimental.add_native_type(
+            wp.experimental.build.add_native_type(
                 value_type,
                 native_name=native_name,
                 fields={"value": wp.float32},
@@ -1772,13 +1857,13 @@ class TestExternalBuild(unittest.TestCase):
             )
 
         name = "_test_ordered_external_signature"
-        function = wp.build_experimental.add_builtin(
+        function = wp.experimental.build.add_builtin(
             name,
             {"value": FirstValue, "scale": wp.float32},
             FirstValue,
             native_name="external::ordered",
         )
-        duplicate = wp.build_experimental.add_builtin(
+        duplicate = wp.experimental.build.add_builtin(
             name,
             {"value": ReloadedValue, "scale": wp.float32},
             ReloadedValue,
@@ -1786,7 +1871,7 @@ class TestExternalBuild(unittest.TestCase):
         )
         self.assertIs(duplicate, function)
 
-        wp.build_experimental.add_builtin(
+        wp.experimental.build.add_builtin(
             name,
             {"scale": wp.float32, "value": ReloadedValue},
             ReloadedValue,
@@ -1797,7 +1882,7 @@ class TestExternalBuild(unittest.TestCase):
         self.assertIn(("scale", "value"), signatures)
 
     def test_external_builtin_contract_affects_module_hash(self):
-        function = wp.build_experimental.add_builtin(
+        function = wp.experimental.build.add_builtin(
             "_test_external_hash_target",
             {"value": wp.float32},
             wp.float32,
@@ -1844,7 +1929,7 @@ class TestExternalBuild(unittest.TestCase):
 
     def test_add_native_type_validation(self):
         self.assertIs(
-            wp.build_experimental.add_native_type(
+            wp.experimental.build.add_native_type(
                 NativeColor,
                 native_name="warp_test::Color",
                 fields={"r": wp.float32, "g": wp.float32, "b": wp.float32},
@@ -1857,13 +1942,13 @@ class TestExternalBuild(unittest.TestCase):
             _fields_ = [("value", ctypes.c_int16)]
 
         with self.assertRaisesRegex(ValueError, "ctypes storage"):
-            wp.build_experimental.add_native_type(
+            wp.experimental.build.add_native_type(
                 InvalidNativeType,
                 native_name="warp_test::InvalidNativeType",
                 fields={"value": wp.int32},
             )
         with self.assertRaisesRegex(ValueError, "requires exposed fields"):
-            wp.build_experimental.add_native_type(
+            wp.experimental.build.add_native_type(
                 InvalidNativeType,
                 native_name="warp_test::OpaqueAggregate",
                 initializer="aggregate",
@@ -1873,7 +1958,7 @@ class TestExternalBuild(unittest.TestCase):
             _fields_ = [("first", ctypes.c_float), ("second", ctypes.c_float)]
 
         with self.assertRaisesRegex(ValueError, "every ctypes field in declaration order"):
-            wp.build_experimental.add_native_type(
+            wp.experimental.build.add_native_type(
                 ReorderedNativeType,
                 native_name="warp_test::ReorderedNativeType",
                 fields={"second": wp.float32, "first": wp.float32},
@@ -1881,7 +1966,7 @@ class TestExternalBuild(unittest.TestCase):
             )
 
         with self.assertRaisesRegex(ValueError, "every ctypes field in declaration order"):
-            wp.build_experimental.add_native_type(
+            wp.experimental.build.add_native_type(
                 ReorderedNativeType,
                 native_name="warp_test::PartialNativeType",
                 fields={"first": wp.float32},
@@ -1894,7 +1979,7 @@ class TestExternalBuild(unittest.TestCase):
         class PaddedValue(ctypes.Structure):
             _fields_ = [("tag", ctypes.c_uint8), ("value", ctypes.c_uint32)]
 
-        wp.build_experimental.add_native_type(
+        wp.experimental.build.add_native_type(
             PaddedValue,
             native_name="warp_test::PaddedValue",
             fields={"tag": wp.uint8, "value": wp.uint32},
@@ -1918,14 +2003,14 @@ class TestExternalBuild(unittest.TestCase):
             _fields_ = [("value", ctypes.c_float)]
 
         native_name = "warp_test::ReloadableNativeType"
-        wp.build_experimental.add_native_type(
+        wp.experimental.build.add_native_type(
             FirstDefinition,
             native_name=native_name,
             fields={"value": wp.float32},
             initializer="aggregate",
         )
         self.assertIs(
-            wp.build_experimental.add_native_type(
+            wp.experimental.build.add_native_type(
                 ReloadedDefinition,
                 native_name=native_name,
                 fields={"value": wp.float32},
@@ -1938,7 +2023,7 @@ class TestExternalBuild(unittest.TestCase):
             _fields_ = [("value", ctypes.c_double)]
 
         with self.assertRaisesRegex(RuntimeError, "different definition"):
-            wp.build_experimental.add_native_type(
+            wp.experimental.build.add_native_type(
                 ConflictingDefinition,
                 native_name=native_name,
                 fields={"value": wp.float64},
@@ -1960,26 +2045,26 @@ class TestExternalBuild(unittest.TestCase):
 
         inner_native_name = "warp_test::ReloadableNestedInner"
         outer_native_name = "warp_test::ReloadableNestedOuter"
-        wp.build_experimental.add_native_type(
+        wp.experimental.build.add_native_type(
             FirstInner,
             native_name=inner_native_name,
             fields={"value": wp.float32},
             initializer="aggregate",
         )
-        wp.build_experimental.add_native_type(
+        wp.experimental.build.add_native_type(
             FirstOuter,
             native_name=outer_native_name,
             fields={"inner": FirstInner},
             initializer="aggregate",
         )
-        wp.build_experimental.add_native_type(
+        wp.experimental.build.add_native_type(
             ReloadedInner,
             native_name=inner_native_name,
             fields={"value": wp.float32},
             initializer="aggregate",
         )
         self.assertIs(
-            wp.build_experimental.add_native_type(
+            wp.experimental.build.add_native_type(
                 ReloadedOuter,
                 native_name=outer_native_name,
                 fields={"inner": ReloadedInner},
@@ -2127,13 +2212,13 @@ CUDA_CALLABLE inline float preamble_cast(int value) {
     test.assertEqual(out.numpy()[0], 7.0)
 
 
-wp.build_experimental.add_builtin(
+wp.experimental.build.add_builtin(
     "warp_test_preamble_double",
     {"x": wp.float32},
     wp.float32,
     native_name="warp_test_preamble_double",
 )
-wp.build_experimental.add_builtin(
+wp.experimental.build.add_builtin(
     "warp_test_preamble_cast",
     {"value": wp.int32},
     wp.float32,

@@ -239,7 +239,6 @@ warp/examples/tile
     user_guide/basics
     user_guide/runtime
     user_guide/differentiability
-    user_guide/forward_mode_jets
     user_guide/programming_model
     user_guide/interoperability
     user_guide/execution_and_performance
@@ -260,8 +259,8 @@ warp/examples/tile
 
     api_reference/warp
     api_reference/warp_autograd
-    api_reference/warp_build_experimental
     api_reference/warp_config
+    api_reference/warp_experimental
     api_reference/warp_fem
     api_reference/warp_geometry
     api_reference/warp_optim

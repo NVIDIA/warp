@@ -24,6 +24,7 @@ from warp.tests.unittest_utils import (
     assert_np_equal,
     get_cuda_device_pair_with_mempool_access_support,
     get_cuda_device_pair_with_peer_access_support,
+    get_selected_cuda_test_devices,
     get_selected_cuda_test_devices_with_mempool,
     get_test_devices,
     get_test_devices_with_cuda_graph_module_load,
@@ -254,6 +255,35 @@ def test_graph_memset(test, device):
     np.testing.assert_allclose(arr.numpy(), np.ones(n))
     wp.capture_launch(capture.graph)
     np.testing.assert_allclose(arr.numpy(), np.zeros(n))
+
+
+@wp.kernel
+def atomic_count_kernel(counter: wp.array[wp.float64]):
+    wp.atomic_add(counter, 0, wp.float64(1.0))
+
+
+def test_cuda_graph_memset_root_pending_work(test, device):
+    """The first replay of a memset-rooted graph waits for pending stream work."""
+    n = 1_000_000
+    counter = wp.zeros(1, dtype=wp.float64, device=device)
+
+    def apply():
+        counter.zero_()
+        wp.launch(atomic_count_kernel, dim=n, inputs=[counter], device=device)
+
+    wp.load_module(device=device)
+    apply()
+    wp.synchronize_device(device)
+
+    # Leave work pending during capture, upload, and first launch.
+    for _ in range(8):
+        apply()
+    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+        apply()
+
+    for _ in range(3):
+        wp.capture_launch(capture.graph)
+        np.testing.assert_array_equal(counter.numpy(), [float(n)])
 
 
 def test_graph_fill_replay(test, device):
@@ -1477,6 +1507,12 @@ add_function_test(
 add_function_test(TestGraph, "test_graph_memcpy", test_graph_memcpy, devices=devices)
 add_function_test(TestGraph, "test_graph_memset", test_graph_memset, devices=devices)
 add_function_test(TestGraph, "test_graph_fill_replay", test_graph_fill_replay, devices=devices)
+add_function_test(
+    TestGraph,
+    "test_cuda_graph_memset_root_pending_work",
+    test_cuda_graph_memset_root_pending_work,
+    devices=get_selected_cuda_test_devices(),
+)
 add_function_test(
     TestGraph,
     "test_graph_fill_noncontiguous_replay",
