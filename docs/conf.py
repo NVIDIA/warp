@@ -906,6 +906,14 @@ DOC_REDIRECTS = {
     "user_guide/publications": "project/publications.html",
     "deep_dive/memory_access": "user_guide/execution_and_performance/memory_management.html",
     "user_guide/devices": "user_guide/runtime.html#devices",
+    # `warp.build_experimental` moved to `warp.experimental.build` in Warp 1.20.
+    "api_reference/warp_build_experimental": "api_reference/warp_experimental_build.html",
+    "api_reference/_generated/warp.build_experimental.add_builtin": (
+        "api_reference/_generated/warp.experimental.build.add_builtin.html"
+    ),
+    "api_reference/_generated/warp.build_experimental.add_native_type": (
+        "api_reference/_generated/warp.experimental.build.add_native_type.html"
+    ),
 }
 
 # Legacy fragments whose content moved to a different page or whose generated

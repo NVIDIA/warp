@@ -3237,7 +3237,7 @@ _native_value_types: set[type] = set()
 
 
 def is_native_type(t: Any) -> builtins.bool:
-    """Return whether ``t`` is a native value type registered through ``warp.build_experimental``."""
+    """Return whether ``t`` is a native value type registered through ``warp.experimental.build``."""
     return isinstance(t, type) and t in _native_value_types
 
 

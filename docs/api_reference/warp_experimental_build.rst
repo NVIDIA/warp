@@ -1,10 +1,10 @@
-warp.build_experimental
+warp.experimental.build
 =======================
 
-.. automodule:: warp.build_experimental
+.. automodule:: warp.experimental.build
    :no-members:
 
-.. currentmodule:: warp.build_experimental
+.. currentmodule:: warp.experimental.build
 
 API
 ---

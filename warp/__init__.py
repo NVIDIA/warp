@@ -593,7 +593,6 @@ from warp._src.constants import *
 
 # category: Submodules
 
-from . import build_experimental as build_experimental
 from . import config as config
 from . import types as types
 from . import utils as utils
@@ -618,8 +617,20 @@ if _TYPE_CHECKING:
 
     MarchingCubes = _IsoSurfaceMarchingCubes
 
+    # Deprecated alias of `warp.experimental.build`, kept visible to type checkers
+    # until its removal in Warp 1.24. At runtime it resolves through __getattr__.
+    from . import build_experimental as build_experimental
+
 
 def __getattr__(name):
+    # Deprecated module `warp.build_experimental`, imported lazily so that a plain
+    # `import warp` neither loads it nor warns. The module itself warns when one of
+    # its forwarded names is used.
+    if name == "build_experimental":
+        import warp.build_experimental  # noqa: PLC0415
+
+        return warp.build_experimental
+
     # Deprecated alias of `warp.geometry.IsoSurfaceMarchingCubes`, resolved lazily
     # so that `wp.MarchingCubes` *is* the new class rather than a subclass of it.
     # The isosurface API itself lives in `warp.geometry`, imported explicitly.

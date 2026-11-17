@@ -77,7 +77,7 @@ The main security boundaries in this repository are:
   `warp/_src/build.py`, and `warp/_src/context.py` translate trusted Python
   kernel definitions and `@wp.func_native` snippets into C++ or CUDA source.
   `wp.ModuleBuildOptions` can add CPU/CUDA preambles, include directories, and
-  dependency files; `warp.build_experimental` can register external native
+  dependency files; `warp.experimental.build` can register external native
   types and functions; and AOT APIs can emit compiled artifacts for external
   runtimes. Warp compiles these inputs with LLVM/Clang, NVRTC, nvJitLink, and
   optional libmathdx components, then loads or returns the resulting CPU object
@@ -209,7 +209,7 @@ The following scenarios represent the primary security concerns for Warp:
 6. **Trusted native code and external build inputs:** Warp compiles
    `@wp.kernel` definitions, `@wp.func_native` snippets, CPU/CUDA preambles and
    headers supplied through `wp.ModuleBuildOptions`, and native types and
-   functions registered through `warp.build_experimental`. These inputs can
+   functions registered through `warp.experimental.build`. These inputs can
    affect executable CPU or GPU code and native ABI boundaries. **Security
    stance:** Kernels, addons, preambles, headers, native registrations, ABI
    descriptions, and other build inputs must come from trusted sources. Their

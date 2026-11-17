@@ -340,7 +340,8 @@ All supported components (e.g. API functions, Python versions, GPU architectures
 
 * **Experimental**: A new feature that is still under active development.
   It is available for early adopters to test and provide feedback, but its design may change with little or no notice,
-  including in bugfix releases.
+  including in bugfix releases. Experimental modules live under :mod:`warp.experimental` and must be imported
+  explicitly (for example, ``import warp.experimental.build``).
 * **Stable**: The default state for most features. Changes to stable features follow our deprecation timeline 
   and backward compatibility guarantees.
 * **Deprecated**: A feature that is scheduled for removal in a future release.

@@ -263,7 +263,6 @@ from warp._src.paddle import stream_from_paddle as stream_from_paddle
 from warp._src.utils import transform_expand as transform_expand
 from warp._src.utils import quat_between_vectors as quat_between_vectors
 from warp._src.constants import *
-from . import build_experimental as build_experimental
 from . import config as config
 from . import types as types
 from . import utils as utils
@@ -316,6 +315,10 @@ if _TYPE_CHECKING:
     from warp._src.geometry.marching_cubes import IsoSurfaceMarchingCubes as _IsoSurfaceMarchingCubes
 
     MarchingCubes = _IsoSurfaceMarchingCubes
+
+    # Deprecated alias of `warp.experimental.build`, kept visible to type checkers
+    # until its removal in Warp 1.24. At runtime it resolves through __getattr__.
+    from . import build_experimental as build_experimental
 
 __version__ = config.version
 

@@ -67,6 +67,7 @@ Follow Google-style docstrings. Use doctest for code examples where practical.
 - JIT compilation artifacts (`.cpp`/`.cu` from `codegen.py`, `.cubin`/`.ptx`/`.o`) live in a kernel cache directory (see `warp/_src/build.py:init_kernel_cache`).
 - Refer to `warp/examples/` for reference patterns for kernels, launches, and array usage.
 - Always import from `warp` in public-facing code, not `warp._src`. In internal code, import directly from `warp/_src/` modules. Public API is re-exported through `warp/__init__.py`.
+- Put new experimental modules under `warp/experimental/<area>.py` (imported as `warp.experimental.<area>`), not as top-level `warp/<name>_experimental.py` modules. Keep `warp/experimental/__init__.py` free of imports so one experimental module's optional dependencies do not affect `import warp` or the others.
 - `warp._src.utils` imports `warp._src.context` at module level—importing from `utils` in early-loaded modules (e.g., `texture.py`) causes circular imports. Use lazy imports (`from warp._src.utils import ... # noqa: PLC0415` inside functions) when needed.
 - Use the `DeviceLike` type annotation (from `warp._src.context`) for `device` parameters. In modules where importing it at runtime would create a circular import, import it under `TYPE_CHECKING`.
 - Native bindings use ctypes; function signatures are registered in `Runtime.__init__` in `warp/_src/context.py`.

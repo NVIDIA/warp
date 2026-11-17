@@ -87,6 +87,8 @@ BUILTINS_REF_DIR = "language_reference"
 # Module prefixes to skip during documentation generation.
 SKIP = (
     "warp._src",
+    # Deprecated alias of `warp.experimental.build`, removed in Warp 1.24.
+    "warp.build_experimental",
     "warp.examples",
     "warp.tests",
 )
@@ -189,6 +191,8 @@ def get_isolated_dir(
 import importlib
 import json
 import docs.generate_reference
+# Match run(): packages may import optional dependencies at import time.
+docs.generate_reference.install_mock_modules()
 module = importlib.import_module("{module_name}")
 # Write to stdout with clear delimiters
 print("__SYMBOLS_START__")
@@ -688,7 +692,7 @@ def run():
     # First pass: collect all modules that will be documented and their symbols.
     symbols_per_module = {}
     packages = pkgutil.walk_packages(path=wp.__path__, prefix=wp.__name__ + ".")
-    for _, module_name, _ in ((None, "warp", None), *packages):
+    for _, module_name, is_package in ((None, "warp", True), *packages):
         if any(module_name.startswith(x) for x in SKIP):
             continue
 
@@ -696,7 +700,7 @@ def run():
             # Using `pkgutil.walk_packages()` causes additional symbols being added to the namespace
             # so we need to call `import module; dir(module)` in an isolated subprocess to have a clean
             # listing of the public API. It's quite slower so we only use it where necessary,
-            # which is for the root module warp.
+            # which is for packages (see below) including the root module warp.
             all_symbols = get_public_symbols(module_name, run_isolated=True)
             # Filter out builtin functions (documented separately in builtins reference),
             # but only if the symbol in the warp module IS the builtin function object.
@@ -708,10 +712,22 @@ def run():
             if (filtered_count := len(all_symbols) - len(symbols)) > 0:
                 logger.debug(f"Filtered {filtered_count} builtin functions from warp module (documented separately)")
         else:
-            symbols = get_public_symbols(module_name)
+            # Importing a submodule binds it as an attribute of its parent package, so a
+            # package listed in-process could show an explicit-import submodule (e.g.
+            # `warp.experimental.build`) as one of its own symbols, and the page would then
+            # call it automatically available. List packages in isolation instead.
+            symbols = get_public_symbols(module_name, run_isolated=is_package)
 
         if symbols:
             symbols_per_module[module_name] = symbols
+
+    # Give packages that only group submodules (e.g. `warp.experimental`) a page of their
+    # own, so their docstring is rendered and their submodules are linked from it.
+    for module_name in tuple(symbols_per_module):
+        parent_name = module_name.rpartition(".")[0]
+        while parent_name and parent_name not in symbols_per_module:
+            symbols_per_module[parent_name] = ()
+            parent_name = parent_name.rpartition(".")[0]
 
     # Second pass: generate documentation with re-export detection
     for module_name, symbols in symbols_per_module.items():
@@ -739,7 +755,9 @@ def run():
                 submodules.append(other_module_name)
 
         validate_public_functions(module_name, module, symbols, aliased_symbols)
-        write_module_page(module_name, symbols, aliased_symbols, submodules, output_api_dir)
+        # Sort for display: packages added after the first pass (see above) come last
+        # in `symbols_per_module`.
+        write_module_page(module_name, symbols, aliased_symbols, sorted(submodules), output_api_dir)
 
     # Third pass: handle the built-ins symbols.
     # Include a builtin if ANY of its overloads are visible (not hidden).
