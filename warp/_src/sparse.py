@@ -444,16 +444,14 @@ class BsrMatrix(Generic[_BlockType]):
 
         _bsr_ensure_fits(self, nnz=nnz, capacity=nnz_capacity)
 
-    def _setup_nnz_sync_transfer(self) -> tuple[wp.array | None, wp.Event | None]:
+    def _setup_nnz_sync_transfer(self) -> tuple[wp.array, wp.Event | None]:
         buf, event = getattr(self, "_nnz_sync_transfer", (None, None))
         if buf is not None:
             return buf, event
 
         buf, event = _allocate_transfer_buf(self.device)
-        if buf is not None:
-            # buf may still be None if device is currently capturing
-            BsrMatrix.__setattr__(self, "_nnz_sync_transfer", (buf, event))
-            weakref.finalize(self, _redeem_transfer_buf, self.device, buf, event)
+        BsrMatrix.__setattr__(self, "_nnz_sync_transfer", (buf, event))
+        weakref.finalize(self, _redeem_transfer_buf, self.device, buf, event)
 
         return buf, event
 
@@ -553,12 +551,6 @@ def _allocate_transfer_buf(device):
 
     if pool:
         return pool.pop()
-
-    # A CUDA captured stream cannot allocate a fresh transfer buffer mid-capture
-    # (the pooled path handles that). A CPU APIC capture allocates host memory
-    # safely, so let it fall through and complete the readback.
-    if device.is_capturing and not device.is_cpu:
-        return None, None
 
     buf = wp.empty(dtype=int, shape=(1,), device="cpu", pinned=device.is_cuda)
     event = wp.Event(device) if device.is_cuda else None
