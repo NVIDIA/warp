@@ -138,8 +138,8 @@ Do not assume that the current value of ``A.nnz`` is exact. Before exporting a c
 
 .. note::
 
-    The :meth:`BsrMatrix.nnz_sync` method starts a synchronous transfer of
-    ``offsets[nrow]`` from the device offsets array to the host and updates the
+    The :meth:`BsrMatrix.nnz_sync` method copies ``offsets[nrow]`` from the
+    device offsets array to the host, waits for the copy to finish, and updates the
     nnz upper bound. For compact matrices, this is the active stored block count.
     For padded matrices, this is the total row-capacity storage size, not
     necessarily the active block count. Warp reuses the transfer resources
