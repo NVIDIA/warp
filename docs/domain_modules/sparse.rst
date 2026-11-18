@@ -145,14 +145,6 @@ Do not assume that the current value of ``A.nnz`` is exact. Before exporting a c
     necessarily the active block count. Warp reuses the transfer resources
     allocated by previous calls on the same matrix.
 
-.. deprecated:: 1.10
-
-    :meth:`BsrMatrix.copy_nnz_async` starts an asynchronous transfer but will be
-    removed in a future release. The pending transfer can be unsafe when matrix
-    topology updates use multiple streams or when it is captured and replayed in
-    a CUDA graph, potentially producing a stale host-side count. Prefer
-    :meth:`BsrMatrix.nnz_sync` when the exact host-side count is required.
-
 .. note::
 
     During CPU graph capture, :meth:`BsrMatrix.nnz_sync` performs its host

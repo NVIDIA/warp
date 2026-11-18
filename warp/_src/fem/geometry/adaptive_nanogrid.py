@@ -8,7 +8,6 @@ import warp as wp
 from warp._src.fem import cache, utils
 from warp._src.fem.cache import cached_vec_type
 from warp._src.fem.types import OUTSIDE, ElementIndex, make_coords, make_free_sample
-from warp._src.logger import log_warning
 
 from .geometry import Geometry, SideFacetIncidence
 from .nanogrid import (
@@ -75,11 +74,11 @@ class AdaptiveNanogrid(NanogridBase):
     @classmethod
     def from_environment_voxels(
         cls,
-        points: wp.array | Sequence[wp.array] | None = None,
-        cell_levels: wp.array | Sequence[wp.array] | None = None,
-        point_envs: wp.array | int | None = None,
-        env_count: int | wp.array | Sequence[Sequence[int]] | None = None,
-        level_count: int | None = None,
+        points: wp.array,
+        cell_levels: wp.array,
+        point_envs: wp.array,
+        env_count: int,
+        level_count: int,
         env_offsets: wp.array | Sequence[Sequence[int]] | None = None,
         *,
         point_mask: wp.array | None = None,
@@ -89,7 +88,6 @@ class AdaptiveNanogrid(NanogridBase):
         temporary_store: cache.TemporaryStore | None = None,
         scalar_type: type = wp.float32,
         device=None,
-        cell_ijks: Sequence[wp.array] | None = None,
     ):
         """Construct an adaptive sparse grid from environment-tagged active cells and levels.
 
@@ -100,10 +98,7 @@ class AdaptiveNanogrid(NanogridBase):
 
         Args:
             points: Flat ``wp.vec3i`` or ``wp.vec3f`` array of active cell points.
-                Deprecated: a sequence of per-environment ``wp.vec3i`` arrays is also accepted for compatibility.
             cell_levels: Flat ``wp.uint8`` array with one refinement level per point.
-                Deprecated: a sequence of per-environment ``wp.uint8`` arrays matching ``points`` is also accepted for
-                compatibility.
             point_envs: Flat ``int32`` array with one environment index per point. Entries for unmasked points must
                 satisfy ``0 <= env < env_count``, otherwise a ``ValueError`` is raised.
             env_count: Number of environments represented by ``point_envs``.
@@ -122,28 +117,7 @@ class AdaptiveNanogrid(NanogridBase):
             temporary_store: Shared pool from which to allocate temporary arrays.
             scalar_type: Scalar type for grid coordinates (``wp.float32`` or ``wp.float64``).
             device: Device on which to build the packed volume.
-            cell_ijks: Deprecated keyword alias for the old per-environment ``points`` sequence form.
         """
-
-        if cell_ijks is not None:
-            if points is not None:
-                raise TypeError("points and cell_ijks cannot both be provided")
-            points = cell_ijks
-        if points is None:
-            raise TypeError("points is required")
-        if cell_levels is None:
-            raise TypeError("cell_levels is required")
-
-        if not isinstance(points, wp.array):
-            points, cell_levels, point_envs, env_count, level_count, env_offsets = (
-                _adaptive_environment_voxels_from_legacy_sequence(
-                    points, cell_levels, point_envs, env_count, level_count, env_offsets, device
-                )
-            )
-        if env_count is None:
-            raise TypeError("env_count is required")
-        if level_count is None:
-            raise TypeError("level_count is required")
 
         cell_grid, cell_level, cell_env, env_offsets = _make_environment_adaptive_cell_grid(
             points,
@@ -679,86 +653,6 @@ def _normalize_environment_levels(points: wp.array, cell_levels: wp.array, devic
     if cell_levels.device != device:
         cell_levels = cell_levels.to(device)
     return cell_levels
-
-
-def _adaptive_environment_voxels_from_legacy_sequence(
-    cell_ijks: Sequence[wp.array],
-    cell_levels: Sequence[wp.array],
-    legacy_level_count,
-    legacy_env_offsets,
-    level_count: int | None,
-    env_offsets: wp.array | Sequence[Sequence[int]] | None,
-    device,
-):
-    log_warning(
-        "The sequence form AdaptiveNanogrid.from_environment_voxels(cell_ijks, cell_levels, level_count=..., "
-        "env_offsets=...) is deprecated; pass flat points, cell_levels, point_envs, and env_count instead.",
-        category=DeprecationWarning,
-        stacklevel=2,
-    )
-
-    if level_count is None:
-        if legacy_level_count is None:
-            raise TypeError("level_count is required with the deprecated cell_ijks sequence form")
-        try:
-            level_count = int(legacy_level_count)
-        except (TypeError, ValueError) as exc:
-            raise TypeError("level_count must be an integer with the deprecated cell_ijks sequence form") from exc
-    elif legacy_level_count is not None:
-        raise TypeError("point_envs is not accepted with the deprecated cell_ijks sequence form")
-
-    if legacy_env_offsets is not None:
-        if isinstance(legacy_env_offsets, int):
-            raise TypeError("env_count is not accepted with the deprecated cell_ijks sequence form")
-        if env_offsets is not None:
-            raise TypeError("env_offsets was provided both positionally and by keyword")
-        env_offsets = legacy_env_offsets
-
-    cell_ijks = tuple(cell_ijks)
-    cell_levels = tuple(cell_levels)
-    if not cell_ijks:
-        raise ValueError("At least one environment cell array is required")
-    if len(cell_ijks) != len(cell_levels):
-        raise ValueError("cell_ijks and cell_levels must have matching environment counts")
-
-    if device is None:
-        if not isinstance(cell_ijks[0], wp.array):
-            raise ValueError("Environment 0 cell coordinates must be a 1D wp.vec3i array")
-        device = cell_ijks[0].device
-    else:
-        device = wp.get_device(device)
-
-    normalized_cells = []
-    normalized_levels = []
-    point_count = 0
-    for env_index, (env_cell_ijk, env_cell_level) in enumerate(zip(cell_ijks, cell_levels, strict=True)):
-        if not isinstance(env_cell_ijk, wp.array) or env_cell_ijk.dtype != wp.vec3i or env_cell_ijk.ndim != 1:
-            raise ValueError(f"Environment {env_index} cell coordinates must be a 1D wp.vec3i array")
-        if not isinstance(env_cell_level, wp.array) or env_cell_level.dtype != wp.uint8 or env_cell_level.ndim != 1:
-            raise ValueError(f"Environment {env_index} cell levels must be a 1D wp.uint8 array")
-        if env_cell_level.shape[0] != env_cell_ijk.shape[0]:
-            raise ValueError(f"Environment {env_index} cell coordinates and levels must have matching lengths")
-
-        normalized_cell_ijk = env_cell_ijk if env_cell_ijk.device == device else env_cell_ijk.to(device)
-        normalized_cell_level = env_cell_level if env_cell_level.device == device else env_cell_level.to(device)
-        normalized_cells.append(normalized_cell_ijk)
-        normalized_levels.append(normalized_cell_level)
-        point_count += normalized_cell_ijk.shape[0]
-
-    points = wp.empty(shape=point_count, dtype=wp.vec3i, device=device)
-    flat_levels = wp.empty(shape=point_count, dtype=wp.uint8, device=device)
-    point_envs = wp.empty(shape=point_count, dtype=wp.int32, device=device)
-
-    point_offset = 0
-    for env_index, (env_cell_ijk, env_cell_level) in enumerate(zip(normalized_cells, normalized_levels, strict=True)):
-        env_point_count = env_cell_ijk.shape[0]
-        if env_point_count:
-            wp.copy(points, env_cell_ijk, dest_offset=point_offset, count=env_point_count)
-            wp.copy(flat_levels, env_cell_level, dest_offset=point_offset, count=env_point_count)
-            point_envs[point_offset : point_offset + env_point_count].fill_(env_index)
-        point_offset += env_point_count
-
-    return points, flat_levels, point_envs, len(normalized_cells), level_count, env_offsets
 
 
 def _make_environment_adaptive_cell_grid(

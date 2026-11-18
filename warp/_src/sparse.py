@@ -12,7 +12,6 @@ from numpy import eye
 
 import warp as wp
 import warp._src.utils
-from warp._src.logger import log_warning
 from warp._src.types import (
     Array,
     Cols,
@@ -356,15 +355,14 @@ class BsrMatrix(Generic[_BlockType]):
                 )
             paused_graph = capture_pause(device=self.device)
         try:
-            buf, event = self._nnz_transfer_if_pending()
-            if buf is None:
-                buf, event = self._setup_nnz_transfer()
-                self._start_nnz_transfer(buf, event)
+            buf, event = self._setup_nnz_sync_transfer()
+            stream = wp.get_stream(self.device) if self.device.is_cuda else None
+            wp.copy(src=self.offsets, dest=buf, src_offset=self.nrow, count=1, stream=stream)
 
             if event is not None:
+                stream.record_event(event, external=True)
                 wp.synchronize_event(event)
             self.nnz = int(buf.numpy()[0])
-            BsrMatrix.__setattr__(self, "_nnz_transfer_pending", False)
         finally:
             if paused_graph is not None:
                 capture_resume(paused_graph, device=self.device)
@@ -438,7 +436,6 @@ class BsrMatrix(Generic[_BlockType]):
               default to `nnz`. The caller is responsible for ensuring it is greater
               or equal to the true ``offsets[nrow]`` value.
         """
-        self._refresh_nnz_transfer_if_pending()
         if nnz is None:
             if nnz_capacity is None:
                 self.nnz_sync()
@@ -447,63 +444,18 @@ class BsrMatrix(Generic[_BlockType]):
 
         _bsr_ensure_fits(self, nnz=nnz, capacity=nnz_capacity)
 
-    def copy_nnz_async(self) -> None:
-        """Start an asynchronous transfer of ``offsets[nrow]`` to host memory.
-
-        .. deprecated:: 1.10
-            This method will be removed in a future release. Prefer :meth:`nnz_sync`, which avoids keeping a
-            potentially stale transfer pending between calls. An asynchronous transfer may be unsafe when matrix
-            topology updates use other streams or when the transfer is captured and replayed in a CUDA graph.
-
-        This method does not update ``nnz``. A later :meth:`nnz_sync` waits for and uses the transferred value.
-        Topology-changing operations restart a pending transfer but do not create one.
-        """
-        log_warning(
-            "The `copy_nnz_async` method is deprecated and will be removed in a future version. Its asynchronous "
-            "transfer may be unsafe with multiple streams or CUDA graph capture; call `nnz_sync` to synchronously "
-            "update the host-side block count.",
-            category=DeprecationWarning,
-            stacklevel=2,
-        )
-        self._copy_nnz_async()
-
-    def _copy_nnz_async(self) -> tuple[wp.array | None, wp.Event | None]:
-        buf, event = self._setup_nnz_transfer()
-        self._start_nnz_transfer(buf, event)
-        BsrMatrix.__setattr__(self, "_nnz_transfer_pending", buf is not None)
-        return buf, event
-
-    def _start_nnz_transfer(self, buf: wp.array | None, event: wp.Event | None) -> None:
-        if buf is not None:
-            stream = wp.get_stream(self.device) if self.device.is_cuda else None
-            wp.copy(src=self.offsets, dest=buf, src_offset=self.nrow, count=1, stream=stream)
-            if event is not None:
-                stream.record_event(event, external=True)
-
-    def _setup_nnz_transfer(self) -> tuple[wp.array | None, wp.Event | None]:
-        buf, event = self._nnz_transfer_if_any()
+    def _setup_nnz_sync_transfer(self) -> tuple[wp.array | None, wp.Event | None]:
+        buf, event = getattr(self, "_nnz_sync_transfer", (None, None))
         if buf is not None:
             return buf, event
 
         buf, event = _allocate_transfer_buf(self.device)
         if buf is not None:
             # buf may still be None if device is currently capturing
-            BsrMatrix.__setattr__(self, "_nnz_transfer", (buf, event))
+            BsrMatrix.__setattr__(self, "_nnz_sync_transfer", (buf, event))
             weakref.finalize(self, _redeem_transfer_buf, self.device, buf, event)
 
         return buf, event
-
-    def _nnz_transfer_if_any(self) -> tuple[wp.array | None, wp.Event | None]:
-        return getattr(self, "_nnz_transfer", (None, None))
-
-    def _nnz_transfer_if_pending(self) -> tuple[wp.array | None, wp.Event | None]:
-        if getattr(self, "_nnz_transfer_pending", False):
-            return self._nnz_transfer_if_any()
-        return None, None
-
-    def _refresh_nnz_transfer_if_pending(self) -> None:
-        if getattr(self, "_nnz_transfer_pending", False):
-            self._copy_nnz_async()
 
     def _ensure_status(self) -> wp.array:
         status = self._status_if_any()
@@ -1062,8 +1014,6 @@ def _bsr_try_native_compress_inplace(src: BsrMatrix, prune_numerical_zeros: bool
             ctypes.c_void_p(scalar_values.ptr),
             True,  # compress_values
         )
-    if compact:
-        src._refresh_nnz_transfer_if_pending()
 
     return None
 
@@ -1124,8 +1074,6 @@ def _bsr_try_native_compress_indices_inplace(
             _optional_ctypes_pointer(values_to_prune, ctype=ctypes.c_int32),
             False,  # compress_values
         )
-    if compact:
-        src._refresh_nnz_transfer_if_pending()
 
     return None
 
@@ -1172,8 +1120,6 @@ def _bsr_set_from_triplets_native(
     device = dest.device
     apic_capture = _get_apic_capture_for_device(device)
 
-    refresh_nnz_transfer = not masked and dest_offsets is dest.offsets
-
     # Empty compact topology still needs a recordable operation on CPU, where
     # APIC capture defers work instead of executing it. A native call with no
     # triplets emits no semantic record, while zero_() is captured on both CPU
@@ -1185,8 +1131,6 @@ def _bsr_set_from_triplets_native(
                 dest_row_counts.zero_()
             if device.is_cpu and apic_capture is not None:
                 _mark_apic_deferred_nnz_update(dest, apic_capture)
-            if refresh_nnz_transfer:
-                dest._refresh_nnz_transfer_if_pending()
         return
 
     if apic_capture is not None:
@@ -1239,8 +1183,6 @@ def _bsr_set_from_triplets_native(
             _optional_ctypes_pointer(dest_row_counts, ctype=ctypes.c_int32),
             ctypes.cast(dest_columns.ptr, ctypes.POINTER(ctypes.c_int32)),
         )
-    if refresh_nnz_transfer:
-        dest._refresh_nnz_transfer_if_pending()
 
 
 @wp.kernel(module="unique")
@@ -3124,8 +3066,6 @@ def bsr_set_transpose(
                 None,  # status
             )
 
-            dest._refresh_nnz_transfer_if_pending()
-
             _bsr_set_compact_row_counts(dest)
 
     wp.launch(
@@ -4780,7 +4720,7 @@ def bsr_mm(
         else:
             # Get back total counts on host -- we need a synchronization here
             # Use pinned buffer from z, we are going to need it later anyway
-            nnz_buf, _ = z._setup_nnz_transfer()
+            nnz_buf, _ = z._setup_nnz_sync_transfer()
             stream = wp.get_stream(device) if device.is_cuda else None
             wp.copy(dest=nnz_buf, src=work_arrays._mm_block_counts, src_offset=x.nnz, count=1, stream=stream)
             if device.is_cuda:
