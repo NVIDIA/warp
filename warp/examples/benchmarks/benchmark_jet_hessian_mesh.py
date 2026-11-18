@@ -22,10 +22,8 @@ in HOW the reverse sweep is taken:
 
     forward-2        a second-order jet: one forward pass writes the whole k x k
                      Hessian, no reverse at all, on the same vector-form energies.
-                     Its single fused pass is the fastest runtime at k=12, but its
-                     O(k^2) state makes it the slowest to compile: on an RTX PRO
-                     6000 Blackwell (MIG 1g.24gb) with CUDA 12.9, the tet module
-                     took about 8.5 minutes to compile on a cold cache.
+                     Its single fused pass is the fastest runtime at k=12, at the
+                     cost of O(k^2) state per thread.
 
     uv run warp/examples/benchmarks/benchmark_jet_hessian_mesh.py --device cuda:0
     uv run warp/examples/benchmarks/benchmark_jet_hessian_mesh.py --device cuda:0 --graph
@@ -367,7 +365,7 @@ class Forward2:
 
     def __init__(self, spec, kernels, x_np, device):
         self.k, self.device, self.n = spec.k, device, x_np.shape[0]
-        self.kernel = kernels[2]  # None for elements above the compile cap
+        self.kernel = kernels[2]
         self.x = wp.array(x_np, dtype=wp.vec3, device=device)
         self.hessian = wp.zeros((self.n, self.k, self.k), dtype=wp.float32, device=device)
 
@@ -398,7 +396,7 @@ def time_strategy(s, device, reps, use_graph):
     return timeit(lambda: wp.capture_launch(cap.graph), device, reps)
 
 
-STRATEGIES = [Width1Tape, Width1InKernel]
+STRATEGIES = [Width1Tape, Width1InKernel, Forward2]
 
 
 def main():
@@ -426,10 +424,9 @@ def main():
     for name in [args.element] if args.element else list(ELEMENTS):
         spec = ELEMENTS[name]
         kernels = spec.build()[1:]
-        strategies = list(STRATEGIES) + ([Forward2] if kernels[2] is not None else [])
         for m in args.m:
             x_np = sample(spec.k, m)
-            runs = {S.label: S(spec, kernels, x_np, device) for S in strategies}
+            runs = {S.label: S(spec, kernels, x_np, device) for S in STRATEGIES}
             for s in runs.values():
                 s.run()
 
@@ -447,13 +444,10 @@ def main():
             err = max(inter, fd)
 
             t = {lbl: time_strategy(s, device, args.reps, args.graph) for lbl, s in runs.items()}
-            tw1, tik = t["width-1(tape)"], t["width-1(ink)"]
-            tf2 = t.get("forward-2")
-            f2s = f"{tf2 * 1e3:>9.3f}" if tf2 else f"{'-':>9}"
-            f2r = f"{tik / tf2:>6.2f}x" if tf2 else f"{'-':>7}"
+            tw1, tik, tf2 = t["width-1(tape)"], t["width-1(ink)"], t["forward-2"]
             print(
-                f"{name:>9} {spec.k:>3} {m:>9} {tw1 * 1e3:>9.3f} {tik * 1e3:>9.3f} {f2s}"
-                f" {tik / tw1:>6.2f}x {f2r} {err:>9.1e}"
+                f"{name:>9} {spec.k:>3} {m:>9} {tw1 * 1e3:>9.3f} {tik * 1e3:>9.3f} {tf2 * 1e3:>9.3f}"
+                f" {tik / tw1:>6.2f}x {tik / tf2:>6.2f}x {err:>9.1e}"
             )
 
 

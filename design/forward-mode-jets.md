@@ -201,8 +201,7 @@ Warp does not propagate adjoints into a tuple *argument*: the call compiles, and
 reverse mode then returns zero. That is fatal here, because differentiating
 through `seed` is how reverse-over-forward Hessians are computed. Multiple
 *return* values do propagate correctly, so `a, b = J.seed(x0, x1)` is safe.
-Nested tuples are not supported at all. `test_jet_seed_is_differentiable` guards
-the property.
+Nested tuples are not supported at all.
 
 **Why the helpers are generated from source.** The number of arguments depends
 on the layout, so `seed` and `directional` cannot be written once. They are
@@ -341,8 +340,7 @@ operand; `clamp(x, lo, hi)` is `min(max(lo, x), hi)`, so its upper bound has
 derivative 0; `atan2` has zero derivatives at the origin; `asin` and `acos` have
 zero derivatives outside the open interval `(-1, 1)`; `length` and `normalize`
 of a zero vector have zero derivatives; and `svd2` keeps the derivative of
-`U V^T` at repeated singular values. `test_jet_ops.py` checks these against
-native reverse mode.
+`U V^T` at repeated singular values.
 
 **`wp.value()`.** Comparisons themselves (`a < b`) do not overload -- Warp lowers
 them to raw C++ operators rather than through the builtin table -- so jet code
@@ -442,18 +440,14 @@ which one wins is energy-dependent:
 The in-kernel `wp.grad` route matters because it does not force a choice between
 tape overhead and second-order jets. It stays local -- each element's Hessian is
 computed in registers and scattered out -- so it composes with sparse assembly
-the same way the pure-forward route does, without `JetSpace2`'s compile cost.
+the same way the pure-forward route does.
 
-That compile cost is the main reason to prefer it. A second-order jet holds an
-`O(k²)` Hessian in registers through every intermediate, and NVCC's compile time
-is super-linear in `k`. On an RTX PRO 6000 Blackwell (a MIG 1g.24gb slice) with CUDA 12.9, the
-tetrahedron (`k=12`) module of `benchmark_jet_hessian_mesh.py`, which holds
-the second-order jet kernel alongside the first-order routes, took about
-8.5 minutes to compile on a cold cache, after which the second-order route ran
-about as fast as in-kernel `wp.grad`. When compile time dominates -- during
-iteration, or for a wide energy -- in-kernel `wp.grad` over first-order jets gets
-the same Hessian with none of that cost. The tape route remains useful on CPU and
-for long chains.
+The two local routes trade state for passes. A second-order jet carries an
+`O(k²)` Hessian through every intermediate, so its state grows quadratically with
+the width. In-kernel `wp.grad` over first-order jets keeps `O(k)` state and pays
+with `k` directional derivatives and reverse sweeps instead. Which is better
+depends on the width and the energy, so both are supported. The tape route
+remains useful on CPU and for long chains.
 
 **Vector payloads.** `Jet2Vec2` and `Jet2Vec3` are structs of one `Jet2Scalar`
 per component, and every vector operation is composed from the scalar
@@ -477,29 +471,25 @@ its columns or components in the meantime.
 ## Coverage
 
 First-order (`wp.JetSpace`) and second-order (`wp.JetSpace2`) support, by
-operation family. "FD" marks families verified against finite differences in
-`test_jet_ops.py`; the rest are covered by closed-form checks in `test_jet.py`.
+operation family.
 
-| Family                                                    | 1st-order scalar | 1st-order vec2/vec3 | 1st-order matrix        | 2nd-order scalar | 2nd-order vec2/vec3 |
-| --------------------------------------------------------- | :--------------: | :-----------------: | :---------------------: | :--------------: | :-----------------: |
-| Arithmetic (`+ - * / ** neg pos`)                         |        ✓         |          ✓          |            ✓            |        ✓         |       ✓ — FD        |
-| Transcendental (`sin cos tan exp log sqrt`)               |        ✓         |          –          |            –            |        ✓         |          –          |
-| Inverse-trig (`asin acos atan atan2`) — FD                |        ✓         |          –          |            –            |        ✓         |          –          |
-| Branching (`min max clamp where abs sign`) — FD           |        ✓         |          –          |            –            |        ✓         |          –          |
-| Indexing (`v[i]`, `extract`)                              |        ✓         |          ✓          |            ✓            |        –         |       ✓ — FD        |
-| Geometry (`dot length length_sq normalize cross`)         |        ✓         |          ✓          |            –            |        –         |       ✓ — FD        |
-| Component-wise (`cw_mul cw_div`)                          |        –         |          ✓          |            –            |        –         |          ✓          |
-| Matrix (`transpose trace determinant inverse`, matmul)    |        –         |          –          |    ✓ (mat22/33/32/23)    |        –         |          –          |
-| Matrix (`F[i, j]` `F[i]` `ddot outer diag get_diag skew`, scalar-jet scaling) — FD | – | ✓ | ✓ (mat22/33/32/23) | – | – |
-| More scalar functions (`sinh cosh tanh log2 log10 cbrt erf floor lerp smoothstep`) — FD | ✓ | – | – | ✓ | – |
-| Subscript assignment (`v[i] = s`, `F[i, j] = s`), incl. reverse mode — FD | – | ✓ | ✓ | – | ✓ |
-| Decompositions (`svd3 svd2 eig3`) — against reverse mode and FD | – | – | ✓ (mat22/33) | – | – |
-| Reverse-over-jet Hessian via `wp.Tape`                    |        ✓         |          ✓          |            ✓            |     n/a          |         n/a         |
-| Reverse-over-jet Hessian via in-kernel `wp.grad` (no tape) |        ✓         |          ✓          |            ✓            |     n/a          |         n/a         |
-| Pure-forward Hessian (no tape, no reverse)                |       n/a        |         n/a         |           n/a           |        ✓         |          ✓          |
-
-The second-order vector column is verified in `test_jet.py` against finite
-differences of a NumPy mirror (`test_jet2_vector_ops`).
+| Family                                                                             | 1st-order scalar | 1st-order vec2/vec3 | 1st-order matrix   | 2nd-order scalar | 2nd-order vec2/vec3 |
+| ---------------------------------------------------------------------------------- | :--------------: | :-----------------: | :----------------: | :--------------: | :-----------------: |
+| Arithmetic (`+ - * / ** neg pos`)                                                  |        ✓         |          ✓          |         ✓          |        ✓         |          ✓          |
+| Transcendental (`sin cos tan exp log sqrt`)                                        |        ✓         |          –          |         –          |        ✓         |          –          |
+| Inverse-trig (`asin acos atan atan2`)                                              |        ✓         |          –          |         –          |        ✓         |          –          |
+| Branching (`min max clamp where abs sign`)                                         |        ✓         |          –          |         –          |        ✓         |          –          |
+| Indexing (`v[i]`, `extract`)                                                       |        ✓         |          ✓          |         ✓          |        –         |          ✓          |
+| Geometry (`dot length length_sq normalize cross`)                                  |        ✓         |          ✓          |         –          |        –         |          ✓          |
+| Component-wise (`cw_mul cw_div`)                                                   |        –         |          ✓          |         –          |        –         |          ✓          |
+| Matrix (`transpose trace determinant inverse`, matmul)                             |        –         |          –          | ✓ (mat22/33/32/23) |        –         |          –          |
+| Matrix (`F[i, j]` `F[i]` `ddot outer diag get_diag skew`, scalar-jet scaling)      |        –         |          ✓          | ✓ (mat22/33/32/23) |        –         |          –          |
+| More scalar functions (`sinh cosh tanh log2 log10 cbrt erf floor lerp smoothstep`) |        ✓         |          –          |         –          |        ✓         |          –          |
+| Subscript assignment (`v[i] = s`, `F[i, j] = s`), incl. reverse mode               |        –         |          ✓          |         ✓          |        –         |          ✓          |
+| Decompositions (`svd3 svd2 eig3`)                                                  |        –         |          –          |    ✓ (mat22/33)    |        –         |          –          |
+| Reverse-over-jet Hessian via `wp.Tape`                                             |        ✓         |          ✓          |         ✓          |       n/a        |         n/a         |
+| Reverse-over-jet Hessian via in-kernel `wp.grad` (no tape)                         |        ✓         |          ✓          |         ✓          |       n/a        |         n/a         |
+| Pure-forward Hessian (no tape, no reverse)                                         |       n/a        |         n/a         |        n/a         |        ✓         |          ✓          |
 
 Not covered: second-order matrix jets ([GH-2185](https://github.com/NVIDIA/warp/issues/2185)); a native symmetric
 matrix type for the Hessian; overloaded comparisons ([GH-2184](https://github.com/NVIDIA/warp/issues/2184)); quaternion
@@ -507,58 +497,33 @@ jets.
 
 ## Testing Strategy
 
-Two modules, both registered in `default_suite`:
+The tests check derivatives against references that do not share the
+implementation's derivation, and check the seeding and space guarantees directly:
 
-**`warp/tests/test_jet.py`** (`TestJet`, `TestJetSpace`). Device-parametrized
-tests via `add_function_test`, plus a fixed-device `TestJetSpace` for namespace
-behavior. The Hessian is checked two ways against
-`g(a,b) = sin(a*b) + 0.1*a^3 + exp(b)`: a closed-form NumPy Hessian, and float64
-second differences of `g`. The second derives nothing by hand, so it catches an
-error in the closed form; the first is exact, so it does not depend on a step
-size. Symmetry is asserted separately, since the two off-diagonals come from
-separate backward passes and agreement is not automatic. Other cases: the
-forward value and gradient; `vec3` geometry through `wp.length` on a spring
-energy with a known closed-form gradient; `v[i]`, `wp.dot`, `wp.cross`,
-`wp.normalize`, `wp.length_sq`; two widths coexisting, asserting the first still
-resolves after the second registers; a `float64` space, asserted to `1e-12`; and
-`JetSpace` caching and width validation. Seeding by slot is checked directly --
-the gradient blocks of a `vec2`/scalar/`mat22` layout must come out as
-consecutive identity rows, a single slot takes and returns a bare value,
-`directional` over a coordinate basis must reproduce `seed`, and one combined
-direction must give the gradient contracted with it. A separate test takes the
-Hessian by reverse mode through `seed` and through a width-1 `directional`
-(against a closed form), because Warp silently zeroes adjoints that flow through
-a tuple argument and this is the property that would break first.
+- **Closed forms and finite differences, both.** The Hessian of
+  `g(a,b) = sin(a*b) + 0.1*a^3 + exp(b)` is compared with a closed-form Hessian,
+  which is exact and independent of a step size, and with float64 second
+  differences, which derive nothing by hand and so catch an error in the closed
+  form.
+- **Symmetry, separately.** The two off-diagonals come from separate backward
+  passes, so their agreement is not automatic.
+- **The wider op surface against finite differences.** Inverse trig, `pow`
+  variants, the branching builtins, more scalar functions, subscript assignment,
+  and matrix jets are checked at first and, where supported, second order, as are
+  the second-order vector operations. The decompositions are also checked against
+  reverse mode.
+- **Native conventions.** At singular points, jet derivatives are compared with
+  what native reverse mode gives.
+- **Seeding.** The gradient blocks of a mixed `vec2`/scalar/`mat22` layout must
+  come out as consecutive identity rows, a single slot takes and returns a bare
+  value, `directional` over a coordinate basis must reproduce `seed`, and one
+  combined direction must give the gradient contracted with it.
+- **Reverse mode through jets.** The Hessian is also taken by reverse mode
+  through `seed` and through a width-1 `directional`, because adjoints that flow
+  through a tuple argument are silently zeroed (see *Why positional arguments,
+  not tuples*).
+- **Spaces.** Two widths coexist, a `float64` space is accurate to `1e-12`, and
+  `JetSpace` caches spaces and validates widths.
 
-**`warp/tests/test_jet_ops.py`** (`TestJetOps`). Finite-
-difference checks for the wider op surface: inverse-trig, `pow` variants, and
-value-branching builtins for both first- and second-order jets (gradient and, for
-second order, the Hessian); and matrix jets -- `mat22` determinant/trace, a `mat33`
-tetrahedron elastic energy, `mat33` inverse, and a rectangular `mat32` triangle
-energy. These run on CPU only (`DEVICES = ["cpu"]`, standard `unittest.TestCase`
-rather than `add_function_test`): the file's kernels form one large module whose
-CUDA build takes far longer than a test should (it had not finished after
-18 minutes on an RTX PRO 6000 Blackwell). CUDA coverage of the jets comes from
-`test_jet.py`, which runs on CPU and CUDA, and from the implicit-projection
-example, which runs on both in the example tests. The benchmarks also run on CUDA
-but only report their errors, so they do not count as coverage. All of the
-file's tests share one `TestCase` class: the parallel test runner gives each class
-its own process, and every process that starts before the module is cached builds
-the whole module. Kernels that no test runs in reverse mode set
-`enable_backward=False`, since their adjoints only add build time.
-
-## Benchmarks
-
-Three benchmarks under `warp/examples/benchmarks/` accompany the feature. Each
-prints how far its strategies' results are from one another (and, for the
-Hessian benchmark, from finite differences) next to the timings; these errors
-are reported, not enforced, so they are no substitute for the tests:
-
-- `benchmark_jet_gradient_mesh.py` -- first-order gradient throughput over
-  spring, triangle and tetrahedron meshes, contrasting a width-`k` jet pass, a
-  `wp.Tape`, and in-kernel `wp.grad`.
-- `benchmark_jet_hessian_mesh.py` -- local-Hessian strategies on the same
-  energies: width-1 tape, in-kernel width-1 `wp.grad`, and the pure-forward
-  second-order jet.
-- `benchmark_jet_jacobian.py` -- the Jacobian of a many-output function, where
-  one jet pass is shared by every output.
+The core jet tests run on CPU and CUDA. The finite-difference checks of the wider
+op surface currently run on CPU only.
