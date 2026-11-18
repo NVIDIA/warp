@@ -12,7 +12,7 @@ import numpy as np
 
 import warp as wp
 
-from .benchmarks_utils import CudaEventTimer, setup_once
+from .benchmarks_utils import CudaEventTimer, capture_launches, setup_once
 
 NUM_THREADS = 1 << 18
 
@@ -110,5 +110,13 @@ class FixedArrayCUDA:
 
         np.testing.assert_array_equal(self.output.numpy(), _expected_output(size, access))
 
+        # A single launch is so short that the host's time to start it, which
+        # differs between processes, would be a large share of each sample, so
+        # each sample replays a graph of launches. Kernels with 1024-element
+        # arrays run long enough that a few launches suffice.
+        launches = 256 if size < 1024 else 16
+        self.graph = capture_launches(self.command.launch, launches)
+        wp.capture_launch(self.graph)
+
     def time_cuda(self, alloc, size, access):
-        self.command.launch()
+        wp.capture_launch(self.graph)
