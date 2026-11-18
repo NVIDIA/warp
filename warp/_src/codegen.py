@@ -2509,9 +2509,7 @@ class Adjoint:
             for a in adj.args:
                 if isinstance(a.type, Struct):
                     builder.build_struct_recursive(a.type)
-                elif warp._src.types.matches_array_class(a.type, warp._src.types.array) and isinstance(
-                    a.type.dtype, Struct
-                ):
+                elif warp._src.types.is_array(a.type) and isinstance(a.type.dtype, Struct):
                     builder.build_struct_recursive(a.type.dtype)
 
             # release builder reference for GC
