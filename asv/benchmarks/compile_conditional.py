@@ -106,7 +106,9 @@ class CompileNestedSearch:
     def timeraw_cuda(self):
         # ASV runs each sample in a fresh process. Keep initialization outside
         # timing, disable NVRTC's own cache before CUDA initializes, and avoid
-        # clearing the kernel cache shared by other benchmarks.
+        # clearing the kernel cache shared by other benchmarks. ASV embeds the
+        # setup in a string literal, which decodes its escapes a second time,
+        # so the path must not contain Windows backslashes.
         return (
             "wp.load_module(module=nested_search.module, device='cuda:0')",
             f"""
@@ -115,7 +117,7 @@ class CompileNestedSearch:
             from tempfile import TemporaryDirectory
 
             os.environ["CUDA_CACHE_DISABLE"] = "1"
-            sys.path.insert(0, {str(Path(__file__).resolve().parent)!r})
+            sys.path.insert(0, {Path(__file__).resolve().parent.as_posix()!r})
 
             import warp as wp
 
