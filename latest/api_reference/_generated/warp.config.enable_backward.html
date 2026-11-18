@@ -514,7 +514,8 @@
 <dt class="sig sig-object py" id="warp.config.enable_backward">
 <span class="sig-prename descclassname"><span class="pre">warp.config.</span></span><span class="sig-name descname"><span class="pre">enable_backward</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></span><a class="headerlink" href="#warp.config.enable_backward" title="Link to this definition">#</a></dt>
 <dd><p>Enable compilation of kernel backward passes.</p>
-<p>This setting can be overridden at the module level by setting the <code class="docutils literal notranslate"><span class="pre">&quot;enable_backward&quot;</span></code> module option.</p>
+<p>This setting can be overridden at the module level by setting the <code class="docutils literal notranslate"><span class="pre">&quot;enable_backward&quot;</span></code> module option,
+and for a single kernel by the <code class="docutils literal notranslate"><span class="pre">&#64;warp.kernel(enable_backward=...)</span></code> argument.</p>
 </dd></dl>
 
 </section>

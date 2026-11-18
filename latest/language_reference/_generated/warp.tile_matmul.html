@@ -580,11 +580,13 @@ written, so overlapping tiles give undefined results. Passing the same tile as b
 <code class="docutils literal notranslate"><span class="pre">a</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span></code> is fine.</p>
 <p>This is a cooperative operation, so every thread in the block must call it.</p>
 <p><code class="docutils literal notranslate"><span class="pre">a</span></code>, <code class="docutils literal notranslate"><span class="pre">b</span></code>, and <code class="docutils literal notranslate"><span class="pre">out</span></code> may independently use <code class="docutils literal notranslate"><span class="pre">float16</span></code>, <code class="docutils literal notranslate"><span class="pre">float32</span></code>, or
-<code class="docutils literal notranslate"><span class="pre">float64</span></code>. Accumulation uses the dtype of <code class="docutils literal notranslate"><span class="pre">out</span></code>. Currently, <code class="docutils literal notranslate"><span class="pre">a</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span></code> may
-also use <code class="docutils literal notranslate"><span class="pre">bfloat16</span></code> when backward compilation is disabled with the module option
-<code class="docutils literal notranslate"><span class="pre">enable_backward=False</span></code>. Apart from the <code class="docutils literal notranslate"><span class="pre">M</span></code>, <code class="docutils literal notranslate"><span class="pre">N</span></code>, and <code class="docutils literal notranslate"><span class="pre">K</span></code> extents having to
-agree, the shapes are unconstrained, but large tiles may exhaust shared memory or
-fail to compile the cuBLASDx kernel.</p>
+<code class="docutils literal notranslate"><span class="pre">float64</span></code>. Accumulation uses the dtype of <code class="docutils literal notranslate"><span class="pre">out</span></code>.</p>
+<p>Currently, <code class="docutils literal notranslate"><span class="pre">a</span></code> and <code class="docutils literal notranslate"><span class="pre">b</span></code> may also use <code class="docutils literal notranslate"><span class="pre">bfloat16</span></code>, but such a product cannot be
+differentiated. Disable the backward pass for the calling kernel with
+<code class="docutils literal notranslate"><span class="pre">&#64;wp.kernel(enable_backward=False)</span></code> or the module option <code class="docutils literal notranslate"><span class="pre">enable_backward=False</span></code>.</p>
+<p>Apart from the <code class="docutils literal notranslate"><span class="pre">M</span></code>, <code class="docutils literal notranslate"><span class="pre">N</span></code>, and <code class="docutils literal notranslate"><span class="pre">K</span></code> extents having to agree, the shapes are
+unconstrained, but large tiles may exhaust shared memory or fail to compile the
+cuBLASDx kernel.</p>
 <p>Tile data is migrated to shared memory when necessary.</p>
 <p>On CUDA devices, Warp uses cuBLASDx when it is built with libmathdx and
 <a class="reference internal" href="../../api_reference/_generated/warp.config.enable_mathdx_gemm.html#warp.config.enable_mathdx_gemm" title="warp.config.enable_mathdx_gemm"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.enable_mathdx_gemm</span></code></a> (or the <code class="docutils literal notranslate"><span class="pre">enable_mathdx_gemm</span></code> module option)
