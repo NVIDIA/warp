@@ -2747,6 +2747,11 @@ class TestCodeGen(unittest.TestCase):
         self.assertNotEqual(k1.module.name, k2.module.name)
         self.assertIs(make(1.0), k1)
 
+        out = wp.empty(1, dtype=wp.float32, device="cpu")
+        for kernel, expected in ((k1, 2.0), (k2, 4.0), (k1, 2.0)):
+            wp.launch(kernel, dim=1, outputs=[out], device="cpu")
+            self.assertEqual(out.numpy()[0], expected)
+
     def test_rebind_observed_through_shared_source(self):
         """Observe rebound module globals when reusing cached syntax.
 
