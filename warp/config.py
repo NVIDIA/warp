@@ -255,7 +255,8 @@ This setting can be overridden at the module level by setting the ``"compile_tim
 enable_backward: bool = True
 """Enable compilation of kernel backward passes.
 
-This setting can be overridden at the module level by setting the ``"enable_backward"`` module option.
+This setting can be overridden at the module level by setting the ``"enable_backward"`` module option,
+and for a single kernel by the ``@wp.kernel(enable_backward=...)`` argument.
 """
 
 enable_cpu_blocks: bool = False

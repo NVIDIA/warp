@@ -3479,17 +3479,8 @@ class ModuleBuilder:
     def __init__(self, module, options, hasher=None, *, target: str | None = None):
         # None means backend-neutral analysis, such as resolving deferred wp.static() expressions.
         self.target = target
-        self.functions = {}
-        self.wp_grad_targets = set()  # Functions requested by wp.grad() in this build.
-        self.structs = {}
-        self.native_types = {}
         self.options = options
         self.module = module
-        self.deferred_functions = []
-        self.fatbins = {}  # map from <some identifier> to fatbins, to add at link time
-        self.ltoirs = {}  # map from lto symbol to lto binary
-        self.ltoirs_decl = {}  # map from lto symbol to lto forward declaration
-        self.shared_memory_bytes = {}  # map from lto symbol to shared memory requirements
 
         if hasher is None:
             hasher = ModuleHasher(module._get_live_kernels(), options)
@@ -3499,8 +3490,38 @@ class ModuleBuilder:
         for kernel_hash, kernel in hasher.unique_kernels.items():
             kernel.hash = kernel_hash
 
-        # build all unique kernels
         self.kernels = hasher.get_unique_kernels()
+
+        # Whether the LTO-backed builtins that functions call get their adjoint LTOs, see lto_enable_backward().
+        # A builder without kernels only serves to infer types.
+        self.function_adjoint_ltos = bool(self.kernels) and all(
+            (options | kernel.options)["enable_backward"] for kernel in self.kernels
+        )
+        self._build()
+        if any(adj.emits_adjoint() for adj in self.adjoints_without_adjoint_ltos):
+            # The adjoint of a function whose builtins left out adjoint LTOs is emitted after all. Build
+            # everything again instead of patching that function in place: its callers were built against
+            # it, and a second build matches one that knew what reaches the function from the start.
+            self.function_adjoint_ltos = True
+            self._build()
+
+    def _build(self):
+        """Build the kernels and every function they reach, starting from an empty builder state."""
+        self.functions: dict[Function, None] = {}  # functions built so far, callees before callers (ordered set)
+        self.wp_grad_targets: set[Function] = set()  # Functions requested by wp.grad() in this build.
+        self.structs: dict[warp._src.codegen.Struct, None] = {}  # structs to emit, in dependency order (ordered set)
+        self.native_types: dict[type, None] = {}  # native types whose layout the generated code checks (ordered set)
+        self.deferred_functions: list[Function] = []  # custom gradient and replay functions, built after the kernels
+        self.fatbins: dict[str, bytes] = {}  # map from library name to fatbin, to add at link time
+        self.ltoirs: dict[str, bytes] = {}  # map from lto symbol to lto binary
+        self.ltoirs_decl: dict[str, str] = {}  # map from lto symbol to lto forward declaration
+        self.shared_memory_bytes: dict[str, int] = {}  # map from lto symbol to shared memory requirements
+        # adjoints of the code whose LTO-backed builtins left out adjoint LTOs
+        self.adjoints_without_adjoint_ltos: set[warp._src.codegen.Adjoint] = set()
+        # errors that only apply to a function if its adjoint is emitted, see adjoint_unsupported()
+        self.adjoint_errors: list[tuple[warp._src.codegen.Adjoint, Exception]] = []
+
+        # build all unique kernels
         for kernel in self.kernels:
             self.build_kernel(kernel)
 
@@ -3510,6 +3531,11 @@ class ModuleBuilder:
 
         # propagate used_by_backward_kernel now that the full call graph is known
         self._propagate_used_by_backward_kernel()
+
+        # a function's adjoint is emitted or not as of now, which decides whether its errors apply
+        for adj, error in self.adjoint_errors:
+            if adj.emits_adjoint():
+                raise error
 
         # propagate callee replay/reverse shared-memory needs into backward-kernel sizing
         self._propagate_backward_shared_memory()
@@ -3645,6 +3671,31 @@ class ModuleBuilder:
             for callback in (func.custom_grad_func, func.custom_replay_func):
                 if callback is not None:
                     self.deferred_functions.append(callback)
+
+    def lto_enable_backward(self, adj: warp._src.codegen.Adjoint) -> bool:
+        """Return whether LTO-backed builtins called from ``adj`` need their adjoint LTOs.
+
+        A kernel answers with its own ``enable_backward`` setting, which :meth:`build_kernel`
+        stores in ``used_by_backward_kernel``. All functions share one answer, because what
+        reaches a function is only known once the whole module is built.
+        """
+        if self._is_kernel(adj):
+            return adj.used_by_backward_kernel
+        return self.function_adjoint_ltos
+
+    def adjoint_unsupported(self, adj: warp._src.codegen.Adjoint, error: Exception) -> None:
+        """Take an error that only applies if the adjoint of ``adj`` is emitted.
+
+        A kernel knows, so its error is raised now. A function only knows once the whole module
+        is built, so :meth:`_build` raises its error then, if the function's adjoint is emitted.
+        """
+        if self._is_kernel(adj):
+            raise error from None
+        self.adjoint_errors.append((adj, adj.with_location(error)))
+
+    def _is_kernel(self, adj: warp._src.codegen.Adjoint) -> bool:
+        # match kernels by identity: the overloads of a generic @wp.func do not set is_user_function
+        return any(kernel.adj is adj for kernel in self.kernels)
 
     def _propagate_used_by_backward_kernel(self):
         # build_function() memoizes, so a helper built from a forward-only path before a backward
