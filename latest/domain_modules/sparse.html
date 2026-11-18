@@ -675,13 +675,6 @@ For padded matrices, this is the total row-capacity storage size, not
 necessarily the active block count. Warp reuses the transfer resources
 allocated by previous calls on the same matrix.</p>
 </div>
-<div class="deprecated">
-<p><span class="versionmodified deprecated">Deprecated since version 1.10: </span><a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.copy_nnz_async" title="warp.sparse.BsrMatrix.copy_nnz_async"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BsrMatrix.copy_nnz_async()</span></code></a> starts an asynchronous transfer but will be
-removed in a future release. The pending transfer can be unsafe when matrix
-topology updates use multiple streams or when it is captured and replayed in
-a CUDA graph, potentially producing a stale host-side count. Prefer
-<a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.nnz_sync" title="warp.sparse.BsrMatrix.nnz_sync"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BsrMatrix.nnz_sync()</span></code></a> when the exact host-side count is required.</p>
-</div>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>During CPU graph capture, <a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.nnz_sync" title="warp.sparse.BsrMatrix.nnz_sync"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BsrMatrix.nnz_sync()</span></code></a> performs its host

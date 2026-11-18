@@ -9,7 +9,7 @@
       :kernel: true
       :python: unknown
       :differentiable: unknown
-      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L2168-L2194
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L2110-L2136
 
    Return the index of the block at block-coordinates (row, col), or -1 if no such block exists.
    
@@ -30,7 +30,7 @@
       :kernel: true
       :python: unknown
       :differentiable: unknown
-      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L2197-L2219
+      :source: https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L2139-L2161
 
    Return the active block index in a capacity-aware BSR matrix, or -1 if no such block exists.
    
