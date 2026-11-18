@@ -75,6 +75,14 @@ the existing ASV benchmark's kernel factory with the query functions bound to
 either the reviewed snapshot or the current implementation. Both source hashes
 are recorded; its baseline snapshot and comparison driver are embedded in the JSON.
 
+The embedded driver is recorded exactly as it ran, so it is not portable as is.
+It reads the benchmark from the measurement machine's checkout
+(`/home/horde/Repos/warp.intersection`), so set that path to your own checkout
+before rerunning it. It also imports the baseline from
+`/tmp/closest_review_baseline.py` but hashes `/tmp/closest-review-baseline.py`.
+To check `baseline_sha256`, hash the embedded `baseline_source` directly rather
+than relying on either file path.
+
 ## Validation and limits
 
 106 selected geometry tests pass on CPU and CUDA, covering both precisions.
