@@ -134,6 +134,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.fem.test_fem_quadrature import TestFemQuadrature
     from warp.tests.fem.test_fem_shape import TestFemShape
     from warp.tests.geometry.test_bvh import TestBvh
+    from warp.tests.geometry.test_closest import TestClosest
     from warp.tests.geometry.test_delaunay import TestDelaunay
     from warp.tests.geometry.test_geometry_obb import TestGeometryOBB
     from warp.tests.geometry.test_hash_grid import TestHashGrid
@@ -451,6 +452,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestMempool,
         TestMesh,
         TestIntersectAABB,
+        TestClosest,
         TestIntersectTri,
         TestSelfIntersectTriTri,
         TestMeshIntersectHash,

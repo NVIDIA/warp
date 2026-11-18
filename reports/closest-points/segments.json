@@ -1,0 +1,109 @@
+{
+  "device": "NVIDIA RTX PRO 6000 Blackwell Server Edition MIG 1g.24gb",
+  "warp_version": "1.20.0.dev0",
+  "newton_commit": null,
+  "benchmark_sha256": "ef0fc7407249fc8a7400f0fd7c1c9f19b19b559c8eba6141f2791df924cb3599",
+  "implementation_sha256": "4e679c20d48477e1153c8e104df643415b6ce0a5f1670dd9cebe4de92cddaa89",
+  "samples": 21,
+  "launches": 30,
+  "block_dim": 128,
+  "seed": 25,
+  "results": [
+    {
+      "workload": "random",
+      "precision": "float32",
+      "count": 262144,
+      "us": {
+        "warp": 9.014399846394857,
+        "native": 9.075199564297995
+      },
+      "max_abs_distance_error_subset": {
+        "warp": 2.1471181277377127e-07,
+        "native": 1.2584498909617992e-07
+      }
+    },
+    {
+      "workload": "parallel",
+      "precision": "float32",
+      "count": 262144,
+      "us": {
+        "warp": 9.0421328941981,
+        "native": 9.131733576456705
+      },
+      "max_abs_distance_error_subset": {
+        "warp": 1.1824575084384316e-07,
+        "native": 7.985998058505916e-08
+      }
+    },
+    {
+      "workload": "near_parallel",
+      "precision": "float32",
+      "count": 262144,
+      "us": {
+        "warp": 9.066667159398397,
+        "native": 9.079466263453165
+      },
+      "max_abs_distance_error_subset": {
+        "warp": 4.9105702752119326e-08,
+        "native": 5.038472278240348e-06
+      }
+    },
+    {
+      "workload": "degenerate",
+      "precision": "float32",
+      "count": 262144,
+      "us": {
+        "warp": 9.212799866994223,
+        "native": 9.20960009098053
+      },
+      "max_abs_distance_error_subset": {
+        "warp": 1.7875432578584594e-07,
+        "native": 1.7875432578584594e-07
+      }
+    },
+    {
+      "workload": "random",
+      "precision": "float64",
+      "count": 262144,
+      "us": {
+        "warp": 144.81600125630698
+      },
+      "max_abs_distance_error_subset": {
+        "warp": 2.220446049250313e-16
+      }
+    },
+    {
+      "workload": "parallel",
+      "precision": "float64",
+      "count": 262144,
+      "us": {
+        "warp": 129.66293493906656
+      },
+      "max_abs_distance_error_subset": {
+        "warp": 1.5655879370690684e-16
+      }
+    },
+    {
+      "workload": "near_parallel",
+      "precision": "float64",
+      "count": 262144,
+      "us": {
+        "warp": 114.47146733601888
+      },
+      "max_abs_distance_error_subset": {
+        "warp": 7.3075226425523e-17
+      }
+    },
+    {
+      "workload": "degenerate",
+      "precision": "float64",
+      "count": 262144,
+      "us": {
+        "warp": 65.7973329226176
+      },
+      "max_abs_distance_error_subset": {
+        "warp": 4.440892098500626e-16
+      }
+    }
+  ]
+}

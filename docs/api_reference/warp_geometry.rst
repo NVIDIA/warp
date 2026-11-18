@@ -36,6 +36,8 @@ Kernel API
    :nosignatures:
    :toctree: _generated
 
+   closest_points_seg_seg
+   closest_points_tri_seg
    find_triangle_neighbor_edge_index
    intersect_aabb_aabb
    intersect_seg_aabb
