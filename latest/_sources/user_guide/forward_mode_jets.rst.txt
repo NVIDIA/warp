@@ -333,12 +333,11 @@ Reverse-over-Forward
 ^^^^^^^^^^^^^^^^^^^^
 
 For a small, fixed number of inputs, :func:`wp.JetSpace2 <JetSpace2>` is often the fastest way to compute a Hessian at
-run time. Its state grows quadratically with the width, however, so it is register-intensive and can take a long time to
-compile. For more inputs, or when shorter compile times matter, it can be better to combine Warp's reverse mode with
-first-order jets: reverse over forward. The jet arithmetic is ordinary Warp code, so Warp's autodiff differentiates it,
-including the seeding helpers, like any other function. This works either inside a kernel, with :func:`wp.grad <grad>`
-applied to a :func:`@wp.func <func>`, or across kernels, by recording a :class:`wp.Tape <Tape>` and calling
-``tape.backward()`` once per input component.
+run time. Its state grows quadratically with the width, however, so it is register-intensive. For more inputs, it can be
+better to combine Warp's reverse mode with first-order jets: reverse over forward. The jet arithmetic is ordinary Warp
+code, so Warp's autodiff differentiates it, including the seeding helpers, like any other function. This works either
+inside a kernel, with :func:`wp.grad <grad>` applied to a :func:`@wp.func <func>`, or across kernels, by recording a
+:class:`wp.Tape <Tape>` and calling ``tape.backward()`` once per input component.
 
 ``wp.grad`` over ``wp.JetSpace``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -395,8 +394,9 @@ respect to the inputs is the Hessian-vector product :math:`H v`. With :math:`v` 
      [ 0.   0.  -0.5  0.   0.   0.5]]
 
 Each Hessian-vector product costs a constant multiple of one evaluation of the energy, so the full Hessian of :math:`n`
-inputs costs :math:`O(n)` evaluations, against :math:`O(n^2)` for a dense second-order jet. In practice this route is
-a bit slower than :func:`wp.JetSpace2 <JetSpace2>` at run time, with shorter compile times.
+inputs costs :math:`O(n)` evaluations, against :math:`O(n^2)` for a dense second-order jet. In practice
+:func:`wp.JetSpace2 <JetSpace2>` is as fast or faster at run time for small widths, but this route's state grows only
+linearly with the width.
 
 ``wp.Tape`` over ``wp.JetSpace``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -526,7 +526,7 @@ jets for the fixed-arity term inside it.
     * - Jacobian-vector product
       - :func:`wp.JetSpace <JetSpace>` with ``directional()``
     * - Local Hessian
-      - :func:`wp.JetSpace2 <JetSpace2>` if compile time allows, otherwise :func:`wp.grad <grad>` over
+      - :func:`wp.JetSpace2 <JetSpace2>` for small widths, otherwise :func:`wp.grad <grad>` over
         :func:`wp.JetSpace <JetSpace>`
     * - Hessian-vector product
       - :func:`wp.grad <grad>` over :func:`wp.JetSpace <JetSpace>`
@@ -601,11 +601,8 @@ times faster than running a tape, because the per-element Hessian stays in regis
       - 5.41
       - 12.5
 
-The second-order jet is fastest at run time for these small energies, but it pays for that at compile time, because its
-state is :math:`O(k^2)` and NVCC compile time is super-linear in ``k``. On an RTX PRO 6000 Blackwell (a MIG 1g.24gb
-slice) with CUDA 12.9, the tetrahedron module of ``benchmark_jet_hessian_mesh.py``, which holds the second-order kernel
-alongside the first-order routes, took about 8.5 minutes to compile on a cold cache. When compile time matters, in-kernel ``wp.grad`` over a first-order jet
-gives the same Hessian with state that grows linearly in ``k``.
+The second-order jet is fastest at run time for these small energies, but its state is :math:`O(k^2)`. For wider
+energies, in-kernel ``wp.grad`` over a first-order jet gives the same Hessian with state that grows linearly in ``k``.
 
 A kernel that gets its derivatives from jets has no use for a reverse-mode adjoint,
 unless you also differentiate the kernel itself,

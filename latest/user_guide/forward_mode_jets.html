@@ -853,12 +853,11 @@ hess =
 <section id="reverse-over-forward">
 <h3>Reverse-over-Forward<a class="headerlink" href="#reverse-over-forward" title="Link to this heading">#</a></h3>
 <p>For a small, fixed number of inputs, <a class="reference internal" href="../api_reference/_generated/warp.JetSpace2.html#warp.JetSpace2" title="warp.JetSpace2"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.JetSpace2</span></code></a> is often the fastest way to compute a Hessian at
-run time. Its state grows quadratically with the width, however, so it is register-intensive and can take a long time to
-compile. For more inputs, or when shorter compile times matter, it can be better to combine Warp’s reverse mode with
-first-order jets: reverse over forward. The jet arithmetic is ordinary Warp code, so Warp’s autodiff differentiates it,
-including the seeding helpers, like any other function. This works either inside a kernel, with <a class="reference internal" href="../api_reference/_generated/warp.grad.html#warp.grad" title="warp.grad"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.grad</span></code></a>
-applied to a <a class="reference internal" href="../api_reference/_generated/warp.func.html#warp.func" title="warp.func"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.func</span></code></a>, or across kernels, by recording a <a class="reference internal" href="../api_reference/_generated/warp.Tape.html#warp.Tape" title="warp.Tape"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Tape</span></code></a> and calling
-<code class="docutils literal notranslate"><span class="pre">tape.backward()</span></code> once per input component.</p>
+run time. Its state grows quadratically with the width, however, so it is register-intensive. For more inputs, it can be
+better to combine Warp’s reverse mode with first-order jets: reverse over forward. The jet arithmetic is ordinary Warp
+code, so Warp’s autodiff differentiates it, including the seeding helpers, like any other function. This works either
+inside a kernel, with <a class="reference internal" href="../api_reference/_generated/warp.grad.html#warp.grad" title="warp.grad"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.grad</span></code></a> applied to a <a class="reference internal" href="../api_reference/_generated/warp.func.html#warp.func" title="warp.func"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.func</span></code></a>, or across kernels, by recording a
+<a class="reference internal" href="../api_reference/_generated/warp.Tape.html#warp.Tape" title="warp.Tape"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.Tape</span></code></a> and calling <code class="docutils literal notranslate"><span class="pre">tape.backward()</span></code> once per input component.</p>
 <section id="wp-grad-over-wp-jetspace">
 <h4><code class="docutils literal notranslate"><span class="pre">wp.grad</span></code> over <code class="docutils literal notranslate"><span class="pre">wp.JetSpace</span></code><a class="headerlink" href="#wp-grad-over-wp-jetspace" title="Link to this heading">#</a></h4>
 <p><a class="reference internal" href="../api_reference/_generated/warp.grad.html#warp.grad" title="warp.grad"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.grad</span></code></a> differentiates a <a class="reference internal" href="../api_reference/_generated/warp.func.html#warp.func" title="warp.func"><code class="xref py py-func docutils literal notranslate"><span class="pre">&#64;wp.func</span></code></a>. A function that evaluates the energy over width-1 jets
@@ -910,8 +909,9 @@ respect to the inputs is the Hessian-vector product <span class="math notranslat
 </pre></div>
 </div>
 <p>Each Hessian-vector product costs a constant multiple of one evaluation of the energy, so the full Hessian of <span class="math notranslate nohighlight">\(n\)</span>
-inputs costs <span class="math notranslate nohighlight">\(O(n)\)</span> evaluations, against <span class="math notranslate nohighlight">\(O(n^2)\)</span> for a dense second-order jet. In practice this route is
-a bit slower than <a class="reference internal" href="../api_reference/_generated/warp.JetSpace2.html#warp.JetSpace2" title="warp.JetSpace2"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.JetSpace2</span></code></a> at run time, with shorter compile times.</p>
+inputs costs <span class="math notranslate nohighlight">\(O(n)\)</span> evaluations, against <span class="math notranslate nohighlight">\(O(n^2)\)</span> for a dense second-order jet. In practice
+<a class="reference internal" href="../api_reference/_generated/warp.JetSpace2.html#warp.JetSpace2" title="warp.JetSpace2"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.JetSpace2</span></code></a> is as fast or faster at run time for small widths, but this route’s state grows only
+linearly with the width.</p>
 </section>
 <section id="wp-tape-over-wp-jetspace">
 <h4><code class="docutils literal notranslate"><span class="pre">wp.Tape</span></code> over <code class="docutils literal notranslate"><span class="pre">wp.JetSpace</span></code><a class="headerlink" href="#wp-tape-over-wp-jetspace" title="Link to this heading">#</a></h4>
@@ -1037,7 +1037,7 @@ jets for the fixed-arity term inside it.</p>
 <td><p><a class="reference internal" href="../api_reference/_generated/warp.JetSpace.html#warp.JetSpace" title="warp.JetSpace"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.JetSpace</span></code></a> with <code class="docutils literal notranslate"><span class="pre">directional()</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p>Local Hessian</p></td>
-<td><p><a class="reference internal" href="../api_reference/_generated/warp.JetSpace2.html#warp.JetSpace2" title="warp.JetSpace2"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.JetSpace2</span></code></a> if compile time allows, otherwise <a class="reference internal" href="../api_reference/_generated/warp.grad.html#warp.grad" title="warp.grad"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.grad</span></code></a> over
+<td><p><a class="reference internal" href="../api_reference/_generated/warp.JetSpace2.html#warp.JetSpace2" title="warp.JetSpace2"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.JetSpace2</span></code></a> for small widths, otherwise <a class="reference internal" href="../api_reference/_generated/warp.grad.html#warp.grad" title="warp.grad"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.grad</span></code></a> over
 <a class="reference internal" href="../api_reference/_generated/warp.JetSpace.html#warp.JetSpace" title="warp.JetSpace"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.JetSpace</span></code></a></p></td>
 </tr>
 <tr class="row-even"><td><p>Hessian-vector product</p></td>
@@ -1128,11 +1128,8 @@ times faster than running a tape, because the per-element Hessian stays in regis
 </tbody>
 </table>
 </div>
-<p>The second-order jet is fastest at run time for these small energies, but it pays for that at compile time, because its
-state is <span class="math notranslate nohighlight">\(O(k^2)\)</span> and NVCC compile time is super-linear in <code class="docutils literal notranslate"><span class="pre">k</span></code>. On an RTX PRO 6000 Blackwell (a MIG 1g.24gb
-slice) with CUDA 12.9, the tetrahedron module of <code class="docutils literal notranslate"><span class="pre">benchmark_jet_hessian_mesh.py</span></code>, which holds the second-order kernel
-alongside the first-order routes, took about 8.5 minutes to compile on a cold cache. When compile time matters, in-kernel <code class="docutils literal notranslate"><span class="pre">wp.grad</span></code> over a first-order jet
-gives the same Hessian with state that grows linearly in <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p>
+<p>The second-order jet is fastest at run time for these small energies, but its state is <span class="math notranslate nohighlight">\(O(k^2)\)</span>. For wider
+energies, in-kernel <code class="docutils literal notranslate"><span class="pre">wp.grad</span></code> over a first-order jet gives the same Hessian with state that grows linearly in <code class="docutils literal notranslate"><span class="pre">k</span></code>.</p>
 <p>A kernel that gets its derivatives from jets has no use for a reverse-mode adjoint,
 unless you also differentiate the kernel itself,
 as in the <code class="docutils literal notranslate"><span class="pre">wp.Tape</span></code> over <code class="docutils literal notranslate"><span class="pre">wp.JetSpace</span></code> example above.
