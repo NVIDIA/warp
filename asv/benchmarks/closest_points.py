@@ -345,7 +345,12 @@ def main():
     parser.add_argument(
         "--segments", action="store_true", help="Compare general segment pairs with the native builtin."
     )
-    parser.add_argument("--output", type=Path, default=Path("/tmp/closest-benchmark.json"))
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=Path("closest-benchmark.json"),
+        help="JSON results file; defaults to the current directory rather than a shared temporary directory",
+    )
     args = parser.parse_args()
     if min(args.count, args.samples, args.launches) <= 0:
         parser.error("Count, samples, and launches must be positive.")
