@@ -262,9 +262,11 @@ and for a single kernel by the ``@wp.kernel(enable_backward=...)`` argument.
 enable_cpu_blocks: bool = False
 """Enable experimental CPU kernel launches with more than one logical thread per block.
 
-When ``False``, CPU launch block dimensions greater than one resolve to one,
-preserving the historical CPU execution model. When ``True``, explicit CPU
-block dimensions from 2 through 1024 run with cooperative fibers.
+When ``False``, CPU launches use one logical thread per block, preserving the
+historical CPU execution model. When ``True``, omitted or non-positive block
+dimensions default to 256, and block dimensions from 2 through 1024 run with
+cooperative fibers. Pass ``block_dim=1`` explicitly to use one logical thread
+per block with this setting enabled.
 """
 
 default_grid_stride: bool = True

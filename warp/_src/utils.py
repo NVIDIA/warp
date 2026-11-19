@@ -1430,7 +1430,8 @@ def map(
         *inputs: The input arrays or values to pass to the function.
         out: Optional output array(s) to store the result(s). If None, the output array(s) will be created automatically.
         return_kernel: If True, only return the generated kernel without performing the mapping operation.
-        block_dim: The requested number of threads per block. Defaults to 1 on CPU and 256 on CUDA.
+        block_dim: The requested number of threads per block. Defaults to 256 on CUDA. On CPU, defaults to
+            256 when :attr:`warp.config.enable_cpu_blocks` is ``True`` and to 1 otherwise.
         device: The device on which to run the kernel.
 
     Returns:

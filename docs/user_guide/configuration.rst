@@ -39,16 +39,19 @@ Experimental CPU Block Execution
 
 .. versionadded:: 1.18.0
 
-By default, an omitted or non-positive ``block_dim`` selects one logical thread
-per block on CPU and 256 threads per block on CUDA. CPU launches also preserve
-the historical effective ``block_dim`` of ``1`` when a larger value is
-requested. To honor an explicit CPU ``block_dim`` from 2 through 1024, enable
-the experimental cooperative-block path:
+With :attr:`warp.config.enable_cpu_blocks` disabled, CPU launches preserve the
+historical effective ``block_dim`` of ``1``, including when a larger value is
+requested. Enabling the experimental cooperative-block path makes an omitted
+or non-positive ``block_dim`` select 256 logical threads per block, matching
+CUDA, and honors explicit CPU block dimensions from 2 through 1024:
 
 .. code-block:: python
 
     wp.config.enable_cpu_blocks = True
-    wp.launch(kernel, dim=count, block_dim=64, device="cpu")
+    wp.launch(kernel, dim=count, device="cpu")  # Uses block_dim=256.
+
+Pass ``block_dim=1`` explicitly to retain one logical thread per block while
+the setting is enabled. CUDA defaults remain unchanged.
 
 The setting applies to :func:`wp.launch() <warp.launch>` and
 :func:`wp.launch_tiled() <warp.launch_tiled>`. Warp resolves the effective block

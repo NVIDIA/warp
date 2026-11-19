@@ -20,6 +20,7 @@ from warp._src.context import (
     _build_kernel_launch_bounds,
     _raise_cuda_launch_error,
     _resolve_launch_block_dim,
+    _ResolvedBlockDim,
     _validate_cluster_launch,
     invoke,
     invoke_cpu_blocks,
@@ -1375,12 +1376,14 @@ def jax_kernel(
         enable_backward: Enable automatic differentiation for this kernel.
         has_side_effect: Whether the custom call has side effects. When True,
             the FFI call will be executed even when the outputs are not used.
-        block_dim: Specify the number of threads per block. When ``None``, CUDA
-            uses 256 threads per block and CPU uses one. Explicit CPU block
-            dimensions greater than one are honored when
-            ``warp.config.enable_cpu_blocks`` is ``True``. The value is fixed
-            when the wrapper is constructed and is shared by forward and
-            adjoint launches when ``enable_backward=True``.
+        block_dim: Specify the number of threads per block. ``None`` selects
+            256 on CUDA. On CPU, it selects 256 when
+            :attr:`warp.config.enable_cpu_blocks` is ``True`` and 1
+            otherwise. Explicit CPU block dimensions greater than one are
+            honored when the setting is enabled. The requested value is fixed
+            when the wrapper is constructed. When ``enable_backward=True``,
+            the CPU block configuration is also captured at construction so
+            forward and adjoint launches use the same effective block dimension.
 
     Limitations:
         - All kernel arguments must be contiguous arrays or scalars.
@@ -1488,6 +1491,14 @@ def jax_kernel(
     # so 1-D integer and sequence forms are normalized identically.
     _user_launch_dims = hashable_launch_dims if launch_dims is not None else None
     _launch_block_dim = block_dim
+    _cpu_blocks_enabled = wp.config.enable_cpu_blocks
+
+    def _resolve_block_dim():
+        # Validate on the actual callback device before marking the value as
+        # resolved, so later configuration changes cannot alter either launch.
+        return _ResolvedBlockDim(
+            _resolve_launch_block_dim(wp.get_device(), _launch_block_dim, enable_cpu_blocks=_cpu_blocks_enabled)
+        )
 
     def _resolve_launch_dims(call_args):
         if _user_launch_dims is not None:
@@ -1513,7 +1524,7 @@ def jax_kernel(
             dim=_resolve_launch_dims(args),
             inputs=args[:num_inputs],
             outputs=args[num_inputs:],
-            block_dim=_launch_block_dim,
+            block_dim=_resolve_block_dim(),
         )
 
     # update forward signature and annotations so jax_callable() sees a fully annotated function
@@ -1567,7 +1578,7 @@ def jax_kernel(
             adj_inputs=grad_in,
             adj_outputs=grad_out,
             adjoint=True,
-            block_dim=_launch_block_dim,
+            block_dim=_resolve_block_dim(),
         )
 
     # Build the backward wrapper signature expected by jax_callable
@@ -1699,6 +1710,7 @@ def jax_kernel(
         # value map to the same key.
         _user_launch_dims,
         block_dim,
+        _cpu_blocks_enabled,
     )
 
     if static_args:

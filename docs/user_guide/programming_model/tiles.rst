@@ -569,7 +569,7 @@ Field-wise additive accumulation combines only the fields whose scalar leaf type
 component is one of these types. All other fields, including ``bool``, the narrow integers
 ``[u]int8`` and ``[u]int16``, and array fields, are carried through the struct value unchanged
 rather than accumulated. Accumulation is differentiable for the accumulating fields,
-subject to the general CPU ``block_dim=1`` rule described under `CPU vs. GPU behavior differences`_.
+subject to the CPU execution mode described under `CPU vs. GPU behavior differences`_.
 
 In the example below, :func:`tile_sum <warp.tile_sum>` reduces a tile of structs: the ``weight``
 field is summed across the tile, while the ``values`` array field is carried through as a descriptor
@@ -981,7 +981,9 @@ Similarly, we can `untile` tile objects back to their per-thread scalar equivale
 .. Note:: All threads in a block must execute tile operations, but code surrounding tile operations may contain arbitrary conditional logic.
 
 Extra consideration is needed when using tiles in SIMT kernels that are meant to run on both the GPU and the CPU.
-On the CPU, ``block_dim`` is set to 1, which can change the behavior of kernels using :func:`wp.tile() <warp._src.lang.tile>`. Consider the following example:
+On the CPU, ``block_dim`` resolves to 1 when :attr:`warp.config.enable_cpu_blocks` is ``False``, which can change the behavior of kernels using :func:`wp.tile() <warp._src.lang.tile>`.
+When CPU blocks are enabled, an omitted or non-positive ``block_dim`` defaults to 256, and explicit block dimensions are honored.
+The tile's trailing dimension follows this effective block size. Consider the following example:
 
 .. _tile_reduce_blockwise_example:
 
@@ -1016,14 +1018,15 @@ On the CPU, ``block_dim`` is set to 1, which can change the behavior of kernels 
 
 Here, we launch ``N=12`` logical threads. The tile size is 4, so there are three blocks in total that are created with :func:`wp.tile() <warp._src.lang.tile>`.
 The tile reduction operation stores the block's sum in the first thread of the block, so we see 6, 22, and 38 stored at indices 0, 4, and 8.
-If we instead launch this kernel on the CPU, we get the following output:
+If we instead launch this kernel on the CPU with :attr:`warp.config.enable_cpu_blocks` disabled, we get the following output:
 
 .. code-block:: text
 
     [ 0  1  2  3  4  5  6  7  8  9 10 11]
 
-When launching on the CPU, ``block_dim`` is set to 1, so the tile generated with :func:`wp.tile() <warp._src.lang.tile>` has a size of 1, and the reduction of each tile simply returns the value of the tile.
-So if you are designing a kernel that is meant to get the same result running on the GPU or the CPU, it should be designed to be independent of the value of ``block_dim``.
+With CPU blocks disabled, ``block_dim`` is 1, so :func:`wp.tile() <warp._src.lang.tile>` creates a one-element tile from each scalar value, and each reduction returns that value.
+With CPU blocks enabled, the explicit ``block_dim=TILE_DIM`` is honored, and the CPU launch produces the same blockwise sums as the GPU launch.
+For kernels that must also support CPU execution with CPU blocks disabled, design the computation to be independent of ``block_dim``.
 For instance, if we want a full array reduction that works consistently across devices, we can use :func:`wp.tile_atomic_add() <warp._src.lang.tile_atomic_add>` to accumulate results from all blocks:
 
 .. testcode::
@@ -1194,9 +1197,11 @@ the value passed to :func:`wp.launch() <warp.launch>` or
   lanes ``0`` through ``block_dim - 1`` can each contribute values to the same block tile.
   On CPU the effective lane count is ``1``, so only lane ``0`` participates.
 
-Set :attr:`warp.config.enable_cpu_blocks` to ``True`` to opt into explicit CPU
-block dimensions from 2 through 1024. Warp then executes the logical lanes as
-cooperative stackful fibers on one host thread, so ``wp.block_dim()``, the trailing
+Set :attr:`warp.config.enable_cpu_blocks` to ``True`` to default to 256 logical
+threads per CPU block and honor explicit block dimensions from 2 through 1024.
+An omitted or non-positive ``block_dim`` selects that default; pass
+``block_dim=1`` explicitly to retain a single lane. Warp executes the logical
+lanes as cooperative stackful fibers on one host thread, so ``wp.block_dim()``, the trailing
 lane index, barriers, and shared tile state follow the requested block shape. This
 path is initially intended for correctness testing and CPU/CUDA equivalence; it is
 not SIMD or multi-core acceleration. See :ref:`Configuration <Configuration>` for
@@ -1805,8 +1810,9 @@ the two programming models.
 Tile operations (:func:`wp.tile_load() <warp._src.lang.tile_load>`,
 :func:`wp.tile_store() <warp._src.lang.tile_store>`,
 :func:`wp.tile_matmul() <warp._src.lang.tile_matmul>`, etc.) work with either launch
-function. By default, Warp resolves CPU launches to ``block_dim=1``; see the
-next question for CPU-specific behavior and the experimental opt-in.
+function. CPU launches default to ``block_dim=1`` unless experimental CPU blocks
+are enabled, in which case the default becomes 256; see the next question for
+CPU-specific behavior and the experimental opt-in.
 
 .. _tiles-cpu-gpu-behavior-differences:
 
@@ -1817,8 +1823,10 @@ CPU vs. GPU behavior differences
 
 By default, Warp resolves CPU launches to ``block_dim=1``, which collapses the
 logical block to a single lane. The experimental
-:attr:`warp.config.enable_cpu_blocks` option instead honors explicit CPU block
-dimensions through 1024. See :ref:`CPU Tile Semantics <cpu_tile_semantics>` for
+:attr:`warp.config.enable_cpu_blocks` option instead defaults to 256 logical
+threads per CPU block and honors explicit dimensions through 1024. Pass
+``block_dim=1`` explicitly to retain a single lane with the option enabled.
+See :ref:`CPU Tile Semantics <cpu_tile_semantics>` for
 the affected patterns, resource limits, and portable workarounds.
 
 Tile operations in divergent branches

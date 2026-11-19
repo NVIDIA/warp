@@ -12043,19 +12043,21 @@ class _ResolvedBlockDim(int):
     """Mark an already-resolved block dimension passed through internal replay paths."""
 
 
-def _resolve_launch_block_dim(device: Device, block_dim: int | None) -> int:
+def _resolve_launch_block_dim(device: Device, block_dim: int | None, *, enable_cpu_blocks: bool | None = None) -> int:
     """Resolve a requested launch block dimension for ``device``.
 
     CPU block dimensions greater than one are opt-in and capped at the CUDA
     architectural maximum used by the cooperative scheduler. CUDA resolution
     retains its existing default and non-positive-value behavior.
+
+    ``enable_cpu_blocks`` overrides the current configuration so paired launches
+    can retain the CPU execution policy captured when their wrapper was created.
     """
     if isinstance(block_dim, _ResolvedBlockDim):
         return int(block_dim)
 
-    default = 1 if device.is_cpu else 256
     if block_dim is None or block_dim <= 0:
-        return default
+        block_dim = 256
 
     if not device.is_cpu:
         return block_dim
@@ -12063,7 +12065,10 @@ def _resolve_launch_block_dim(device: Device, block_dim: int | None) -> int:
     if block_dim > 1024:
         raise ValueError(f"block_dim must be at most 1024 on CPU, got {block_dim}")
 
-    if block_dim == 1 or not warp.config.enable_cpu_blocks:
+    if enable_cpu_blocks is None:
+        enable_cpu_blocks = warp.config.enable_cpu_blocks
+
+    if block_dim == 1 or not enable_cpu_blocks:
         return 1
 
     if getattr(runtime, "clang_sanitizer", "") == "address":
@@ -12128,10 +12133,11 @@ def launch(
           ``@wp.kernel(grid_stride=False)`` and ``max_blocks > 0`` raises
           a ``RuntimeError``.
         block_dim: The requested number of threads per block. An omitted or
-          non-positive value defaults to 1 on CPU and 256 on CUDA. Explicit CPU
-          values from 2 through 1024 are honored when
-          :attr:`warp.config.enable_cpu_blocks` is ``True`` and otherwise
-          resolve to 1.
+          non-positive value defaults to 256 on CUDA. On CPU, it defaults to
+          256 when :attr:`warp.config.enable_cpu_blocks` is ``True`` and to 1
+          otherwise. Explicit CPU values from 2 through 1024 are honored when
+          the setting is enabled and otherwise resolve to 1. An explicit 1
+          selects one logical thread per block on either device.
     """
 
     init()
@@ -12528,7 +12534,8 @@ def launch_tiled(*args, **kwargs):
     The required ``block_dim`` argument is appended to the launch dimensions.
     On CPU, values from 2 through 1024 are effective only when
     :attr:`warp.config.enable_cpu_blocks` is ``True``; otherwise they resolve
-    to 1. ``None`` and non-positive values select the per-device default.
+    to 1. ``None`` and non-positive values select 256 on CUDA, and 256 on CPU
+    when the setting is enabled or 1 when it is disabled.
     """
 
     # promote dim to a list in case it was passed as a scalar or tuple
@@ -12546,8 +12553,8 @@ def launch_tiled(*args, **kwargs):
     else:
         device = runtime.get_device(kwargs.get("device", args[6] if len(args) > 6 else None))
 
-    # Resolve before adding the trailing lane dimension. In particular, a
-    # non-positive CPU request must append 1 rather than making the launch empty.
+    # Resolve before adding the trailing lane dimension so non-positive requests
+    # append the effective block size rather than making the launch empty.
     kwargs["block_dim"] = _resolve_launch_block_dim(device, kwargs["block_dim"])
 
     dim = _canonicalize_dim(kwargs["dim"])
@@ -13033,8 +13040,8 @@ def force_load(
         if loaded:
             return loaded
 
-        # A fresh CPU preload must match an ordinary launch, whose omitted
-        # block_dim defaults to one. CUDA retains the module-level default;
+        # A fresh CPU preload must match an ordinary launch's default under
+        # enable_cpu_blocks. CUDA retains the module-level default;
         # compile-only clients use it to select a non-default specialization.
         default = None if d.is_cpu else m.options["block_dim"]
         return [_resolve_launch_block_dim(d, default)]
