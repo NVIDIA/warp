@@ -4637,13 +4637,16 @@ class Module:
         # scan for function calls and kernel-local function bindings. ``reference_nodes`` shares
         # a single AST traversal with Adjoint.get_references; it also yields Name/Attribute
         # nodes, which this dependency scan ignores.
-        for node in syntax.reference_nodes:
+        call_funcs = {}
+        for node, key in zip(syntax.reference_nodes, syntax.reference_keys, strict=True):
             if type(node) is ast.Call:
                 if isinstance(node.func, ast.Name) and node.func.id in local_variables:
                     continue
                 try:
                     # try to resolve the function
-                    func = warp._src.codegen.resolve_reference_call_func(adj, node, callable_arg_values)
+                    func = warp._src.codegen.resolve_reference_call_func_once(
+                        adj, node, key, call_funcs, callable_arg_values
+                    )
 
                     # if this is a user-defined function, add a module reference
                     if isinstance(func, warp._src.context.Function) and func.module is not None:

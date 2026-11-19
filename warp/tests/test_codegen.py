@@ -23,6 +23,8 @@ import warp as wp
 from warp._src import codegen
 from warp.tests import aux_test_array_slot_operators as slot_operators
 from warp.tests import aux_test_extract_source_patterns as patterns
+from warp.tests import aux_test_function_double as function_double
+from warp.tests import aux_test_function_triple as function_triple
 from warp.tests.aux_test_extract_source_patterns import contains_truncating_string
 from warp.tests.unittest_utils import *
 
@@ -1950,6 +1952,14 @@ def test_non_ascii_source(test, device):
     np.testing.assert_array_equal(out.numpy(), [1])
 
 
+_SCAN_SCALE = 2.0
+
+
+@wp.func
+def _scan_apply(f: wp.Function, x: float):
+    return f(x)
+
+
 class TestCodeGen(unittest.TestCase):
     def _codegen_cuda_source(self, kernel):
         module = kernel.module
@@ -2442,6 +2452,62 @@ class TestCodeGen(unittest.TestCase):
             adj.get_references()
 
         self.assertEqual(adj.kernel_dim, 2)
+
+    def test_reference_scan_resolves_repeated_names_once(self):
+        """Resolve names repeated in a function as often as names used once, with the same results."""
+
+        def single_kernel(out: wp.array[wp.vec3]):
+            out[0] = wp.vec3(_SCAN_SCALE)
+
+        def repeated_kernel(out: wp.array[wp.vec3]):
+            out[0] = wp.vec3(_SCAN_SCALE) + wp.vec3(_SCAN_SCALE) * wp.vec3(_SCAN_SCALE)
+
+        def scan(func):
+            adj = codegen.Adjoint(func)
+            with (
+                mock.patch.object(
+                    codegen.Adjoint,
+                    "resolve_external_reference",
+                    autospec=True,
+                    side_effect=codegen.Adjoint.resolve_external_reference,
+                ) as names,
+                mock.patch.object(
+                    codegen.Adjoint,
+                    "resolve_static_expression",
+                    autospec=True,
+                    side_effect=codegen.Adjoint.resolve_static_expression,
+                ) as paths,
+            ):
+                references = adj.get_references()
+            return names.call_count + paths.call_count, references
+
+        self.assertEqual(scan(single_kernel), scan(repeated_kernel))
+
+    def test_reference_scan_collects_function_arguments_of_every_call(self):
+        """Collect the function arguments of every call, also of calls to the same function."""
+
+        def apply_kernel(out: wp.array[float]):
+            out[0] = _scan_apply(function_double.function_external_module_double_it, 1.0) + _scan_apply(
+                function_triple.function_external_module_triple_it, 1.0
+            )
+
+        _, _, functions = codegen.Adjoint(apply_kernel).get_references()
+
+        self.assertIn(function_double.function_external_module_double_it, functions)
+        self.assertIn(function_triple.function_external_module_triple_it, functions)
+
+    def test_dependency_scan_collects_function_arguments_of_every_call(self):
+        """Depend on the modules of the function arguments of every call, also of calls to the same function."""
+
+        @wp.kernel(module="unique")
+        def apply_kernel(out: wp.array[float]):
+            out[0] = _scan_apply(function_double.function_external_module_double_it, 1.0) + _scan_apply(
+                function_triple.function_external_module_triple_it, 1.0
+            )
+
+        references = apply_kernel.module.references
+        self.assertIn(function_double.function_external_module_double_it.module, references)
+        self.assertIn(function_triple.function_external_module_triple_it.module, references)
 
     def test_namespaced_tid_call_sets_kernel_dim(self):
         namespace = types.SimpleNamespace(warp=wp)

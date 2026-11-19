@@ -1693,6 +1693,16 @@ def resolve_reference_call_func(adj, call_node, callable_arg_values=None):
     return func
 
 
+def resolve_reference_call_func_once(adj, call_node, key, call_funcs, callable_arg_values):
+    """Resolve the function called by ``call_node``, once per callee name ``key`` in ``call_funcs``."""
+    if key in call_funcs:
+        return call_funcs[key]
+    func = resolve_reference_call_func(adj, call_node, callable_arg_values)
+    if key is not None:
+        call_funcs[key] = func
+    return func
+
+
 def resolve_reference_tid_aliases(adj, local_variables) -> frozenset[str]:
     """Return local names that can resolve to ``wp.tid()`` during reference scans."""
 
@@ -1993,13 +2003,37 @@ class _NonUnrolledConstantRange(NamedTuple):
         return f"{iterator} {comparison} {self.start}"
 
 
+def _dotted_name(node) -> str | None:
+    """Return ``"a.b.c"`` for a ``Name``-rooted attribute chain, else ``None``."""
+    parts = []
+    while type(node) is ast.Attribute:
+        parts.append(node.attr)
+        node = node.value
+    if type(node) is not ast.Name:
+        return None
+    parts.append(node.id)
+    return ".".join(reversed(parts))
+
+
 class _TreeSyntax:
     """Syntax-only facts about a function tree: pure functions of the tree, so shareable across adjoints."""
 
-    __slots__ = ("assigned_name_ids", "assignment_call_dims", "assignment_call_name_ids", "reference_nodes")
+    __slots__ = (
+        "assigned_name_ids",
+        "assignment_call_dims",
+        "assignment_call_name_ids",
+        "reference_keys",
+        "reference_nodes",
+    )
 
     def __init__(self, tree):
         self.reference_nodes = tuple(iter_ast_nodes_of_types(tree, ast.Name, ast.Attribute, ast.Call, ast.Assign))
+        # per node, the dotted name it resolves (a call's callee); scans resolve each one once, so
+        # resolution must depend on nothing else from the node
+        self.reference_keys = tuple(
+            _dotted_name(node.func if type(node) is ast.Call else node) if type(node) is not ast.Assign else None
+            for node in self.reference_nodes
+        )
         names = set()
         # Unpacking arity of direct assignment calls, for ``wp.tid()`` dimension inference, and
         # their bare callee names, so ``get_references()`` only resolves tid aliases when needed.
@@ -7577,8 +7611,17 @@ class Adjoint:
             tid_aliases = resolve_reference_tid_aliases(adj, local_variables)
         tid_func = warp._src.context.builtin_functions["tid"]
         callable_arg_values = getattr(adj, "callable_arg_values", None) or {}
-        # Shared single traversal (see syntax()); resolved here at hash time.
-        for node in syntax.reference_nodes:
+        # Shared single traversal (see syntax()); resolved here at hash time. A dotted name resolves
+        # to the same object throughout a scan, as the module hash assumes until code generation,
+        # so each is resolved once.
+        resolved_names = set()
+        call_funcs = {}
+        for node, key in zip(syntax.reference_nodes, syntax.reference_keys, strict=True):
+            if key is not None and type(node) is not ast.Call:
+                if key in resolved_names:
+                    continue
+                resolved_names.add(key)
+
             if isinstance(node, ast.Name) and node.id not in local_variables:
                 # look up in closure/global variables
                 obj = adj.resolve_external_reference(node.id)
@@ -7596,7 +7639,7 @@ class Adjoint:
                     if func is None and node.func.id in tid_aliases:
                         func = tid_func
                 else:
-                    func = resolve_reference_call_func(adj, node, callable_arg_values)
+                    func = resolve_reference_call_func_once(adj, node, key, call_funcs, callable_arg_values)
 
                 if func is tid_func:
                     call_dim = assignment_call_dims.get(node)
