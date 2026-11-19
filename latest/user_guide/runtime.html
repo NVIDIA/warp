@@ -2512,9 +2512,11 @@ object to preserve its replay-time memory reference.</p></li>
 <li><p>Kernel parameters of type <code class="docutils literal notranslate"><span class="pre">wp.fabricarray</span></code> or <code class="docutils literal notranslate"><span class="pre">wp.indexedfabricarray</span></code>
 cannot yet be recorded by APIC. <code class="docutils literal notranslate"><span class="pre">wp.fixedarray</span></code> is a compiler-only stack
 array type and cannot be passed as a host kernel argument.</p></li>
-<li><p><a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.nnz_sync" title="warp.sparse.BsrMatrix.nnz_sync"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BsrMatrix.nnz_sync()</span></code></a> cannot read the
-result of a topology update recorded earlier in the same CPU capture. Read the
-count after replay, or avoid the readback inside the captured region.</p></li>
+<li><p><a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.nnz_sync" title="warp.sparse.BsrMatrix.nnz_sync"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BsrMatrix.nnz_sync()</span></code></a> and
+<a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.mean_row_count_sync" title="warp.sparse.BsrMatrix.mean_row_count_sync"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BsrMatrix.mean_row_count_sync()</span></code></a>
+cannot read the result of a topology update recorded earlier in the same CPU
+capture. Read the count after replay, or avoid the readback inside the captured
+region.</p></li>
 <li><p><a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.status_sync" title="warp.sparse.BsrMatrix.status_sync"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BsrMatrix.status_sync()</span></code></a> cannot read
 the sparse status during a live CUDA graph capture (it requires a device-to-host
 readback) or during CPU graph capture (a recorded status update is applied only

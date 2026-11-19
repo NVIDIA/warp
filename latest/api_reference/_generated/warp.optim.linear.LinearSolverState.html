@@ -63,7 +63,7 @@
 
     <link rel="index" title="Index" href="../../genindex.html" />
     <link rel="search" title="Search" href="../../search.html" />
-    <link rel="next" title="warp.optim.linear.aslinearoperator" href="warp.optim.linear.aslinearoperator.html" />
+    <link rel="next" title="warp.optim.linear.MultiRHSOperator" href="warp.optim.linear.MultiRHSOperator.html" />
     <link rel="prev" title="warp.optim.linear.LinearOperator" href="warp.optim.linear.LinearOperator.html" />
 
 
@@ -530,7 +530,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">use_cuda_graph</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L1356-L1488"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.LinearSolverState" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L1356-L1494"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.LinearSolverState" title="Link to this definition">#</a></dt>
 <dd><p>Pre-allocated state for a linear iterative solver.</p>
 <p>Holds all temporary buffers required by the solver plus a reference to the original
 problem (<code class="docutils literal notranslate"><span class="pre">A</span></code>, <code class="docutils literal notranslate"><span class="pre">b</span></code>, <code class="docutils literal notranslate"><span class="pre">x</span></code>, optional <code class="docutils literal notranslate"><span class="pre">M</span></code>). Calling the state runs the solver,
@@ -558,6 +558,14 @@ Set to 0 to disable host-side residual checks when running during CPU or CUDA gr
 </ul>
 </dd>
 </dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.optim.linear.LinearSolverState.rhs_norm_sq">
+<span class="sig-name descname"><span class="pre">rhs_norm_sq</span></span><a class="headerlink" href="#warp.optim.linear.LinearSolverState.rhs_norm_sq" title="Link to this definition">#</a></dt>
+<dd><p>Device array of the squared right-hand-side norm of each system, in the
+solver’s scalar type. Every solve writes it while setting its tolerances, so it is
+available for reporting relative residuals at no extra cost.</p>
+</dd></dl>
+
 <p>Instances are not directly constructible — use the solver-specific subclasses
 <a class="reference internal" href="warp.optim.linear.CG.html#warp.optim.linear.CG" title="warp.optim.linear.CG"><code class="xref py py-class docutils literal notranslate"><span class="pre">CG</span></code></a>, <a class="reference internal" href="warp.optim.linear.CR.html#warp.optim.linear.CR" title="warp.optim.linear.CR"><code class="xref py py-class docutils literal notranslate"><span class="pre">CR</span></code></a>, <a class="reference internal" href="warp.optim.linear.BiCGSTAB.html#warp.optim.linear.BiCGSTAB" title="warp.optim.linear.BiCGSTAB"><code class="xref py py-class docutils literal notranslate"><span class="pre">BiCGSTAB</span></code></a>, and <a class="reference internal" href="warp.optim.linear.GMRES.html#warp.optim.linear.GMRES" title="warp.optim.linear.GMRES"><code class="xref py py-class docutils literal notranslate"><span class="pre">GMRES</span></code></a>, or obtain one by
 calling the corresponding solver function (<a class="reference internal" href="warp.optim.linear.cg_function.html#warp.optim.linear.cg" title="warp.optim.linear.cg"><code class="xref py py-func docutils literal notranslate"><span class="pre">cg()</span></code></a>, <a class="reference internal" href="warp.optim.linear.cr_function.html#warp.optim.linear.cr" title="warp.optim.linear.cr"><code class="xref py py-func docutils literal notranslate"><span class="pre">cr()</span></code></a>, <a class="reference internal" href="warp.optim.linear.bicgstab_function.html#warp.optim.linear.bicgstab" title="warp.optim.linear.bicgstab"><code class="xref py py-func docutils literal notranslate"><span class="pre">bicgstab()</span></code></a>,
@@ -586,11 +594,11 @@ calling the corresponding solver function (<a class="reference internal" href="w
       </div>
     </a>
     <a class="right-next"
-       href="warp.optim.linear.aslinearoperator.html"
+       href="warp.optim.linear.MultiRHSOperator.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">warp.optim.linear.aslinearoperator</p>
+        <p class="prev-next-title">warp.optim.linear.MultiRHSOperator</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -615,7 +623,10 @@ calling the corresponding solver function (<a class="reference internal" href="w
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.optim.linear.LinearSolverState"><code class="docutils literal notranslate"><span class="pre">LinearSolverState</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.optim.linear.LinearSolverState"><code class="docutils literal notranslate"><span class="pre">LinearSolverState</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.optim.linear.LinearSolverState.rhs_norm_sq"><code class="docutils literal notranslate"><span class="pre">rhs_norm_sq</span></code></a></li>
+</ul>
+</li>
 </ul>
   </nav></div>
 

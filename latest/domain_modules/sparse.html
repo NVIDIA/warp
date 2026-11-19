@@ -975,8 +975,13 @@ it picks <code class="docutils literal notranslate"><span class="pre">&quot;rows
 never synchronizes, so it works inside captured graphs but cannot see how many entries each row
 actually stores; the stored count of a compact matrix is only an upper bound on the host. Short
 rows favor <code class="docutils literal notranslate"><span class="pre">&quot;rows&quot;</span></code>, but CSR matrices with long or irregular rows (more than about 16 entries)
-are often several times faster with <code class="docutils literal notranslate"><span class="pre">&quot;columns&quot;</span></code> pinned for four or more vectors. The rule was
-fitted to finite-element and irregular matrices and may change between releases.</p>
+are often several times faster with <code class="docutils literal notranslate"><span class="pre">&quot;columns&quot;</span></code> pinned for four or more vectors.</p>
+<p>Prepared operators such as <a class="reference internal" href="../api_reference/_generated/warp.optim.linear.MultiRHSOperator.html#warp.optim.linear.MultiRHSOperator" title="warp.optim.linear.MultiRHSOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.optim.linear.MultiRHSOperator</span></code></a> and
+<a class="reference internal" href="../api_reference/_generated/warp.optim.linear.KrylovSolve.html#warp.optim.linear.KrylovSolve" title="warp.optim.linear.KrylovSolve"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.optim.linear.KrylovSolve</span></code></a> decide once at construction, where they may read
+back <a class="reference internal" href="../api_reference/_generated/warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix.mean_row_count_sync" title="warp.sparse.BsrMatrix.mean_row_count_sync"><code class="xref py py-meth docutils literal notranslate"><span class="pre">BsrMatrix.mean_row_count_sync()</span></code></a>. On CUDA, CSR matrices with more than 16
+blocks per row then use <code class="docutils literal notranslate"><span class="pre">&quot;columns&quot;</span></code> from four vectors. The choice stays fixed, including
+for smaller capacities from <code class="docutils literal notranslate"><span class="pre">with_nrhs</span></code>. The rule was fitted to finite-element and
+irregular matrices and may change between releases.</p>
 </section>
 <section id="kernel-level-utilities">
 <h3>Kernel-level utilities<a class="headerlink" href="#kernel-level-utilities" title="Link to this heading">#</a></h3>
@@ -1008,6 +1013,69 @@ padded slack storage.</p>
 <p>While primarily intended for sparse matrices, these solvers also work with dense linear operators provided as 2D Warp arrays.
 Custom operators can be implemented using the <a class="reference internal" href="../api_reference/_generated/warp.optim.linear.LinearOperator.html#warp.optim.linear.LinearOperator" title="warp.optim.linear.LinearOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.optim.linear.LinearOperator</span></code></a> interface.</p>
 <p>For a complete listing of all sparse matrix functions and their signatures, see the <a class="reference internal" href="../api_reference/warp_sparse.html"><span class="doc">warp.sparse</span></a> API reference.</p>
+</section>
+<section id="prepared-krylov-solves">
+<h2>Prepared Krylov solves<a class="headerlink" href="#prepared-krylov-solves" title="Link to this heading">#</a></h2>
+<p><a class="reference internal" href="../api_reference/_generated/warp.optim.linear.KrylovSolve.html#warp.optim.linear.KrylovSolve" title="warp.optim.linear.KrylovSolve"><code class="xref py py-class docutils literal notranslate"><span class="pre">KrylovSolve</span></code></a> allocates its workspace once and then solves many
+right-hand sides (RHSs) against the same system with <a class="reference internal" href="../api_reference/_generated/warp.optim.linear.cg_function.html#warp.optim.linear.cg" title="warp.optim.linear.cg"><code class="xref py py-func docutils literal notranslate"><span class="pre">cg()</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.optim.linear.cr_function.html#warp.optim.linear.cr" title="warp.optim.linear.cr"><code class="xref py py-func docutils literal notranslate"><span class="pre">cr()</span></code></a>,
+<a class="reference internal" href="../api_reference/_generated/warp.optim.linear.bicgstab_function.html#warp.optim.linear.bicgstab" title="warp.optim.linear.bicgstab"><code class="xref py py-func docutils literal notranslate"><span class="pre">bicgstab()</span></code></a> or <a class="reference internal" href="../api_reference/_generated/warp.optim.linear.gmres_function.html#warp.optim.linear.gmres" title="warp.optim.linear.gmres"><code class="xref py py-func docutils literal notranslate"><span class="pre">gmres()</span></code></a>. It suits solves nested inside another
+algorithm and CUDA graph replay:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">warp.optim.linear</span><span class="w"> </span><span class="kn">import</span> <span class="n">KrylovSolve</span>
+
+<span class="n">action</span> <span class="o">=</span> <span class="n">KrylovSolve</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">nrhs</span><span class="o">=</span><span class="mi">24</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s2">"cg"</span><span class="p">,</span>
+                     <span class="n">working_dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">tol</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">maxiter</span><span class="o">=</span><span class="mi">25</span><span class="p">)</span>
+<span class="n">action</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">rhs</span><span class="p">,</span> <span class="n">out</span><span class="p">)</span>
+<span class="c1"># action.converged, action.absolute_residual, ... stay on device.</span>
+</pre></div>
+</div>
+<p>The functional solvers keep every algorithmic option; a prepared solve adds what
+a reusable object needs:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">solve(rhs,</span> <span class="pre">out,</span> <span class="pre">x0=None)</span></code> takes contiguous <code class="docutils literal notranslate"><span class="pre">(nrhs,</span> <span class="pre">n)</span></code> arrays, or
+<code class="docutils literal notranslate"><span class="pre">(n,)</span></code> when <code class="docutils literal notranslate"><span class="pre">nrhs</span> <span class="pre">==</span> <span class="pre">1</span></code>, in the system’s scalar dtype and device. A solve
+starts from zero unless <code class="docutils literal notranslate"><span class="pre">x0</span></code> gives an initial guess; <code class="docutils literal notranslate"><span class="pre">solve(rhs,</span> <span class="pre">out,</span> <span class="pre">out)</span></code>
+warm starts from the previous solution. Exact in-place aliasing is
+supported; partially overlapping views are rejected before any output is
+written.</p></li>
+<li><p>Acceptance compares the residual with <code class="docutils literal notranslate"><span class="pre">max(tol</span> <span class="pre">*</span> <span class="pre">||b||,</span> <span class="pre">atol)</span></code>, as in the
+functional solvers, except that <code class="docutils literal notranslate"><span class="pre">atol</span></code> defaults to <code class="docutils literal notranslate"><span class="pre">0.0</span></code> instead of
+<code class="docutils literal notranslate"><span class="pre">tol</span></code>. The solvers raise <code class="docutils literal notranslate"><span class="pre">atol</span></code> to a safety floor of 1e-18 for a float32
+working dtype and 1e-36 for float64, so <code class="docutils literal notranslate"><span class="pre">atol=0.0</span></code> means a relative
+tolerance only, apart from a zero RHS, and the reported <code class="docutils literal notranslate"><span class="pre">tolerance</span></code>
+includes the floor.</p></li>
+<li><p>Several RHSs iterate together as independent systems sharing one operator, so
+each reports the batch’s scheduled iteration count. This is not a coupled
+block method. Sparse matrices apply all RHSs with the batched
+<a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_mv.html#warp.sparse.bsr_mv" title="warp.sparse.bsr_mv"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.sparse.bsr_mv()</span></code></a>; <code class="docutils literal notranslate"><span class="pre">algorithm</span></code> pins its kernel strategy.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">update()</span></code> makes in-place value changes to a sparse matrix visible, copying
+them into the <code class="docutils literal notranslate"><span class="pre">working_dtype</span></code> matrix when that differs. <code class="docutils literal notranslate"><span class="pre">solve()</span></code> does
+this on every call.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">with_nrhs(k)</span></code> prepares a smaller capacity that shares the workspace. The
+two must not run concurrently.</p></li>
+<li><p>The device arrays <code class="docutils literal notranslate"><span class="pre">iterations</span></code>, <code class="docutils literal notranslate"><span class="pre">absolute_residual</span></code>,
+<code class="docutils literal notranslate"><span class="pre">relative_residual</span></code>, <code class="docutils literal notranslate"><span class="pre">tolerance</span></code> and <code class="docutils literal notranslate"><span class="pre">converged</span></code> describe each RHS of
+the latest call. <code class="docutils literal notranslate"><span class="pre">stats</span></code> (total iterations, maximum iterations, failed
+RHSs, solved RHSs) and <code class="docutils literal notranslate"><span class="pre">residual_maxima</span></code> accumulate until
+<code class="docutils literal notranslate"><span class="pre">reset_stats()</span></code>, which leaves the latest per-RHS diagnostics untouched.
+Nonfinite norms fail acceptance. <code class="docutils literal notranslate"><span class="pre">solve()</span></code> also returns the device arrays
+<code class="docutils literal notranslate"><span class="pre">(iterations,</span> <span class="pre">residual_sq,</span> <span class="pre">tolerance_sq)</span></code>; <code class="docutils literal notranslate"><span class="pre">diagnostics=False</span></code> skips the
+per-RHS bookkeeping for short, frequent solves.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">residual</span></code> selects the residual that is reported and used for acceptance:
+<code class="docutils literal notranslate"><span class="pre">&quot;recurrence&quot;</span></code> reports the solver’s own estimate at no extra cost, and
+<code class="docutils literal notranslate"><span class="pre">&quot;fresh&quot;</span></code> recomputes <code class="docutils literal notranslate"><span class="pre">||A</span> <span class="pre">x</span> <span class="pre">-</span> <span class="pre">b||</span></code> with the
+source system and precision, which validates mixed-precision or truncated
+solves at the cost of one batched product per call.</p></li>
+</ul>
+<p><code class="docutils literal notranslate"><span class="pre">M</span></code> is a fixed linear preconditioner, either a single-system operator or a
+prepared operator with independent RHS partitions, such as a
+<a class="reference internal" href="../api_reference/_generated/warp.optim.linear.MultiRHSOperator.html#warp.optim.linear.MultiRHSOperator" title="warp.optim.linear.MultiRHSOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">MultiRHSOperator</span></code></a> or an FSAI application prepared for several RHSs. When
+the preconditioner is partitioned, pass a matching <code class="docutils literal notranslate"><span class="pre">M=</span></code> to <code class="docutils literal notranslate"><span class="pre">with_nrhs</span></code>.</p>
+<p>Construct and warm up actions outside CUDA graph capture. Prepared replay
+performs no host convergence checks or work-array allocations. Eager calls
+from different CUDA streams are ordered automatically, but captured graphs
+that share one workspace must not execute concurrently. Reverse-mode
+derivatives through prepared solves are not supplied.</p>
 </section>
 </section>
 
@@ -1074,6 +1142,7 @@ Custom operators can be implemented using the <a class="reference internal" href
 </ul>
 </li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#iterative-linear-solvers">Iterative Linear Solvers</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#prepared-krylov-solves">Prepared Krylov solves</a></li>
 </ul>
   </nav></div>
 

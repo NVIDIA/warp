@@ -1,0 +1,919 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>warp.optim.linear.KrylovSolve &#8212; Warp 1.20.0.dev0</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=75c7c72ae941e8b558d8" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=75c7c72ae941e8b558d8" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=ca94f457" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../_static/scripts/fontawesome.js?digest=75c7c72ae941e8b558d8"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=75c7c72ae941e8b558d8" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=75c7c72ae941e8b558d8" />
+
+
+
+    <script src="../../_static/documentation_options.js?v=1cb47380"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=fd10adb8"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api_reference/_generated/warp.optim.linear.KrylovSolve';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.24.0';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <script src="../../_static/copy-page-source.js?v=f9064be3"></script>
+
+    <link rel="icon" href="../../_static/favicon.png"/>
+
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="warp.optim.linear.LinearOperator" href="warp.optim.linear.LinearOperator.html" />
+    <link rel="prev" title="warp.optim.linear.GMRES" href="warp.optim.linear.GMRES.html" />
+
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="color-scheme" content="light dark"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="1.20.0.dev0" />
+  
+    
+    <script src="../../_static/searchtools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../searchindex.js"></script>
+  
+
+
+  </head>
+
+  <body data-default-mode="">
+
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button type="button" class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation" aria-expanded="false" aria-controls="pst-primary-sidebar-modal">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.20.0.dev0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.20.0.dev0 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.20.0.dev0</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button type="button" class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page" aria-expanded="false" aria-controls="pst-secondary-sidebar-modal">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal" tabindex="-1"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.20.0.dev0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.20.0.dev0 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.20.0.dev0</p>
+  
+</a>
+
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Table of Contents">
+  <p class="bd-links__title" role="heading" aria-level="1">Table of Contents</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/compatibility.html">Compatibility &amp; Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/basics.html">Basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/runtime.html">Runtime</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../user_guide/differentiability.html">Differentiability</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/forward_mode_jets.html">Forward-Mode Jets</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../user_guide/programming_model.html">Programming Model</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/programming_model/generics.html">Generics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/programming_model/tiles.html">Tiles</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/programming_model/code_generation.html">Code Generation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/programming_model/cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../user_guide/interoperability.html">Interoperability</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/interoperability/pytorch.html">PyTorch Interoperability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/interoperability/jax.html">JAX Interoperability</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../user_guide/execution_and_performance.html">Execution and Performance</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/concurrency.html">Concurrency</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/profiling.html">Profiling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/deterministic_execution.html">Deterministic Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/reducing_compilation_and_startup_time.html">Reducing Compilation and Startup Time</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/limitations.html">Limitations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/faq.html">FAQ</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../language_reference/builtins.html">Built-Ins</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../warp.html">warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_config.html">warp.config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_experimental.html">warp.experimental</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_fem.html">warp.fem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_geometry.html">warp.geometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_optim.html">warp.optim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_render.html">warp.render</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_sparse.html">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_types.html">warp.types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../warp_utils.html">warp.utils</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Domain Modules</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../domain_modules/sparse.html">Sparse Matrices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../domain_modules/fem.html">FEM Toolkit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../domain_modules/render.html">Rendering</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../project/contribution_guide.html">Contributing to Warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../project/publications.html">Publications using Warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../project/changelog.html">Changelog</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-house"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../warp_optim.html" class="nav-link">warp.optim</a></li>
+    
+    
+    <li class="breadcrumb-item"><a href="../warp_optim_linear.html" class="nav-link">warp.optim.linear</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">warp.optim.linear.KrylovSolve</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="warp-optim-linear-krylovsolve">
+<h1>warp.optim.linear.KrylovSolve<a class="headerlink" href="#warp-optim-linear-krylovsolve" title="Link to this heading">#</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="warp.optim.linear.KrylovSolve">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.optim.linear.</span></span><span class="sig-name descname"><span class="pre">KrylovSolve</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">nrhs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">method</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">M</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">atol</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">maxiter</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">restart</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">working_dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">algorithm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'auto'</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">residual</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'recurrence'</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/_solve_action.py#L243-L573"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.KrylovSolve" title="Link to this definition">#</a></dt>
+<dd><p>Prepared Krylov solves of one system for several right-hand sides.</p>
+<p>Bind a square real system once, then call <a class="reference internal" href="#warp.optim.linear.KrylovSolve.solve" title="warp.optim.linear.KrylovSolve.solve"><code class="xref py py-meth docutils literal notranslate"><span class="pre">solve()</span></code></a> with new RHS/output
+arrays. The existing functional solver selected by <code class="docutils literal notranslate"><span class="pre">method</span></code> supplies the
+recurrence and device stopping decisions, so every option of <a class="reference internal" href="warp.optim.linear.cg_function.html#warp.optim.linear.cg" title="warp.optim.linear.cg"><code class="xref py py-func docutils literal notranslate"><span class="pre">cg()</span></code></a>,
+<a class="reference internal" href="warp.optim.linear.cr_function.html#warp.optim.linear.cr" title="warp.optim.linear.cr"><code class="xref py py-func docutils literal notranslate"><span class="pre">cr()</span></code></a>, <a class="reference internal" href="warp.optim.linear.bicgstab_function.html#warp.optim.linear.bicgstab" title="warp.optim.linear.bicgstab"><code class="xref py py-func docutils literal notranslate"><span class="pre">bicgstab()</span></code></a> and <a class="reference internal" href="warp.optim.linear.gmres_function.html#warp.optim.linear.gmres" title="warp.optim.linear.gmres"><code class="xref py py-func docutils literal notranslate"><span class="pre">gmres()</span></code></a> behaves as documented there.
+Several RHSs iterate together as independent systems with a shared operator,
+so each reports the batch’s scheduled iteration count, including iterations
+after it individually converged. This is not a coupled block method.</p>
+<p>Each solve starts from zero unless given an initial guess. Acceptance
+compares the selected residual with the effective tolerance of the
+functional solver, <code class="docutils literal notranslate"><span class="pre">max(tol</span> <span class="pre">*</span> <span class="pre">||b||,</span> <span class="pre">atol)</span></code>, where <code class="docutils literal notranslate"><span class="pre">atol</span></code> is first raised
+to an arithmetic safety floor that depends on <code class="docutils literal notranslate"><span class="pre">working_dtype</span></code>: 1e-18 for
+float32 and 1e-36 for float64. <code class="docutils literal notranslate"><span class="pre">atol=0.0</span></code> therefore means
+a relative tolerance only, except for a zero RHS, and the reported
+<code class="docutils literal notranslate"><span class="pre">tolerance</span></code> includes the floor. Restarted methods may exceed <code class="docutils literal notranslate"><span class="pre">maxiter</span></code>
+by less than one cycle.</p>
+<p>Prepare and warm up outside capture. With graph-compatible operators, CUDA
+replay has no allocations or host convergence checks. Coefficients in
+existing buffers may change on replay; topology/address changes require
+recapture and preconditioner updates remain explicit. Eager calls issued
+from different CUDA streams are ordered with an event, but simultaneously
+executing graphs that share this state or its smaller capacities require
+caller ordering. Without conditional graph nodes (CUDA Toolkit and driver
+12.4+), CUDA solves run whole cycles up to <code class="docutils literal notranslate"><span class="pre">maxiter</span></code> and <code class="docutils literal notranslate"><span class="pre">iterations</span></code>
+counts them. Reverse-mode differentiation is not supported.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>A</strong> – Square real sparse matrix or <a class="reference internal" href="warp.optim.linear.LinearOperator.html#warp.optim.linear.LinearOperator" title="warp.optim.linear.LinearOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">LinearOperator</span></code></a>, float32 or float64.
+A one-dimensional vector-valued diagonal counts every component.</p></li>
+<li><p><strong>nrhs</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a>) – Positive number of RHSs prepared for <a class="reference internal" href="#warp.optim.linear.KrylovSolve.solve" title="warp.optim.linear.KrylovSolve.solve"><code class="xref py py-meth docutils literal notranslate"><span class="pre">solve()</span></code></a>.</p></li>
+<li><p><strong>method</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.15)"><em>Literal</em></a><em>[</em><em>'cg'</em><em>, </em><em>'cr'</em><em>, </em><em>'bicgstab'</em><em>, </em><em>'gmres'</em><em>]</em>) – <p>Iterative method to run:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;cg&quot;</span></code>: conjugate gradient, <a class="reference internal" href="warp.optim.linear.cg_function.html#warp.optim.linear.cg" title="warp.optim.linear.cg"><code class="xref py py-func docutils literal notranslate"><span class="pre">cg()</span></code></a>. Requires a symmetric positive
+definite system and preconditioner.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;cr&quot;</span></code>: conjugate residual, <a class="reference internal" href="warp.optim.linear.cr_function.html#warp.optim.linear.cr" title="warp.optim.linear.cr"><code class="xref py py-func docutils literal notranslate"><span class="pre">cr()</span></code></a>. Requires a symmetric system and
+a symmetric positive definite preconditioner.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;bicgstab&quot;</span></code>: biconjugate gradient stabilized, <a class="reference internal" href="warp.optim.linear.bicgstab_function.html#warp.optim.linear.bicgstab" title="warp.optim.linear.bicgstab"><code class="xref py py-func docutils literal notranslate"><span class="pre">bicgstab()</span></code></a>.
+Handles nonsymmetric systems.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;gmres&quot;</span></code>: restarted generalized minimal residual, <a class="reference internal" href="warp.optim.linear.gmres_function.html#warp.optim.linear.gmres" title="warp.optim.linear.gmres"><code class="xref py py-func docutils literal notranslate"><span class="pre">gmres()</span></code></a>.
+Handles nonsymmetric and indefinite systems.</p></li>
+</ul>
+</p></li>
+<li><p><strong>M</strong> – Optional fixed linear preconditioner: a single-system operator, or for
+<code class="docutils literal notranslate"><span class="pre">nrhs</span> <span class="pre">&gt;</span> <span class="pre">1</span></code> a prepared operator with <code class="docutils literal notranslate"><span class="pre">nrhs</span></code> equal partitions of
+length <code class="docutils literal notranslate"><span class="pre">n</span></code>, such as a <a class="reference internal" href="warp.optim.linear.MultiRHSOperator.html#warp.optim.linear.MultiRHSOperator" title="warp.optim.linear.MultiRHSOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">MultiRHSOperator</span></code></a>. Its arithmetic must
+use <code class="docutils literal notranslate"><span class="pre">working_dtype</span></code>.</p></li>
+<li><p><strong>tol</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.15)"><em>float</em></a><em> | </em><em>None</em>) – Nonnegative relative tolerance. Defaults to 1e-6 for a float32
+<code class="docutils literal notranslate"><span class="pre">working_dtype</span></code> and 1e-12 for float64.</p></li>
+<li><p><strong>atol</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#float" title="(in Python v3.15)"><em>float</em></a>) – Nonnegative absolute tolerance, raised to the safety floor above.
+Unlike the functional solvers, an omitted <code class="docutils literal notranslate"><span class="pre">atol</span></code> is <code class="docutils literal notranslate"><span class="pre">0.0</span></code> rather
+than the value of <code class="docutils literal notranslate"><span class="pre">tol</span></code>, and <code class="docutils literal notranslate"><span class="pre">None</span></code> is rejected. At least one
+tolerance must be positive.</p></li>
+<li><p><strong>maxiter</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a>) – Positive iteration budget; truncation is allowed.</p></li>
+<li><p><strong>restart</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a><em> | </em><em>None</em>) – Krylov restart dimension for <code class="docutils literal notranslate"><span class="pre">method=&quot;gmres&quot;</span></code>, clipped to
+the system size. Defaults to 64. Other methods reject it.</p></li>
+<li><p><strong>working_dtype</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#type" title="(in Python v3.15)"><em>type</em></a><em> | </em><em>None</em>) – float32 or float64 inner arithmetic for a sparse <code class="docutils literal notranslate"><span class="pre">A</span></code>;
+defaults to <code class="docutils literal notranslate"><span class="pre">A</span></code>’s scalar type. RHSs and solutions keep <code class="docutils literal notranslate"><span class="pre">A</span></code>’s type.
+Every solve refreshes the converted matrix values on device.</p></li>
+<li><p><strong>algorithm</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.15)"><em>Literal</em></a><em>[</em><em>'auto'</em><em>, </em><em>'loop'</em><em>, </em><em>'rows'</em><em>, </em><em>'columns'</em><em>]</em>) – Batched product strategy for a sparse <code class="docutils literal notranslate"><span class="pre">A</span></code>, resolved once at
+construction as in <a class="reference internal" href="warp.optim.linear.MultiRHSOperator.html#warp.optim.linear.MultiRHSOperator" title="warp.optim.linear.MultiRHSOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">MultiRHSOperator</span></code></a>, which counts stored
+entries; explicit strategies pin a kernel.</p></li>
+<li><p><strong>residual</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Literal" title="(in Python v3.15)"><em>Literal</em></a><em>[</em><em>'recurrence'</em><em>, </em><em>'fresh'</em><em>]</em>) – Residual reported and used for acceptance. <code class="docutils literal notranslate"><span class="pre">&quot;recurrence&quot;</span></code>
+uses the iterative solver’s own estimate in working precision, at no
+extra cost. <code class="docutils literal notranslate"><span class="pre">&quot;fresh&quot;</span></code> recomputes <code class="docutils literal notranslate"><span class="pre">||A</span> <span class="pre">x</span> <span class="pre">-</span> <span class="pre">b||</span></code> with the source
+system and precision after every solve, at the cost of one operator
+application.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.optim.linear.KrylovSolve.iterations">
+<span class="sig-name descname"><span class="pre">iterations</span></span><a class="headerlink" href="#warp.optim.linear.KrylovSolve.iterations" title="Link to this definition">#</a></dt>
+<dd><p>Device array of scheduled iterations per RHS from the latest call
+that recorded diagnostics; likewise for the per-RHS arrays below.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.optim.linear.KrylovSolve.absolute_residual">
+<span class="sig-name descname"><span class="pre">absolute_residual</span></span><a class="headerlink" href="#warp.optim.linear.KrylovSolve.absolute_residual" title="Link to this definition">#</a></dt>
+<dd><p>Device array of residual norms from the latest call.
+Nonfinite norms are reported as infinity.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.optim.linear.KrylovSolve.relative_residual">
+<span class="sig-name descname"><span class="pre">relative_residual</span></span><a class="headerlink" href="#warp.optim.linear.KrylovSolve.relative_residual" title="Link to this definition">#</a></dt>
+<dd><p>Device array of residual norms relative to <code class="docutils literal notranslate"><span class="pre">||b||</span></code>.
+A zero RHS gives zero for a zero residual and infinity otherwise. With
+<code class="docutils literal notranslate"><span class="pre">residual=&quot;recurrence&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">||b||</span></code> is the norm the solver
+computed in <code class="docutils literal notranslate"><span class="pre">working_dtype</span></code>, so a float32 working precision reports
+an infinite relative residual for an RHS whose squared norm underflows.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.optim.linear.KrylovSolve.tolerance">
+<span class="sig-name descname"><span class="pre">tolerance</span></span><a class="headerlink" href="#warp.optim.linear.KrylovSolve.tolerance" title="Link to this definition">#</a></dt>
+<dd><p>Device array of effective absolute tolerances from the latest call.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.optim.linear.KrylovSolve.converged">
+<span class="sig-name descname"><span class="pre">converged</span></span><a class="headerlink" href="#warp.optim.linear.KrylovSolve.converged" title="Link to this definition">#</a></dt>
+<dd><p>Device array of per-RHS acceptance flags, one for success.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.optim.linear.KrylovSolve.stats">
+<span class="sig-name descname"><span class="pre">stats</span></span><a class="headerlink" href="#warp.optim.linear.KrylovSolve.stats" title="Link to this definition">#</a></dt>
+<dd><p>Device array of cumulative iterations summed over RHSs, maximum
+iterations, failed RHSs and solved RHSs since the last <code class="docutils literal notranslate"><span class="pre">reset_stats()</span></code>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="warp.optim.linear.KrylovSolve.residual_maxima">
+<span class="sig-name descname"><span class="pre">residual_maxima</span></span><a class="headerlink" href="#warp.optim.linear.KrylovSolve.residual_maxima" title="Link to this definition">#</a></dt>
+<dd><p>Device array of the maximum absolute and relative
+residuals since the last <code class="docutils literal notranslate"><span class="pre">reset_stats()</span></code>.</p>
+</dd></dl>
+
+<p class="rubric">Methods</p>
+<div class="pst-scrollable-table-container"><table class="autosummary longtable table">
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">reset_stats</span></code>()</p></td>
+<td><p>Clear cumulative <code class="docutils literal notranslate"><span class="pre">stats</span></code> and <code class="docutils literal notranslate"><span class="pre">residual_maxima</span></code> on device.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.optim.linear.KrylovSolve.solve" title="warp.optim.linear.KrylovSolve.solve"><code class="xref py py-obj docutils literal notranslate"><span class="pre">solve</span></code></a>(rhs, out[, x0, diagnostics])</p></td>
+<td><p>Solve into caller-owned storage, optionally refreshing device diagnostics.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#warp.optim.linear.KrylovSolve.update" title="warp.optim.linear.KrylovSolve.update"><code class="xref py py-obj docutils literal notranslate"><span class="pre">update</span></code></a>()</p></td>
+<td><p>Copy current source matrix values into the working-precision matrix.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#warp.optim.linear.KrylovSolve.with_nrhs" title="warp.optim.linear.KrylovSolve.with_nrhs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">with_nrhs</span></code></a>(nrhs, *[, M])</p></td>
+<td><p>Prepare a smaller capacity sharing system storage and staging buffers.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.optim.linear.KrylovSolve.with_nrhs">
+<span class="sig-name descname"><span class="pre">with_nrhs</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nrhs</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">M</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/_solve_action.py#L439-L474"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.KrylovSolve.with_nrhs" title="Link to this definition">#</a></dt>
+<dd><p>Prepare a smaller capacity sharing system storage and staging buffers.</p>
+<p>The returned action owns its Krylov workspace and diagnostics but shares
+stream ordering, so it must not run concurrently with this action.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>nrhs</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a>) – Positive capacity no greater than this action’s <code class="docutils literal notranslate"><span class="pre">nrhs</span></code>.</p></li>
+<li><p><strong>M</strong> – Preconditioner for the smaller capacity. Required when the original
+preconditioner was a prepared partitioned operator; otherwise the
+original single-system preconditioner is reused by default.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A <a class="reference internal" href="#warp.optim.linear.KrylovSolve" title="warp.optim.linear.KrylovSolve"><code class="xref py py-class docutils literal notranslate"><span class="pre">KrylovSolve</span></code></a> that solves <code class="docutils literal notranslate"><span class="pre">nrhs</span></code> right-hand sides.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#warp.optim.linear.KrylovSolve" title="warp._src.optim._solve_action.KrylovSolve"><em>KrylovSolve</em></a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.optim.linear.KrylovSolve.update">
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/_solve_action.py#L484-L502"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.KrylovSolve.update" title="Link to this definition">#</a></dt>
+<dd><p>Copy current source matrix values into the working-precision matrix.</p>
+<p><a class="reference internal" href="#warp.optim.linear.KrylovSolve.solve" title="warp.optim.linear.KrylovSolve.solve"><code class="xref py py-meth docutils literal notranslate"><span class="pre">solve()</span></code></a> also does this on every call, so explicit calls are only
+needed by solver-agnostic code. Operators that are not sparse matrices are
+read directly, so this is a no-op for them. It is graph capturable.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.15)"><strong>ValueError</strong></a> – If the source matrix’s <code class="docutils literal notranslate"><span class="pre">offsets</span></code>, <code class="docutils literal notranslate"><span class="pre">columns</span></code>, <code class="docutils literal notranslate"><span class="pre">row_counts</span></code> or
+    <code class="docutils literal notranslate"><span class="pre">values</span></code> array was replaced or reallocated after preparation.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="warp.optim.linear.KrylovSolve.solve">
+<span class="sig-name descname"><span class="pre">solve</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rhs</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">out</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x0</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">diagnostics</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/_solve_action.py#L510-L573"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.KrylovSolve.solve" title="Link to this definition">#</a></dt>
+<dd><p>Solve into caller-owned storage, optionally refreshing device diagnostics.</p>
+<p>In-place and aliased arrays are safe because all RHSs and initial guesses
+are staged before any output is written. Passing <code class="docutils literal notranslate"><span class="pre">out</span></code> as <code class="docutils literal notranslate"><span class="pre">x0</span></code> warm
+starts from the previous solution.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>rhs</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – Contiguous array of shape <code class="docutils literal notranslate"><span class="pre">(nrhs,</span> <span class="pre">n)</span></code>, or <code class="docutils literal notranslate"><span class="pre">(n,)</span></code> for one RHS,
+with the source scalar dtype and device.</p></li>
+<li><p><strong>out</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – Matching output. Exact in-place aliasing is supported, but
+shifted overlapping views are rejected before any output mutation.</p></li>
+<li><p><strong>x0</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>) – Optional matching initial guess; the solve starts from zero when
+omitted. It may alias <code class="docutils literal notranslate"><span class="pre">rhs</span></code> or <code class="docutils literal notranslate"><span class="pre">out</span></code>. The tolerance stays
+relative to <code class="docutils literal notranslate"><span class="pre">||b||</span></code>, not to the initial residual.</p></li>
+<li><p><strong>diagnostics</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether to refresh the per-RHS diagnostic attributes,
+<code class="docutils literal notranslate"><span class="pre">stats</span></code> and <code class="docutils literal notranslate"><span class="pre">residual_maxima</span></code>. <code class="docutils literal notranslate"><span class="pre">False</span></code> skips that bookkeeping
+for short, frequent solves; it requires
+<code class="docutils literal notranslate"><span class="pre">residual=&quot;recurrence&quot;</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Device arrays of the scheduled iteration count shared by the batch,
+the squared residual norm of each RHS used for acceptance, and the
+squared effective tolerance of each RHS. Tolerances use
+<code class="docutils literal notranslate"><span class="pre">working_dtype</span></code>, and so do residuals with <code class="docutils literal notranslate"><span class="pre">residual=&quot;recurrence&quot;</span></code>.
+With <code class="docutils literal notranslate"><span class="pre">residual=&quot;fresh&quot;</span></code>, residuals use float64 if either the source
+or the working dtype is float64, so their dtype can differ from the
+tolerances’. The arrays belong to
+this action and are overwritten by its next solve.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.15)"><strong>ValueError</strong></a> – If arrays do not match, if <code class="docutils literal notranslate"><span class="pre">diagnostics</span></code> is <code class="docutils literal notranslate"><span class="pre">False</span></code>
+    with <code class="docutils literal notranslate"><span class="pre">residual=&quot;fresh&quot;</span></code>, or if a source matrix storage array was
+    replaced or reallocated after preparation.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#tuple" title="(in Python v3.15)">tuple</a>[<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>, <a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>, <a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="warp.optim.linear.GMRES.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">warp.optim.linear.GMRES</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="warp.optim.linear.LinearOperator.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">warp.optim.linear.LinearOperator</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+
+
+              
+                <dialog id="pst-secondary-sidebar-modal" tabindex="-1"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.optim.linear.KrylovSolve"><code class="docutils literal notranslate"><span class="pre">KrylovSolve</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.optim.linear.KrylovSolve.iterations"><code class="docutils literal notranslate"><span class="pre">iterations</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.optim.linear.KrylovSolve.absolute_residual"><code class="docutils literal notranslate"><span class="pre">absolute_residual</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.optim.linear.KrylovSolve.relative_residual"><code class="docutils literal notranslate"><span class="pre">relative_residual</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.optim.linear.KrylovSolve.tolerance"><code class="docutils literal notranslate"><span class="pre">tolerance</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.optim.linear.KrylovSolve.converged"><code class="docutils literal notranslate"><span class="pre">converged</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.optim.linear.KrylovSolve.stats"><code class="docutils literal notranslate"><span class="pre">stats</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.optim.linear.KrylovSolve.residual_maxima"><code class="docutils literal notranslate"><span class="pre">residual_maxima</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.optim.linear.KrylovSolve.with_nrhs"><code class="docutils literal notranslate"><span class="pre">with_nrhs()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.optim.linear.KrylovSolve.update"><code class="docutils literal notranslate"><span class="pre">update()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp.optim.linear.KrylovSolve.solve"><code class="docutils literal notranslate"><span class="pre">solve()</span></code></a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=75c7c72ae941e8b558d8"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=75c7c72ae941e8b558d8"></script>
+
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+<a class="footer-brand logo" href="https://www.nvidia.com">
+  <img src="../../_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
+  <img src="../../_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
+</a></div>
+      
+        <div class="footer-item">
+
+<div class="footer-links">
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/privacy-policy/">Privacy Policy</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/privacy-center/">Your Privacy Choices</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/terms-of-service/">Terms of Service</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/accessibility/">Accessibility</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/company-policies/">Corporate Policies</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/product-security/">Product Security</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/contact/">Contact</a>
+  
+  
+  
+</div>
+</div>
+      
+        <div class="footer-item">
+
+
+
+
+  <p class="copyright">
+    
+      Copyright © 2022-2026 NVIDIA Corporation.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>

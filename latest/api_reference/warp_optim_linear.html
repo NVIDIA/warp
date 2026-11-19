@@ -579,11 +579,17 @@ residual (CR), and generalized minimal residual (GMRES) methods.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.optim.linear.GMRES.html#warp.optim.linear.GMRES" title="warp.optim.linear.GMRES"><code class="xref py py-obj docutils literal notranslate"><span class="pre">GMRES</span></code></a></p></td>
 <td><p>Pre-allocated state for the restarted Generalized Minimum Residual solver.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.optim.linear.LinearOperator.html#warp.optim.linear.LinearOperator" title="warp.optim.linear.LinearOperator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LinearOperator</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.optim.linear.KrylovSolve.html#warp.optim.linear.KrylovSolve" title="warp.optim.linear.KrylovSolve"><code class="xref py py-obj docutils literal notranslate"><span class="pre">KrylovSolve</span></code></a></p></td>
+<td><p>Prepared Krylov solves of one system for several right-hand sides.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.optim.linear.LinearOperator.html#warp.optim.linear.LinearOperator" title="warp.optim.linear.LinearOperator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LinearOperator</span></code></a></p></td>
 <td><p>Linear operator to be used as left-hand-side of linear iterative solvers.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.optim.linear.LinearSolverState.html#warp.optim.linear.LinearSolverState" title="warp.optim.linear.LinearSolverState"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LinearSolverState</span></code></a></p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.optim.linear.LinearSolverState.html#warp.optim.linear.LinearSolverState" title="warp.optim.linear.LinearSolverState"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LinearSolverState</span></code></a></p></td>
 <td><p>Pre-allocated state for a linear iterative solver.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="_generated/warp.optim.linear.MultiRHSOperator.html#warp.optim.linear.MultiRHSOperator" title="warp.optim.linear.MultiRHSOperator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MultiRHSOperator</span></code></a></p></td>
+<td><p>Repeat one sparse matrix or linear operator over independent RHS rows.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="_generated/warp.optim.linear.aslinearoperator.html#warp.optim.linear.aslinearoperator" title="warp.optim.linear.aslinearoperator"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aslinearoperator</span></code></a></p></td>
 <td><p>Cast the dense or sparse matrix <code class="docutils literal notranslate"><span class="pre">A</span></code> as a <a class="reference internal" href="_generated/warp.optim.linear.LinearOperator.html#warp.optim.linear.LinearOperator" title="warp.optim.linear.LinearOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">LinearOperator</span></code></a>.</p></td>

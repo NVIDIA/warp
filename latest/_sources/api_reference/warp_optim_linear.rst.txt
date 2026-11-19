@@ -18,8 +18,10 @@ API
    CR
    FSAI
    GMRES
+   KrylovSolve
    LinearOperator
    LinearSolverState
+   MultiRHSOperator
    aslinearoperator
    bicgstab
    cg

@@ -11,6 +11,7 @@
    .. autosummary::
    
       ~BsrMatrix.clear_status
+      ~BsrMatrix.mean_row_count_sync
       ~BsrMatrix.nnz_sync
       ~BsrMatrix.notify_nnz_changed
       ~BsrMatrix.status_message
