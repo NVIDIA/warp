@@ -528,13 +528,14 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">M</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">callback</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">check_every</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>,</dd>
-<dd><em class="sig-param"><span class="n"><span class="pre">use_cuda_graph</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">use_graph</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">run</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">restart</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">use_cuda_graph</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">_DEPRECATED_NONE</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L1688-L1780"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.cg" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/optim/linear.py#L1725-L1822"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.optim.linear.cg" title="Link to this definition">#</a></dt>
 <dd><p>Compute an approximate solution to a symmetric, positive-definite linear system
 using the Conjugate Gradient algorithm.</p>
 <p>Supports batched systems when <code class="docutils literal notranslate"><span class="pre">A</span></code> is a <a class="reference internal" href="warp.optim.linear.LinearOperator.html#warp.optim.linear.LinearOperator" title="warp.optim.linear.LinearOperator"><code class="xref py py-class docutils literal notranslate"><span class="pre">LinearOperator</span></code></a> with <code class="docutils literal notranslate"><span class="pre">batch_offsets</span></code> set;
@@ -556,10 +557,10 @@ If <cite>check_every</cite> is 0, the callback should be a Warp kernel.</p></li>
 <li><p><strong>check_every</strong> – number of iterations every which to call <cite>callback</cite>, check the residual against the tolerance and possibility terminate the algorithm.
 Setting <code class="docutils literal notranslate"><span class="pre">check_every</span></code> to 0 disables host-side residual checks, allowing CPU and CUDA graph capture.
 Running during graph capture requires <code class="docutils literal notranslate"><span class="pre">check_every=0</span></code>.
-On CPU, the solver stops once converged. On CUDA with <code class="docutils literal notranslate"><span class="pre">use_cuda_graph</span></code> and conditional graph support, it also
+On CPU, the solver stops once converged. On CUDA with <code class="docutils literal notranslate"><span class="pre">use_graph</span></code> and conditional graph support, it also
 stops once converged. Otherwise, it runs whole cycles until the iteration count reaches <code class="docutils literal notranslate"><span class="pre">maxiter</span></code>, which
 restarted solvers can exceed by less than one cycle.</p></li>
-<li><p><strong>use_cuda_graph</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a><em> | </em><em>None</em>) – Whether to capture the solver iterations in a graph and replay it, reducing launch overhead.
+<li><p><strong>use_graph</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a><em> | </em><em>None</em>) – Whether to capture the solver iterations in a graph and replay it, reducing launch overhead.
 <code class="docutils literal notranslate"><span class="pre">None</span></code> captures on CUDA devices only. <code class="docutils literal notranslate"><span class="pre">True</span></code> also captures on CPU, using experimental CPU graph capture.
 With <code class="docutils literal notranslate"><span class="pre">check_every=0</span></code>, a captured solve stops once converged; on CUDA, this needs conditional graph support.
 CPU capture is process-wide, so don’t run captured CPU solves from several threads at once.
@@ -573,6 +574,8 @@ operators must use the same <code class="docutils literal notranslate"><span cla
 <code class="docutils literal notranslate"><span class="pre">b</span> <span class="pre">-</span> <span class="pre">A</span> <span class="pre">x</span></code> and resets the search direction, limiting drift between the recursively updated
 residual and the true residual. Convergence checks and callbacks occur only at restart-cycle
 boundaries. The default <code class="docutils literal notranslate"><span class="pre">None</span></code> preserves standard recursive CG.</p></li>
+<li><p><strong>use_cuda_graph</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a><em> | </em><em>None</em>) – Deprecated since Warp 1.20 and scheduled for removal in Warp 1.24. Pass the same value as
+<code class="docutils literal notranslate"><span class="pre">use_graph</span></code> instead.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -601,7 +604,8 @@ final restart-cycle boundary.</p></li>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
 <dd class="field-even"><ul class="simple">
-<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#TypeError" title="(in Python v3.15)"><strong>TypeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">restart</span></code> is not an integer or <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#TypeError" title="(in Python v3.15)"><strong>TypeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">restart</span></code> is not an integer or <code class="docutils literal notranslate"><span class="pre">None</span></code>, or if <code class="docutils literal notranslate"><span class="pre">use_cuda_graph</span></code> is passed with a
+    <code class="docutils literal notranslate"><span class="pre">use_graph</span></code> other than <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></li>
 <li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.15)"><strong>ValueError</strong></a> – If a specified <code class="docutils literal notranslate"><span class="pre">restart</span></code> is not positive.</p></li>
 <li><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#RuntimeError" title="(in Python v3.15)"><strong>RuntimeError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">run</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code> during graph capture with <code class="docutils literal notranslate"><span class="pre">check_every</span></code> &gt; 0.</p></li>
 </ul>
