@@ -1422,11 +1422,18 @@ def is_regular_builtin_callable_target(func):
     they need special codegen behavior that cannot be represented by replacing a
     callable parameter with a direct function call.
 
+    User functions registered as extra overloads of a built-in, such as the jet
+    overloads added by :class:`warp.JetSpace`, do not disqualify it: a call
+    through the parameter resolves among all overloads like a direct call to the
+    built-in, and a matching user overload is emitted as a regular user function
+    call.
+
     Args:
         func: Function object to check.
 
     Returns:
-        ``True`` if every overload of ``func`` is supported as a function target.
+        ``True`` if every built-in overload of ``func`` is supported as a function
+        target.
     """
 
     if not isinstance(func, warp._src.context.Function) or not func.is_builtin():
@@ -1434,9 +1441,11 @@ def is_regular_builtin_callable_target(func):
 
     overloads = getattr(func, "overloads", None) or (func,)
     for overload in overloads:
+        if not overload.is_builtin():
+            continue
+
         if (
-            not overload.is_builtin()
-            or overload.variadic
+            overload.variadic
             or overload.dispatch_func is not None
             or overload.lto_dispatch_func is not None
             or overload.skip_replay
