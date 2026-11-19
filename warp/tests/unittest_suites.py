@@ -301,6 +301,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.tile.test_tile_func_arg import TestTileFuncArg
     from warp.tests.tile.test_tile_fused_ops import TestTileFusedOps
     from warp.tests.tile.test_tile_large_offsets import TestTileLargeOffsets
+    from warp.tests.tile.test_tile_ldlt import TestTileLDLT
     from warp.tests.tile.test_tile_load import TestTileLoad
     from warp.tests.tile.test_tile_load_assign import TestTileLoadAssign
     from warp.tests.tile.test_tile_load_extract import TestTileLoadExtract
@@ -513,6 +514,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestTileFuncArg,
         TestTileFusedOps,
         TestTileLargeOffsets,
+        TestTileLDLT,
         TestTileLoad,
         TestTileLoadAssign,
         TestTileLoadExtract,
@@ -791,6 +793,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.tile.test_tile_func_arg import TestTileFuncArg
     from warp.tests.tile.test_tile_fused_ops import TestTileFusedOps
     from warp.tests.tile.test_tile_large_offsets import TestTileLargeOffsets
+    from warp.tests.tile.test_tile_ldlt import TestTileLDLT
     from warp.tests.tile.test_tile_load import TestTileLoad
     from warp.tests.tile.test_tile_load_assign import TestTileLoadAssign
     from warp.tests.tile.test_tile_load_extract import TestTileLoadExtract
@@ -1022,6 +1025,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestTileFuncArg,
         TestTileFusedOps,
         TestTileLargeOffsets,
+        TestTileLDLT,
         TestTileSolve,
         TestTileSolveNoMathDx,
         TestTileStack,
