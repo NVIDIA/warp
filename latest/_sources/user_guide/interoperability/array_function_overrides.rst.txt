@@ -1,5 +1,7 @@
-Host Function Overrides
-=======================
+.. _array-function-overrides:
+
+Array Function Overrides
+========================
 
 .. currentmodule:: warp
 
@@ -14,10 +16,10 @@ The name follows PyTorch's ``__torch_function__`` and NumPy's
 change compiled ``@wp.func`` definitions, kernel-side function calls, or
 ``wp.Function`` overload resolution.
 
-Enabling Host Function Overrides
---------------------------------
+Enabling Array Function Overrides
+---------------------------------
 
-Host function overrides are disabled by default. Applications that use this protocol
+Array function overrides are disabled by default. Applications that use this protocol
 must explicitly enable it::
 
     import warp as wp
@@ -244,6 +246,7 @@ wrapping recipe. Subclass inputs use their registered Warp array family for
 native validation and generic specialization while retaining their original
 Python object and gradient descriptor. Kernel annotations continue to use
 Warp's base array types, such as ``wp.array[float]``.
+See :ref:`array-subclasses` for the full subclass contract.
 
 Coverage Limits
 ---------------

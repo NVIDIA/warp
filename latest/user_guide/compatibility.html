@@ -410,9 +410,9 @@
 <li class="toctree-l1 has-children"><a class="reference internal" href="interoperability.html">Interoperability</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="interoperability/pytorch.html">PyTorch Interoperability</a></li>
 <li class="toctree-l2"><a class="reference internal" href="interoperability/jax.html">JAX Interoperability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="interoperability/array_function_overrides.html">Array Function Overrides</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1"><a class="reference internal" href="function_dispatch.html">Host Function Overrides</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="execution_and_performance.html">Execution and Performance</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="execution_and_performance/concurrency.html">Concurrency</a></li>
 <li class="toctree-l2"><a class="reference internal" href="execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
@@ -858,10 +858,10 @@ operations to direct storage mutation.</p>
 <p>New allocations and views have no subclass or metadata propagation guarantee.
 Existing operations that return the input for a no-op retain that identity,
 and an explicit <code class="docutils literal notranslate"><span class="pre">out</span></code> buffer remains the caller’s object. Python metadata and
-helper methods are unavailable inside kernels; subclass compatibility adds no
-operation interception hooks. Dispatch and metadata propagation require a
-separate protocol; see <a class="reference external" href="https://github.com/NVIDIA/warp/issues/1834">GH-1834</a>
-for the independently tracked discussion.</p>
+helper methods are unavailable inside kernels. Subclassing alone adds no
+operation interception hooks. To intercept supported host APIs and apply
+its own metadata propagation policy, a subclass can implement the opt-in
+<a class="reference internal" href="interoperability/array_function_overrides.html#array-function-overrides"><span class="std std-ref">__warp_function__ protocol</span></a>.</p>
 <p>Differentiation, interoperability, and capture follow the parent’s capabilities
 and ownership rules. Python metadata is not serialized as capture state.
 Live API Capture (APIC) graphs can retain backing arrays and their metadata,

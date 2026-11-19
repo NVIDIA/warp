@@ -410,9 +410,9 @@
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../user_guide/interoperability.html">Interoperability</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/interoperability/pytorch.html">PyTorch Interoperability</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/interoperability/jax.html">JAX Interoperability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/interoperability/array_function_overrides.html">Array Function Overrides</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1"><a class="reference internal" href="../../user_guide/function_dispatch.html">Host Function Overrides</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../user_guide/execution_and_performance.html">Execution and Performance</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/concurrency.html">Concurrency</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
@@ -523,7 +523,7 @@
 This includes importing integrations that cache or wrap Warp functions.
 Applications that never enable it call the original functions directly, including
 array initialization, without forwarding wrappers or per-call flag checks.
-See <a class="reference internal" href="../../user_guide/function_dispatch.html"><span class="doc">Host Function Overrides</span></a> for coverage and protocol details.</p>
+See <a class="reference internal" href="../../user_guide/interoperability/array_function_overrides.html"><span class="doc">Array Function Overrides</span></a> for coverage and protocol details.</p>
 <p>Changing this process-wide setting switches registered bindings in loaded Warp
 modules and the native array initializer. Aliases saved before activation keep
 their native outer entry points, which may still call wrapped helpers internally.

@@ -410,9 +410,9 @@
 <li class="toctree-l1 current active has-children"><a aria-current="page" class="current reference internal" href="#">Interoperability</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="interoperability/pytorch.html">PyTorch Interoperability</a></li>
 <li class="toctree-l2"><a class="reference internal" href="interoperability/jax.html">JAX Interoperability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="interoperability/array_function_overrides.html">Array Function Overrides</a></li>
 </ul>
 </details></li>
-<li class="toctree-l1"><a class="reference internal" href="function_dispatch.html">Host Function Overrides</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="execution_and_performance.html">Execution and Performance</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="execution_and_performance/concurrency.html">Concurrency</a></li>
 <li class="toctree-l2"><a class="reference internal" href="execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
@@ -562,6 +562,10 @@
 integrate autograd, and call Warp kernels from custom operators.</p></li>
 <li><p><a class="reference internal" href="interoperability/jax.html"><span class="doc">JAX</span></a>: Convert arrays, call Warp kernels through
 FFI, and use Warp with JAX transformations and distributed computation.</p></li>
+<li><p><a class="reference internal" href="interoperability/array_function_overrides.html"><span class="doc">Array function overrides</span></a>: Let
+array subclasses and wrappers intercept supported Warp host APIs, such as
+<a class="reference internal" href="../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch</span></code></a> and <a class="reference internal" href="../api_reference/_generated/warp.copy.html#warp.copy" title="warp.copy"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.copy</span></code></a>, through
+<code class="docutils literal notranslate"><span class="pre">__warp_function__</span></code>.</p></li>
 </ul>
 </section>
 <section id="quick-reference">
