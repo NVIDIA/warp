@@ -128,6 +128,57 @@ class TestContext(unittest.TestCase):
         self.assertEqual(kernel.hash, new_hash)
         self.assertEqual(kernel.get_mangled_name(), f"{kernel.key}_89abcdef")
 
+    def test_static_kernel_argument_signature_and_sharing(self):
+        def scale(values: wp.array[wp.float32], output: wp.array[wp.float32], factor: wp.float32):
+            i = wp.tid()
+            output[i] = values[i] * factor
+
+        def offset_vec(values: wp.array[wp.vec3], offset: wp.vec3, scale_f64: wp.float64):
+            i = wp.tid()
+            values[i] = values[i] + offset * float(scale_f64)
+
+        def generic_add(values: wp.array[wp.Scalar], output: wp.array[wp.Scalar], offset: float):
+            i = wp.tid()
+            output[i] = values[i] + offset
+
+        module = wp.Module("test_static_kernel_argument_signature_and_sharing", None)
+        static_args = {"factor": 0.5}
+        k_half = wp.Kernel(scale, module=module, static_args=static_args)
+        static_args["factor"] = 2.0
+        k_two = wp.Kernel(scale, module=module, static_args={"factor": 2.0})
+
+        self.assertEqual(list(k_half.adj.arg_types), ["values", "output"])
+        self.assertEqual([arg.label for arg in k_half.adj.args], ["values", "output"])
+        self.assertEqual(k_half.arg_indices, {"values": 0, "output": 1})
+        self.assertEqual(k_half.adj.static_args, {"factor": 0.5})
+        self.assertEqual(k_two.adj.static_args, {"factor": 2.0})
+        self.assertIsNotNone(k_half.adj._shared_source)
+        self.assertIs(k_half.adj._shared_source, k_two.adj._shared_source)
+
+        vec = wp.vec3(1.0, 2.0, 3.0)
+        f64 = wp.float64(0.25)
+        k_val = wp.Kernel(offset_vec, module=module, static_args={"offset": vec, "scale_f64": f64})
+        vec[0] = 99.0
+        f64.value = 99.0
+        stored = k_val.adj.static_args
+        self.assertEqual(tuple(stored["offset"]), (1.0, 2.0, 3.0))
+        self.assertEqual(stored["scale_f64"].value, 0.25)
+
+        k_gen = wp.Kernel(generic_add, module=module, static_args={"offset": 2.0})
+        overload = k_gen.add_overload([wp.array[wp.float32], wp.array[wp.float32]])
+        self.assertEqual(overload.adj.static_args, {"offset": 2.0})
+        self.assertEqual([arg.label for arg in overload.adj.args], ["values", "output"])
+
+    def test_static_kernel_argument_validation(self):
+        def scale(values: wp.array[wp.float32], factor: wp.float32):
+            i = wp.tid()
+            values[i] = values[i] * factor
+
+        module = wp.Module("test_static_kernel_argument_validation", None)
+
+        with self.assertRaisesRegex(ValueError, "no arguments.*missing"):
+            wp.Kernel(scale, module=module, static_args={"missing": 1.0})
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

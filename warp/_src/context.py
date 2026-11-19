@@ -1320,7 +1320,9 @@ class Kernel:
     Kernels can be launched on CPU or GPU devices using :func:`warp.launch`.
     """
 
-    def __init__(self, func, key=None, module=None, options=None, code_transformers=None, source=None):
+    def __init__(
+        self, func, key=None, module=None, options=None, code_transformers=None, source=None, static_args=None
+    ):
         self.func = func
 
         if module is None:
@@ -1342,7 +1344,16 @@ class Kernel:
         if code_transformers is None:
             code_transformers = []
 
-        self.adj = warp._src.codegen.Adjoint(func, transformers=code_transformers, source=source)
+        if static_args is None:
+            static_args = {}
+        parameters = inspect.signature(func).parameters
+        unknown = static_args.keys() - parameters.keys()
+        if unknown:
+            raise ValueError(f"Kernel has no arguments {sorted(unknown)} passed as static arguments")
+
+        self.adj = warp._src.codegen.Adjoint(
+            func, transformers=code_transformers, source=source, static_args=static_args
+        )
         self.return_annotation = self.adj.arg_types.pop("return", None)
         if self.return_annotation is types.NoneType:
             self.return_annotation = None
@@ -1439,7 +1450,12 @@ class Kernel:
 
         # instantiate this kernel with the given argument types
         ovl = shallowcopy(self)
-        ovl.adj = warp._src.codegen.Adjoint(self.func, overload_annotations, source=self.adj.source)
+        ovl.adj = warp._src.codegen.Adjoint(
+            self.func,
+            overload_annotations,
+            source=self.adj.source,
+            static_args=self.adj.static_args,
+        )
         ovl.is_generic = False
         ovl.overloads = {}
         ovl.sig = sig
@@ -3407,6 +3423,11 @@ class ModuleHasher:
                 ch.update(arg_type.hash)
             elif warp._src.types.is_array(arg_type) and isinstance(arg_type.dtype, warp._src.codegen.Struct):
                 ch.update(arg_type.dtype.hash)
+
+        # static kernel arguments
+        for name, value in adj.static_args.items():
+            ch.update(bytes(f"static:{name}:{warp._src.types.get_type_code(type(value))}", "utf-8"))
+            ch.update(self.get_constant_bytes(value))
 
         # NOTE: get_references() only captures closure variables that resolve to Warp
         # Function, Struct, or value types (scalars, vectors, matrices, etc.). Non-Warp Python objects (lists,

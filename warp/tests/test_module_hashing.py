@@ -9,6 +9,7 @@ import tempfile
 import unittest
 from collections.abc import Mapping
 from importlib import util
+from typing import Any
 
 import warp as wp
 from warp._src.context import ModuleBuilder, ModuleHasher
@@ -412,6 +413,22 @@ class TestModuleHasherKernelOptions(unittest.TestCase):
 
         self.assertNotEqual(make(32).module.hash_module(), make(64).module.hash_module())
         self.assertEqual(make(32).module.hash_module(), make(32).module.hash_module())
+
+    def test_static_kernel_arguments_hashed(self):
+        def kernel_fn(value: Any):
+            wp.printf("%d", value)
+
+        def make(value):
+            module = wp.Module(f"static_kernel_argument_{type(value).__name__}_{value!r}", None)
+            kernel = wp.Kernel(kernel_fn, module=module, static_args={"value": value})
+            return ModuleHasher([kernel], module.options).get_hash()
+
+        self.assertEqual(make(1), make(1))
+        self.assertNotEqual(make(1), make(2))
+        self.assertNotEqual(make(False), make(0))
+        self.assertNotEqual(make(wp.float32(0.5)), make(wp.float64(0.5)))
+        self.assertNotEqual(make(wp.int64(0)), make(wp.int64(1 << 40)))
+        self.assertNotEqual(make(wp.vec3(1.0, 2.0, 3.0)), make(wp.vec3(1.0, 2.0, 4.0)))
 
 
 class TestModuleHashing(unittest.TestCase):
