@@ -5,6 +5,7 @@ import os
 import tempfile
 import time
 import unittest
+from contextlib import nullcontext
 
 import numpy as np
 
@@ -1158,14 +1159,17 @@ def test_failed_body_allocation_lifetime(test, device: DeviceLike):
                             with wp.ScopedCapture(
                                 force_module_load=False, capture_mode=wp.CaptureMode.THREAD_LOCAL
                             ) as capture:
-                                wp.capture_if(condition, on_true=body)
+                                # Expected native stderr can reach CheckOutput's stdout capture on Windows.
+                                with suppress_native_error_output() if failure == "large_fill" else nullcontext():
+                                    wp.capture_if(condition, on_true=body)
                                 if failure == "capture_end":
                                     # Invalidate only the parent; keep its conditional body valid during teardown.
-                                    test.assertFalse(
-                                        wp._src.context.runtime.core.wp_cuda_context_synchronize(device.context)
-                                    )
+                                    with suppress_native_error_output():
+                                        test.assertFalse(
+                                            wp._src.context.runtime.core.wp_cuda_context_synchronize(device.context)
+                                        )
                     finally:
-                        diagnostics = stderr.end()  # Expected capture errors, not invalid graph releases.
+                        diagnostics = stderr.end()
                     test.assertNotIn("invalid argument", diagnostics)
                     test.assertFalse(device.is_capturing)
                     # A callback exception may finalize a partial graph. Never replay an aborted capture.
