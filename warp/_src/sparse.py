@@ -12,6 +12,7 @@ from numpy import eye
 
 import warp as wp
 import warp._src.utils
+from warp._src import sparse_multi_rhs as _multi_rhs
 from warp._src.types import (
     Array,
     Cols,
@@ -5371,10 +5372,17 @@ def bsr_mv(
     transpose: bool = False,
     work_buffer: Array[Vector[Scalar, Rows] | Scalar] | None = None,
     tile_size: int = 0,
+    algorithm: Literal["auto", "loop", "rows", "columns"] = "auto",
 ) -> Array[Vector[Scalar, Rows] | Scalar]:
     """Perform the sparse matrix-vector product ``y := alpha * A * x + beta * y`` and return ``y``.
 
     The ``x`` and ``y`` vectors are allowed to alias.
+
+    ``x`` may also be a batch: a contiguous 2D array whose rows each hold one vector
+    with ``A``'s column dimension, for example of shape ``(count, A.shape[1])`` for a scalar
+    dtype. Each row is then multiplied independently, ``y[r] := alpha * A * x[r] + beta * y[r]``,
+    and ``y`` has one row per vector. A 2D array holding a single vector keeps its
+    single-vector meaning unless ``algorithm`` is set.
 
     Args:
         A: Read-only, left matrix operand of the matrix-vector product.
@@ -5385,15 +5393,41 @@ def bsr_mv(
         transpose: If ``True``, use the transpose of the matrix ``A``. In this case the result is **non-deterministic**.
         work_buffer: Temporary storage is required if and only if ``x`` and ``y`` are the same vector.
           If provided, the ``work_buffer`` array will be used for this purpose,
-          otherwise a temporary allocation will be performed.
+          otherwise a temporary allocation will be performed. For a batch with
+          ``algorithm="loop"``, its first output-vector-sized part serves each row in turn. With
+          ``"rows"`` or ``"columns"``, it is instead a contiguous
+          1D array of ``A``'s scalar type with at least ``count * A.shape[0]`` or
+          ``count * (A.shape[0] + A.shape[1])`` entries respectively, and reusing one avoids a
+          temporary allocation on every call.
         tile_size: If a positive integer, use tiles of this size to compute the matrix-vector product.
           On CPU, values greater than ``1`` require :attr:`warp.config.enable_cpu_blocks` and otherwise
           raise a :class:`ValueError`. Ignored when ``transpose`` is ``True``. If negative, disable
           tile-based computation. Defaults to ``0``, which determines whether to use tiles using a heuristic
           based on the matrix shape and number of non-zeros.
+        algorithm: Kernel strategy for a batch of vectors:
+
+          - ``"loop"`` applies the single-vector product to each vector in turn. It supports every
+            matrix, device and ``transpose``.
+          - ``"rows"`` computes each result row directly: one thread per vector and scalar row, or
+            for square blocks on CUDA beyond two vectors, eight lanes per block row. It supports
+            square blocks.
+          - ``"columns"`` transposes the batch so that the vectors' entries are adjacent, reads each
+            matrix row once for up to eight vectors, and transposes back. It supports square blocks
+            on CUDA and needs scratch storage for both transposed operands.
+          - ``"auto"`` selects a strategy without synchronizing. It uses ``"loop"`` for a single
+            vector, for ``transpose``, when any operand requires gradients, and on CUDA for block
+            shapes other than 1x1 and 3x3. Otherwise it uses ``"rows"`` on CPU and for CSR matrices
+            on CUDA, and for 3x3 BSR on CUDA ``"rows"`` up to four vectors and ``"columns"`` beyond.
+            It cannot see how many entries each row stores, so pin ``"columns"`` for CSR matrices
+            with long or irregular rows, which can be several times faster from four vectors.
+
+          Explicit choices always run the named strategy and raise :class:`ValueError` where it is
+          unsupported, including for operands that require gradients, since ``"rows"`` and
+          ``"columns"`` are forward-only. A single vector requires ``"auto"`` or ``"loop"``.
 
     When recorded on a :class:`warp.Tape`, the product is differentiable with respect to ``x``, the input ``y``
-    and the values of ``A``, restricted to its non-zero topology.
+    and the values of ``A``, restricted to its non-zero topology. For a batch of vectors, ``"auto"`` and
+    ``"loop"`` are differentiable; ``"rows"`` and ``"columns"`` are forward-only.
     """
 
     A, A_scale = _extract_matrix_and_scale(A)
@@ -5406,6 +5440,22 @@ def bsr_mv(
         block_shape = A.block_shape
         nrow, ncol = A.nrow, A.ncol
 
+    _multi_rhs.validate(algorithm)
+    # Rows that each hold a full vector form a batch; a single row keeps its single-vector
+    # meaning unless a strategy is requested.
+    batched = (
+        x.ndim == 2
+        and x.shape[1] * type_size(x.dtype) == ncol * block_shape[1]
+        and (x.shape[0] > 1 or algorithm != "auto")
+    )
+    if batched and y is None:
+        y = wp.empty(
+            shape=(x.shape[0], nrow * block_shape[0]),
+            device=A.values.device,
+            dtype=A.scalar_type,
+            requires_grad=x.requires_grad or A.requires_grad,
+        )
+        beta = 0.0
     if y is None:
         # If no output array is provided, allocate one for convenience
         y_vec_len = block_shape[0]
@@ -5427,6 +5477,12 @@ def bsr_mv(
     # The transposed product never uses tiles.
     if not transpose:
         _validate_tile_size(device, tile_size)
+
+    if batched:
+        _bsr_mv_batch(A, x, y, alpha, beta, transpose, work_buffer, tile_size, algorithm, nrow, ncol, block_shape)
+        return y
+    if algorithm not in ("auto", "loop"):
+        raise ValueError(f"algorithm={algorithm!r} requires a 2D batch of vectors")
 
     tape = wp._src.context.runtime.tape
     if tape is None:
@@ -5532,6 +5588,65 @@ def _bsr_mv_launch(
         )
 
     return x_view
+
+
+def _batch_view(array, count, scalar_count, scalar_type, name):
+    """View a contiguous batch as a ``(count, scalar_count)`` array of ``scalar_type``."""
+    if array.ndim != 2 or array.shape[0] != count or array.shape[1] * type_size(array.dtype) != scalar_count:
+        raise ValueError(
+            f"Expected '{name}' with {count} rows of {scalar_count} scalars, got shape {array.shape} "
+            f"of type {type_repr(array.dtype)}"
+        )
+    if type_scalar_type(array.dtype) != scalar_type:
+        raise ValueError(f"Incompatible scalar types for '{name}', expected {type_repr(scalar_type)}")
+    if not array.is_contiguous:
+        raise ValueError(f"'{name}' must be contiguous")
+    if array.dtype != scalar_type:
+        array = array.view(scalar_type)
+    return array.reshape((count, scalar_count))
+
+
+def _bsr_mv_batch(A, x, y, alpha, beta, transpose, work_buffer, tile_size, algorithm, nrow, ncol, block_shape):
+    count = x.shape[0]
+    device = A.values.device
+    alpha, beta = float(alpha.value), float(beta.value)
+    x_rows = _batch_view(x, count, ncol * block_shape[1], A.scalar_type, "x")
+    y_rows = _batch_view(y, count, nrow * block_shape[0], A.scalar_type, "y")
+    if algorithm == "auto" and tile_size != 0:
+        # Tile sizes are a single-vector feature.
+        algorithm = "loop"
+    # Gradients only matter for products recorded on a tape.
+    recording = wp._src.context.runtime.tape is not None
+    requires_grad = recording and (A.requires_grad or x.requires_grad or y.requires_grad)
+    algorithm = _multi_rhs.resolve(algorithm, A, count, device, transpose, requires_grad)
+    if algorithm == "loop":
+        # Each aliased row needs exactly one row of scratch. The rows are scalar views, so view
+        # a vector-valued buffer as scalars too, as the single-vector product accepts it.
+        row_buffer = None
+        if work_buffer is not None:
+            row_buffer = work_buffer.flatten()
+            if row_buffer.dtype != A.scalar_type and type_scalar_type(row_buffer.dtype) == A.scalar_type:
+                row_buffer = row_buffer.view(A.scalar_type).flatten()
+            row_buffer = row_buffer[: y_rows.shape[1]]
+        for r in range(count):
+            bsr_mv(A, x_rows[r], y_rows[r], alpha, beta, transpose, row_buffer, tile_size)
+        return
+    if tile_size != 0:
+        raise ValueError(f"tile_size applies to algorithm='loop', not {algorithm!r}")
+    needed = _multi_rhs.scratch_size(algorithm, A, count)
+    if work_buffer is None:
+        work_buffer = wp.empty(needed, dtype=A.scalar_type, device=device)
+    elif (
+        work_buffer.ndim != 1
+        or work_buffer.dtype != A.scalar_type
+        or not work_buffer.is_contiguous
+        or work_buffer.size < needed
+    ):
+        raise ValueError(
+            f"algorithm={algorithm!r} needs a contiguous 1D work buffer of {type_repr(A.scalar_type)} "
+            f"with at least {needed} entries"
+        )
+    _multi_rhs.product(algorithm, A, x_rows, y_rows, y_rows, alpha, beta, work_buffer)
 
 
 # register API functions so they appear in the documentation

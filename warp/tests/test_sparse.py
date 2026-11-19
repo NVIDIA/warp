@@ -2495,7 +2495,230 @@ cuda_test_devices_with_mempool = get_selected_cuda_test_devices_with_mempool()
 devices_with_graph_capture_allocation = get_test_devices_with_graph_capture_allocation()
 
 
+def _batch_matrix(device, dtype, block, padded, nrow=11, ncol=11, seed=0):
+    """Return a random sparse matrix in the requested storage and its dense equivalent."""
+    rng = np.random.default_rng(seed)
+    dense = (rng.random((nrow * block, ncol * block)) < 0.3) * rng.normal(size=(nrow * block, ncol * block))
+    dense[np.arange(min(nrow, ncol) * block), np.arange(min(nrow, ncol) * block)] += 4.0
+    rows, cols = np.nonzero(dense)
+    scalar = bsr_from_triplets(
+        nrow * block,
+        ncol * block,
+        wp.array(rows, dtype=int, device=device),
+        wp.array(cols, dtype=int, device=device),
+        wp.array(dense[rows, cols], dtype=dtype, device=device),
+    )
+    A = bsr_copy(scalar, block_shape=(block, block)) if block > 1 else scalar
+    if padded:
+        block_rows, block_cols = np.nonzero(_bsr_to_dense(A).reshape(nrow, block, ncol, block).any(axis=(1, 3)))
+        values = _bsr_to_dense(A).reshape(nrow, block, ncol, block).transpose(0, 2, 1, 3)[block_rows, block_cols]
+        block_type = dtype if block == 1 else wp.types.matrix(shape=(block, block), dtype=dtype)
+        A = bsr_zeros(nrow, ncol, block_type, device=device, row_capacity=ncol)
+        bsr_set_from_triplets(
+            A,
+            wp.array(block_rows, dtype=int, device=device),
+            wp.array(block_cols, dtype=int, device=device),
+            wp.array(values if block > 1 else values.reshape(-1), dtype=block_type, device=device),
+            topology="padded",
+        )
+    return A, dense
+
+
+def _batch_algorithms(device, A):
+    """Return every strategy that supports ``A`` on ``device``."""
+    from warp._src.sparse_multi_rhs import supports  # noqa: PLC0415
+
+    return ["auto", "loop"] + [algorithm for algorithm in ("rows", "columns") if supports(algorithm, A, device)]
+
+
+def test_bsr_mv_batch(test, device):
+    """Check batched products against NumPy for every strategy, storage, scaling and aliasing."""
+    device = wp.get_device(device)
+    rng = np.random.default_rng(7)
+    for dtype, tol in ((wp.float32, 1e-4), (wp.float64, 1e-12)):
+        for block in (1, 2, 3):
+            for padded in (False, True):
+                A, dense = _batch_matrix(device, dtype, block, padded)
+                n = dense.shape[0]
+                for count in (2, 9, 33):
+                    X = rng.normal(size=(count, n))
+                    Y = rng.normal(size=(count, n))
+                    for algorithm in _batch_algorithms(device, A):
+                        for alpha, beta in ((1.0, 0.0), (2.0, 0.5), (0.0, 1.5)):
+                            x = wp.array(X, dtype=dtype, device=device)
+                            y = wp.array(Y, dtype=dtype, device=device)
+                            bsr_mv(A, x, y, alpha, beta, algorithm=algorithm)
+                            np.testing.assert_allclose(
+                                y.numpy(), alpha * X @ dense.T + beta * Y, rtol=tol, atol=tol, err_msg=algorithm
+                            )
+                        # Exact in-place aliasing.
+                        x = wp.array(X, dtype=dtype, device=device)
+                        bsr_mv(A, x, x, 2.0, 1.0, algorithm=algorithm)
+                        np.testing.assert_allclose(x.numpy(), 2.0 * X @ dense.T + X, rtol=tol, atol=tol)
+    # A zero alpha leaves x unread, so NaN inputs cannot reach the result.
+    for block in (1, 3):
+        A, dense = _batch_matrix(device, wp.float64, block, False)
+        Y = rng.normal(size=(5, dense.shape[0]))
+        for algorithm in _batch_algorithms(device, A):
+            x = wp.full((5, dense.shape[1]), float("nan"), dtype=wp.float64, device=device)
+            y = wp.array(Y, dtype=wp.float64, device=device)
+            bsr_mv(A, x, y, 0.0, 0.5, algorithm=algorithm)
+            np.testing.assert_allclose(y.numpy(), 0.5 * Y, rtol=1e-15, err_msg=algorithm)
+    # A reusable batch-sized work buffer serves every aliased row of the loop.
+    A, dense = _batch_matrix(device, wp.float64, 1, False)
+    X = rng.normal(size=(5, dense.shape[0]))
+    x = wp.array(X, dtype=wp.float64, device=device)
+    work = wp.empty(x.size, dtype=wp.float64, device=device)
+    bsr_mv(A, x, x, algorithm="loop", work_buffer=work)
+    np.testing.assert_allclose(x.numpy(), X @ dense.T, rtol=1e-12)
+    # Vector-valued rows and an allocated output.
+    A, dense = _batch_matrix(device, wp.float64, 3, False)
+    X = rng.normal(size=(4, dense.shape[0]))
+    x = wp.array(X.reshape(4, -1, 3), dtype=wp.vec3d, device=device)
+    y = bsr_mv(A, x, algorithm="rows")
+    test.assertEqual(y.shape, (4, dense.shape[0]))
+    np.testing.assert_allclose(y.numpy(), X @ dense.T, rtol=1e-12)
+    # A vector-valued work buffer serves vector-valued aliased rows, as it does for one vector.
+    x = wp.array(X.reshape(4, -1, 3), dtype=wp.vec3d, device=device)
+    work = wp.empty(x.size, dtype=wp.vec3d, device=device)
+    bsr_mv(A, x, x, algorithm="loop", work_buffer=work)
+    np.testing.assert_allclose(x.numpy().reshape(4, -1), X @ dense.T, rtol=1e-12)
+
+
+def test_bsr_mv_batch_gradient(test, device):
+    """Check that a recorded batch propagates the same gradients as separate recorded products."""
+    rng = np.random.default_rng(31)
+    for block in (1, 3):
+        A, dense = _batch_matrix(device, wp.float64, block, False)
+        n = dense.shape[0]
+        X, Y, Y_adj = rng.normal(size=(3, 3, n))
+        grads = {}
+        for batched in (True, False):
+            A.values.grad = wp.zeros_like(A.values)
+            x = wp.array(X, dtype=wp.float64, device=device, requires_grad=True)
+            y = wp.array(Y, dtype=wp.float64, device=device, requires_grad=True)
+            with wp.Tape() as tape:
+                if batched:
+                    bsr_mv(A, x, y, alpha=2.0, beta=0.5)
+                else:
+                    for r in range(3):
+                        bsr_mv(A, x[r], y[r], alpha=2.0, beta=0.5)
+            tape.backward(grads={y: wp.array(Y_adj, dtype=wp.float64, device=device)})
+            grads[batched] = (x.grad.numpy(), y.grad.numpy(), A.values.grad.numpy())
+        for name, got, expected in zip(("x", "y", "A"), grads[True], grads[False], strict=True):
+            np.testing.assert_allclose(got, expected, rtol=1e-12, atol=1e-12, err_msg=f"{name}, block {block}")
+        # x.grad = alpha * A^T y_adj and the input y gradient is beta * y_adj.
+        np.testing.assert_allclose(grads[True][0], 2.0 * Y_adj @ dense, rtol=1e-12, atol=1e-12)
+        np.testing.assert_allclose(grads[True][1], 0.5 * Y_adj, rtol=1e-12, atol=1e-12)
+        test.assertGreater(np.abs(grads[True][2]).max(), 0.0)
+    # An allocated batch output must keep gradient storage when only the matrix requires gradients.
+    A, dense = _batch_matrix(device, wp.float64, 1, False)
+    A.values.requires_grad = True
+    x = wp.array(rng.normal(size=(3, dense.shape[0])), dtype=wp.float64, device=device)
+    with wp.Tape() as tape:
+        y = bsr_mv(A, x)
+    test.assertTrue(y.requires_grad)
+    tape.backward(grads={y: wp.ones_like(y)})
+    test.assertGreater(np.abs(A.values.grad.numpy()).max(), 0.0)
+
+
+def test_bsr_mv_batch_selection(test, device):
+    """Check which strategy AUTO selects and that explicit strategies reject what they cannot run."""
+    from unittest import mock  # noqa: PLC0415
+
+    from warp._src import sparse_multi_rhs  # noqa: PLC0415
+    from warp._src.sparse_multi_rhs import columns_kernel, resolve, rows_kernel, thread_rows_kernel  # noqa: PLC0415
+
+    device = wp.get_device(device)
+    A, dense = _batch_matrix(device, wp.float64, 1, False)
+    # The small test matrix uses ROWS on both CPU and CUDA.
+    test.assertEqual(resolve("auto", A, 8, device, False), "rows")
+    test.assertEqual(resolve("auto", A, 1, device, False), "loop")
+    test.assertEqual(resolve("auto", A, 8, device, True), "loop")
+    # The row and column kernels are forward-only, so AUTO keeps a batch that needs gradients on LOOP.
+    test.assertEqual(resolve("auto", A, 8, device, False, requires_grad=True), "loop")
+    for kernel in (rows_kernel(wp.mat33d), columns_kernel(wp.float64), thread_rows_kernel(wp.float64, 3)):
+        test.assertFalse(kernel.options["enable_backward"])
+    # ROWS runs one thread per scalar row and vector, except for blocks on CUDA beyond two vectors.
+    blocks3, _ = _batch_matrix(device, wp.float64, 3, False)
+    for block_matrix, count, grouped in ((A, 9, False), (blocks3, 2, False), (blocks3, 3, device.is_cuda)):
+        with (
+            mock.patch.object(sparse_multi_rhs, "rows_kernel", wraps=rows_kernel) as group_factory,
+            mock.patch.object(sparse_multi_rhs, "thread_rows_kernel", wraps=thread_rows_kernel) as thread_factory,
+        ):
+            ones = wp.ones((count, block_matrix.shape[1]), dtype=wp.float64, device=device)
+            bsr_mv(block_matrix, ones, algorithm="rows")
+        test.assertEqual((group_factory.call_count, thread_factory.call_count), (int(grouped), int(not grouped)))
+    diagonal = wp.array([0, 1], dtype=int, device=device)
+    scalar = bsr_from_triplets(4, 4, diagonal, diagonal, wp.array([1.0, 2.0], dtype=float, device=device))
+    blocks = bsr_copy(scalar, block_shape=(2, 2))
+    # Only 1x1 and 3x3 blocks were benchmarked on CUDA, so AUTO keeps other shapes on LOOP there.
+    blocks_choice = "loop" if device.is_cuda else "rows"
+    test.assertEqual(resolve("auto", blocks, 8, device, False), blocks_choice)
+    # A 1x1 matrix block type runs through the block kernels.
+    unit = bsr_zeros(4, 4, wp.types.matrix(shape=(1, 1), dtype=wp.float64), device=device)
+    bsr_set_from_triplets(unit, diagonal, diagonal, wp.ones(2, dtype=unit.values.dtype, device=device))
+    test.assertEqual(resolve("auto", unit, 8, device, False), "rows")
+    for algorithm in _batch_algorithms(device, unit):
+        y = bsr_mv(unit, wp.ones((3, 4), dtype=wp.float64, device=device), algorithm=algorithm)
+        np.testing.assert_allclose(y.numpy(), np.tile([1.0, 1.0, 0.0, 0.0], (3, 1)), err_msg=algorithm)
+    # Explicit strategies accept any square block on CUDA, while AUTO keeps untuned shapes on LOOP.
+    test.assertEqual(resolve("rows", blocks, 8, device, False), "rows")
+    if device.is_cuda:
+        test.assertEqual(resolve("columns", blocks, 8, device, False), "columns")
+    else:
+        for matrix in (A, blocks):
+            with test.assertRaises(ValueError):
+                resolve("columns", matrix, 8, device, False)
+    for algorithm in ("rows", "columns"):
+        with test.assertRaises(ValueError):
+            resolve(algorithm, A, 8, device, True)
+
+    n = dense.shape[0]
+    x = wp.ones((3, n), dtype=wp.float64, device=device)
+    y = wp.zeros((3, n), dtype=wp.float64, device=device)
+    for invalid in ("ROWS", "tiles", 2, None):
+        with test.assertRaises(ValueError):
+            bsr_mv(A, x, y, algorithm=invalid)
+    with test.assertRaises(ValueError):
+        bsr_mv(A, x[0], y[0], algorithm="rows")
+    with test.assertRaises(ValueError):
+        bsr_mv(A, x, wp.zeros((2, n), dtype=wp.float64, device=device), algorithm="rows")
+    with test.assertRaises(ValueError):
+        bsr_mv(A, x, y, algorithm="rows", work_buffer=wp.zeros(3 * n - 1, dtype=wp.float64, device=device))
+    with test.assertRaises(ValueError):
+        bsr_mv(A, x, y, algorithm="rows", tile_size=-1)
+    # Explicit row and column strategies are forward-only: they raise while a tape records gradients,
+    # and run normally outside a tape even when an operand requires gradients.
+    x_grad = wp.ones((3, n), dtype=wp.float64, device=device, requires_grad=True)
+    for algorithm in _batch_algorithms(device, A)[2:]:
+        bsr_mv(A, x_grad, y, algorithm=algorithm)
+        with wp.Tape():
+            with test.assertRaisesRegex(ValueError, "forward-only"):
+                bsr_mv(A, x_grad, y, algorithm=algorithm)
+    # A single row keeps its single-vector meaning under AUTO.
+    single = bsr_mv(A, wp.ones((1, n), dtype=wp.float64, device=device))
+    test.assertEqual(single.shape, (n,))
+    np.testing.assert_allclose(single.numpy(), dense.sum(axis=1), rtol=1e-12)
+    # Transposed batches loop over the single-vector product.
+    X = np.random.default_rng(9).normal(size=(3, n))
+    y = bsr_mv(A, wp.array(X, dtype=wp.float64, device=device), transpose=True)
+    np.testing.assert_allclose(y.numpy(), X @ dense, rtol=1e-12, atol=1e-12)
+
+
 class TestSparse(unittest.TestCase):
+    def test_bsr_mv_batch_auto_rule(self):
+        """Check AUTO choices for scalar and 3x3 blocks across batch sizes."""
+        from warp._src.sparse_multi_rhs import auto_strategy  # noqa: PLC0415
+
+        rows, columns = "rows", "columns"
+        counts = (2, 4, 5, 8, 33, 64)
+        cases = {(1, 1): (rows,) * 6, (3, 3): (rows,) * 2 + (columns,) * 4}
+        for block, choices in cases.items():
+            for count, choice in zip(counts, choices, strict=True):
+                self.assertEqual(auto_strategy(block, count, True), choice, (block, count))
+                self.assertEqual(auto_strategy(block, count, False), rows, (block, count))
+
     def test_bsr_copy_scale(self):
         nrow = 6
         bsize = 2
@@ -2658,6 +2881,9 @@ add_function_test(
 )
 
 add_function_test(TestSparse, "test_csr_mv", make_test_bsr_mv((1, 1), wp.float32), devices=devices)
+add_function_test(TestSparse, "test_bsr_mv_batch", test_bsr_mv_batch, devices=devices)
+add_function_test(TestSparse, "test_bsr_mv_batch_selection", test_bsr_mv_batch_selection, devices=devices)
+add_function_test(TestSparse, "test_bsr_mv_batch_gradient", test_bsr_mv_batch_gradient, devices=devices)
 add_function_test(TestSparse, "test_bsr_mv_1_3", make_test_bsr_mv((1, 3), wp.float32), devices=devices)
 add_function_test(TestSparse, "test_bsr_mv_3_3", make_test_bsr_mv((3, 3), wp.float64), devices=devices)
 

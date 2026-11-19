@@ -464,6 +464,40 @@ topology with functions such as :func:`bsr_set_from_triplets` or :func:`bsr_assi
 ``z`` to new ``offsets``, ``columns`` and ``row_counts`` arrays, so code that holds on to those arrays
 across the call sees new objects.
 
+Batches of Vectors
+~~~~~~~~~~~~~~~~~~
+
+:func:`bsr_mv` also multiplies one matrix with many vectors at once. Store the vectors as the
+rows of a contiguous 2D array, for example of shape ``(count, A.shape[1])``, and the result has
+one row per vector:
+
+.. code-block:: python
+
+    import warp as wp
+    from warp.sparse import bsr_mv
+
+    X = wp.ones((8, A.shape[1]), dtype=A.scalar_type)
+    Y = wp.zeros((8, A.shape[0]), dtype=A.scalar_type)
+    bsr_mv(A, X, Y)  # Y[r] = A @ X[r] for every row r
+    bsr_mv(A, X, Y, algorithm="columns")  # pin a strategy
+
+Reading each matrix row once for several vectors is often, but not always, faster than separate
+products. The ``algorithm`` argument selects the kernel strategy: ``"auto"`` (the default) chooses
+one, and ``"loop"``, ``"rows"`` and ``"columns"`` pin one, which helps when the best choice for a
+workload is known. Pass ``work_buffer`` to reuse scratch storage across calls, for example inside
+a captured graph.
+
+``"auto"`` uses ``"loop"`` for a single vector, for ``transpose``, for products recorded on a tape
+with operands that require gradients (the other strategies are forward-only and raise in that
+case), and on CUDA for block shapes other than 1x1 and 3x3, which were not benchmarked. Otherwise
+it picks ``"rows"`` on the CPU and for CSR matrices on CUDA, and for 3x3 BSR matrices on CUDA
+``"rows"`` up to four vectors and ``"columns"`` beyond. :func:`bsr_mv` decides on every call and
+never synchronizes, so it works inside captured graphs but cannot see how many entries each row
+actually stores; the stored count of a compact matrix is only an upper bound on the host. Short
+rows favor ``"rows"``, but CSR matrices with long or irregular rows (more than about 16 entries)
+are often several times faster with ``"columns"`` pinned for four or more vectors. The rule was
+fitted to finite-element and irregular matrices and may change between releases.
+
 
 Kernel-level utilities
 ~~~~~~~~~~~~~~~~~~~~~~
