@@ -525,7 +525,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">tile_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L5020-L5147"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_mv" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L5365-L5449"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_mv" title="Link to this definition">#</a></dt>
 <dd><p>Perform the sparse matrix-vector product <code class="docutils literal notranslate"><span class="pre">y</span> <span class="pre">:=</span> <span class="pre">alpha</span> <span class="pre">*</span> <span class="pre">A</span> <span class="pre">*</span> <span class="pre">x</span> <span class="pre">+</span> <span class="pre">beta</span> <span class="pre">*</span> <span class="pre">y</span></code> and return <code class="docutils literal notranslate"><span class="pre">y</span></code>.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">y</span></code> vectors are allowed to alias.</p>
 <dl class="field-list simple">
@@ -551,6 +551,8 @@ based on the matrix shape and number of non-zeros.</p></li>
 <dd class="field-even"><p>Array[Vector[<a class="reference internal" href="warp.Scalar.html#warp.Scalar" title="warp.Scalar">Scalar</a>, Rows] | <a class="reference internal" href="warp.Scalar.html#warp.Scalar" title="warp.Scalar">Scalar</a>]</p>
 </dd>
 </dl>
+<p>When recorded on a <a class="reference internal" href="warp.Tape.html#warp.Tape" title="warp.Tape"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Tape</span></code></a>, the product is differentiable with respect to <code class="docutils literal notranslate"><span class="pre">x</span></code>, the input <code class="docutils literal notranslate"><span class="pre">y</span></code>
+and the values of <code class="docutils literal notranslate"><span class="pre">A</span></code>, restricted to its non-zero topology.</p>
 </dd></dl>
 
 </section>

@@ -527,7 +527,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">topology</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L4436-L4850"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_mm" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L4436-L4531"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_mm" title="Link to this definition">#</a></dt>
 <dd><p>Perform the sparse matrix-matrix multiplication <code class="docutils literal notranslate"><span class="pre">z</span> <span class="pre">:=</span> <span class="pre">alpha</span> <span class="pre">*</span> <span class="pre">x</span> <span class="pre">&#64;</span> <span class="pre">y</span> <span class="pre">+</span> <span class="pre">beta</span> <span class="pre">*</span> <span class="pre">z</span></code> on BSR matrices <code class="docutils literal notranslate"><span class="pre">x</span></code>, <code class="docutils literal notranslate"><span class="pre">y</span></code> and <code class="docutils literal notranslate"><span class="pre">z</span></code>, and return <code class="docutils literal notranslate"><span class="pre">z</span></code>.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">x</span></code>, <code class="docutils literal notranslate"><span class="pre">y</span></code> and <code class="docutils literal notranslate"><span class="pre">z</span></code> matrices are allowed to alias.
 If the matrix <code class="docutils literal notranslate"><span class="pre">z</span></code> is not provided as input, it will be allocated and treated as zero.</p>
@@ -573,6 +573,11 @@ existing destination row capacity and records capacity overflow in
 <dd class="field-even"><p><a class="reference internal" href="warp.sparse.BsrMatrix.html#warp.sparse.BsrMatrix" title="warp._src.sparse.BsrMatrix"><em>BsrMatrix</em></a>[<em>_MatrixBlockType</em>[<em>Rows</em>, <em>Cols</em>, <em>Scalar</em>] | <em>_ScalarBlockType</em>[<em>Scalar</em>]]</p>
 </dd>
 </dl>
+<p>When recorded on a <a class="reference internal" href="warp.Tape.html#warp.Tape" title="warp.Tape"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Tape</span></code></a>, the product is differentiable with respect to the values of <code class="docutils literal notranslate"><span class="pre">x</span></code>,
+<code class="docutils literal notranslate"><span class="pre">y</span></code> and the input <code class="docutils literal notranslate"><span class="pre">z</span></code>, restricted to their respective non-zero topologies. Differentiating a product in
+which <code class="docutils literal notranslate"><span class="pre">z</span></code> aliases <code class="docutils literal notranslate"><span class="pre">x</span></code> or <code class="docutils literal notranslate"><span class="pre">y</span></code> is not supported. While a tape is recording, a product that rebuilds the
+topology of <code class="docutils literal notranslate"><span class="pre">z</span></code> (any <code class="docutils literal notranslate"><span class="pre">topology</span></code> other than <code class="docutils literal notranslate"><span class="pre">&quot;masked&quot;</span></code>) first moves <code class="docutils literal notranslate"><span class="pre">z</span></code> to new <code class="docutils literal notranslate"><span class="pre">offsets</span></code>,
+<code class="docutils literal notranslate"><span class="pre">columns</span></code> and <code class="docutils literal notranslate"><span class="pre">row_counts</span></code> arrays, so that products recorded earlier keep reading the previous ones.</p>
 </dd></dl>
 
 </section>
