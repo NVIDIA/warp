@@ -602,17 +602,13 @@ linux-x86_64 cu13 blackwell test:
   image: $UV_TRIXIE_SLIM_IMAGE
   extends:
     - .test_common_with_coverage
+    - .blackwell_warp_tags
   before_script:
     - df -h
     - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-x86_64-binaries]
   script:
     - uv run --extra dev --extra torch-cu13 --with "jax[cuda13]>=0.5" --with rmm-cu13 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
-  tags:
-    - arch/x86_64
-    - gpu/B40
-    - os/linux
-    - platform/horde
 
 linux-x86_64 cu13 free-threaded test:
   stage: test

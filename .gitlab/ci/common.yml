@@ -204,6 +204,24 @@ default:
   tags:
     - warp-macos-arm64
 
+# Linux Blackwell jobs use these. warp-lnx-x86_64-sm120-1x marks a project
+# runner with one sm_120 GPU (RTX PRO 6000 or RTX PRO 4500), and the gpu/ tag
+# pins one of those machines. Keep every runner with the pool tag on the same
+# NVIDIA driver branch: the driver decides whether Warp compiles to PTX or CUBIN.
+.blackwell_warp_tags:
+  tags:
+    - warp-lnx-x86_64-sm120-1x
+
+.rtxpro6000_warp_tags:
+  tags:
+    - warp-lnx-x86_64-sm120-1x
+    - gpu/rtxpro6000
+
+.rtxpro4500_warp_tags:
+  tags:
+    - warp-lnx-x86_64-sm120-1x
+    - gpu/rtxpro4500
+
 # Basic rules to avoid triggering a test job unless certain files have changed to save CI resources
 .basic_test_changes_rules:
   rules:
