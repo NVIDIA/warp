@@ -1379,6 +1379,11 @@ class LinearSolverState:
         use_cuda_graph: whether to capture the solver iteration as a graph for reduced launch overhead.
             ``None`` captures on CUDA devices only, and ``True`` also captures on CPU.
 
+    Attributes:
+        rhs_norm_sq: Device array of the squared right-hand-side norm of each system, in the
+            solver's scalar type. Every solve writes it while setting its tolerances, so it is
+            available for reporting relative residuals at no extra cost.
+
     Instances are not directly constructible — use the solver-specific subclasses
     :class:`~warp.optim.linear.CG`, :class:`~warp.optim.linear.CR`, :class:`~warp.optim.linear.BiCGSTAB`, and :class:`~warp.optim.linear.GMRES`, or obtain one by
     calling the corresponding solver function (:func:`cg`, :func:`cr`, :func:`bicgstab`,
@@ -1418,6 +1423,7 @@ class LinearSolverState:
         self._maxiter = int(maxiter)
 
         self._cur_iter_and_condition = wp.empty((2,), dtype=int, device=self._device)
+        self.rhs_norm_sq = wp.zeros(self._batch_count, dtype=self._scalar_type, device=self._device)
         self._allocate()
 
     def _allocate(self):
@@ -1606,7 +1612,7 @@ class CG(_RestartableLinearSolverState):
         z.zero_()
 
         # Initialize tolerance from right-hand-side norm
-        _initialize_absolute_tolerance(b, self._tol, self._atol, tiled_dot, atol_sq)
+        _initialize_absolute_tolerance(b, self._tol, self._atol, tiled_dot, atol_sq, self.rhs_norm_sq)
         # Initialize residual
         A.matvec(x, b, r, alpha=-1.0, beta=1.0)
 
@@ -1844,7 +1850,7 @@ class CR(_RestartableLinearSolverState):
         zAz_old, atol_sq = self._residuals[0], self._residuals[1]
 
         # Initialize tolerance from right-hand-side norm
-        _initialize_absolute_tolerance(b, self._tol, self._atol, tiled_dot, atol_sq)
+        _initialize_absolute_tolerance(b, self._tol, self._atol, tiled_dot, atol_sq, self.rhs_norm_sq)
         # Initialize residual
         A.matvec(x, b, r, alpha=-1.0, beta=1.0)
 
@@ -2145,7 +2151,7 @@ class BiCGSTAB(LinearSolverState):
         atol_sq = self._atol_sq
 
         # Initialize tolerance from right-hand-side norm
-        _initialize_absolute_tolerance(b, self._tol, self._atol, tiled_dot, atol_sq)
+        _initialize_absolute_tolerance(b, self._tol, self._atol, tiled_dot, atol_sq, self.rhs_norm_sq)
         # Initialize residual
         A.matvec(x, b, r, alpha=-1.0, beta=1.0)
         tiled_dot.compute(r, r, col_offset=0)
@@ -2480,7 +2486,7 @@ class GMRES(LinearSolverState):
         copy_hessenberg_col = self._copy_hessenberg_col
 
         # Initialize tolerance from right-hand-side norm
-        _initialize_absolute_tolerance(b, self._tol, self._atol, tiled_dot, atol_sq)
+        _initialize_absolute_tolerance(b, self._tol, self._atol, tiled_dot, atol_sq, self.rhs_norm_sq)
         # Initialize residual
         A.matvec(x, b, r, alpha=-1.0, beta=1.0)
         tiled_dot.compute(r, r, col_offset=0)
@@ -2729,10 +2735,12 @@ def _initialize_tolerance(
     atol: Any,
     r_norm_sq: wp.array(dtype=Any),
     atol_sq: wp.array(dtype=Any),
+    rhs_norm_sq: wp.array(dtype=Any),
 ):
     i = wp.tid()
     a = wp.max(rtol * wp.sqrt(r_norm_sq[i]), atol)
     atol_sq[i] = a * a
+    rhs_norm_sq[i] = r_norm_sq[i]
 
 
 def _initialize_absolute_tolerance(
@@ -2741,6 +2749,7 @@ def _initialize_absolute_tolerance(
     atol: float,
     tiled_dot: TiledDot,
     atol_sq: wp.array,
+    rhs_norm_sq: wp.array,
 ):
     scalar_type = atol_sq.dtype
     batch_count = atol_sq.shape[0]
@@ -2754,7 +2763,7 @@ def _initialize_absolute_tolerance(
         kernel=_initialize_tolerance,
         dim=batch_count,
         device=b.device,
-        inputs=[scalar_type(rtol), scalar_type(atol), b_norm_sq, atol_sq],
+        inputs=[scalar_type(rtol), scalar_type(atol), b_norm_sq, atol_sq, rhs_norm_sq],
     )
 
 
@@ -3430,7 +3439,7 @@ def _register_overloads():
         a2 = wp.array2d(dtype=dtype)
         a3 = wp.array3d(dtype=dtype)
 
-        wp.overload(_initialize_tolerance, [dtype, dtype, a, a])
+        wp.overload(_initialize_tolerance, [dtype, dtype, a, a, a])
         wp.overload(_cg_kernel_1, {"tol": a, "resid": a, "rz_old": a, "p_Ap": a, "x": a, "r": a, "p": a, "Ap": a})
         wp.overload(_cg_kernel_2, {"tol": a, "resid_new": a, "rz_old": a, "rz_new": a, "z": a, "p": a})
         wp.overload(

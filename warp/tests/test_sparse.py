@@ -2706,6 +2706,27 @@ def test_bsr_mv_batch_selection(test, device):
     np.testing.assert_allclose(y.numpy(), X @ dense, rtol=1e-12, atol=1e-12)
 
 
+def test_bsr_mean_row_count_sync(test, device):
+    """Check mean active blocks per row for compact, padded and empty matrices, and its capture guard."""
+    device = wp.get_device(device)
+    rows = wp.array([0, 0, 1, 2, 2, 2], dtype=int, device=device)
+    cols = wp.array([0, 1, 1, 0, 1, 2], dtype=int, device=device)
+    values = wp.ones(6, dtype=float, device=device)
+    compact = bsr_from_triplets(4, 4, rows, cols, values)
+    test.assertEqual(compact.mean_row_count_sync(), 1.5)
+    test.assertEqual(compact.nnz, 6)
+    # Padded rows reserve spare capacity that does not count.
+    padded = bsr_zeros(4, 4, float, device=device, row_capacity=4)
+    bsr_set_from_triplets(padded, rows, cols, values, topology="padded")
+    test.assertEqual(padded.mean_row_count_sync(), 1.5)
+    test.assertEqual(bsr_zeros(0, 4, float, device=device).mean_row_count_sync(), 0.0)
+    if device.is_cuda:
+        with wp.ScopedCapture(device=device, force_module_load=False):
+            for matrix in (compact, padded):
+                with test.assertRaises(RuntimeError):
+                    matrix.mean_row_count_sync()
+
+
 class TestSparse(unittest.TestCase):
     def test_bsr_mv_batch_auto_rule(self):
         """Check AUTO choices for scalar and 3x3 blocks across batch sizes."""
@@ -2718,6 +2739,11 @@ class TestSparse(unittest.TestCase):
             for count, choice in zip(counts, choices, strict=True):
                 self.assertEqual(auto_strategy(block, count, True), choice, (block, count))
                 self.assertEqual(auto_strategy(block, count, False), rows, (block, count))
+        # A known row length moves CSR matrices with long rows to COLUMNS from four vectors.
+        for mean_row_count, choices in ((9.0, (rows,) * 6), (27.0, (rows,) + (columns,) * 5)):
+            for count, choice in zip(counts, choices, strict=True):
+                self.assertEqual(auto_strategy((1, 1), count, True, mean_row_count), choice, (mean_row_count, count))
+                self.assertEqual(auto_strategy((1, 1), count, False, mean_row_count), rows, (mean_row_count, count))
 
     def test_bsr_copy_scale(self):
         nrow = 6
@@ -2884,6 +2910,7 @@ add_function_test(TestSparse, "test_csr_mv", make_test_bsr_mv((1, 1), wp.float32
 add_function_test(TestSparse, "test_bsr_mv_batch", test_bsr_mv_batch, devices=devices)
 add_function_test(TestSparse, "test_bsr_mv_batch_selection", test_bsr_mv_batch_selection, devices=devices)
 add_function_test(TestSparse, "test_bsr_mv_batch_gradient", test_bsr_mv_batch_gradient, devices=devices)
+add_function_test(TestSparse, "test_bsr_mean_row_count_sync", test_bsr_mean_row_count_sync, devices=devices)
 add_function_test(TestSparse, "test_bsr_mv_1_3", make_test_bsr_mv((1, 3), wp.float32), devices=devices)
 add_function_test(TestSparse, "test_bsr_mv_3_3", make_test_bsr_mv((3, 3), wp.float64), devices=devices)
 

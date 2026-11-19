@@ -495,8 +495,14 @@ it picks ``"rows"`` on the CPU and for CSR matrices on CUDA, and for 3x3 BSR mat
 never synchronizes, so it works inside captured graphs but cannot see how many entries each row
 actually stores; the stored count of a compact matrix is only an upper bound on the host. Short
 rows favor ``"rows"``, but CSR matrices with long or irregular rows (more than about 16 entries)
-are often several times faster with ``"columns"`` pinned for four or more vectors. The rule was
-fitted to finite-element and irregular matrices and may change between releases.
+are often several times faster with ``"columns"`` pinned for four or more vectors.
+
+Prepared operators such as :class:`warp.optim.linear.MultiRHSOperator` and
+:class:`warp.optim.linear.KrylovSolve` decide once at construction, where they may read
+back :meth:`BsrMatrix.mean_row_count_sync`. On CUDA, CSR matrices with more than 16
+blocks per row then use ``"columns"`` from four vectors. The choice stays fixed, including
+for smaller capacities from ``with_nrhs``. The rule was fitted to finite-element and
+irregular matrices and may change between releases.
 
 
 Kernel-level utilities
@@ -535,3 +541,71 @@ While primarily intended for sparse matrices, these solvers also work with dense
 Custom operators can be implemented using the :class:`warp.optim.linear.LinearOperator` interface.
 
 For a complete listing of all sparse matrix functions and their signatures, see the :doc:`../api_reference/warp_sparse` API reference.
+
+
+.. currentmodule:: warp.optim.linear
+
+Prepared Krylov solves
+----------------------
+
+:class:`KrylovSolve` allocates its workspace once and then solves many
+right-hand sides (RHSs) against the same system with :func:`cg`, :func:`cr`,
+:func:`bicgstab` or :func:`gmres`. It suits solves nested inside another
+algorithm and CUDA graph replay::
+
+    import warp as wp
+    from warp.optim.linear import KrylovSolve
+
+    action = KrylovSolve(A, nrhs=24, method="cg",
+                         working_dtype=wp.float32, tol=0.01, maxiter=25)
+    action.solve(rhs, out)
+    # action.converged, action.absolute_residual, ... stay on device.
+
+The functional solvers keep every algorithmic option; a prepared solve adds what
+a reusable object needs:
+
+* ``solve(rhs, out, x0=None)`` takes contiguous ``(nrhs, n)`` arrays, or
+  ``(n,)`` when ``nrhs == 1``, in the system's scalar dtype and device. A solve
+  starts from zero unless ``x0`` gives an initial guess; ``solve(rhs, out, out)``
+  warm starts from the previous solution. Exact in-place aliasing is
+  supported; partially overlapping views are rejected before any output is
+  written.
+* Acceptance compares the residual with ``max(tol * ||b||, atol)``, as in the
+  functional solvers, except that ``atol`` defaults to ``0.0`` instead of
+  ``tol``. The solvers raise ``atol`` to a safety floor of 1e-18 for a float32
+  working dtype and 1e-36 for float64, so ``atol=0.0`` means a relative
+  tolerance only, apart from a zero RHS, and the reported ``tolerance``
+  includes the floor.
+* Several RHSs iterate together as independent systems sharing one operator, so
+  each reports the batch's scheduled iteration count. This is not a coupled
+  block method. Sparse matrices apply all RHSs with the batched
+  :func:`warp.sparse.bsr_mv`; ``algorithm`` pins its kernel strategy.
+* ``update()`` makes in-place value changes to a sparse matrix visible, copying
+  them into the ``working_dtype`` matrix when that differs. ``solve()`` does
+  this on every call.
+* ``with_nrhs(k)`` prepares a smaller capacity that shares the workspace. The
+  two must not run concurrently.
+* The device arrays ``iterations``, ``absolute_residual``,
+  ``relative_residual``, ``tolerance`` and ``converged`` describe each RHS of
+  the latest call. ``stats`` (total iterations, maximum iterations, failed
+  RHSs, solved RHSs) and ``residual_maxima`` accumulate until
+  ``reset_stats()``, which leaves the latest per-RHS diagnostics untouched.
+  Nonfinite norms fail acceptance. ``solve()`` also returns the device arrays
+  ``(iterations, residual_sq, tolerance_sq)``; ``diagnostics=False`` skips the
+  per-RHS bookkeeping for short, frequent solves.
+* ``residual`` selects the residual that is reported and used for acceptance:
+  ``"recurrence"`` reports the solver's own estimate at no extra cost, and
+  ``"fresh"`` recomputes ``||A x - b||`` with the
+  source system and precision, which validates mixed-precision or truncated
+  solves at the cost of one batched product per call.
+
+``M`` is a fixed linear preconditioner, either a single-system operator or a
+prepared operator with independent RHS partitions, such as a
+:class:`MultiRHSOperator` or an FSAI application prepared for several RHSs. When
+the preconditioner is partitioned, pass a matching ``M=`` to ``with_nrhs``.
+
+Construct and warm up actions outside CUDA graph capture. Prepared replay
+performs no host convergence checks or work-array allocations. Eager calls
+from different CUDA streams are ordered automatically, but captured graphs
+that share one workspace must not execute concurrently. Reverse-mode
+derivatives through prepared solves are not supplied.

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import ctypes
 import weakref
 from functools import cache
@@ -229,7 +230,9 @@ class BsrMatrix(Generic[_BlockType]):
           active.
         columns (Array[int]): Array of size at least equal to ``nnz`` containing
           block column indices. Entries outside active row ranges are not part
-          of the matrix and may be uninitialized.
+          of the matrix and may be uninitialized. Matrices built by
+          ``warp.sparse`` store each row's columns in increasing order, and its
+          operations assume that order; keep it when filling these arrays directly.
         values (Array[BlockType]): Array of size at least equal to ``nnz``
           containing block values. Entries outside active row ranges are not
           part of the matrix and may be uninitialized. Active entries may also
@@ -333,14 +336,51 @@ class BsrMatrix(Generic[_BlockType]):
               instead.
         """
 
+        with self._live_readback("nnz_sync", "Provide an explicit nnz_capacity for padded construction, or query"):
+            buf, event = self._setup_nnz_sync_transfer()
+            stream = wp.get_stream(self.device) if self.device.is_cuda else None
+            wp.copy(src=self.offsets, dest=buf, src_offset=self.nrow, count=1, stream=stream)
+
+            if event is not None:
+                stream.record_event(event, external=True)
+                wp.synchronize_event(event)
+            self.nnz = int(buf.numpy()[0])
+        return self.nnz
+
+    def mean_row_count_sync(self) -> float:
+        """Return the mean number of active stored blocks per row of blocks, synchronizing with the device.
+
+        For compact matrices, this reads the stored block count like :meth:`nnz_sync`, which it
+        also updates. For padded matrices, it sums the active block count of each row on the
+        device and reads back the total, so spare row capacity is not counted.
+
+        Returns:
+            The active stored block count divided by ``nrow``, or ``0.0`` for a matrix without rows.
+
+        Raises:
+            RuntimeError: If called during a live CUDA graph capture, which cannot read device values.
+            NotImplementedError: If called during CPU graph capture after a topology update has been
+              recorded.
+        """
+        if self.nrow == 0:
+            return 0.0
+        if self.row_counts is None:
+            return self.nnz_sync() / self.nrow
+        with self._live_readback("mean_row_count_sync", "Query"):
+            total = wp.zeros(1, dtype=int, device=self.device)
+            wp.launch(_bsr_sum_row_counts, self.nrow, [self.row_counts, total], device=self.device)
+            return int(total.numpy()[0]) / self.nrow
+
+    @contextlib.contextmanager
+    def _live_readback(self, method: str, advice: str):
+        """Run a device-to-host readback outside any CPU graph recording, rejecting CUDA captures."""
         if self.device.is_capturing and not self.device.is_cpu:
             raise RuntimeError(
-                "BsrMatrix.nnz_sync() cannot read the block count during a live CUDA graph "
-                "capture because it requires a device-to-host readback. Provide an explicit "
-                "nnz_capacity for padded construction, or query the count outside the capture."
+                f"BsrMatrix.{method}() cannot read the block count during a live CUDA graph "
+                f"capture because it requires a device-to-host readback. {advice} the count outside the capture."
             )
 
-        # A nnz readback reads the current value "now". Under a CPU APIC capture
+        # A readback reads the current value "now". Under a CPU APIC capture
         # the host copy/readback would otherwise be recorded (deferred), leaving
         # the readback buffer uninitialized, so pause recording around it so it
         # runs live and returns the real value.
@@ -351,23 +391,15 @@ class BsrMatrix(Generic[_BlockType]):
         if apic_graph is not None and apic_graph.device.is_cpu and apic_graph.device == self.device:
             if getattr(self, "_apic_deferred_nnz_capture", None) is apic_graph._apic_capture:
                 raise NotImplementedError(
-                    "BsrMatrix.nnz_sync() cannot read a topology update recorded during CPU APIC capture. "
-                    "Call nnz_sync() after graph replay or avoid the readback inside the capture."
+                    f"BsrMatrix.{method}() cannot read a topology update recorded during CPU APIC capture. "
+                    f"Call {method}() after graph replay or avoid the readback inside the capture."
                 )
             paused_graph = capture_pause(device=self.device)
         try:
-            buf, event = self._setup_nnz_sync_transfer()
-            stream = wp.get_stream(self.device) if self.device.is_cuda else None
-            wp.copy(src=self.offsets, dest=buf, src_offset=self.nrow, count=1, stream=stream)
-
-            if event is not None:
-                stream.record_event(event, external=True)
-                wp.synchronize_event(event)
-            self.nnz = int(buf.numpy()[0])
+            yield
         finally:
             if paused_graph is not None:
                 capture_resume(paused_graph, device=self.device)
-        return self.nnz
 
     def status_sync(self) -> int:
         """Return the asynchronous sparse status code, synchronizing if needed.
@@ -605,6 +637,11 @@ def bsr_matrix_t(dtype: BlockType):
         )
 
     return _struct_cache[key]
+
+
+@wp.kernel(enable_backward=False)
+def _bsr_sum_row_counts(row_counts: wp.array[int], total: wp.array[int]):
+    wp.atomic_add(total, 0, row_counts[wp.tid()])
 
 
 @wp.kernel(enable_backward=False)

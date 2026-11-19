@@ -23,3 +23,6 @@ from warp._src.optim.linear import cg as cg
 from warp._src.optim.linear import cr as cr
 from warp._src.optim.linear import gmres as gmres
 from warp._src.optim.linear import preconditioner as preconditioner
+
+from warp._src.optim._multi_rhs import MultiRHSOperator as MultiRHSOperator
+from warp._src.optim._solve_action import KrylovSolve as KrylovSolve

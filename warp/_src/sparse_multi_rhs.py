@@ -213,18 +213,24 @@ def supports(algorithm, A, device):
     return device.is_cuda or algorithm != "columns"
 
 
-def auto_strategy(block_shape, count, is_cuda):
+def auto_strategy(block_shape, count, is_cuda, mean_row_count=None):
     """Return the strategy ``"auto"`` selects for a supported matrix and at least two vectors.
 
     Args:
         block_shape: The matrix block shape.
         count: Batch size.
         is_cuda: Whether the product runs on CUDA.
+        mean_row_count: Mean active blocks per row of blocks when the caller has read it back,
+            or ``None``. Only prepared operators know it; per-call products never synchronize.
     """
     # From a sweep over FEM and irregular matrices (asv/benchmarks/sparse/matrix_vector_batch.py).
-    if not is_cuda or block_shape == (1, 1) or count <= 4:
+    if not is_cuda or count < 4:
         return "rows"
-    return "columns"
+    if block_shape == (1, 1):
+        # One thread per row and vector suits short rows; long rows favor coalesced vector reads.
+        long_rows = mean_row_count is not None and mean_row_count > 16
+        return "columns" if long_rows else "rows"
+    return "rows" if count <= 4 else "columns"
 
 
 def validate(algorithm):
@@ -233,7 +239,7 @@ def validate(algorithm):
         raise ValueError(f"Unsupported batched product algorithm: {algorithm!r}; expected one of {ALGORITHMS}")
 
 
-def resolve(algorithm, A, count, device, transpose, requires_grad=False):
+def resolve(algorithm, A, count, device, transpose, requires_grad=False, mean_row_count=None):
     """Return the concrete strategy for a batch of ``count`` vectors, validating explicit choices.
 
     The row and column kernels are forward-only, so ``"auto"`` selects ``"loop"`` when
@@ -245,7 +251,7 @@ def resolve(algorithm, A, count, device, transpose, requires_grad=False):
             return "loop"
         if device.is_cuda and A.block_shape not in _TUNED_CUDA_BLOCKS:
             return "loop"
-        return auto_strategy(A.block_shape, count, device.is_cuda)
+        return auto_strategy(A.block_shape, count, device.is_cuda, mean_row_count)
     if algorithm == "loop":
         return algorithm
     if transpose:

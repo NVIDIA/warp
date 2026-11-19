@@ -2029,9 +2029,11 @@ Important CPU graph behavior and current limitations:
 - Kernel parameters of type ``wp.fabricarray`` or ``wp.indexedfabricarray``
   cannot yet be recorded by APIC. ``wp.fixedarray`` is a compiler-only stack
   array type and cannot be passed as a host kernel argument.
-- :meth:`BsrMatrix.nnz_sync() <warp.sparse.BsrMatrix.nnz_sync>` cannot read the
-  result of a topology update recorded earlier in the same CPU capture. Read the
-  count after replay, or avoid the readback inside the captured region.
+- :meth:`BsrMatrix.nnz_sync() <warp.sparse.BsrMatrix.nnz_sync>` and
+  :meth:`BsrMatrix.mean_row_count_sync() <warp.sparse.BsrMatrix.mean_row_count_sync>`
+  cannot read the result of a topology update recorded earlier in the same CPU
+  capture. Read the count after replay, or avoid the readback inside the captured
+  region.
 - :meth:`BsrMatrix.status_sync() <warp.sparse.BsrMatrix.status_sync>` cannot read
   the sparse status during a live CUDA graph capture (it requires a device-to-host
   readback) or during CPU graph capture (a recorded status update is applied only
