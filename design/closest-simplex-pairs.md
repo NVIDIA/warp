@@ -53,7 +53,7 @@ is essential: triangle boundary tests alone miss interior piercing.
 For float32, divide the normal by the larger squared edge length and restore
 that factor in the barycentric denominator. This avoids losing valid interiors
 when the unscaled squared normal underflows or overflows. Float64 retains the
-unscaled expressions. See the [normalization review](../reports/closest-points/normalization-review.md)
+unscaled expressions. See the [normalization review](https://github.com/alecjacobson/warp/blob/alecjacobson/closest-points-reports/reports/closest-points/normalization-review.md)
 for the measured tradeoff and Newton-specific rationale.
 
 These are floating-point algorithms, not exact arithmetic. Inputs and
@@ -120,7 +120,7 @@ but may differ in compiler rounding, selected iterates, and timings; original
 Newton measurements are authoritative when reporting speedup. Compilation,
 allocation, transfers, and reference evaluation are excluded from timed graphs.
 
-See [the measured report](../reports/closest-points/README.md) for exact commands,
+See [the measured report](https://github.com/alecjacobson/warp/blob/alecjacobson/closest-points-reports/reports/closest-points/README.md) for exact commands,
 hardware, workloads, accuracy results, and limitations. No timing assertions are
 added to tests. These measurements assess narrow-phase queries and a shared
 initial SDF cull; they do not establish an end-to-end SolverVBD speedup.
