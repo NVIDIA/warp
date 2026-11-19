@@ -179,6 +179,37 @@ class TestContext(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "no arguments.*missing"):
             wp.Kernel(scale, module=module, static_args={"missing": 1.0})
 
+    def test_kernel_decorator_static_args(self):
+        def scale(values: wp.array[wp.float32], output: wp.array[wp.float32], factor: wp.float32):
+            i = wp.tid()
+            output[i] = values[i] * factor
+
+        def generic_scale(values: wp.array[wp.Scalar], output: wp.array[wp.Scalar], factor: wp.float32):
+            i = wp.tid()
+            output[i] = values[i] * factor
+
+        @wp.kernel(module=wp.Module("test_kernel_decorator_static_args", None), static_args={"factor": 3.0})
+        def decorated_scale(values: wp.array[wp.float32], output: wp.array[wp.float32], factor: wp.float32):
+            i = wp.tid()
+            output[i] = values[i] * factor
+
+        self.assertEqual(list(decorated_scale.adj.arg_types), ["values", "output"])
+        self.assertEqual(decorated_scale.adj.static_args, {"factor": 3.0})
+
+        k1 = wp.kernel(scale, module="unique", static_args={"factor": 0.5})
+        k2 = wp.kernel(scale, module="unique", static_args={"factor": 0.5})
+        k3 = wp.kernel(scale, module="unique", static_args={"factor": 2.0})
+        self.assertIs(k1, k2)
+        self.assertIsNot(k1, k3)
+        self.assertNotEqual(k1.module.name, k3.module.name)
+
+        g1 = wp.kernel(generic_scale, module="unique", static_args={"factor": 0.5})
+        g2 = wp.kernel(generic_scale, module="unique", static_args={"factor": 0.5})
+        g3 = wp.kernel(generic_scale, module="unique", static_args={"factor": 2.0})
+        self.assertIs(g1, g2)
+        self.assertIsNot(g1, g3)
+        self.assertNotEqual(g1.module.name, g3.module.name)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

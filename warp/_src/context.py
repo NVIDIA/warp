@@ -1998,6 +1998,7 @@ def kernel(
     module_options: dict[str, Any] | None = None,
     entry_point_abi: Literal["warp", "external_constant_params"] | None = None,
     grid_stride: bool | None = None,
+    static_args: Mapping[str, Any] | None = None,
 ):
     """
     Decorator to register a Warp kernel from a Python function.
@@ -2118,6 +2119,10 @@ def kernel(
             capped: launching it with ``max_blocks > 0`` raises. ``None``
             defers to the ``"default_grid_stride"`` module option, then
             :data:`warp.config.default_grid_stride`.
+        static_args: Optional mapping from parameter names to compile-time
+            Python scalar or Warp value instances. Static parameters become
+            compile-time constants and are omitted from the launch arguments.
+            Each distinct value produces a separate compiled specialization.
 
     Returns:
         The registered kernel.
@@ -2209,6 +2214,7 @@ def kernel(
             key=key,
             module=m,
             options=kernel_options,
+            static_args=static_args,
         )
 
         # Handle unique module case: one module per kernel with hash-based naming.

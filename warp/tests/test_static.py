@@ -1213,7 +1213,26 @@ def test_static_kernel_argument_gradient(test, device):
     np.testing.assert_allclose(values.grad.numpy(), [2.0, 2.0])
 
 
+def test_kernel_decorator_static_args_launch(test, device):
+    k_half = wp.kernel(_static_scale_kernel, module="unique", static_args={"factor": 0.5})
+    k_two = wp.kernel(_static_scale_kernel, module="unique", static_args={"factor": 2.0})
+
+    values = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device)
+    out_half = wp.empty_like(values)
+    out_two = wp.empty_like(values)
+    wp.launch(k_half, dim=values.shape, inputs=[values, out_half], device=device)
+    wp.launch(k_two, dim=values.shape, inputs=[values, out_two], device=device)
+    np.testing.assert_allclose(out_half.numpy(), [0.5, 1.0, 1.5])
+    np.testing.assert_allclose(out_two.numpy(), [2.0, 4.0, 6.0])
+
+
 add_function_test(TestStatic, "test_static_kernel_arguments", test_static_kernel_arguments, devices=devices)
+add_function_test(
+    TestStatic,
+    "test_kernel_decorator_static_args_launch",
+    test_kernel_decorator_static_args_launch,
+    devices=devices,
+)
 add_function_test(
     TestStatic, "test_static_kernel_argument_value_types", test_static_kernel_argument_value_types, devices=devices
 )
