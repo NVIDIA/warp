@@ -106,6 +106,30 @@ search/reduction over triangles but do not minimize over a segment. No speedup
 against PhysicsNeMo or Kaolin is claimed. Their treatment of precision and
 degeneracy informs the tests.
 
+A follow-up audit at [Newton `03b36585`](https://github.com/newton-physics/newton/tree/03b36585233ef0ae5dcdb7ebdd9a40a5e127c330)
+also found the pure Warp `closest_segment_to_segment_points` helper in
+`collision_primitive.py`. No callers were found in that checkout; it is compared
+as an existing implementation, not described as a measured Newton bottleneck.
+Its fixed regularizers affect small-scale geometry. The same file's analytic
+`collide_capsule_capsule` is called by the primitive narrow phase and Kamino.
+Neither function changed between the two audited revisions.
+
+`asv/benchmarks/closest_capsule.py` compares the extracted nonparallel axis solve,
+the complete capsule contact routine, and the existing segment witness helper.
+The complete-query adapter preserves Newton's determinant threshold, endpoint
+projections for the parallel branch, and two-contact/shared-normal policy. That
+policy is distinct from a global closest pair: for example, it can miss overlap
+when a shorter parallel axis is contained inside a longer one. Preserving the
+policy therefore also preserves its limitations. The standalone runner validates
+against the unmodified pinned Newton source on CPU/CUDA and checks distances
+against the independent rational oracle. ASV includes a self-contained copy of
+the contact baseline; reported comparisons use the original source.
+
+See the [analytic capsule comparison](https://github.com/alecjacobson/warp/blob/alecjacobson/closest-points-reports/reports/closest-points/capsule-analytic.md)
+for timings, accuracy, and output-layout limitations. These analytic baselines
+have a different performance profile from the iterative SDF optimizer, and no
+uniform speedup over them is claimed.
+
 ## Validation and performance
 
 The unit tests enumerate active sets of an independent convex quadratic program.
