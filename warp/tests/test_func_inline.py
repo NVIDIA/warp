@@ -5,12 +5,180 @@ import re
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any
+from unittest import mock
 
 import numpy as np
 
 import warp as wp
 from warp._src.context import ModuleBuilder
 from warp.tests.unittest_utils import add_function_test, assert_np_equal, get_test_devices, run_test_in_subprocess
+
+
+def make_struct_query_kernel(dtype, inline):
+    """Build a composed, data-dependent query with a by-value field handle."""
+    vector = wp.types.vector(length=3, dtype=dtype)
+    vector4 = wp.types.vector(length=4, dtype=dtype)
+    matrix = wp.types.matrix(shape=(3, 3), dtype=dtype)
+    matrix4 = wp.types.matrix(shape=(4, 4), dtype=dtype)
+
+    @wp.struct
+    class FieldState:
+        keys: wp.array[wp.int64]
+        coefficients: wp.array[dtype]
+        cumulative: wp.array[dtype]
+        linear: matrix
+        translation: vector
+        depth: int
+        reference: bool
+        transforms: wp.array[matrix4]
+        has_transform: bool
+
+    @wp.func
+    def find_node(keys: wp.array[wp.int64], key: wp.int64):
+        lower = int(0)
+        upper = keys.shape[0]
+        while lower < upper:
+            middle = (lower + upper) // 2
+            if keys[middle] < key:
+                lower = middle + 1
+            else:
+                upper = middle
+        if lower < keys.shape[0]:
+            if keys[lower] == key:
+                return lower
+        return -1
+
+    @wp.func
+    def interpolate(keys: wp.array[wp.int64], coefficients: wp.array[dtype], point: vector, depth: int):
+        count = 1 << depth
+        scaled = point * dtype(count)
+        cell = wp.vec3i(
+            wp.clamp(int(wp.ceil(scaled[0])) - 1, 0, count - 1),
+            wp.clamp(int(wp.ceil(scaled[1])) - 1, 0, count - 1),
+            wp.clamp(int(wp.ceil(scaled[2])) - 1, 0, count - 1),
+        )
+        base = wp.vec3i(int(wp.floor(scaled[0])), int(wp.floor(scaled[1])), int(wp.floor(scaled[2])))
+        fraction = scaled - vector(base)
+        result = vector4(dtype(0))
+        for corner in range(8):
+            node = cell + wp.vec3i(corner // 4, (corner // 2) % 2, corner % 2)
+            if wp.min(node - base) >= 0:
+                key = (
+                    (wp.int64(depth) << wp.int64(48))
+                    | (wp.int64(node[0]) << wp.int64(32))
+                    | (wp.int64(node[1]) << wp.int64(16))
+                    | wp.int64(node[2])
+                )
+                index = find_node(keys, key)
+                if index >= 0:
+                    weight_x = wp.where(node[0] > base[0], fraction[0], dtype(1) - fraction[0])
+                    weight_y = wp.where(node[1] > base[1], fraction[1], dtype(1) - fraction[1])
+                    weight_z = wp.where(node[2] > base[2], fraction[2], dtype(1) - fraction[2])
+                    sign_x = wp.where(node[0] > base[0], dtype(1), dtype(-1))
+                    sign_y = wp.where(node[1] > base[1], dtype(1), dtype(-1))
+                    sign_z = wp.where(node[2] > base[2], dtype(1), dtype(-1))
+                    coefficient = coefficients[index]
+                    result += vector4(
+                        coefficient * weight_x * weight_y * weight_z,
+                        coefficient * dtype(count) * sign_x * weight_y * weight_z,
+                        coefficient * dtype(count) * weight_x * sign_y * weight_z,
+                        coefficient * dtype(count) * weight_x * weight_y * sign_z,
+                    )
+        return result
+
+    @wp.func
+    def evaluate(
+        keys: wp.array[wp.int64],
+        coefficients: wp.array[dtype],
+        cumulative: wp.array[dtype],
+        point: vector,
+        linear: matrix,
+        translation: vector,
+        depth: int,
+    ):
+        point = linear * point + translation
+        valid = wp.isfinite(point[0]) and wp.isfinite(point[1]) and wp.isfinite(point[2])
+        valid = valid and wp.min(point) >= dtype(0) and wp.max(point) <= dtype(1)
+        value = dtype(wp.nan)
+        gradient = vector(dtype(wp.nan))
+        if valid:
+            result = interpolate(keys, coefficients, point, depth)
+            value = result[0]
+            gradient = wp.transpose(linear) * vector(result[1], result[2], result[3])
+        return value, gradient, int(valid)
+
+    @wp.func(inline=True)
+    def field_query(field: FieldState, point: vector):
+        return evaluate(
+            field.keys, field.coefficients, field.cumulative, point, field.linear, field.translation, field.depth
+        )
+
+    @wp.func(inline=inline)
+    def composed_query(field: FieldState, point: vector):
+        value, gradient, _valid = field_query(field, point)
+        return value + dtype(0.1) * wp.length_sq(gradient)
+
+    @wp.kernel(module="unique", module_options={"fuse_fp": False})
+    def composed_query_kernel(field: FieldState, points: wp.array[vector], output: wp.array[dtype]):
+        index = wp.tid()
+        output[index] = composed_query(field, points[index]) + composed_query(
+            field, points[index] + vector(dtype(0.01), dtype(0.02), dtype(0.03))
+        )
+
+    return FieldState, composed_query_kernel, composed_query
+
+
+def test_struct_query_composition(test, device):
+    """Compose struct-valued queries and verify coefficient and point derivatives."""
+    keys = [
+        (depth << 48) | (x << 32) | (y << 16) | z
+        for depth in range(3)
+        for x in range((1 << depth) + 1)
+        for y in range((1 << depth) + 1)
+        for z in range((1 << depth) + 1)
+    ]
+    for dtype in (wp.float32, wp.float64):
+        expected = None
+        for inline in (None, False):
+            field_type, kernel, _ = make_struct_query_kernel(dtype, inline)
+            vector = wp.types.vector(length=3, dtype=dtype)
+            field = field_type()
+            field.keys = wp.array(keys, dtype=wp.int64, device=device)
+            field.coefficients = wp.array(
+                np.random.default_rng(23).normal(size=len(keys)), dtype=dtype, device=device, requires_grad=True
+            )
+            field.cumulative = wp.empty(0, dtype=dtype, device=device)
+            field.transforms = wp.empty(0, dtype=wp.types.matrix(shape=(4, 4), dtype=dtype), device=device)
+            field.linear = wp.types.matrix(shape=(3, 3), dtype=dtype)(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0)
+            field.depth = 2
+            points = wp.array([[0.13, 0.21, 0.17], [0.31, 0.32, 0.41]], dtype=vector, device=device, requires_grad=True)
+            output = wp.empty(len(points), dtype=dtype, device=device, requires_grad=True)
+            with wp.Tape() as tape:
+                wp.launch(kernel, len(points), inputs=[field, points, output], device=device)
+            actual = output.numpy().copy()
+            if expected is None:
+                expected = actual
+            else:
+                np.testing.assert_allclose(actual, expected, rtol=1e-6, atol=1e-6)
+            tape.backward(grads={output: wp.ones_like(output)})
+            for array in (field.coefficients, points):
+                original = array.numpy().copy()
+                gradient = array.grad.numpy().copy()
+                direction = np.random.default_rng(79).normal(size=original.shape).astype(original.dtype)
+                epsilon = 1e-4 if dtype == wp.float32 else 1e-6
+                losses = []
+                for sign in (1, -1):
+                    array.assign(original + sign * epsilon * direction)
+                    wp.launch(kernel, len(points), inputs=[field, points, output], device=device)
+                    losses.append(output.numpy().astype(float).sum())
+                array.assign(original)
+                np.testing.assert_allclose(
+                    np.sum(gradient.astype(float) * direction),
+                    (losses[0] - losses[1]) / (2 * epsilon),
+                    rtol=1e-2 if dtype == wp.float32 else 1e-7,
+                    atol=1e-2 if dtype == wp.float32 else 1e-8,
+                )
 
 
 def module_source(kernel, device: str) -> str:
@@ -38,6 +206,105 @@ def test_noinline_func_runs(test, device):
 
 
 class TestFuncInline(unittest.TestCase):
+    def test_default_struct_inline_policy_and_cache(self):
+        """Apply and hash the CUDA struct policy while honoring explicit hints."""
+        for inline in (None, False, True):
+            _, kernel, helper = make_struct_query_kernel(wp.float32, inline)
+            for device in ("cpu", "cuda"):
+                source = module_source(kernel, device)
+                definitions = [
+                    line
+                    for line in source.splitlines()
+                    if re.search(rf"\b(?:adj_)?{re.escape(helper.native_func)}\w*\($", line)
+                ]
+                self.assertTrue(definitions)
+                expected = (
+                    "WP_FORCEINLINE"
+                    if inline is True or (inline is None and device == "cuda")
+                    else "WP_NOINLINE"
+                    if inline is False
+                    else None
+                )
+                for definition in definitions:
+                    self.assertEqual(
+                        [macro for macro in ("WP_FORCEINLINE", "WP_NOINLINE") if macro in definition],
+                        [expected] if expected else [],
+                    )
+            current_hash = kernel.module.hash_module()
+            with mock.patch("warp._src.codegen.get_func_inline_hint", side_effect=lambda hint, types, device: hint):
+                original_hash = kernel.module.hash_module()
+            kernel.module.hash_module()
+            if inline is None:
+                self.assertNotEqual(current_hash, original_hash)
+            else:
+                self.assertEqual(current_hash, original_hash)
+
+    def test_generic_struct_inline_policy_and_cache(self):
+        """Invalidate cached specializations of generic functions taking structs."""
+
+        @wp.struct
+        class Parameters:
+            scale: float
+
+        @wp.func
+        def generic_helper(parameters: Any, value: float):
+            return parameters.scale * value
+
+        @wp.kernel(module="unique")
+        def generic_kernel(parameters: Parameters, output: wp.array[float]):
+            output[wp.tid()] = generic_helper(parameters, 2.0)
+
+        current_hash = generic_kernel.module.hash_module()
+        with mock.patch("warp._src.codegen.get_func_inline_hint", side_effect=lambda hint, types, device: hint):
+            original_hash = generic_kernel.module.hash_module()
+        generic_kernel.module.hash_module()
+        self.assertNotEqual(current_hash, original_hash)
+        source = module_source(generic_kernel, "cuda")
+        definitions = [
+            line
+            for line in source.splitlines()
+            if re.search(rf"\b(?:adj_)?{re.escape(generic_helper.native_func)}\w*\($", line)
+        ]
+        self.assertTrue(definitions)
+        for definition in definitions:
+            self.assertIn("WP_FORCEINLINE", definition)
+
+    def test_custom_grad_struct_inline_policy_and_cache(self):
+        """Hash the policy when only the custom gradient takes a struct."""
+
+        @wp.struct
+        class OutputState:
+            value: float
+
+        @wp.func
+        def make_output(value: float):
+            result = OutputState()
+            result.value = value
+            return result
+
+        @wp.func_grad(make_output)
+        def make_output_grad(value: float, adj_result: OutputState):
+            wp.adjoint[value] += adj_result.value
+
+        @wp.kernel(module="unique")
+        def output_kernel(values: wp.array[float], output: wp.array[float]):
+            output[wp.tid()] = make_output(values[wp.tid()]).value
+
+        current_hash = output_kernel.module.hash_module()
+        with mock.patch("warp._src.codegen.get_func_inline_hint", side_effect=lambda hint, types, device: hint):
+            original_hash = output_kernel.module.hash_module()
+        output_kernel.module.hash_module()
+        self.assertNotEqual(current_hash, original_hash)
+        source = module_source(output_kernel, "cuda")
+        definitions = [
+            line
+            for line in source.splitlines()
+            if re.search(rf"\badj_{re.escape(make_output.native_func)}\w*\($", line)
+        ]
+        self.assertTrue(definitions)
+        for definition in definitions:
+            self.assertIn("WP_FORCEINLINE", definition)
+
     def test_invalid_inline_hint_rejected(self):
         """Reject non-bool values for the inline hint."""
         for value in (1, 1.5, "yes"):
@@ -213,6 +480,7 @@ class TestFuncInline(unittest.TestCase):
 
 devices = get_test_devices()
 add_function_test(TestFuncInline, "test_noinline_func_runs", test_noinline_func_runs, devices=devices)
+add_function_test(TestFuncInline, "test_struct_query_composition", test_struct_query_composition, devices=devices)
 
 
 if __name__ == "__main__":
