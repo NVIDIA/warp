@@ -153,6 +153,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.geometry.test_volume_validation import TestVolumeValidation
     from warp.tests.geometry.test_volume_write import TestVolumeWrite
     from warp.tests.interop.test_dlpack import TestDLPack
+    from warp.tests.interop.test_function_dispatch_interop import TestFunctionDispatchInterop
     from warp.tests.interop.test_jax import TestJax
     from warp.tests.interop.test_torch import TestTorch
     from warp.tests.matrix.test_mat import TestMat
@@ -224,6 +225,8 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_func import TestFunc
     from warp.tests.test_func_inline import TestFuncInline
     from warp.tests.test_func_parameter_targets import TestFuncParameterTargets
+    from warp.tests.test_function_dispatch import TestFunctionDispatch, TestFunctionDispatchDevices
+    from warp.tests.test_function_dispatch_recording import TestFunctionDispatchRecording
     from warp.tests.test_future_annotations import TestFutureAnnotations
     from warp.tests.test_generics import TestGenerics
     from warp.tests.test_grad import TestGrad
@@ -414,6 +417,10 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestFunc,
         TestFuncInline,
         TestFuncParameterTargets,
+        TestFunctionDispatch,
+        TestFunctionDispatchDevices,
+        TestFunctionDispatchInterop,
+        TestFunctionDispatchRecording,
         TestFutureAnnotations,
         TestGenerics,
         TestGrad,

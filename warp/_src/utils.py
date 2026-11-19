@@ -24,6 +24,7 @@ import warp._src.context as context
 import warp._src.types
 from warp._src import logger as _logger_module
 from warp._src.context import Allocator, CaptureMode, DeviceLike, _validate_allocator, timing_result_t
+from warp._src.function_dispatch import warp_function
 from warp._src.logger import Logger, LoggerBasic, _validate_logger, get_logger, log_debug, set_logger
 from warp._src.types import Array, DType, type_repr, types_equal
 
@@ -155,6 +156,7 @@ def array_scan_temp_storage_size(count: int, dtype: type, device: DeviceLike = N
     return size.value
 
 
+@warp_function
 def array_scan(
     in_array: wp.array, out_array: wp.array, inclusive: bool = True, temp_storage: wp.array | None = None
 ) -> None:
@@ -315,6 +317,7 @@ def array_scan(
         raise RuntimeError(runtime.get_error_string())
 
 
+@warp_function
 def radix_sort_pairs(
     keys: wp.array, values: wp.array, count: int, begin_bit: int = 0, end_bit: int | None = None
 ) -> None:
@@ -430,6 +433,7 @@ def radix_sort_pairs(
             native_func(keys.ptr, values.ptr, count, begin_bit, end_bit, value_size)
 
 
+@warp_function
 def segmented_sort_pairs(
     keys: wp.array[wp.int32] | wp.array[wp.float32],
     values: wp.array[wp.int32],
@@ -623,6 +627,7 @@ def segmented_sort_pairs(
             )
 
 
+@warp_function
 def runlength_encode(
     values: wp.array,
     run_values: wp.array,
@@ -793,6 +798,7 @@ def _array_is_compact(values):
     return True
 
 
+@warp_function
 def array_sum(
     values: wp.array, out: wp.array | None = None, value_count: int | None = None, axis: int | None = None
 ) -> wp.array | float:
@@ -950,6 +956,7 @@ def array_sum(
     return out
 
 
+@warp_function
 def array_inner(
     a: wp.array, b: wp.array, out: wp.array | None = None, count: int | None = None, axis: int | None = None
 ) -> wp.array | float:

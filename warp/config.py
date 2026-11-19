@@ -31,7 +31,12 @@ class _ConfigModule(_types.ModuleType):
             )
         if name == "deterministic" and not isinstance(value, DeterministicMode):
             raise ValueError(f"warp.config.deterministic must be a warp.DeterministicMode value, got {value!r}")
+        previous = self.__dict__.get(name)
         super().__setattr__(name, value)
+        if name == "enable_array_function_overrides" and bool(previous) != bool(value):
+            from warp._src.function_dispatch import set_function_overrides_enabled  # noqa: PLC0415
+
+            set_function_overrides_enabled(bool(value))
 
 
 def _install_config_module_hooks() -> None:
@@ -113,6 +118,33 @@ Prints information about each kernel launch including:
 - Target device
 
 Note: Enabling this flag impacts performance.
+"""
+
+enable_array_function_overrides: bool = False
+"""Enable ``__warp_function__`` overrides for supported Warp host APIs.
+
+This setting controls host Python APIs, such as :func:`warp.launch` and
+:func:`warp.copy`; it does not change ``@wp.func`` definitions or
+``wp.Function`` overload resolution. The hook name follows PyTorch's
+``__torch_function__`` and NumPy's ``__array_function__`` conventions.
+
+Enable this at startup, before saving or importing aliases of Warp APIs.
+This includes importing integrations that cache or wrap Warp functions.
+Applications that never enable it call the original functions directly, including
+array initialization, without forwarding wrappers or per-call flag checks.
+See :doc:`/user_guide/function_dispatch` for coverage and protocol details.
+
+Changing this process-wide setting switches registered bindings in loaded Warp
+modules and the native array initializer. Aliases saved before activation keep
+their native outer entry points, which may still call wrapped helpers internally.
+Aliases saved while enabled retain their wrapper and honor subsequent flag
+changes. Change the setting only between tracing sessions, without concurrent calls.
+
+Hooks can delegate directly: overrides are automatically suppressed in the current
+execution context while a hook or native implementation runs. Graph replay and
+saved launch-command execution bypass the protocol.
+
+Note: Enabling this flag impacts performance even when no operand defines a hook.
 """
 
 mode: str = "release"

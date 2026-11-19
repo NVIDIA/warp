@@ -34,6 +34,7 @@ import numpy as np
 
 import warp
 import warp.config
+from warp._src.function_dispatch import default_warp_function, register_api_method, suppress_warp_function
 from warp._src.logger import log_warning
 
 # NumPy versions before 2.4 incorrectly take an undocumented scalar path when
@@ -623,6 +624,8 @@ class Array(Generic[DType, NDim]):
         dtype: type
         ndim: int
         size: int
+
+    __warp_function__ = classmethod(default_warp_function)
 
     def __add__(self, other) -> array:
         return warp.map(warp.add, self, other)  # type: ignore
@@ -3760,6 +3763,7 @@ class array(Array[DType, NDim]):
         instance._memory_kind = None
         return instance
 
+    @suppress_warp_function
     def __init__(
         self,
         data: list | tuple | np.ndarray | None = None,
@@ -5455,6 +5459,9 @@ class array(Array[DType, NDim]):
         warp._src.context.runtime.core.wp_cuda_ipc_get_mem_handle(self.ptr, ipc_handle_buffer)
 
         return ipc_handle_buffer.raw
+
+
+register_api_method(array, "__init__")
 
 
 # aliases for arrays with small dimensions

@@ -10,6 +10,7 @@ import numpy
 
 import warp
 import warp._src.context
+from warp._src.function_dispatch import warp_function
 
 if TYPE_CHECKING:
     import torch
@@ -187,6 +188,7 @@ dtype_is_compatible.compatible_sets = None
 
 
 # wrap a PyTorch tensor to a wp.array, data is not copied
+@warp_function
 def from_torch(
     t: torch.Tensor,
     dtype: type | None = None,
@@ -340,6 +342,7 @@ def from_torch(
         return a
 
 
+@warp_function
 def to_torch(a: warp.array, requires_grad: bool | None = None):
     """Convert a Warp array to a PyTorch tensor without copying the data.
 
