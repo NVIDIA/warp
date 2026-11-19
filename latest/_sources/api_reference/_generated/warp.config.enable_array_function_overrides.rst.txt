@@ -1,0 +1,6 @@
+﻿warp.config.enable\_array\_function\_overrides
+==============================================
+
+.. currentmodule:: warp.config
+
+.. autodata:: enable_array_function_overrides

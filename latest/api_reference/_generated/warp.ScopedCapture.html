@@ -412,6 +412,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/interoperability/jax.html">JAX Interoperability</a></li>
 </ul>
 </details></li>
+<li class="toctree-l1"><a class="reference internal" href="../../user_guide/function_dispatch.html">Host Function Overrides</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../user_guide/execution_and_performance.html">Execution and Performance</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/concurrency.html">Concurrency</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
@@ -523,7 +524,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">capture_mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">CaptureMode.THREAD_LOCAL</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L2337-L2418"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.ScopedCapture" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L2344-L2425"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.ScopedCapture" title="Link to this definition">#</a></dt>
 <dd><p>Context manager to capture a sequence of operations into a graph.</p>
 <p>Captures supported Warp operations for later replay with reduced launch
 overhead. Works on both CPU and CUDA devices. The captured graph is
