@@ -1766,6 +1766,38 @@ def test_ffi_jax_callable_pmap_multi_stage(test, device):
     assert_np_equal(np.asarray(combined), ref)
 
 
+@unittest.skipUnless(_jax_version() >= JAX_SHARD_MAP_MIN_VERSION, "JAX version too old")
+def test_ffi_jax_callable_shard_map_graph_modes(test, device):
+    """Capture and replay Warp graphs for the same call on every device of one process."""
+    jax = _import_jax()
+    jp = _import_jax_numpy()
+
+    devices = jax.local_devices()
+    if len(devices) < 2:
+        test.skipTest("At least two local JAX devices are required")
+
+    mesh = jax.sharding.Mesh(np.array(devices), ("devices",))
+    spec = jax.sharding.PartitionSpec("devices")
+    per_device = 64
+    x = jp.arange(len(devices) * per_device, dtype=jp.float32)
+
+    def on_each_device(jax_double):
+        return jax.jit(jax.shard_map(lambda v: jax_double(v)[0], mesh=mesh, in_specs=spec, out_specs=spec))
+
+    for graph_mode in (
+        wp.JaxCallableGraphMode.WARP,
+        wp.JaxCallableGraphMode.WARP_STAGED,
+        wp.JaxCallableGraphMode.WARP_STAGED_EX,
+    ):
+        with test.subTest(graph_mode=graph_mode):
+            double = on_each_device(wp.jax_callable(double_func, graph_mode=graph_mode))
+
+            # the first call captures a graph on each device, the second replays them
+            for scale in (1.0, 3.0):
+                y = double(scale * x)
+                assert_np_equal(np.asarray(y), 2.0 * scale * np.asarray(x))
+
+
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_callback(test, device):
     if device.ordinal > 0:
@@ -3378,6 +3410,7 @@ else:
                 test_ffi_jax_callable_pmap_multi_output,
                 test_ffi_jax_callable_pmap_mul,
                 test_ffi_jax_callable_pmap_multi_stage,
+                test_ffi_jax_callable_shard_map_graph_modes,
                 test_ffi_jax_kernel_autodiff_pmap_triple,
                 test_ffi_jax_kernel_autodiff_pmap_multi_output,
             )
