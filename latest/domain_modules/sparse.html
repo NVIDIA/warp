@@ -948,6 +948,36 @@ topology with functions such as <a class="reference internal" href="../api_refer
 <code class="docutils literal notranslate"><span class="pre">z</span></code> to new <code class="docutils literal notranslate"><span class="pre">offsets</span></code>, <code class="docutils literal notranslate"><span class="pre">columns</span></code> and <code class="docutils literal notranslate"><span class="pre">row_counts</span></code> arrays, so code that holds on to those arrays
 across the call sees new objects.</p>
 </section>
+<section id="batches-of-vectors">
+<h3>Batches of Vectors<a class="headerlink" href="#batches-of-vectors" title="Link to this heading">#</a></h3>
+<p><a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_mv.html#warp.sparse.bsr_mv" title="warp.sparse.bsr_mv"><code class="xref py py-func docutils literal notranslate"><span class="pre">bsr_mv()</span></code></a> also multiplies one matrix with many vectors at once. Store the vectors as the
+rows of a contiguous 2D array, for example of shape <code class="docutils literal notranslate"><span class="pre">(count,</span> <span class="pre">A.shape[1])</span></code>, and the result has
+one row per vector:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">warp.sparse</span><span class="w"> </span><span class="kn">import</span> <span class="n">bsr_mv</span>
+
+<span class="n">X</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="mi">8</span><span class="p">,</span> <span class="n">A</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">A</span><span class="o">.</span><span class="n">scalar_type</span><span class="p">)</span>
+<span class="n">Y</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">8</span><span class="p">,</span> <span class="n">A</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">A</span><span class="o">.</span><span class="n">scalar_type</span><span class="p">)</span>
+<span class="n">bsr_mv</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">)</span>  <span class="c1"># Y[r] = A @ X[r] for every row r</span>
+<span class="n">bsr_mv</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">algorithm</span><span class="o">=</span><span class="s2">"columns"</span><span class="p">)</span>  <span class="c1"># pin a strategy</span>
+</pre></div>
+</div>
+<p>Reading each matrix row once for several vectors is often, but not always, faster than separate
+products. The <code class="docutils literal notranslate"><span class="pre">algorithm</span></code> argument selects the kernel strategy: <code class="docutils literal notranslate"><span class="pre">&quot;auto&quot;</span></code> (the default) chooses
+one, and <code class="docutils literal notranslate"><span class="pre">&quot;loop&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;rows&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;columns&quot;</span></code> pin one, which helps when the best choice for a
+workload is known. Pass <code class="docutils literal notranslate"><span class="pre">work_buffer</span></code> to reuse scratch storage across calls, for example inside
+a captured graph.</p>
+<p><code class="docutils literal notranslate"><span class="pre">&quot;auto&quot;</span></code> uses <code class="docutils literal notranslate"><span class="pre">&quot;loop&quot;</span></code> for a single vector, for <code class="docutils literal notranslate"><span class="pre">transpose</span></code>, for products recorded on a tape
+with operands that require gradients (the other strategies are forward-only and raise in that
+case), and on CUDA for block shapes other than 1x1 and 3x3, which were not benchmarked. Otherwise
+it picks <code class="docutils literal notranslate"><span class="pre">&quot;rows&quot;</span></code> on the CPU and for CSR matrices on CUDA, and for 3x3 BSR matrices on CUDA
+<code class="docutils literal notranslate"><span class="pre">&quot;rows&quot;</span></code> up to four vectors and <code class="docutils literal notranslate"><span class="pre">&quot;columns&quot;</span></code> beyond. <a class="reference internal" href="../api_reference/_generated/warp.sparse.bsr_mv.html#warp.sparse.bsr_mv" title="warp.sparse.bsr_mv"><code class="xref py py-func docutils literal notranslate"><span class="pre">bsr_mv()</span></code></a> decides on every call and
+never synchronizes, so it works inside captured graphs but cannot see how many entries each row
+actually stores; the stored count of a compact matrix is only an upper bound on the host. Short
+rows favor <code class="docutils literal notranslate"><span class="pre">&quot;rows&quot;</span></code>, but CSR matrices with long or irregular rows (more than about 16 entries)
+are often several times faster with <code class="docutils literal notranslate"><span class="pre">&quot;columns&quot;</span></code> pinned for four or more vectors. The rule was
+fitted to finite-element and irregular matrices and may change between releases.</p>
+</section>
 <section id="kernel-level-utilities">
 <h3>Kernel-level utilities<a class="headerlink" href="#kernel-level-utilities" title="Link to this heading">#</a></h3>
 <p>The following Warp functions are available for use in kernels:</p>
@@ -1039,6 +1069,7 @@ Custom operators can be implemented using the <a class="reference internal" href
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#converting-back-to-coo-format">Converting back to COO Format</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#matrix-operations">Matrix Operations</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#differentiating-matrix-operations">Differentiating Matrix Operations</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#batches-of-vectors">Batches of Vectors</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#kernel-level-utilities">Kernel-level utilities</a></li>
 </ul>
 </li>

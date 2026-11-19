@@ -523,11 +523,17 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">transpose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">work_buffer</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 <dd><em class="sig-param"><span class="n"><span class="pre">tile_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">algorithm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'auto'</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L5365-L5449"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_mv" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/sparse.py#L5366-L5505"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.sparse.bsr_mv" title="Link to this definition">#</a></dt>
 <dd><p>Perform the sparse matrix-vector product <code class="docutils literal notranslate"><span class="pre">y</span> <span class="pre">:=</span> <span class="pre">alpha</span> <span class="pre">*</span> <span class="pre">A</span> <span class="pre">*</span> <span class="pre">x</span> <span class="pre">+</span> <span class="pre">beta</span> <span class="pre">*</span> <span class="pre">y</span></code> and return <code class="docutils literal notranslate"><span class="pre">y</span></code>.</p>
 <p>The <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">y</span></code> vectors are allowed to alias.</p>
+<p><code class="docutils literal notranslate"><span class="pre">x</span></code> may also be a batch: a contiguous 2D array whose rows each hold one vector
+with <code class="docutils literal notranslate"><span class="pre">A</span></code>’s column dimension, for example of shape <code class="docutils literal notranslate"><span class="pre">(count,</span> <span class="pre">A.shape[1])</span></code> for a scalar
+dtype. Each row is then multiplied independently, <code class="docutils literal notranslate"><span class="pre">y[r]</span> <span class="pre">:=</span> <span class="pre">alpha</span> <span class="pre">*</span> <span class="pre">A</span> <span class="pre">*</span> <span class="pre">x[r]</span> <span class="pre">+</span> <span class="pre">beta</span> <span class="pre">*</span> <span class="pre">y[r]</span></code>,
+and <code class="docutils literal notranslate"><span class="pre">y</span></code> has one row per vector. A 2D array holding a single vector keeps its
+single-vector meaning unless <code class="docutils literal notranslate"><span class="pre">algorithm</span></code> is set.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -539,12 +545,38 @@
 <li><p><strong>transpose</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If <code class="docutils literal notranslate"><span class="pre">True</span></code>, use the transpose of the matrix <code class="docutils literal notranslate"><span class="pre">A</span></code>. In this case the result is <strong>non-deterministic</strong>.</p></li>
 <li><p><strong>work_buffer</strong> (<em>Array</em><em>[</em><em>Vector</em><em>[</em><a class="reference internal" href="warp.Scalar.html#warp.Scalar" title="warp.Scalar"><em>Scalar</em></a><em>, </em><em>Rows</em><em>] </em><em>| </em><a class="reference internal" href="warp.Scalar.html#warp.Scalar" title="warp.Scalar"><em>Scalar</em></a><em>] </em><em>| </em><em>None</em>) – Temporary storage is required if and only if <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">y</span></code> are the same vector.
 If provided, the <code class="docutils literal notranslate"><span class="pre">work_buffer</span></code> array will be used for this purpose,
-otherwise a temporary allocation will be performed.</p></li>
+otherwise a temporary allocation will be performed. For a batch with
+<code class="docutils literal notranslate"><span class="pre">algorithm=&quot;loop&quot;</span></code>, its first output-vector-sized part serves each row in turn. With
+<code class="docutils literal notranslate"><span class="pre">&quot;rows&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;columns&quot;</span></code>, it is instead a contiguous
+1D array of <code class="docutils literal notranslate"><span class="pre">A</span></code>’s scalar type with at least <code class="docutils literal notranslate"><span class="pre">count</span> <span class="pre">*</span> <span class="pre">A.shape[0]</span></code> or
+<code class="docutils literal notranslate"><span class="pre">count</span> <span class="pre">*</span> <span class="pre">(A.shape[0]</span> <span class="pre">+</span> <span class="pre">A.shape[1])</span></code> entries respectively, and reusing one avoids a
+temporary allocation on every call.</p></li>
 <li><p><strong>tile_size</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a>) – If a positive integer, use tiles of this size to compute the matrix-vector product.
 On CPU, values greater than <code class="docutils literal notranslate"><span class="pre">1</span></code> require <a class="reference internal" href="warp.config.enable_cpu_blocks.html#warp.config.enable_cpu_blocks" title="warp.config.enable_cpu_blocks"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.enable_cpu_blocks</span></code></a> and otherwise
 raise a <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ValueError</span></code></a>. Ignored when <code class="docutils literal notranslate"><span class="pre">transpose</span></code> is <code class="docutils literal notranslate"><span class="pre">True</span></code>. If negative, disable
 tile-based computation. Defaults to <code class="docutils literal notranslate"><span class="pre">0</span></code>, which determines whether to use tiles using a heuristic
 based on the matrix shape and number of non-zeros.</p></li>
+<li><p><strong>algorithm</strong> (<em>Literal</em><em>[</em><em>'auto'</em><em>, </em><em>'loop'</em><em>, </em><em>'rows'</em><em>, </em><em>'columns'</em><em>]</em>) – <p>Kernel strategy for a batch of vectors:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;loop&quot;</span></code> applies the single-vector product to each vector in turn. It supports every
+matrix, device and <code class="docutils literal notranslate"><span class="pre">transpose</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;rows&quot;</span></code> computes each result row directly: one thread per vector and scalar row, or
+for square blocks on CUDA beyond two vectors, eight lanes per block row. It supports
+square blocks.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;columns&quot;</span></code> transposes the batch so that the vectors’ entries are adjacent, reads each
+matrix row once for up to eight vectors, and transposes back. It supports square blocks
+on CUDA and needs scratch storage for both transposed operands.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;auto&quot;</span></code> selects a strategy without synchronizing. It uses <code class="docutils literal notranslate"><span class="pre">&quot;loop&quot;</span></code> for a single
+vector, for <code class="docutils literal notranslate"><span class="pre">transpose</span></code>, when any operand requires gradients, and on CUDA for block
+shapes other than 1x1 and 3x3. Otherwise it uses <code class="docutils literal notranslate"><span class="pre">&quot;rows&quot;</span></code> on CPU and for CSR matrices
+on CUDA, and for 3x3 BSR on CUDA <code class="docutils literal notranslate"><span class="pre">&quot;rows&quot;</span></code> up to four vectors and <code class="docutils literal notranslate"><span class="pre">&quot;columns&quot;</span></code> beyond.
+It cannot see how many entries each row stores, so pin <code class="docutils literal notranslate"><span class="pre">&quot;columns&quot;</span></code> for CSR matrices
+with long or irregular rows, which can be several times faster from four vectors.</p></li>
+</ul>
+<p>Explicit choices always run the named strategy and raise <a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#ValueError" title="(in Python v3.15)"><code class="xref py py-class docutils literal notranslate"><span class="pre">ValueError</span></code></a> where it is
+unsupported, including for operands that require gradients, since <code class="docutils literal notranslate"><span class="pre">&quot;rows&quot;</span></code> and
+<code class="docutils literal notranslate"><span class="pre">&quot;columns&quot;</span></code> are forward-only. A single vector requires <code class="docutils literal notranslate"><span class="pre">&quot;auto&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;loop&quot;</span></code>.</p>
+</p></li>
 </ul>
 </dd>
 <dt class="field-even">Return type<span class="colon">:</span></dt>
@@ -552,7 +584,8 @@ based on the matrix shape and number of non-zeros.</p></li>
 </dd>
 </dl>
 <p>When recorded on a <a class="reference internal" href="warp.Tape.html#warp.Tape" title="warp.Tape"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Tape</span></code></a>, the product is differentiable with respect to <code class="docutils literal notranslate"><span class="pre">x</span></code>, the input <code class="docutils literal notranslate"><span class="pre">y</span></code>
-and the values of <code class="docutils literal notranslate"><span class="pre">A</span></code>, restricted to its non-zero topology.</p>
+and the values of <code class="docutils literal notranslate"><span class="pre">A</span></code>, restricted to its non-zero topology. For a batch of vectors, <code class="docutils literal notranslate"><span class="pre">&quot;auto&quot;</span></code> and
+<code class="docutils literal notranslate"><span class="pre">&quot;loop&quot;</span></code> are differentiable; <code class="docutils literal notranslate"><span class="pre">&quot;rows&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;columns&quot;</span></code> are forward-only.</p>
 </dd></dl>
 
 </section>
