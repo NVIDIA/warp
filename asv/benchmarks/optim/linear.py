@@ -3,6 +3,8 @@
 
 """Benchmark the dot products and solves of ``warp.optim.linear``."""
 
+import inspect
+
 import numpy as np
 
 import warp as wp
@@ -19,6 +21,9 @@ CG_ITERATIONS = 100
 # Small enough that every solve runs all CG_ITERATIONS, so the timing doesn't
 # depend on when the solver detects convergence.
 CG_TOLERANCE = 1.0e-30
+
+# CI also runs these benchmarks against builds from before `use_cuda_graph` was renamed to `use_graph`.
+_USE_GRAPH_KEYWORD = "use_graph" if "use_graph" in inspect.signature(cg).parameters else "use_cuda_graph"
 
 
 def _get_device(device_name):
@@ -80,8 +85,8 @@ class LinearSolverDot:
 class LinearSolverCg:
     """Measure a fixed number of Jacobi-preconditioned CG iterations on a 2D Laplacian.
 
-    ``cpu`` and ``cuda`` use the default ``use_cuda_graph``, and ``cpu_graph``
-    passes ``use_cuda_graph=True`` on CPU.
+    ``cpu`` and ``cuda`` use the default ``use_graph``, and ``cpu_graph``
+    passes ``use_graph=True`` on CPU.
     """
 
     params = ["cpu", "cpu_graph", "cuda"]
@@ -95,7 +100,7 @@ class LinearSolverCg:
     def setup(self, mode):
         wp.init()
         self.device = _get_device("cuda" if mode == "cuda" else "cpu")
-        self.use_cuda_graph = True if mode == "cpu_graph" else None
+        self.use_graph = True if mode == "cpu_graph" else None
 
         self.A = _laplacian_2d(LAPLACIAN_RES, self.device)
         self.M = preconditioner(self.A, "diag")
@@ -109,7 +114,7 @@ class LinearSolverCg:
 
     def _solve(self):
         self.x.zero_()
-        kwargs = {} if self.use_cuda_graph is None else {"use_cuda_graph": self.use_cuda_graph}
+        kwargs = {} if self.use_graph is None else {_USE_GRAPH_KEYWORD: self.use_graph}
         return cg(
             self.A,
             self.b,

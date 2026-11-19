@@ -431,7 +431,7 @@ class KrylovSolve(_SolveAction):
             atol=self.atol,
             maxiter=self.maxiter,
             check_every=0,
-            use_cuda_graph=is_conditional_graph_supported(),
+            use_graph=is_conditional_graph_supported(),
             run=False,
             **options,
         )

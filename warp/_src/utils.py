@@ -32,6 +32,16 @@ from warp._src.types import Array, DType, type_repr, types_equal
 map_cache: dict[tuple, tuple] = {}
 
 
+class _DeprecatedArgumentDefault:
+    """Represent an old public default while detecting whether it was supplied."""
+
+    def __init__(self, value):
+        self.value = value
+
+    def __repr__(self):
+        return repr(self.value)
+
+
 # expand a 7-vec to a tuple of arrays
 def transform_expand(t):
     """Expand a flat 7-element sequence into a :class:`warp.transformf` (position + quaternion)."""
