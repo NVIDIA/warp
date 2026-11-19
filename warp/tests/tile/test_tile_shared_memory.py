@@ -546,6 +546,44 @@ def test_tile_function_allocations_use_peak_shared_memory(test, device):
     test.assertEqual(hooks.backward_smem_bytes, expected_required_shared * 2)
 
 
+def test_tile_function_returned_tile_reserves_shared_memory(test, device):
+    """Reserve shared memory for a returned tile that the caller moves to shared storage."""
+    DIM = 16
+    BLOCK_DIM = 128
+
+    @wp.func
+    def double_tile(a: wp.array[float]):
+        t = wp.tile_load(a, shape=DIM)
+        return wp.tile_map(wp.add, t, t)
+
+    @wp.kernel(module="unique")
+    def compute(a: wp.array[float], out: wp.array2d[float]):
+        t = double_tile(a)
+        # broadcasting needs its input in shared memory, which also moves the callee's tile there
+        wp.tile_store(out, wp.tile_broadcast(t, shape=(DIM, DIM)))
+
+    a = wp.array(np.arange(DIM, dtype=np.float32), device=device, requires_grad=True)
+    out = wp.zeros((DIM, DIM), dtype=float, device=device, requires_grad=True)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(compute, dim=[1], inputs=[a], outputs=[out], block_dim=BLOCK_DIM, device=device)
+
+    assert_np_equal(out.numpy(), np.tile(2.0 * np.arange(DIM, dtype=np.float32), (DIM, 1)))
+
+    tape.backward(grads={out: wp.ones_like(out)})
+    assert_np_equal(a.grad.numpy(), np.full(DIM, 2.0 * DIM, dtype=np.float32))
+
+    if wp.get_device(device).is_cuda:
+        module_exec = compute.module.load(device, BLOCK_DIM)
+        hooks = module_exec.get_kernel_hooks(compute)
+
+        # the tile in the kernel and the tile in the function
+        expected_forward_bytes = 2 * DIM * 4
+
+        test.assertEqual(hooks.forward_smem_bytes, expected_forward_bytes)
+        test.assertEqual(hooks.backward_smem_bytes, expected_forward_bytes * 2)
+
+
 def round_up(a, b):
     return b * ((a + b - 1) // b)
 
@@ -1414,6 +1452,12 @@ add_function_test(
     TestTileSharedMemory,
     "test_tile_function_allocations_use_peak_shared_memory",
     test_tile_function_allocations_use_peak_shared_memory,
+    devices=devices,
+)
+add_function_test(
+    TestTileSharedMemory,
+    "test_tile_function_returned_tile_reserves_shared_memory",
+    test_tile_function_returned_tile_reserves_shared_memory,
     devices=devices,
 )
 add_function_test(TestTileSharedMemory, "test_tile_shared_non_aligned", test_tile_shared_non_aligned, devices=devices)

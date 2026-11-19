@@ -2245,10 +2245,11 @@ class Adjoint:
         # Derived from ``adj.tree``; reset if the tree is mutated after it is populated.
         adj._syntax = None
 
-    # allocate extra space for a function call that requires its
+    # allocate extra space for a builtin call that requires its
     # own shared memory space, we treat shared memory as a stack
-    # where each function pushes and pops space off, the extra
-    # quantity is the 'roofline' amount required for the entire kernel
+    # where each call pushes and pops space off, the extra
+    # quantity is the 'roofline' amount required for the entire kernel;
+    # user-function calls are added by get_total_required_shared()
     def alloc_shared_extra(adj, num_bytes):
         adj.max_required_extra_shared_memory = max(adj.max_required_extra_shared_memory, num_bytes)
 
@@ -2270,8 +2271,20 @@ class Adjoint:
     # returns the total number of bytes for a function
     # based on it's own requirements + worst case
     # requirements of any dependent functions
-    def get_total_required_shared(adj):
-        return adj.get_own_required_shared() + adj.max_required_extra_shared_memory
+    def get_total_required_shared(adj, memo=None):
+        # callee frames are read here rather than at the call site: a tile returned by a callee shares its
+        # type with the caller's variable, so the caller can still move it to shared storage afterwards
+        if memo is None:
+            # per traversal by default, so a callee is walked once and no total outlives a storage change;
+            # pass one memo to several calls only when no storage can change between them
+            memo = {}
+        total = memo.get(adj)
+        if total is None:
+            extra = adj.max_required_extra_shared_memory
+            for callee in adj.called_user_functions:
+                extra = max(extra, callee.adj.get_total_required_shared(memo))
+            total = memo[adj] = adj.get_own_required_shared() + extra
+        return total
 
     # backward counterpart of get_total_required_shared();
     # callee frames come from ModuleBuilder._propagate_backward_shared_memory
@@ -3471,13 +3484,10 @@ class Adjoint:
                 for statement in reversed(reverse_prelude):
                     adj.add_reverse(statement)
 
-        # update our smem roofline requirements based on any
-        # shared memory required by the dependent function call
-        if not func_is_builtin:
-            adj.alloc_shared_extra(func.adj.get_total_required_shared() + extra_shared_memory)
-        else:
-            adj.alloc_shared_extra(extra_shared_memory)
-        # user-function callee frames are folded in post-build by ModuleBuilder._propagate_backward_shared_memory
+        # update our smem roofline requirements based on any shared memory required by the builtin;
+        # user-function callee frames are added by get_total_required_shared() in the forward pass
+        # and folded in post-build by ModuleBuilder._propagate_backward_shared_memory in the backward pass
+        adj.alloc_shared_extra(extra_shared_memory)
         # x2: the builtin's adjoint needs LTO workspace too; matches the previous blanket backward sizing
         adj.alloc_shared_extra_backward(extra_shared_memory * 2)
 

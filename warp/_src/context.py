@@ -3791,15 +3791,17 @@ class ModuleBuilder:
         # registers a function only after its callees finished building, so self.functions
         # insertion order is topological, and kernels are roots
         folded = set()
+        # this pass changes no tile storage, so one memo serves every call edge
+        forward_totals = {}
         for adj in adjs:
             required = adj.max_required_extra_shared_memory_backward
             for callee in adj.called_user_functions:
                 if callee.custom_replay_func is not None:
-                    replay = callee.custom_replay_func.adj.get_total_required_shared()
+                    replay = callee.custom_replay_func.adj.get_total_required_shared(forward_totals)
                 else:
-                    replay = callee.adj.get_total_required_shared()
+                    replay = callee.adj.get_total_required_shared(forward_totals)
                 if callee.custom_grad_func is not None:
-                    reverse = callee.custom_grad_func.adj.get_total_required_shared()
+                    reverse = callee.custom_grad_func.adj.get_total_required_shared(forward_totals)
                 elif callee.adj not in folded:
                     # fail loudly instead of silently under-reserving
                     raise RuntimeError(
