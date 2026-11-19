@@ -1512,6 +1512,20 @@ tile_shared_t::add() and tile_shared_t::assign() function automatically,
 but in some cases e.g.: tile_matmul() it is done manually.
 */
 
+// true if a store of a shared tile reads it with a row stride that puts the lanes of a warp in one bank, e.g. a
+// transposed view of a dense tile, and the tile divides into blocks of 16 bytes by the rows that fill a warp
+template <typename T, typename Layout> constexpr bool tile_store_in_row_blocks()
+{
+    if constexpr (Layout::Shape::N != 2 || sizeof(T) > 8 || 16 % sizeof(T) != 0) {
+        return false;
+    } else {
+        constexpr int cols = 16 / (int)sizeof(T);
+        return WP_TILE_BLOCK_DIM % WP_TILE_WARP_SIZE == 0 && Layout::Stride::dim(1) > 1
+            && (Layout::Stride::dim(1) * (int)sizeof(T)) % 32 == 0 && Layout::Shape::dim(1) % cols == 0
+            && Layout::Shape::dim(0) % (WP_TILE_WARP_SIZE / cols) == 0;
+    }
+}
+
 template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
     using Type = T;
     using Layout = L;
@@ -2061,6 +2075,35 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
 
                 return;
             }
+        }
+
+        // Each warp stores blocks of 16 bytes per row over several rows. The rows of a transposed tile are
+        // consecutive in shared memory, so the lanes spread over banks, and the half-sector writes cost less
+        // than the bank conflicts of a full row. Wider blocks (32 to 128 bytes) measured slower.
+        if constexpr (tile_store_in_row_blocks<T, Layout>()) {
+            constexpr int cols = 16 / (int)sizeof(T);
+            constexpr int rows = WP_TILE_WARP_SIZE / cols;
+            constexpr int blocks_per_row = Layout::Shape::dim(1) / cols;
+            const int lane = WP_TILE_THREAD_IDX % WP_TILE_WARP_SIZE;
+
+            for (int block = WP_TILE_THREAD_IDX / WP_TILE_WARP_SIZE; block < Layout::Size / WP_TILE_WARP_SIZE;
+                 block += WP_TILE_BLOCK_DIM / WP_TILE_WARP_SIZE) {
+                const int row = (block / blocks_per_row) * rows + lane / cols;
+                const int col = (block % blocks_per_row) * cols + lane % cols;
+
+                bool valid = true;
+                if constexpr (Global::bounds_check)
+                    valid = dest.offset[0] + row < dest.data.shape[0] && dest.offset[1] + col < dest.data.shape[1];
+
+                if (valid) {
+                    const int64_t byte_offset = int64_t(dest.data.strides[0]) * (dest.offset[0] + row)
+                        + int64_t(dest.data.strides[1]) * (dest.offset[1] + col);
+                    *reinterpret_cast<T*>(reinterpret_cast<char*>(dest.data.data) + byte_offset)
+                        = data(tile_coord(row, col));
+                }
+            }
+
+            return;
         }
 
 #endif  // defined(__CUDA_ARCH__)

@@ -1403,6 +1403,38 @@ def test_tile_transpose(test, device):
 
 
 @wp.kernel
+def test_tile_transpose_store_blocks_float_kernel(input: wp.array2d[float], output: wp.array2d[float]):
+    x = wp.tile_load(input, shape=(32, 64), storage="shared")
+    wp.tile_store(output, wp.tile_transpose(x), offset=(2, 1))
+
+
+@wp.kernel
+def test_tile_transpose_store_blocks_half_kernel(input: wp.array2d[wp.float16], output: wp.array2d[wp.float16]):
+    x = wp.tile_load(input, shape=(64, 32), storage="shared")
+    wp.tile_store(output, wp.tile_transpose(x), offset=(2, 1))
+
+
+def test_tile_transpose_store_blocks(test, device):
+    # tiles whose transposed rows are a multiple of 32 bytes apart in shared memory, stored at an offset that clips
+    # the last rows and columns
+    rng = np.random.default_rng(42)
+    for kernel, dtype, shape in (
+        (test_tile_transpose_store_blocks_float_kernel, wp.float32, (32, 64)),
+        (test_tile_transpose_store_blocks_half_kernel, wp.float16, (64, 32)),
+    ):
+        input = rng.random(shape).astype(wp.dtype_to_numpy(dtype))
+        output = wp.zeros((shape[1] - 3, shape[0] - 2), dtype=dtype, device=device)
+
+        wp.launch_tiled(
+            kernel, dim=[1], inputs=[wp.array(input, device=device), output], block_dim=TILE_DIM, device=device
+        )
+
+        expected = np.zeros(output.shape, dtype=input.dtype)
+        expected[2:, 1:] = input.T[: output.shape[0] - 2, : output.shape[1] - 1]
+        assert_np_equal(output.numpy(), expected)
+
+
+@wp.kernel
 def test_tile_broadcast_add_1d_kernel(input_a: wp.array[float], input_b: wp.array[float], output: wp.array[float]):
     a = wp.tile_load(input_a, shape=(10,))
     b = wp.tile_load(input_b, shape=(1,))
@@ -3006,6 +3038,7 @@ add_function_test(TestTile, "test_tile_binary_map_mixed_types", test_tile_binary
 add_function_test(TestTile, "test_tile_n_map", test_tile_n_map, devices=devices)
 add_function_test(TestTile, "test_tile_n_map_mixed_types", test_tile_n_map_mixed_types, devices=devices)
 add_function_test(TestTile, "test_tile_transpose", test_tile_transpose, devices=devices)
+add_function_test(TestTile, "test_tile_transpose_store_blocks", test_tile_transpose_store_blocks, devices=devices)
 add_function_test(
     TestTile,
     "test_tile_chained_arithmetic_forward_and_backward",

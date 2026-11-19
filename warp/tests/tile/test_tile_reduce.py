@@ -1560,8 +1560,48 @@ def test_tile_reduce_vector(test, device, block_dim=TILE_DIM):
     assert_np_equal(out.numpy(), np.array([[8.0, 8.0, 8.0]]))
 
 
+@wp.kernel(module="unique")
+def tile_sum_axis0_warp_order_100x32_kernel(x: wp.array2d[float], y: wp.array[float]):
+    a = wp.tile_load(x, shape=(100, 32), storage="shared")
+    wp.tile_store(y, wp.tile_sum(a, axis=0))
+
+
+@wp.kernel(module="unique")
+def tile_sum_axis0_warp_order_50x64_kernel(x: wp.array2d[float], y: wp.array[float]):
+    a = wp.tile_load(x, shape=(50, 64), storage="shared")
+    wp.tile_store(y, wp.tile_sum(a, axis=0))
+
+
+def sum_axis0_in_warp_order(values):
+    """Sum the rows of a 2D array like the warp reduction: shuffle-down trees over 32 rows, chunks added in order."""
+    total = None
+    for start in range(0, values.shape[0], 32):
+        lanes = values[start : start + 32]
+        for offset in (16, 8, 4, 2, 1):
+            reduced = lanes.copy()
+            reduced[: len(lanes) - offset] = lanes[: len(lanes) - offset] + lanes[offset:]
+            lanes = reduced
+        total = lanes[0] if total is None else total + lanes[0]
+    return total
+
+
+def test_tile_sum_axis0_warp_order(test, device):
+    rng = np.random.default_rng(7)
+    for kernel, shape in (
+        (tile_sum_axis0_warp_order_100x32_kernel, (100, 32)),
+        (tile_sum_axis0_warp_order_50x64_kernel, (50, 64)),
+    ):
+        x = (rng.standard_normal(shape) * 10.0 ** rng.integers(-3, 4, shape)).astype(np.float32)
+        out = wp.zeros(shape[1], dtype=float, device=device)
+
+        wp.launch_tiled(kernel, dim=[1], inputs=[wp.array(x, device=device), out], block_dim=TILE_DIM, device=device)
+
+        test.assertTrue(np.array_equal(out.numpy(), sum_axis0_in_warp_order(x)))
+
+
 devices = get_test_devices()
 cpu_devices = get_cpu_test_devices()
+cuda_devices = get_selected_cuda_test_devices()
 
 
 class TestTileReduce(unittest.TestCase):
@@ -1811,6 +1851,9 @@ for name, func in (
         devices=cpu_devices,
         enable_cpu_blocks=True,
     )
+add_function_test(
+    TestTileReduce, "test_tile_sum_axis0_warp_order", test_tile_sum_axis0_warp_order, devices=cuda_devices
+)
 add_function_test(TestTileReduce, "test_tile_reduce_matrix", test_tile_reduce_matrix, devices=devices)
 add_function_test(
     TestTileReduce, "test_tile_reduce_matrix_single_warp", test_tile_reduce_matrix, devices=devices, block_dim=32
