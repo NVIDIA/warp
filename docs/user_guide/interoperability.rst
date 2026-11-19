@@ -10,6 +10,10 @@ Guides in this section
   integrate autograd, and call Warp kernels from custom operators.
 * :doc:`JAX <interoperability/jax>`: Convert arrays, call Warp kernels through
   FFI, and use Warp with JAX transformations and distributed computation.
+* :doc:`Array function overrides <interoperability/array_function_overrides>`: Let
+  array subclasses and wrappers intercept supported Warp host APIs, such as
+  :func:`wp.launch <warp.launch>` and :func:`wp.copy <warp.copy>`, through
+  ``__warp_function__``.
 
 Quick Reference
 ---------------
@@ -371,3 +375,4 @@ The framework-specific converters (:func:`warp.to_torch`, :func:`warp.to_paddle`
 
    interoperability/pytorch
    interoperability/jax
+   interoperability/array_function_overrides

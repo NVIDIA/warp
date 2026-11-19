@@ -241,7 +241,6 @@ warp/examples/tile
     user_guide/differentiability
     user_guide/programming_model
     user_guide/interoperability
-    user_guide/function_dispatch
     user_guide/execution_and_performance
     user_guide/configuration
     user_guide/debugging

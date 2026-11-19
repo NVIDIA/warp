@@ -132,7 +132,7 @@ Enable this at startup, before saving or importing aliases of Warp APIs.
 This includes importing integrations that cache or wrap Warp functions.
 Applications that never enable it call the original functions directly, including
 array initialization, without forwarding wrappers or per-call flag checks.
-See :doc:`/user_guide/function_dispatch` for coverage and protocol details.
+See :doc:`/user_guide/interoperability/array_function_overrides` for coverage and protocol details.
 
 Changing this process-wide setting switches registered bindings in loaded Warp
 modules and the native array initializer. Aliases saved before activation keep
