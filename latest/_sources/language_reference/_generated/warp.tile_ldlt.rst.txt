@@ -1,0 +1,109 @@
+﻿warp.tile\_ldlt
+===============
+
+.. currentmodule:: warp._src.lang
+
+.. function:: tile_ldlt(A: Tile[Float, tuple[int, int]], fill_mode: str = "lower") -> tuple[Tile[Float, tuple[int, int]], Tile[int32, tuple[int]], Tile[int32, tuple[int]]]
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
+
+   Compute a Bunch-Kaufman factorization of a real symmetric square tile.
+   
+   Factor the symmetric matrix defined by the selected triangle of ``A`` without
+   modifying ``A``; the other triangle is ignored. This is a cooperative operation,
+   so every thread in the block must call it.
+   
+   Automatic differentiation of the packed factors holds the recorded permutation
+   and diagonal-block choices fixed. Pivot indices and status are nondifferentiable.
+   Gradients are undefined for singular inputs or at boundaries where the pivot or
+   block choices change. Only the selected input triangle receives gradients; each
+   off-diagonal input represents both symmetric matrix entries. On CUDA, a kernel
+   compiled with backward support reserves additional static shared memory for the
+   adjoint, which can limit the tile size. See :ref:`tile_shared_memory_budget` for
+   how to budget shared memory and for forward-only options.
+   
+   :param A: A nonempty real tile with ``shape=(N, N)`` and dtype ``float32`` or
+             ``float64``, with finite entries in the selected triangle.
+   :param fill_mode: Compile-time triangle selector, ``"lower"`` or ``"upper"``.
+   
+   :returns:
+   
+             * ``ld``: The packed factors, with ``shape=(N, N)`` and the dtype of ``A``.
+               For ``fill_mode="lower"``, they satisfy ``P @ A @ P.T = L @ D @ L.T``, where
+               ``L`` is unit lower triangular and ``D`` is symmetric block diagonal with
+               1-by-1 and 2-by-2 blocks. The diagonal of ``ld`` holds the diagonal of ``D``.
+               For each 2-by-2 block starting at ``k``, ``ld[k+1, k]`` holds its off-diagonal
+               entry, and ``L[k+1, k]`` is zero. All other strict lower entries hold ``L``,
+               which is already in permuted row order, so it needs no further row swaps.
+               The upper triangle of ``ld`` is zero. For ``fill_mode="upper"``, the storage
+               is transposed: ``ld`` holds ``U = L.T`` and the upper triangle of ``D``,
+               satisfying ``P @ A @ P.T = U.T @ D @ U``, and the lower triangle is zero.
+             * ``pivots``: An ``int32`` tile with ``shape=(N,)`` that encodes the symmetric
+               swaps and block sizes for either fill mode. Decode it in increasing index
+               order. If ``pivots[k] >= 0``, interchange rows and columns ``k`` and
+               ``pivots[k]`` and advance by one, which denotes a 1-by-1 diagonal block.
+               Otherwise, ``pivots[k] == pivots[k+1] == -(p+1)`` denotes a 2-by-2 block:
+               interchange rows and columns ``k+1`` and ``p``, then advance by two. Apply
+               the swaps to an identity permutation to construct ``P``.
+             * ``info``: An ``int32`` tile with ``shape=(1,)``. Zero indicates success. A
+               positive value ``i`` identifies the first exactly zero 1-by-1 pivot
+               ``D[i-1, i-1]``. Factorization completes for singular inputs, but the
+               factors cannot then be used for a nonsingular solve. This status does not
+               estimate conditioning.
+   :rtype: A tuple ``(ld, pivots, info)`` of tiles with dense shared storage
+   
+   .. rubric:: Example
+   
+   Factor a KKT matrix and check its inertia from the diagonal of ``D``. For this
+   matrix every pivot is 1-by-1, so ``P`` follows from the swaps directly.
+   
+   .. testsetup::
+   
+       __name__ = "warp_docs_tile_ldlt"
+   
+   .. testcode::
+   
+       @wp.kernel
+       def factor_kernel(
+           a: wp.array2d[float],
+           factors: wp.array2d[float],
+           pivots: wp.array[int],
+           status: wp.array[int],
+       ):
+           ld, p, info = wp.tile_ldlt(wp.tile_load(a, shape=(4, 4)))
+           wp.tile_store(factors, ld)
+           wp.tile_store(pivots, p)
+           wp.tile_store(status, info)
+   
+       # [[0, C], [C.T, H]] with two constraints and two primal variables
+       a_np = np.array(
+           [[0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0], [1.0, 0.0, 4.0, 1.0], [0.0, 1.0, 1.0, 3.0]],
+           dtype=np.float32,
+       )
+       a = wp.array(a_np)
+       factors = wp.zeros((4, 4), dtype=float)
+       pivots = wp.zeros(4, dtype=int)
+       status = wp.zeros(1, dtype=int)
+   
+       # one full warp cooperates on the factorization
+       wp.launch_tiled(factor_kernel, dim=1, inputs=[a], outputs=[factors, pivots, status], block_dim=32)
+   
+       ld = factors.numpy()
+       swaps = pivots.numpy()
+       perm = np.arange(4)
+       for k in range(4):  # all pivots are 1-by-1 here
+           perm[[k, swaps[k]]] = perm[[swaps[k], k]]
+   
+       ell = np.tril(ld, -1) + np.eye(4)
+       reconstructed = ell @ np.diag(np.diag(ld)) @ ell.T
+       print(status.numpy()[0], np.allclose(reconstructed, a_np[np.ix_(perm, perm)], atol=1e-5))
+       print((np.diag(ld) > 0).sum(), (np.diag(ld) < 0).sum())
+   
+   .. testoutput::
+   
+       0 True
+       2 2
+   

@@ -298,8 +298,10 @@ forward-equivalent rewrite preserves gradients. Check the complete kernel with
 Compare the total against
 :attr:`Device.max_shared_memory_per_block <warp.Device.max_shared_memory_per_block>` for the
 target device, leaving room for the static shared memory Warp reserves per block: at least
-four bytes per thread, or ``4 * block_dim``. A kernel launches only when its dynamic request
-*plus* that static reservation fits within the device budget. So a request slightly below
+four bytes per thread, or ``4 * block_dim``. Some differentiated tile operations, such as
+the backward pass of :func:`wp.tile_ldlt() <warp._src.lang.tile_ldlt>`, add their own static
+reservations. A kernel launches only when its dynamic request
+*plus* the static reservations fit within the device budget. So a request slightly below
 ``max_shared_memory_per_block`` can still fail, and raising ``block_dim`` lowers the dynamic
 ceiling without changing the tiles themselves. Warp does not report an oversized budget at
 compile time; see `Shared memory overflow`_ for how the failure surfaces.
@@ -780,6 +782,7 @@ Linear Algebra
 * :func:`tile_ifft <warp._src.lang.tile_ifft>`
 * :func:`tile_lu <warp._src.lang.tile_lu>`
 * :func:`tile_cholesky <warp._src.lang.tile_cholesky>`
+* :func:`tile_ldlt <warp._src.lang.tile_ldlt>`
 * :func:`tile_cholesky_inplace <warp._src.lang.tile_cholesky_inplace>`
 * :func:`tile_cholesky_solve <warp._src.lang.tile_cholesky_solve>`
 * :func:`tile_cholesky_solve_inplace <warp._src.lang.tile_cholesky_solve_inplace>`

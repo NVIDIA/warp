@@ -201,6 +201,7 @@ Tile Primitives
    tile_from_thread
    tile_full
    tile_ifft
+   tile_ldlt
    tile_load
    tile_load_indexed
    tile_lower_solve

@@ -810,8 +810,10 @@ forward-equivalent rewrite preserves gradients. Check the complete kernel with
 <p>Compare the total against
 <a class="reference internal" href="../../api_reference/_generated/warp.Device.html#warp.Device.max_shared_memory_per_block" title="warp.Device.max_shared_memory_per_block"><code class="xref py py-attr docutils literal notranslate"><span class="pre">Device.max_shared_memory_per_block</span></code></a> for the
 target device, leaving room for the static shared memory Warp reserves per block: at least
-four bytes per thread, or <code class="docutils literal notranslate"><span class="pre">4</span> <span class="pre">*</span> <span class="pre">block_dim</span></code>. A kernel launches only when its dynamic request
-<em>plus</em> that static reservation fits within the device budget. So a request slightly below
+four bytes per thread, or <code class="docutils literal notranslate"><span class="pre">4</span> <span class="pre">*</span> <span class="pre">block_dim</span></code>. Some differentiated tile operations, such as
+the backward pass of <a class="reference internal" href="../../language_reference/_generated/warp.tile_ldlt.html#warp._src.lang.tile_ldlt" title="warp._src.lang.tile_ldlt"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_ldlt()</span></code></a>, add their own static
+reservations. A kernel launches only when its dynamic request
+<em>plus</em> the static reservations fit within the device budget. So a request slightly below
 <code class="docutils literal notranslate"><span class="pre">max_shared_memory_per_block</span></code> can still fail, and raising <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> lowers the dynamic
 ceiling without changing the tiles themselves. Warp does not report an oversized budget at
 compile time; see <a class="reference internal" href="#shared-memory-overflow">Shared memory overflow</a> for how the failure surfaces.</p>
@@ -1290,6 +1292,7 @@ component-wise vector/matrix operations.</p>
 <li><p><a class="reference internal" href="../../language_reference/_generated/warp.tile_ifft.html#warp._src.lang.tile_ifft" title="warp._src.lang.tile_ifft"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_ifft</span></code></a></p></li>
 <li><p><a class="reference internal" href="../../language_reference/_generated/warp.tile_lu.html#warp._src.lang.tile_lu" title="warp._src.lang.tile_lu"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_lu</span></code></a></p></li>
 <li><p><a class="reference internal" href="../../language_reference/_generated/warp.tile_cholesky.html#warp._src.lang.tile_cholesky" title="warp._src.lang.tile_cholesky"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_cholesky</span></code></a></p></li>
+<li><p><a class="reference internal" href="../../language_reference/_generated/warp.tile_ldlt.html#warp._src.lang.tile_ldlt" title="warp._src.lang.tile_ldlt"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_ldlt</span></code></a></p></li>
 <li><p><a class="reference internal" href="../../language_reference/_generated/warp.tile_cholesky_inplace.html#warp._src.lang.tile_cholesky_inplace" title="warp._src.lang.tile_cholesky_inplace"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_cholesky_inplace</span></code></a></p></li>
 <li><p><a class="reference internal" href="../../language_reference/_generated/warp.tile_cholesky_solve.html#warp._src.lang.tile_cholesky_solve" title="warp._src.lang.tile_cholesky_solve"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_cholesky_solve</span></code></a></p></li>
 <li><p><a class="reference internal" href="../../language_reference/_generated/warp.tile_cholesky_solve_inplace.html#warp._src.lang.tile_cholesky_solve_inplace" title="warp._src.lang.tile_cholesky_solve_inplace"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_cholesky_solve_inplace</span></code></a></p></li>
