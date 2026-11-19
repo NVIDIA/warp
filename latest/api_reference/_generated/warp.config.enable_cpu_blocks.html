@@ -514,9 +514,11 @@
 <dt class="sig sig-object py" id="warp.config.enable_cpu_blocks">
 <span class="sig-prename descclassname"><span class="pre">warp.config.</span></span><span class="sig-name descname"><span class="pre">enable_cpu_blocks</span></span><span class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><span class="pre">bool</span></a></span><span class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></span><a class="headerlink" href="#warp.config.enable_cpu_blocks" title="Link to this definition">#</a></dt>
 <dd><p>Enable experimental CPU kernel launches with more than one logical thread per block.</p>
-<p>When <code class="docutils literal notranslate"><span class="pre">False</span></code>, CPU launch block dimensions greater than one resolve to one,
-preserving the historical CPU execution model. When <code class="docutils literal notranslate"><span class="pre">True</span></code>, explicit CPU
-block dimensions from 2 through 1024 run with cooperative fibers.</p>
+<p>When <code class="docutils literal notranslate"><span class="pre">False</span></code>, CPU launches use one logical thread per block, preserving the
+historical CPU execution model. When <code class="docutils literal notranslate"><span class="pre">True</span></code>, omitted or non-positive block
+dimensions default to 256, and block dimensions from 2 through 1024 run with
+cooperative fibers. Pass <code class="docutils literal notranslate"><span class="pre">block_dim=1</span></code> explicitly to use one logical thread
+per block with this setting enabled.</p>
 </dd></dl>
 
 </section>

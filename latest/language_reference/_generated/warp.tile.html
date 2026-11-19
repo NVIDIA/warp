@@ -576,9 +576,11 @@ tile has <code class="docutils literal notranslate"><span class="pre">dtype=matr
 </ul>
 <p>Quaternion values are supported with <code class="docutils literal notranslate"><span class="pre">preserve_type=True</span></code>. Use
 <a class="reference internal" href="warp.untile.html#warp._src.lang.untile" title="warp._src.lang.untile"><code class="xref py py-func docutils literal notranslate"><span class="pre">untile()</span></code></a> to convert the tile back to per-thread values.</p>
-<p>Every thread of the block must reach this call. On CPU the effective block width is
-<code class="docutils literal notranslate"><span class="pre">1</span></code>, so the tile has a single element regardless of the requested <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> -
-see <a class="reference internal" href="../../user_guide/programming_model/tiles.html#cpu-tile-semantics"><span class="std std-ref">CPU Tile Semantics</span></a>.</p>
+<p>Every thread of the block must reach this call. On CPU, the effective block width
+is <code class="docutils literal notranslate"><span class="pre">1</span></code> when <a class="reference internal" href="../../api_reference/_generated/warp.config.enable_cpu_blocks.html#warp.config.enable_cpu_blocks" title="warp.config.enable_cpu_blocks"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.enable_cpu_blocks</span></code></a> is <code class="docutils literal notranslate"><span class="pre">False</span></code>, so scalar inputs
+produce a one-element tile. When enabled, the block width defaults to 256 and
+honors explicit block dimensions; the tile’s trailing dimension follows that
+effective width. See <a class="reference internal" href="../../user_guide/programming_model/tiles.html#cpu-tile-semantics"><span class="std std-ref">CPU Tile Semantics</span></a>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">

@@ -29,9 +29,11 @@
    Quaternion values are supported with ``preserve_type=True``. Use
    :func:`~warp.untile` to convert the tile back to per-thread values.
    
-   Every thread of the block must reach this call. On CPU the effective block width is
-   ``1``, so the tile has a single element regardless of the requested ``block_dim`` -
-   see :ref:`CPU Tile Semantics <cpu_tile_semantics>`.
+   Every thread of the block must reach this call. On CPU, the effective block width
+   is ``1`` when :attr:`warp.config.enable_cpu_blocks` is ``False``, so scalar inputs
+   produce a one-element tile. When enabled, the block width defaults to 256 and
+   honors explicit block dimensions; the tile's trailing dimension follows that
+   effective width. See :ref:`CPU Tile Semantics <cpu_tile_semantics>`.
    
    :param x: A per-thread local value, e.g. scalar, vector, or matrix.
    :param preserve_type: If true, the tile will have the same data type as the input value.

@@ -1062,7 +1062,7 @@ and reject struct tiles.</p>
 component is one of these types. All other fields, including <code class="docutils literal notranslate"><span class="pre">bool</span></code>, the narrow integers
 <code class="docutils literal notranslate"><span class="pre">[u]int8</span></code> and <code class="docutils literal notranslate"><span class="pre">[u]int16</span></code>, and array fields, are carried through the struct value unchanged
 rather than accumulated. Accumulation is differentiable for the accumulating fields,
-subject to the general CPU <code class="docutils literal notranslate"><span class="pre">block_dim=1</span></code> rule described under <a class="reference internal" href="#cpu-vs-gpu-behavior-differences">CPU vs. GPU behavior differences</a>.</p>
+subject to the CPU execution mode described under <a class="reference internal" href="#cpu-vs-gpu-behavior-differences">CPU vs. GPU behavior differences</a>.</p>
 <p>In the example below, <a class="reference internal" href="../../language_reference/_generated/warp.tile_sum.html#warp._src.lang.tile_sum" title="warp._src.lang.tile_sum"><code class="xref py py-func docutils literal notranslate"><span class="pre">tile_sum</span></code></a> reduces a tile of structs: the <code class="docutils literal notranslate"><span class="pre">weight</span></code>
 field is summed across the tile, while the <code class="docutils literal notranslate"><span class="pre">values</span></code> array field is carried through as a descriptor
 (the array pointer is copied, its contents are left untouched):</p>
@@ -1476,7 +1476,9 @@ From here, the tile can be used in other regular cooperative operations such as 
 <p>All threads in a block must execute tile operations, but code surrounding tile operations may contain arbitrary conditional logic.</p>
 </div>
 <p>Extra consideration is needed when using tiles in SIMT kernels that are meant to run on both the GPU and the CPU.
-On the CPU, <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> is set to 1, which can change the behavior of kernels using <a class="reference internal" href="../../language_reference/_generated/warp.tile.html#warp._src.lang.tile" title="warp._src.lang.tile"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile()</span></code></a>. Consider the following example:</p>
+On the CPU, <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> resolves to 1 when <a class="reference internal" href="../../api_reference/_generated/warp.config.enable_cpu_blocks.html#warp.config.enable_cpu_blocks" title="warp.config.enable_cpu_blocks"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.enable_cpu_blocks</span></code></a> is <code class="docutils literal notranslate"><span class="pre">False</span></code>, which can change the behavior of kernels using <a class="reference internal" href="../../language_reference/_generated/warp.tile.html#warp._src.lang.tile" title="warp._src.lang.tile"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile()</span></code></a>.
+When CPU blocks are enabled, an omitted or non-positive <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> defaults to 256, and explicit block dimensions are honored.
+The tile’s trailing dimension follows this effective block size. Consider the following example:</p>
 <div class="highlight-python notranslate" id="tile-reduce-blockwise-example"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
 
 <span class="n">TILE_DIM</span> <span class="o">=</span> <span class="mi">4</span>
@@ -1504,12 +1506,13 @@ On the CPU, <code class="docutils literal notranslate"><span class="pre">block_d
 </div>
 <p>Here, we launch <code class="docutils literal notranslate"><span class="pre">N=12</span></code> logical threads. The tile size is 4, so there are three blocks in total that are created with <a class="reference internal" href="../../language_reference/_generated/warp.tile.html#warp._src.lang.tile" title="warp._src.lang.tile"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile()</span></code></a>.
 The tile reduction operation stores the block’s sum in the first thread of the block, so we see 6, 22, and 38 stored at indices 0, 4, and 8.
-If we instead launch this kernel on the CPU, we get the following output:</p>
+If we instead launch this kernel on the CPU with <a class="reference internal" href="../../api_reference/_generated/warp.config.enable_cpu_blocks.html#warp.config.enable_cpu_blocks" title="warp.config.enable_cpu_blocks"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.enable_cpu_blocks</span></code></a> disabled, we get the following output:</p>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>[ 0  1  2  3  4  5  6  7  8  9 10 11]
 </pre></div>
 </div>
-<p>When launching on the CPU, <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> is set to 1, so the tile generated with <a class="reference internal" href="../../language_reference/_generated/warp.tile.html#warp._src.lang.tile" title="warp._src.lang.tile"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile()</span></code></a> has a size of 1, and the reduction of each tile simply returns the value of the tile.
-So if you are designing a kernel that is meant to get the same result running on the GPU or the CPU, it should be designed to be independent of the value of <code class="docutils literal notranslate"><span class="pre">block_dim</span></code>.
+<p>With CPU blocks disabled, <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> is 1, so <a class="reference internal" href="../../language_reference/_generated/warp.tile.html#warp._src.lang.tile" title="warp._src.lang.tile"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile()</span></code></a> creates a one-element tile from each scalar value, and each reduction returns that value.
+With CPU blocks enabled, the explicit <code class="docutils literal notranslate"><span class="pre">block_dim=TILE_DIM</span></code> is honored, and the CPU launch produces the same blockwise sums as the GPU launch.
+For kernels that must also support CPU execution with CPU blocks disabled, design the computation to be independent of <code class="docutils literal notranslate"><span class="pre">block_dim</span></code>.
 For instance, if we want a full array reduction that works consistently across devices, we can use <a class="reference internal" href="../../language_reference/_generated/warp.tile_atomic_add.html#warp._src.lang.tile_atomic_add" title="warp._src.lang.tile_atomic_add"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_atomic_add()</span></code></a> to accumulate results from all blocks:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
 
@@ -1662,9 +1665,11 @@ launch requested <code class="docutils literal notranslate"><span class="pre">bl
 lanes <code class="docutils literal notranslate"><span class="pre">0</span></code> through <code class="docutils literal notranslate"><span class="pre">block_dim</span> <span class="pre">-</span> <span class="pre">1</span></code> can each contribute values to the same block tile.
 On CPU the effective lane count is <code class="docutils literal notranslate"><span class="pre">1</span></code>, so only lane <code class="docutils literal notranslate"><span class="pre">0</span></code> participates.</p></li>
 </ul>
-<p>Set <a class="reference internal" href="../../api_reference/_generated/warp.config.enable_cpu_blocks.html#warp.config.enable_cpu_blocks" title="warp.config.enable_cpu_blocks"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.enable_cpu_blocks</span></code></a> to <code class="docutils literal notranslate"><span class="pre">True</span></code> to opt into explicit CPU
-block dimensions from 2 through 1024. Warp then executes the logical lanes as
-cooperative stackful fibers on one host thread, so <code class="docutils literal notranslate"><span class="pre">wp.block_dim()</span></code>, the trailing
+<p>Set <a class="reference internal" href="../../api_reference/_generated/warp.config.enable_cpu_blocks.html#warp.config.enable_cpu_blocks" title="warp.config.enable_cpu_blocks"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.enable_cpu_blocks</span></code></a> to <code class="docutils literal notranslate"><span class="pre">True</span></code> to default to 256 logical
+threads per CPU block and honor explicit block dimensions from 2 through 1024.
+An omitted or non-positive <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> selects that default; pass
+<code class="docutils literal notranslate"><span class="pre">block_dim=1</span></code> explicitly to retain a single lane. Warp executes the logical
+lanes as cooperative stackful fibers on one host thread, so <code class="docutils literal notranslate"><span class="pre">wp.block_dim()</span></code>, the trailing
 lane index, barriers, and shared tile state follow the requested block shape. This
 path is initially intended for correctness testing and CPU/CUDA equivalence; it is
 not SIMD or multi-core acceleration. See <a class="reference internal" href="../configuration.html#configuration"><span class="std std-ref">Configuration</span></a> for
@@ -2198,16 +2203,19 @@ the two programming models.</p>
 <p>Tile operations (<a class="reference internal" href="../../language_reference/_generated/warp.tile_load.html#warp._src.lang.tile_load" title="warp._src.lang.tile_load"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_load()</span></code></a>,
 <a class="reference internal" href="../../language_reference/_generated/warp.tile_store.html#warp._src.lang.tile_store" title="warp._src.lang.tile_store"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_store()</span></code></a>,
 <a class="reference internal" href="../../language_reference/_generated/warp.tile_matmul.html#warp._src.lang.tile_matmul" title="warp._src.lang.tile_matmul"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.tile_matmul()</span></code></a>, etc.) work with either launch
-function. By default, Warp resolves CPU launches to <code class="docutils literal notranslate"><span class="pre">block_dim=1</span></code>; see the
-next question for CPU-specific behavior and the experimental opt-in.</p>
+function. CPU launches default to <code class="docutils literal notranslate"><span class="pre">block_dim=1</span></code> unless experimental CPU blocks
+are enabled, in which case the default becomes 256; see the next question for
+CPU-specific behavior and the experimental opt-in.</p>
 </section>
 <section id="cpu-vs-gpu-behavior-differences">
 <span id="tiles-cpu-gpu-behavior-differences"></span><h3>CPU vs. GPU behavior differences<a class="headerlink" href="#cpu-vs-gpu-behavior-differences" title="Link to this heading">#</a></h3>
 <p><em>Why does my kernel using tiles behave differently depending on whether I run it on a CPU or GPU?</em></p>
 <p>By default, Warp resolves CPU launches to <code class="docutils literal notranslate"><span class="pre">block_dim=1</span></code>, which collapses the
 logical block to a single lane. The experimental
-<a class="reference internal" href="../../api_reference/_generated/warp.config.enable_cpu_blocks.html#warp.config.enable_cpu_blocks" title="warp.config.enable_cpu_blocks"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.enable_cpu_blocks</span></code></a> option instead honors explicit CPU block
-dimensions through 1024. See <a class="reference internal" href="#cpu-tile-semantics"><span class="std std-ref">CPU Tile Semantics</span></a> for
+<a class="reference internal" href="../../api_reference/_generated/warp.config.enable_cpu_blocks.html#warp.config.enable_cpu_blocks" title="warp.config.enable_cpu_blocks"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.enable_cpu_blocks</span></code></a> option instead defaults to 256 logical
+threads per CPU block and honors explicit dimensions through 1024. Pass
+<code class="docutils literal notranslate"><span class="pre">block_dim=1</span></code> explicitly to retain a single lane with the option enabled.
+See <a class="reference internal" href="#cpu-tile-semantics"><span class="std std-ref">CPU Tile Semantics</span></a> for
 the affected patterns, resource limits, and portable workarounds.</p>
 </section>
 <section id="tile-operations-in-divergent-branches">

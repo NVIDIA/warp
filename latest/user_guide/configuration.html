@@ -581,15 +581,17 @@ guidance on settings that affect compilation and startup.</p>
 <div class="versionadded">
 <p><span class="versionmodified added">Added in version 1.18.0.</span></p>
 </div>
-<p>By default, an omitted or non-positive <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> selects one logical thread
-per block on CPU and 256 threads per block on CUDA. CPU launches also preserve
-the historical effective <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> of <code class="docutils literal notranslate"><span class="pre">1</span></code> when a larger value is
-requested. To honor an explicit CPU <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> from 2 through 1024, enable
-the experimental cooperative-block path:</p>
+<p>With <a class="reference internal" href="../api_reference/_generated/warp.config.enable_cpu_blocks.html#warp.config.enable_cpu_blocks" title="warp.config.enable_cpu_blocks"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.enable_cpu_blocks</span></code></a> disabled, CPU launches preserve the
+historical effective <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> of <code class="docutils literal notranslate"><span class="pre">1</span></code>, including when a larger value is
+requested. Enabling the experimental cooperative-block path makes an omitted
+or non-positive <code class="docutils literal notranslate"><span class="pre">block_dim</span></code> select 256 logical threads per block, matching
+CUDA, and honors explicit CPU block dimensions from 2 through 1024:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">enable_cpu_blocks</span> <span class="o">=</span> <span class="kc">True</span>
-<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">count</span><span class="p">,</span> <span class="n">block_dim</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cpu"</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">count</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">"cpu"</span><span class="p">)</span>  <span class="c1"># Uses block_dim=256.</span>
 </pre></div>
 </div>
+<p>Pass <code class="docutils literal notranslate"><span class="pre">block_dim=1</span></code> explicitly to retain one logical thread per block while
+the setting is enabled. CUDA defaults remain unchanged.</p>
 <p>The setting applies to <a class="reference internal" href="../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a> and
 <a class="reference internal" href="../api_reference/_generated/warp.launch_tiled.html#warp.launch_tiled" title="warp.launch_tiled"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch_tiled()</span></code></a>. Warp resolves the effective block
 dimension when the launch is created, so recorded commands and captured launches

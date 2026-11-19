@@ -523,7 +523,7 @@
 <dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
 </dl>
 
-<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L1350-L1701"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.map" title="Link to this definition">#</a></dt>
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/utils.py#L1350-L1702"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.map" title="Link to this definition">#</a></dt>
 <dd><p>Map a function over the elements of one or more arrays.</p>
 <p>You can use a Warp function, a regular Python function, or a lambda expression to map it to a set of arrays.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">a</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
@@ -587,7 +587,8 @@ supports differentiation.</p>
 <li><p><strong>*inputs</strong> (<em>Array</em><em>[</em><em>DType</em><em>] </em><em>| </em><em>Any</em>) – The input arrays or values to pass to the function.</p></li>
 <li><p><strong>out</strong> (<em>Array</em><em>[</em><em>DType</em><em>] </em><em>| </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#list" title="(in Python v3.15)"><em>list</em></a><em>[</em><em>Array</em><em>[</em><em>DType</em><em>]</em><em>] </em><em>| </em><em>None</em>) – Optional output array(s) to store the result(s). If None, the output array(s) will be created automatically.</p></li>
 <li><p><strong>return_kernel</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – If True, only return the generated kernel without performing the mapping operation.</p></li>
-<li><p><strong>block_dim</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a><em> | </em><em>None</em>) – The requested number of threads per block. Defaults to 1 on CPU and 256 on CUDA.</p></li>
+<li><p><strong>block_dim</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a><em> | </em><em>None</em>) – The requested number of threads per block. Defaults to 256 on CUDA. On CPU, defaults to
+256 when <a class="reference internal" href="warp.config.enable_cpu_blocks.html#warp.config.enable_cpu_blocks" title="warp.config.enable_cpu_blocks"><code class="xref py py-attr docutils literal notranslate"><span class="pre">warp.config.enable_cpu_blocks</span></code></a> is <code class="docutils literal notranslate"><span class="pre">True</span></code> and to 1 otherwise.</p></li>
 <li><p><strong>device</strong> (<a class="reference internal" href="warp.DeviceLike.html#warp.DeviceLike" title="warp.DeviceLike"><em>DeviceLike</em></a>) – The device on which to run the kernel.</p></li>
 </ul>
 </dd>
