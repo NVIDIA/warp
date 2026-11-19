@@ -103,6 +103,7 @@ def test_timing_end_ends_timing_on_error(test, device):
     test.assertIn("pending timing results: 0", stdout)
 
 
+@unittest.skip("The intentional CUDA trap can abort CUDA work that other test processes have on the same GPU.")
 @unittest.skipIf(
     sys.platform == "win32",
     "The intentional CUDA trap may destabilize Windows release-qualification systems.",
