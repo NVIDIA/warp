@@ -1094,7 +1094,7 @@ def array_inner(
 
     if count == 0:
         if axis is None and host_return:
-            return 0.0
+            return _array_reduce_host_zero(scalar_type)
         out.zero_()
         return out
 

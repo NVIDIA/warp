@@ -4775,6 +4775,19 @@ def test_array_reduction_count_bounds_during_capture(test, device):
     test.assertEqual(inner_out.numpy()[0], 91.0)
 
 
+def test_empty_host_reductions_during_capture(test, device):
+    """Return typed host zeros for empty whole-array reductions without reading captured outputs."""
+    values = wp.full(3, 2.0, dtype=wp.float32, device=device)
+
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False):
+        sum_result = wp.utils.array_sum(values, value_count=0)
+        inner_result = wp.utils.array_inner(values, values, count=0)
+
+    for result in (sum_result, inner_result):
+        test.assertIs(type(result), np.float32)
+        test.assertEqual(result, 0.0)
+
+
 def test_strided_whole_array_reductions_during_capture(test, device):
     """Reject unsupported copies without invalidating the active capture."""
     base = wp.array((1.0, 100.0, 2.0, 200.0, 3.0, 300.0), dtype=wp.float32, device=device)
@@ -6898,6 +6911,12 @@ add_function_test(
     TestApic,
     "test_array_reduction_count_bounds_during_capture",
     test_array_reduction_count_bounds_during_capture,
+    devices=devices_with_graph_capture_allocation_and_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
+    "test_empty_host_reductions_during_capture",
+    test_empty_host_reductions_during_capture,
     devices=devices_with_graph_capture_allocation_and_cuda_graph_module_load,
 )
 add_function_test(

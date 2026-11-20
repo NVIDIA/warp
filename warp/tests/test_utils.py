@@ -1482,6 +1482,22 @@ def test_array_inner(test, device):
     test.assertEqual(wp.utils.array_inner(a, b), 14.0)
 
 
+def test_array_inner_empty_result_type(test, device):
+    """Verify empty host-returned inner products use the same scalar type as non-empty ones."""
+    for dtype in (wp.float32, wp.float64, wp.vec3, wp.vec3d):
+        scalar_type = wp._src.types.dtype_to_numpy(wp._src.types.type_scalar_type(dtype))
+        empty = wp.zeros(0, dtype=dtype, device=device)
+        result = wp.utils.array_inner(empty, empty)
+        test.assertIs(type(result), scalar_type)
+        test.assertEqual(result, 0.0)
+
+        values = wp.ones(3, dtype=dtype, device=device)
+        result = wp.utils.array_inner(values, values, count=0)
+        test.assertIs(type(result), scalar_type)
+        test.assertEqual(result, 0.0)
+        test.assertIs(type(wp.utils.array_inner(values, values)), scalar_type)
+
+
 def test_array_inner_strided_views(test, device):
     """Reduce strided operands and logical prefixes with host and array outputs."""
     for dtype in (wp.float32, wp.float64):
@@ -2165,6 +2181,7 @@ add_function_test(
     TestUtils, "test_array_sum_error_unsupported_dtype", test_array_sum_error_unsupported_dtype, devices=devices
 )
 add_function_test(TestUtils, "test_array_inner", test_array_inner, devices=devices)
+add_function_test(TestUtils, "test_array_inner_empty_result_type", test_array_inner_empty_result_type, devices=devices)
 add_function_test(
     TestUtils, "test_array_inner_error_count_exceeds_size", test_array_inner_error_count_exceeds_size, devices=devices
 )
