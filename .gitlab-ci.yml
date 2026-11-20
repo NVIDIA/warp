@@ -841,7 +841,9 @@ linux-x86_64 cu13 mujoco-warp test:
     # Python environment
     - uv venv
     - uv pip install -e .
-    - uv pip install "git+https://github.com/google-deepmind/mujoco_warp@main"
+    # MuJoCo Warp's uv sources pull nightly mujoco-core; use the PyPI
+    # release, which upstream keeps MuJoCo Warp main compatible with.
+    - uv pip install --no-sources-package mujoco-core "git+https://github.com/google-deepmind/mujoco_warp@main"
     - uv pip install pytest pytest-xdist "jax[cuda13]"
     - |
       uv run --no-sync python - <<'PY'
@@ -879,7 +881,9 @@ linux-x86_64 cu13 mujoco-warp serial test:
     # Python environment
     - uv venv
     - uv pip install -e .
-    - uv pip install "git+https://github.com/google-deepmind/mujoco_warp@main"
+    # MuJoCo Warp's uv sources pull nightly mujoco-core; use the PyPI
+    # release, which upstream keeps MuJoCo Warp main compatible with.
+    - uv pip install --no-sources-package mujoco-core "git+https://github.com/google-deepmind/mujoco_warp@main"
     - uv pip install pytest
     - |
       uv run --no-sync python - <<'PY'
