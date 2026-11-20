@@ -15,6 +15,7 @@ For information on module-level and kernel-level settings, see :doc:`/user_guide
 """
 
 import os as _os
+import platform as _platform
 import sys as _sys
 import types as _types
 from enum import IntEnum as _IntEnum
@@ -30,7 +31,12 @@ class _ConfigModule(_types.ModuleType):
             )
         if name == "deterministic" and not isinstance(value, DeterministicMode):
             raise ValueError(f"warp.config.deterministic must be a warp.DeterministicMode value, got {value!r}")
+        previous = self.__dict__.get(name)
         super().__setattr__(name, value)
+        if name == "enable_array_function_overrides" and bool(previous) != bool(value):
+            from warp._src.function_dispatch import set_function_overrides_enabled  # noqa: PLC0415
+
+            set_function_overrides_enabled(bool(value))
 
 
 def _install_config_module_hooks() -> None:
@@ -114,6 +120,33 @@ Prints information about each kernel launch including:
 Note: Enabling this flag impacts performance.
 """
 
+enable_array_function_overrides: bool = False
+"""Enable ``__warp_function__`` overrides for supported Warp host APIs.
+
+This setting controls host Python APIs, such as :func:`warp.launch` and
+:func:`warp.copy`; it does not change ``@wp.func`` definitions or
+``wp.Function`` overload resolution. The hook name follows PyTorch's
+``__torch_function__`` and NumPy's ``__array_function__`` conventions.
+
+Enable this at startup, before saving or importing aliases of Warp APIs.
+This includes importing integrations that cache or wrap Warp functions.
+Applications that never enable it call the original functions directly, including
+array initialization, without forwarding wrappers or per-call flag checks.
+See :doc:`/user_guide/interoperability/array_function_overrides` for coverage and protocol details.
+
+Changing this process-wide setting switches registered bindings in loaded Warp
+modules and the native array initializer. Aliases saved before activation keep
+their native outer entry points, which may still call wrapped helpers internally.
+Aliases saved while enabled retain their wrapper and honor subsequent flag
+changes. Change the setting only between tracing sessions, without concurrent calls.
+
+Hooks can delegate directly: overrides are automatically suppressed in the current
+execution context while a hook or native implementation runs. Graph replay and
+saved launch-command execution bypass the protocol.
+
+Note: Enabling this flag impacts performance even when no operand defines a hook.
+"""
+
 mode: str = "release"
 """Compilation mode for Warp kernels.
 
@@ -156,6 +189,14 @@ enable_vector_component_overwrites: bool = False
 """Allow multiple writes to vector/matrix/quaternion components.
 
 Note: Enabling this may significantly increase kernel compilation time.
+"""
+
+enable_wide_array_access: bool = True
+"""Load and store array elements as 8- or 16-byte words on CUDA devices when the array is aligned.
+
+Applies to stores of 16-byte and larger elements, such as ``wp.vec4`` and ``wp.mat44``, and loads of
+16-byte elements with 4-byte components, such as ``wp.vec4`` and ``wp.quat``. Set to ``False`` to use
+plain element accesses instead.
 """
 
 legacy_scalar_return_types: bool = False
@@ -246,15 +287,18 @@ This setting can be overridden at the module level by setting the ``"compile_tim
 enable_backward: bool = True
 """Enable compilation of kernel backward passes.
 
-This setting can be overridden at the module level by setting the ``"enable_backward"`` module option.
+This setting can be overridden at the module level by setting the ``"enable_backward"`` module option,
+and for a single kernel by the ``@wp.kernel(enable_backward=...)`` argument.
 """
 
 enable_cpu_blocks: bool = False
 """Enable experimental CPU kernel launches with more than one logical thread per block.
 
-When ``False``, CPU launch block dimensions greater than one resolve to one,
-preserving the historical CPU execution model. When ``True``, explicit CPU
-block dimensions from 2 through 1024 run with cooperative fibers.
+When ``False``, CPU launches use one logical thread per block, preserving the
+historical CPU execution model. When ``True``, omitted or non-positive block
+dimensions default to 256, and block dimensions from 2 through 1024 run with
+cooperative fibers. Pass ``block_dim=1`` explicitly to use one logical thread
+per block with this setting enabled.
 """
 
 default_grid_stride: bool = True
@@ -278,7 +322,7 @@ This setting can be overridden at the module level by setting the
 enable_mathdx_solver: bool = True
 """Use libmathdx (cuSolverDx) for tile solver ops on GPU when available.
 
-Controls all cuSolverDx-backed ops: :func:`tile_cholesky <warp._src.lang.tile_cholesky>`
+Controls all cuSolverDx-backed ops: :func:`tile_lu <warp._src.lang.tile_lu>`, :func:`tile_cholesky <warp._src.lang.tile_cholesky>`
 (and its adjoint), :func:`tile_cholesky_solve <warp._src.lang.tile_cholesky_solve>`,
 :func:`tile_lower_solve <warp._src.lang.tile_lower_solve>`, and
 :func:`tile_upper_solve <warp._src.lang.tile_upper_solve>`.
@@ -304,13 +348,19 @@ This setting can be overridden at the module level by setting the
 cpu_compiler_flags: str | None = (
     "-march=native -mllvm=-inline-threshold=9000 -mllvm=-inline-cold-callsite-threshold=3000"
     " -mllvm=-slp-recursion-max-depth=4"
+    # Prefer zero idioms over arbitrary register contents for unused operands.
+    # Otherwise packed operations can process denormals in unused SIMD lanes.
+    # This option targets x86 SIMD merge operands; omit it on other architectures.
+    + (" -mllvm=-undef-reg-clearance=4294967295" if _platform.machine().lower() in ("x86_64", "amd64") else "")
 )
 """Flags controlling CPU kernel compilation.
 
 The default detects host CPU features, raises LLVM's inlining thresholds,
-and limits SLP recursion depth to four instead of LLVM's default 12. Set this
-to ``None`` to retain host feature detection with LLVM's default inlining
-thresholds and SLP recursion depth.
+and limits SLP recursion depth to four instead of LLVM's default 12. On x86-64,
+it also favors clearing unused scalar-conversion operands to avoid denormal
+penalties in unused SIMD lanes. This does not flush valid subnormal values.
+Set this to ``None`` to retain host feature detection with LLVM's default
+optimization settings.
 ``""`` compiles for a generic CPU target. A flag string can include
 ``-march=native``, Clang frontend flags, and LLVM arguments in either
 ``-mllvm <option>`` or ``-mllvm=<option>`` form. Use ``-fno-vectorize`` to
@@ -319,7 +369,7 @@ vectorization for a module.
 
 The ``"cpu_compiler_flags"`` module option replaces this global string for
 that module. Use ``"-march=native"`` to keep host feature detection while
-using LLVM's default inlining thresholds and SLP recursion depth. ``None`` at
+using LLVM's default optimization settings. ``None`` at
 the module level inherits the global setting.
 
 The resolved flag string is part of the module cache key.

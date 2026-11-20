@@ -649,7 +649,7 @@ class Example:
             x=self._saddle_x,
             tol=1.0e-6,
             check_every=0,
-            use_cuda_graph=self.use_cuda_graph,
+            use_graph=self.use_cuda_graph,
             M=saddle.preconditioner,
         )
 

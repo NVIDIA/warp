@@ -26,7 +26,7 @@ Build docs (~1 min) with `uv run --extra docs build_docs.py 2>&1 | tee /tmp/buil
 ## PR Instructions
 
 - If opening a pull request on GitHub, use the template in `.github/PULL_REQUEST_TEMPLATE.md`.
-- If opening a merge request on GitLab, use the template in `.gitlab/merge_request_templates/Default.md`. If a GitHub issue exists for the change, end the MR title with a reference (e.g., `[GH-123]`).
+- If opening a merge request on GitLab, pick the template in `.gitlab/merge_request_templates/` that fits the change (for example, `github-pr.md` for a merge request that brings in a GitHub pull request), falling back to `Default.md`. If a GitHub issue exists for the change, end the MR title with a reference (e.g., `[GH-123]`).
 - Never set, change, or clear assignees or reviewers on GitHub pull requests or GitLab merge requests unless explicitly asked; leave values added by users, automation, or project defaults untouched.
 - Follow `changelog/README.md`: add a fragment when a change affects users,
   and do not edit `CHANGELOG.md` directly.
@@ -67,6 +67,8 @@ Follow Google-style docstrings. Use doctest for code examples where practical.
 - JIT compilation artifacts (`.cpp`/`.cu` from `codegen.py`, `.cubin`/`.ptx`/`.o`) live in a kernel cache directory (see `warp/_src/build.py:init_kernel_cache`).
 - Refer to `warp/examples/` for reference patterns for kernels, launches, and array usage.
 - Always import from `warp` in public-facing code, not `warp._src`. In internal code, import directly from `warp/_src/` modules. Public API is re-exported through `warp/__init__.py`.
+- Put new experimental modules under `warp/experimental/<area>.py` (imported as `warp.experimental.<area>`), not as top-level `warp/<name>_experimental.py` modules. Keep `warp/experimental/__init__.py` free of imports so one experimental module's optional dependencies do not affect `import warp` or the others.
 - `warp._src.utils` imports `warp._src.context` at module level—importing from `utils` in early-loaded modules (e.g., `texture.py`) causes circular imports. Use lazy imports (`from warp._src.utils import ... # noqa: PLC0415` inside functions) when needed.
 - Use the `DeviceLike` type annotation (from `warp._src.context`) for `device` parameters. In modules where importing it at runtime would create a circular import, import it under `TYPE_CHECKING`.
+- Prefer `Literal` strings for new mode and algorithm parameters, and `enum.IntEnum` for values passed to kernels or native code.
 - Native bindings use ctypes; function signatures are registered in `Runtime.__init__` in `warp/_src/context.py`.

@@ -2138,6 +2138,7 @@ CUDA_CALLABLE inline mesh_query_aabb_t mesh_query_impl(uint64_t id, const vec3& 
     return query;
 }
 
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline mesh_query_aabb_t mesh_query_aabb(uint64_t id, const vec3& lower, const vec3& upper)
 {
     return mesh_query_impl<false>(id, lower, upper, 0.0f);
@@ -2146,6 +2147,7 @@ CUDA_CALLABLE inline mesh_query_aabb_t mesh_query_aabb(uint64_t id, const vec3& 
 // Sphere query: iterate triangles that intersect the sphere. The broad phase keeps triangles whose AABB is
 // within `radius` of `center` (exact sphere-AABB test); the narrow phase keeps only those whose closest
 // point to `center` is within `radius`.
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline mesh_query_aabb_t mesh_query_sphere(uint64_t id, const vec3& center, float radius)
 {
     return mesh_query_impl<true>(id, center, center, radius);
@@ -2324,12 +2326,14 @@ CUDA_CALLABLE inline bool mesh_query_next_impl(mesh_query_aabb_t& query, int& in
 // (the alias) and by mesh_query_next when the query object is MeshQueryAABB.
 // AabbPrimitiveTest always passes after AabbNodeTest on singleton leaves
 // (leaf AABB == primitive AABB), so the compiler folds it to a single test.
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline bool mesh_query_aabb_next(mesh_query_aabb_t& query, int& index)
 {
     return mesh_query_next_impl<AabbNodeTest, AabbPrimitiveTest, false>(query, index);
 }
 
 // Sphere iterator -- called from mesh_query_next when the query object is _MeshQuerySphere.
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline bool mesh_query_sphere_next(mesh_query_aabb_t& query, int& index)
 {
     return mesh_query_next_impl<SphereNodeTest, SpherePrimitiveTest>(query, index);
@@ -2340,6 +2344,7 @@ CUDA_CALLABLE inline bool mesh_query_sphere_next(mesh_query_aabb_t& query, int& 
 // annotated with the parent type), so it dispatches on the kind stored at
 // construction (radius_sq alone cannot distinguish a zero-radius sphere query from
 // an AABB query). The statically-typed iterators above never route through here.
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline bool mesh_query_next_dynamic(mesh_query_aabb_t& query, int& index)
 {
     if (query.kind == MeshQueryKind::SPHERE)
@@ -2349,6 +2354,7 @@ CUDA_CALLABLE inline bool mesh_query_next_dynamic(mesh_query_aabb_t& query, int&
 
 CUDA_CALLABLE inline int iter_next(mesh_query_aabb_t& query) { return query.face; }
 
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline bool iter_cmp(mesh_query_aabb_t& query)
 {
     // The for-loop protocol shares one iter_cmp across all query kinds, so it must

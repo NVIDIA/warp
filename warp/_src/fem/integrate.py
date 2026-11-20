@@ -2207,6 +2207,17 @@ def integrate(
         if test is None:
             raise ValueError("Nodal integration requires specifying a test function")
 
+        if not test.space.basis.supports_nodal_assembly or (
+            trial is not None and not trial.space.basis.supports_nodal_assembly
+        ):
+            raise ValueError(
+                "Nodal assembly is not supported for a constrained basis, since hanging nodes are not nodes of "
+                "this basis. For Dirichlet projectors and values, assemble with assembly='nodal' on a function "
+                "space built from the basis's 'raw_basis', then restrict the results with its "
+                "'reduce_dirichlet_projector()' and 'gather_independent_values()' methods. For other forms, use "
+                "generic or dispatch assembly"
+            )
+
         if trial is not None and test.space_partition != trial.space_partition:
             raise ValueError(
                 "Bilinear nodal integration requires test and trial to be defined on the same function space"

@@ -15,7 +15,9 @@ import warp
 import warp as wp
 from warp._src import build as _build_module
 from warp._src import logger as _logger_module
+from warp._src.function_dispatch import suppress_warp_function, warp_function
 from warp._src.logger import LoggerBasic, log_debug, log_error, log_warning
+from warp.tests.unittest_utils import run_python_subprocess
 
 
 @wp.kernel
@@ -339,6 +341,78 @@ class TestLogger(unittest.TestCase):
 
         result = subprocess.run([sys.executable, "-c", script], check=True, capture_output=True, text=True)
         self.assertIn("Warp DeprecationWarning: This version of wp.from_ptr()", result.stderr)
+
+    def test_launch_deprecation_warning_visible_to_default_filters(self):
+        """Keep application warnings visible with overrides disabled or enabled."""
+        script = textwrap.dedent(
+            """
+            import sys
+
+            import numpy as np
+
+            import warp as wp
+
+
+            @wp.kernel
+            def vector_parameter(value: wp.vec3):
+                pass
+
+
+            mode = sys.argv[1]
+            wp.config.enable_array_function_overrides = mode == "enabled"
+            wp.config.verbose_warnings = True
+            launch = getattr(wp.launch, "__wrapped__", wp.launch) if mode == "unwrapped" else wp.launch
+            warning_line = sys._getframe().f_lineno + 1
+            launch(vector_parameter, dim=1, inputs=[np.float32(1.0)], device="cpu")
+            print(f"WARNING_LINE={warning_line}")
+            """
+        )
+        source_path = self._source_path("launch_warning_application.py")
+        Path(source_path).write_text(script, encoding="utf-8")
+
+        # A fresh __main__ uses Python's real default DeprecationWarning filters.
+        # Keep kernels in a file so Warp can inspect their source.
+        for mode in ("unwrapped", "disabled", "enabled"):
+            with self.subTest(mode=mode):
+                result = run_python_subprocess(
+                    "import runpy, sys; sys.argv = sys.argv[1:]; runpy.run_path(sys.argv[0], run_name='__main__')",
+                    source_path,
+                    mode,
+                    hide_gpu=True,
+                    env_updates={"PYTHONWARNINGS": "", "PYTHONDEVMODE": ""},
+                )
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                warning_line = int(result.stdout.rsplit("WARNING_LINE=", 1)[1].strip())
+                self.assertIn("Warp DeprecationWarning: Implicit conversion", result.stderr)
+                self.assertIn(f"({source_path}:{warning_line})", result.stderr)
+                self.assertNotIn("function_dispatch.py", result.stderr)
+
+    def test_custom_logger_warning_skips_nested_forwarding_frames(self):
+        class WarningsLogger(_NoOpLogger):
+            def warning(self, message, category=None, stacklevel=1):
+                warnings.warn(message, category, stacklevel=stacklevel)
+
+        @warp_function
+        def warn():
+            log_warning("nested forwarding warning", category=UserWarning, stacklevel=3)
+
+        def forward():
+            warn()
+
+        original_flag = wp.config.enable_array_function_overrides
+        self.addCleanup(setattr, wp.config, "enable_array_function_overrides", original_flag)
+        source_path = self._source_path("nested_warning_application.py")
+        for decorator in (warp_function, suppress_warp_function):
+            wrapped = decorator(forward)
+            for enabled in (False, True):
+                with self.subTest(decorator=decorator.__name__, enabled=enabled):
+                    wp.config.enable_array_function_overrides = enabled
+                    with wp.ScopedLogger(WarningsLogger()), warnings.catch_warnings(record=True) as recorded:
+                        warnings.simplefilter("default", UserWarning)
+                        exec(compile("forward()", source_path, "exec"), {"forward": wrapped})
+                    self.assertEqual(len(recorded), 1)
+                    self.assertEqual(recorded[0].filename, source_path)
+                    self.assertEqual(recorded[0].lineno, 1)
 
     def test_print_launches_routes_to_active_logger(self):
         class CaptureLogger:

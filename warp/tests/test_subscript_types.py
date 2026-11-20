@@ -3,7 +3,6 @@
 
 """Tests for subscript-style type annotations on arrays and tiles, plus the internal Vector/Matrix/Quaternion/Transformation generics."""
 
-import sys
 import unittest
 from typing import Any, Literal, TypeVar, Union, get_origin
 
@@ -492,11 +491,6 @@ class TestSubscriptTypes(unittest.TestCase):
         vars2 = arr_ann.vars
         self.assertIs(vars1, vars2)
 
-    @unittest.skipIf(
-        sys.version_info < (3, 11),
-        "Python 3.10 type.__or__ raises TypeError for non-type operands instead of "
-        "returning NotImplemented, so the __ror__ fallback is never triggered.",
-    )
     def test_annotation_union_operator(self):
         """Verify that array annotations support runtime union expressions in both operand orders."""
         arr_ann = wp.array[float]
@@ -525,11 +519,6 @@ class TestSubscriptTypes(unittest.TestCase):
         self.assertIn(float, chained.__args__)
         self.assertIn(ia_ann, chained.__args__)
 
-    @unittest.skipIf(
-        sys.version_info < (3, 11),
-        "Python 3.10 type.__or__ raises TypeError for non-type operands instead of "
-        "returning NotImplemented, so the __ror__ fallback is never triggered.",
-    )
     def test_annotation_union_invalid_for_codegen(self):
         """Verify that union annotations are intentionally invalid in Warp codegen."""
 

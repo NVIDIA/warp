@@ -538,7 +538,8 @@ static bool release_now(ReleaseKind kind, uint64_t handle)
     case ReleaseKind::DeviceFree:
         return check_cuda(cudaFree((void*)handle));
     case ReleaseKind::DeviceFreeAsync:
-        // postponed until a synchronization point, so preceding work on the pointer completes
+        // Consumer streams are unknown. Callers must provide dependencies for non-blocking
+        // uses; single-stream scratch should use free_device_on_stream().
         return check_cuda(cudaFreeAsync((void*)handle, NULL));
     case ReleaseKind::DeviceFreeAsyncUnmapped: {
         cudaError_t res = cudaFreeAsync((void*)handle, NULL);
@@ -774,6 +775,36 @@ void wp_free_device(void* context, void* ptr)
         wp_free_device_async(context, ptr);
     else
         wp_free_device_default(context, ptr);
+}
+
+void free_device_on_stream(void* context, void* ptr, void* stream)
+{
+    if (!ptr)
+        return;
+
+    int ordinal = wp_cuda_context_get_device_ordinal(context);
+    if (!wp_cuda_device_is_mempool_supported(ordinal)) {
+        wp_free_device_default(context, ptr);
+        return;
+    }
+
+    ContextGuard guard(context);
+
+    CUstream cuda_stream = static_cast<CUstream>(stream);
+    bool is_legacy_stream = cuda_stream == NULL || cuda_stream == CU_STREAM_LEGACY;
+
+    // Preserve graph-aware cleanup. Check the legacy stream first: querying its capture
+    // status during a blocking-stream capture is invalid.
+    if ((is_legacy_stream && !g_captures.empty()) || g_graph_allocs.find(ptr) != g_graph_allocs.end()
+        || wp_cuda_stream_is_capturing(stream)) {
+        wp_free_device_async(context, ptr);
+        return;
+    }
+
+    if (g_alloc_tracker.enabled)
+        g_alloc_tracker.record_free(ptr);
+
+    check_cuda(cudaFreeAsync(ptr, cuda_stream));
 }
 
 void* wp_alloc_device_default(void* context, size_t s, const char* tag)
@@ -1414,7 +1445,7 @@ void wp_memtile_device(void* context, void* dst, const void* src, size_t srcsize
         wp_launch_device(WP_CURRENT_CONTEXT, memtile_kernel, n, (dst, value_devptr, srcsize, n));
 
         if (free_devptr) {
-            wp_free_device(WP_CURRENT_CONTEXT, value_devptr);
+            free_device_on_stream(WP_CURRENT_CONTEXT, value_devptr, get_current_stream());
         }
     }
 }
@@ -2280,6 +2311,19 @@ WP_API void wp_array_fill_device(void* context, void* arr_ptr, int arr_type, con
 
     ContextGuard guard(context);
 
+    // Record-and-execute a strided or indexed fill under CUDA APIC capture: record the
+    // layout and value into the byte stream, then fall through so the live fill issues
+    // onto the captured stream. Only values the by-value kernels take are recordable;
+    // the Python fill_() path rejects larger ones under CUDA APIC capture. Recording
+    // runs under the fill's context, so a fill on another device is not recorded.
+    APICState* apic_state = wp_apic_get_cuda_recording_state();
+    if (apic_state && (arr_type == wp::ARRAY_TYPE_REGULAR || arr_type == wp::ARRAY_TYPE_INDEXED) && value_size > 0
+        && static_cast<size_t>(value_size) <= WP_FILL_VALUE_INLINE_BYTES_2) {
+        apic_record_array_fill(
+            apic_state, /*live=*/true, arr_ptr, arr_type, value_ptr, static_cast<uint32_t>(value_size)
+        );
+    }
+
     void* value_devptr = NULL;
     bool free_devptr = true;
 
@@ -2349,7 +2393,7 @@ WP_API void wp_array_fill_device(void* context, void* arr_ptr, int arr_type, con
     }
 
     if (free_devptr) {
-        wp_free_device(WP_CURRENT_CONTEXT, value_devptr);
+        free_device_on_stream(WP_CURRENT_CONTEXT, value_devptr, get_current_stream());
     }
 }
 
@@ -2381,35 +2425,99 @@ static void apic_capture_array_scan_device(
 }
 
 bool wp_array_scan_int_device(
-    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
+    uint64_t in,
+    uint64_t out,
+    int len,
+    int in_stride,
+    int out_stride,
+    int type_len,
+    bool inclusive,
+    uint64_t temp_storage,
+    size_t temp_storage_bytes
 )
 {
     apic_capture_array_scan_device(in, out, len, in_stride, out_stride, type_len, APIC_TYPE_INT32, inclusive);
-    return scan_device((const int*)in, (int*)out, len, in_stride, out_stride, type_len, inclusive);
+    return scan_device(
+        (const int*)in, (int*)out, len, in_stride, out_stride, type_len, inclusive, (void*)temp_storage,
+        temp_storage_bytes
+    );
+}
+
+bool wp_array_scan_int_device_temp_storage_size(void* context, int len, size_t* temp_storage_bytes)
+{
+    return scan_device_temp_storage_size<int>(context, len, temp_storage_bytes);
 }
 
 bool wp_array_scan_int64_device(
-    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
+    uint64_t in,
+    uint64_t out,
+    int len,
+    int in_stride,
+    int out_stride,
+    int type_len,
+    bool inclusive,
+    uint64_t temp_storage,
+    size_t temp_storage_bytes
 )
 {
     apic_capture_array_scan_device(in, out, len, in_stride, out_stride, type_len, APIC_TYPE_INT64, inclusive);
-    return scan_device((const int64_t*)in, (int64_t*)out, len, in_stride, out_stride, type_len, inclusive);
+    return scan_device(
+        (const int64_t*)in, (int64_t*)out, len, in_stride, out_stride, type_len, inclusive, (void*)temp_storage,
+        temp_storage_bytes
+    );
+}
+
+bool wp_array_scan_int64_device_temp_storage_size(void* context, int len, size_t* temp_storage_bytes)
+{
+    return scan_device_temp_storage_size<int64_t>(context, len, temp_storage_bytes);
 }
 
 bool wp_array_scan_float_device(
-    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
+    uint64_t in,
+    uint64_t out,
+    int len,
+    int in_stride,
+    int out_stride,
+    int type_len,
+    bool inclusive,
+    uint64_t temp_storage,
+    size_t temp_storage_bytes
 )
 {
     apic_capture_array_scan_device(in, out, len, in_stride, out_stride, type_len, APIC_TYPE_FLOAT32, inclusive);
-    return scan_device((const float*)in, (float*)out, len, in_stride, out_stride, type_len, inclusive);
+    return scan_device(
+        (const float*)in, (float*)out, len, in_stride, out_stride, type_len, inclusive, (void*)temp_storage,
+        temp_storage_bytes
+    );
+}
+
+bool wp_array_scan_float_device_temp_storage_size(void* context, int len, size_t* temp_storage_bytes)
+{
+    return scan_device_temp_storage_size<float>(context, len, temp_storage_bytes);
 }
 
 bool wp_array_scan_double_device(
-    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
+    uint64_t in,
+    uint64_t out,
+    int len,
+    int in_stride,
+    int out_stride,
+    int type_len,
+    bool inclusive,
+    uint64_t temp_storage,
+    size_t temp_storage_bytes
 )
 {
     apic_capture_array_scan_device(in, out, len, in_stride, out_stride, type_len, APIC_TYPE_FLOAT64, inclusive);
-    return scan_device((const double*)in, (double*)out, len, in_stride, out_stride, type_len, inclusive);
+    return scan_device(
+        (const double*)in, (double*)out, len, in_stride, out_stride, type_len, inclusive, (void*)temp_storage,
+        temp_storage_bytes
+    );
+}
+
+bool wp_array_scan_double_device_temp_storage_size(void* context, int len, size_t* temp_storage_bytes)
+{
+    return scan_device_temp_storage_size<double>(context, len, temp_storage_bytes);
 }
 
 int wp_cuda_driver_version()
@@ -3485,6 +3593,49 @@ bool wp_cuda_graph_begin_capture(void* context, void* stream, int external, int 
     return true;
 }
 
+static __global__ void graph_root_kernel() { }
+
+// Pre-R580 drivers can run a graph's first non-kernel node (e.g., a memset) before
+// earlier work in the launch stream has finished.
+static bool insert_graph_root_kernel(cudaGraph_t cuda_graph)
+{
+    size_t num_roots = 0;
+    if (!check_cuda(cudaGraphGetRootNodes(cuda_graph, NULL, &num_roots)))
+        return false;
+    std::vector<cudaGraphNode_t> roots(num_roots);
+    if (!check_cuda(cudaGraphGetRootNodes(cuda_graph, roots.data(), &num_roots)))
+        return false;
+
+    bool all_kernels = true;
+    for (cudaGraphNode_t root : roots) {
+        CUgraphNodeType node_type;
+        if (!check_cu(cuGraphNodeGetType_f(root, &node_type)))
+            return false;
+        if (node_type != CU_GRAPH_NODE_TYPE_KERNEL) {
+            all_kernels = false;
+            break;
+        }
+    }
+    if (all_kernels)
+        return true;
+
+    cudaKernelNodeParams params = {};
+    params.func = (void*)graph_root_kernel;
+    params.gridDim = dim3(1);
+    params.blockDim = dim3(1);
+
+    cudaGraphNode_t kernel_node = NULL;
+    if (!check_cuda(cudaGraphAddKernelNode(&kernel_node, cuda_graph, NULL, 0, &params)))
+        return false;
+
+    std::vector<cudaGraphNode_t> from(num_roots, kernel_node);
+#if CUDA_VERSION >= 13000
+    return check_cuda(cudaGraphAddDependencies(cuda_graph, from.data(), roots.data(), NULL, num_roots));
+#else
+    return check_cuda(cudaGraphAddDependencies(cuda_graph, from.data(), roots.data(), num_roots));
+#endif
+}
+
 bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
 {
     ContextGuard guard(context);
@@ -3617,6 +3768,11 @@ bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
     // process deferred free list if no more captures are ongoing
     if (g_captures.empty()) {
         run_deferred_actions();
+    }
+
+    if (wp_cuda_driver_version() < 13000 && !insert_graph_root_kernel(graph)) {
+        cudaGraphDestroy(graph);
+        return false;
     }
 
     if (graph_ret)
@@ -4264,7 +4420,10 @@ static const char* get_graph_node_type_name(CUgraphNodeType type)
 // check if a graph can be launched as a child graph
 static bool is_valid_child_graph(void* child_graph)
 {
-    // disallowed child graph nodes according to the documentation of cuGraphAddChildGraphNode()
+    // Node types that cudaGraphAddChildGraphNode() rejects because it clones the
+    // child graph. CUDA 12.9+ accepts alloc/free nodes if the child is moved into
+    // the parent instead, but moving consumes the caller's graph. Conditional
+    // nodes are rejected either way.
     static const std::unordered_set<CUgraphNodeType> disallowed_nodes {
         CU_GRAPH_NODE_TYPE_MEM_ALLOC,
         CU_GRAPH_NODE_TYPE_MEM_FREE,
@@ -4567,6 +4726,14 @@ bool write_file(const char* data, size_t size, std::string filename, const char*
     }
 }
 
+// NVRTC and nvJitLink count the PTX string's NUL terminator in its size.
+// Leaving it out keeps the PTX files Warp writes plain text; the module
+// loaders append their own terminator.
+static size_t ptx_size_without_nul(const char* ptx, size_t size)
+{
+    return (size > 0 && ptx[size - 1] == '\0') ? size - 1 : size;
+}
+
 #if WP_ENABLE_MATHDX
 bool check_nvjitlink_result(nvJitLinkHandle handle, nvJitLinkResult result, const char* file, int line)
 {
@@ -4586,7 +4753,73 @@ bool check_nvjitlink_result(nvJitLinkHandle handle, nvJitLinkResult result, cons
         return true;
     }
 }
+
+// Link Warp's NVRTC LTO-IR with the MathDx inputs. On success, `output` holds
+// the linked PTX or CUBIN instead of the LTO-IR. With `quiet_nvvm_error`, an
+// NVVM failure in nvJitLinkComplete() is returned without printing its log, so
+// the caller can retry with other options.
+static nvJitLinkResult link_ltoirs(
+    std::vector<char>& output,
+    std::vector<const char*>& lopts,
+    bool use_ptx,
+    size_t num_ltoirs,
+    char** ltoirs,
+    size_t* ltoir_sizes,
+    int* ltoir_input_types,
+    bool quiet_nvvm_error
+)
+{
+    nvJitLinkHandle handle = nullptr;
+    nvJitLinkResult result = nvJitLinkCreate(&handle, lopts.size(), lopts.data());
+    if (!check_nvjitlink(handle, result))
+        return result;
+
+    result = nvJitLinkAddData(handle, NVJITLINK_INPUT_LTOIR, output.data(), output.size(), "nvrtc_output");
+    check_nvjitlink(handle, result);
+
+    for (size_t ltoidx = 0; ltoidx < num_ltoirs && result == NVJITLINK_SUCCESS; ltoidx++) {
+        nvJitLinkInputType input_type = static_cast<nvJitLinkInputType>(ltoir_input_types[ltoidx]);
+        result = nvJitLinkAddData(handle, input_type, ltoirs[ltoidx], ltoir_sizes[ltoidx], "lto_online");
+        check_nvjitlink(handle, result);
+    }
+
+    if (result == NVJITLINK_SUCCESS) {
+        result = nvJitLinkComplete(handle);
+        if (!(quiet_nvvm_error && result == NVJITLINK_ERROR_NVVM_COMPILE))
+            check_nvjitlink(handle, result);
+    }
+
+    if (result == NVJITLINK_SUCCESS) {
+        size_t linked_size = 0;
+        std::vector<char> linked;
+        if (use_ptx) {
+            check_nvjitlink(handle, nvJitLinkGetLinkedPtxSize(handle, &linked_size));
+            linked.resize(linked_size);
+            check_nvjitlink(handle, nvJitLinkGetLinkedPtx(handle, linked.data()));
+        } else {
+            check_nvjitlink(handle, nvJitLinkGetLinkedCubinSize(handle, &linked_size));
+            linked.resize(linked_size);
+            check_nvjitlink(handle, nvJitLinkGetLinkedCubin(handle, linked.data()));
+        }
+        output.swap(linked);
+    }
+
+    check_nvjitlink(handle, nvJitLinkDestroy(&handle));
+    return result;
+}
 #endif
+
+// Whether a debug-mode NVRTC build compiles device-debug code (-G). Windows
+// debug builds keep assertions and line info only.
+static bool nvrtc_device_debug(bool debug)
+{
+#ifdef _WIN32
+    (void)debug;
+    return false;
+#else
+    return debug;
+#endif
+}
 
 // Append every NVRTC option shared by Warp's normal module compiler and APIC's
 // portable source-recompile path. Keep path-specific options (include paths,
@@ -4657,9 +4890,8 @@ static void append_common_nvrtc_compile_options(
     if (debug) {
         options.push_back("--define-macro=_DEBUG");
         options.push_back("--generate-line-info");
-#ifndef _WIN32
-        options.push_back("--device-debug");  // -G
-#endif
+        if (nvrtc_device_debug(debug))
+            options.push_back("--device-debug");  // -G
     } else {
         options.push_back("--define-macro=NDEBUG");
 
@@ -4893,7 +5125,6 @@ size_t wp_cuda_compile_program(
                     );
                     return size_t(-1);
                 }
-                nvJitLinkHandle handle = nullptr;
                 std::vector<const char*> lopts = { "-dlto", arch_opt_lto };
                 if (use_ptx) {
                     lopts.push_back("-ptx");
@@ -4904,75 +5135,71 @@ size_t wp_cuda_compile_program(
                         printf("%s\n", o);
                     }
                 }
-                if (!check_nvjitlink(handle, nvJitLinkCreate(&handle, lopts.size(), lopts.data()))) {
-                    res = nvrtcResult(-1);
-                }
-                // Links
                 if (std::getenv("WARP_DUMP_LTOIR")) {
                     write_file(output.data(), output.size(), "nvrtc_output.ltoir", "wb");
-                }
-                if (!check_nvjitlink(
-                        handle,
-                        nvJitLinkAddData(handle, NVJITLINK_INPUT_LTOIR, output.data(), output.size(), "nvrtc_output")
-                    ))  // NVRTC business
-                {
-                    res = nvrtcResult(-1);
-                }
-                for (size_t ltoidx = 0; ltoidx < num_ltoirs; ltoidx++) {
-                    nvJitLinkInputType input_type = static_cast<nvJitLinkInputType>(ltoir_input_types[ltoidx]);
-                    const char* ext = ".unknown";
-                    switch (input_type) {
-                    case NVJITLINK_INPUT_CUBIN:
-                        ext = ".cubin";
-                        break;
-                    case NVJITLINK_INPUT_LTOIR:
-                        ext = ".ltoir";
-                        break;
-                    case NVJITLINK_INPUT_FATBIN:
-                        ext = ".fatbin";
-                        break;
-                    default:
-                        break;
-                    }
-                    if (std::getenv("WARP_DUMP_LTOIR")) {
+                    for (size_t ltoidx = 0; ltoidx < num_ltoirs; ltoidx++) {
+                        const char* ext = ".unknown";
+                        switch (static_cast<nvJitLinkInputType>(ltoir_input_types[ltoidx])) {
+                        case NVJITLINK_INPUT_CUBIN:
+                            ext = ".cubin";
+                            break;
+                        case NVJITLINK_INPUT_LTOIR:
+                            ext = ".ltoir";
+                            break;
+                        case NVJITLINK_INPUT_FATBIN:
+                            ext = ".fatbin";
+                            break;
+                        default:
+                            break;
+                        }
                         write_file(
                             ltoirs[ltoidx], ltoir_sizes[ltoidx],
                             std::string("lto_online_") + std::to_string(ltoidx) + ext, "wb"
                         );
                     }
-                    if (!check_nvjitlink(
-                            handle,
-                            nvJitLinkAddData(handle, input_type, ltoirs[ltoidx], ltoir_sizes[ltoidx], "lto_online")
-                        ))  // External LTOIR
-                    {
-                        res = nvrtcResult(-1);
-                    }
                 }
-                if (!check_nvjitlink(handle, nvJitLinkComplete(handle))) {
+
+                // nvJitLink's default optimizing link can fail on device-debug
+                // LTO-IR for targets older than sm_100 with "Symbol name with
+                // unsupported characters" (GH-2249). Linking without
+                // optimization works but is much slower, so only fall back
+                // to it after a failure. The retry passes -g with -O0 so that
+                // nvJitLink generates debug information for the linked code
+                // instead of relying on what the -G input carries.
+                const bool retry_without_optimization = nvrtc_device_debug(debug);
+                nvJitLinkResult link_result = link_ltoirs(
+                    output, lopts, use_ptx, num_ltoirs, ltoirs, ltoir_sizes, ltoir_input_types,
+                    retry_without_optimization && !print_debug
+                );
+                if (retry_without_optimization && link_result == NVJITLINK_ERROR_NVVM_COMPILE) {
+                    fprintf(
+                        stderr,
+                        "Warp warning: nvJitLink failed to link device-debug code, retrying without "
+                        "optimization (-O0). This can take several minutes for large modules.\n"
+                    );
+                    lopts.push_back("-g");
+                    lopts.push_back("-O0");
+                    if (print_debug) {
+                        printf("nvJitLink retry options:\n");
+                        for (auto o : lopts) {
+                            printf("%s\n", o);
+                        }
+                    }
+                    link_result = link_ltoirs(
+                        output, lopts, use_ptx, num_ltoirs, ltoirs, ltoir_sizes, ltoir_input_types, false
+                    );
+                }
+                if (link_result != NVJITLINK_SUCCESS) {
                     res = nvrtcResult(-1);
-                } else {
-                    if (use_ptx) {
-                        size_t ptx_size = 0;
-                        check_nvjitlink(handle, nvJitLinkGetLinkedPtxSize(handle, &ptx_size));
-                        std::vector<char> ptx(ptx_size);
-                        check_nvjitlink(handle, nvJitLinkGetLinkedPtx(handle, ptx.data()));
-                        output = ptx;
-                    } else {
-                        size_t cubin_size = 0;
-                        check_nvjitlink(handle, nvJitLinkGetLinkedCubinSize(handle, &cubin_size));
-                        std::vector<char> cubin(cubin_size);
-                        check_nvjitlink(handle, nvJitLinkGetLinkedCubin(handle, cubin.data()));
-                        output = cubin;
-                    }
                 }
-                check_nvjitlink(handle, nvJitLinkDestroy(&handle));
 #else
                 fprintf(stderr, "Warp error: num_ltoirs > 0 but Warp was not built with MathDx support\n");
                 return size_t(-1);
 #endif
             }
 
-            if (!write_file(output.data(), output.size(), output_path, output_mode)) {
+            const size_t write_size = use_ptx ? ptx_size_without_nul(output.data(), output.size()) : output.size();
+            if (!write_file(output.data(), write_size, output_path, output_mode)) {
                 res = nvrtcResult(-1);
             }
         }
@@ -5263,9 +5490,11 @@ bool wp_cuda_compile_solver(
     CHECK_CUSOLVER(cusolverdxSetOperatorInt64s(
         h, cusolverdxOperatorType::CUSOLVERDX_OPERATOR_ARRANGEMENT, arrangement.size(), arrangement.data()
     ));
-    CHECK_CUSOLVER(cusolverdxSetOperatorInt64(
-        h, cusolverdxOperatorType::CUSOLVERDX_OPERATOR_FILL_MODE, (cusolverdxFillMode)fill_mode
-    ));
+    if (fill_mode >= 0) {
+        CHECK_CUSOLVER(cusolverdxSetOperatorInt64(
+            h, cusolverdxOperatorType::CUSOLVERDX_OPERATOR_FILL_MODE, (cusolverdxFillMode)fill_mode
+        ));
+    }
     CHECK_CUSOLVER(
         cusolverdxSetOperatorInt64(h, cusolverdxOperatorType::CUSOLVERDX_OPERATOR_SM, (long long)(arch * 10))
     );
@@ -5515,6 +5744,10 @@ static bool apic_cuda_compile_program_to_memory(
         diagnostic = std::string("NVRTC output: ") + nvrtcGetErrorString(result);
         return false;
     }
+    if (use_ptx) {
+        // The output is published to the guest cache as a .ptx file.
+        output.resize(ptx_size_without_nul(reinterpret_cast<const char*>(output.data()), output.size()));
+    }
     return true;
 }
 
@@ -5750,10 +5983,10 @@ int wp_cuda_get_max_cluster_dim(void* context, void* kernel, int block_dim, int 
     // Descending probe via cuOccupancyMaxActiveClusters: return the largest
     // cluster_dim the driver reports as launchable. For plain kernels this
     // reveals the device's true cluster limit (8 on integrated Hopper+ SoCs
-    // like Thor sm_101 and DGX Spark sm_121, up to 16 on Hopper/Blackwell
-    // desktop parts). For kernels with __cluster_dims__ baked in, the driver
-    // only accepts the declared size, so we get the declared value back (or
-    // 1 if the device can't support it).
+    // like Thor sm_110, formerly sm_101, and DGX Spark sm_121, up to 16 on
+    // discrete Hopper/Blackwell GPUs). For kernels with __cluster_dims__
+    // baked in, the driver only accepts the declared size, so we get the
+    // declared value back (or 1 if the device can't support it).
     CUlaunchAttribute cluster_attr = {};
     cluster_attr.id = CU_LAUNCH_ATTRIBUTE_CLUSTER_DIMENSION;
     cluster_attr.value.clusterDim.y = 1;

@@ -716,8 +716,13 @@ def build_dll_for_arch(
 
         cpp_flags = f'/nologo /std:c++17 /GR- /EHsc {runtime} /D "WP_BUILD_DLL" /D "{debug}" /D "{cuda_enabled}" /D "{mathdx_enabled}" /D "{cuda_compat_enabled}" /D "{iter_dbg}" /I"{native_dir}" {includes} '
 
+        # Debug compiles write to a per-library PDB. Libraries can build in
+        # parallel from the same directory, and one library's link must not
+        # read a PDB that another library's compiles are still writing.
+        compiler_pdb = f"vc140{_obj_tag}.pdb"
+
         if args.mode == "debug":
-            cpp_flags += "/FS /Zi /Od /D WP_ENABLE_DEBUG=1"
+            cpp_flags += f"/FS /Zi /Fd{compiler_pdb} /Od /D WP_ENABLE_DEBUG=1"
             linkopts = ["/DLL", "/DEBUG"]
         elif args.mode == "release":
             cpp_flags += "/Ox /D WP_ENABLE_DEBUG=0"
@@ -772,7 +777,7 @@ def build_dll_for_arch(
                     ]
 
                     if mode == "debug":
-                        cuda_cmd = f'{nvcc_cmd} --std=c++17 --compiler-options=/MT,/Zi,/Od -g -G -O0 -DNDEBUG -D_ITERATOR_DEBUG_LEVEL=0 -I"{native_dir}" -line-info {" ".join(_nvcc_opts)} -DWP_ENABLE_CUDA=1 -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
+                        cuda_cmd = f'{nvcc_cmd} --std=c++17 --compiler-options=/MT,/Zi,/Od,/FS,/Fd{compiler_pdb} -g -G -O0 -DNDEBUG -D_ITERATOR_DEBUG_LEVEL=0 -I"{native_dir}" -line-info {" ".join(_nvcc_opts)} -DWP_ENABLE_CUDA=1 -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
                     elif mode == "release":
                         cuda_cmd = f'{nvcc_cmd} --std=c++17 -O3 {" ".join(_nvcc_opts)} -I"{native_dir}" -DNDEBUG -DWP_ENABLE_CUDA=1 -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
 

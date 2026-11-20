@@ -216,17 +216,34 @@ template <typename Type> inline CUDA_CALLABLE Type tensordot(const quat_t<Type>&
     return dot(a, b);
 }
 
-template <typename Type> inline CUDA_CALLABLE Type length(const quat_t<Type>& q) { return sqrt(dot(q, q)); }
+// Sum of squares in range_safe_compute_type, so float16 lengths stay finite and nonzero whenever the
+// length itself is representable.
+template <typename Type>
+inline CUDA_CALLABLE typename range_safe_compute_type<Type>::type range_safe_length_sq(const quat_t<Type>& q)
+{
+    using Compute = typename range_safe_compute_type<Type>::type;
+    Compute x = Compute(q.x), y = Compute(q.y), z = Compute(q.z), w = Compute(q.w);
+    return x * x + y * y + z * z + w * w;
+}
+
+template <typename Type> inline CUDA_CALLABLE Type length(const quat_t<Type>& q)
+{
+    return Type(sqrt(range_safe_length_sq(q)));
+}
 
 template <typename Type> inline CUDA_CALLABLE Type length_sq(const quat_t<Type>& q) { return dot(q, q); }
 
 template <typename Type> inline CUDA_CALLABLE quat_t<Type> normalize(const quat_t<Type>& q)
 {
-    Type l = length(q);
-    if (l > Type(kEps)) {
-        Type inv_l = Type(1) / l;
+    using Compute = typename range_safe_compute_type<Type>::type;
+    Compute l = sqrt(range_safe_length_sq(q));
+    if (l > Compute(kEps)) {
+        Compute inv_l = Compute(1) / l;
 
-        return quat_t<Type>(q.x * inv_l, q.y * inv_l, q.z * inv_l, q.w * inv_l);
+        return quat_t<Type>(
+            Type(Compute(q.x) * inv_l), Type(Compute(q.y) * inv_l), Type(Compute(q.z) * inv_l),
+            Type(Compute(q.w) * inv_l)
+        );
     } else {
         return quat_t<Type>(Type(0), Type(0), Type(0), Type(1));
     }
@@ -1054,9 +1071,15 @@ template <typename Type>
 inline CUDA_CALLABLE void adj_length(const quat_t<Type>& a, Type ret, quat_t<Type>& adj_a, const Type adj_ret)
 {
     if (ret > Type(kEps)) {
-        Type inv_l = Type(1) / ret;
+        // In float16, 1 / ret overflows for lengths below about 1.5e-5 although the gradient, a unit quaternion, fits.
+        using Compute = typename range_safe_compute_type<Type>::type;
+        Compute inv_l = Compute(1) / Compute(ret);
+        Compute adj = Compute(adj_ret);
 
-        adj_a += quat_t<Type>(a.x * inv_l, a.y * inv_l, a.z * inv_l, a.w * inv_l) * adj_ret;
+        adj_a += quat_t<Type>(
+            Type(Compute(a.x) * inv_l * adj), Type(Compute(a.y) * inv_l * adj), Type(Compute(a.z) * inv_l * adj),
+            Type(Compute(a.w) * inv_l * adj)
+        );
     }
 }
 
@@ -1069,12 +1092,19 @@ inline CUDA_CALLABLE void adj_length_sq(const quat_t<Type>& a, quat_t<Type>& adj
 template <typename Type>
 inline CUDA_CALLABLE void adj_normalize(const quat_t<Type>& q, quat_t<Type>& adj_q, const quat_t<Type>& adj_ret)
 {
-    Type l = length(q);
+    using Compute = typename range_safe_compute_type<Type>::type;
+    Compute l = sqrt(range_safe_length_sq(q));
 
-    if (l > Type(kEps)) {
-        Type l_inv = Type(1) / l;
+    if (l > Compute(kEps)) {
+        Compute l_inv = Compute(1) / l;
+        Compute qx = Compute(q.x), qy = Compute(q.y), qz = Compute(q.z), qw = Compute(q.w);
+        Compute ax = Compute(adj_ret.x), ay = Compute(adj_ret.y), az = Compute(adj_ret.z), aw = Compute(adj_ret.w);
+        Compute scale = l_inv * l_inv * l_inv * (qx * ax + qy * ay + qz * az + qw * aw);
 
-        adj_q += adj_ret * l_inv - q * (l_inv * l_inv * l_inv * dot(q, adj_ret));
+        adj_q.x += Type(ax * l_inv - qx * scale);
+        adj_q.y += Type(ay * l_inv - qy * scale);
+        adj_q.z += Type(az * l_inv - qz * scale);
+        adj_q.w += Type(aw * l_inv - qw * scale);
     }
 }
 

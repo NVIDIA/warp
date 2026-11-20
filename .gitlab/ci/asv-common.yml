@@ -145,6 +145,9 @@
     GCN_TASK_TIMEOUT: "28800"
     # Slowdown ratio that asv reports as a regression.
     ASV_FACTOR: "1.10"
+    # Number CUDA devices in the order nvidia-smi lists them, so that CUDA
+    # device 0 is the GPU whose NUMA node before_script looks up.
+    CUDA_DEVICE_ORDER: "PCI_BUS_ID"
   before_script:
     - !reference [.snippets, section-start-install-deps]
     - |
@@ -184,6 +187,39 @@
         fi
       else
         echo "GPU persistence mode: ${persistence:-unknown}"
+      fi
+    # GPU Boost picks the core clock from moment to moment, so short GPU work
+    # can run at different clocks in the baseline's and the candidate's
+    # processes. Pools that set ASV_GPU_CLOCK_MHZ lock the core clock to that
+    # value; after_script removes the lock. Best effort, like the governor.
+    - |
+      if [ -n "${ASV_GPU_CLOCK_MHZ:-}" ]; then
+        if sudo -n nvidia-smi -lgc "$ASV_GPU_CLOCK_MHZ,$ASV_GPU_CLOCK_MHZ" > /dev/null 2>&1; then
+          touch /tmp/warp-asv-reset-gpu-clocks
+          echo "GPU core clock locked to $ASV_GPU_CLOCK_MHZ MHz; now $(nvidia-smi --query-gpu=clocks.gr --format=csv,noheader -i 0)"
+        else
+          echo "WARNING: failed to lock the GPU core clock to $ASV_GPU_CLOCK_MHZ MHz"
+        fi
+      fi
+    # How fast a benchmark process launches work depends on the CPU it runs
+    # on. It is slower on a NUMA node away from the GPU and, on the B200
+    # hosts, on the second hyperthread of a core, where it slows down over
+    # its first second even while the first hyperthread is idle. The
+    # scheduler places every process anew, so the baseline's and the
+    # candidate's processes could differ by more than ASV_FACTOR. asv runs
+    # on the first hyperthread of each core on GPU 0's NUMA node instead.
+    - |
+      gpu_bus_id="$(nvidia-smi --query-gpu=pci.bus_id --format=csv,noheader -i 0 | tr 'A-F' 'a-f')"
+      gpu_node="$(cat "/sys/bus/pci/devices/${gpu_bus_id#0000}/numa_node" 2>/dev/null || echo -1)"
+      # lscpu lists CPUs in ascending order, so the first CPU listed for a
+      # core is its first hyperthread.
+      ASV_CPUS="$(lscpu -p=CPU,CORE,NODE 2>/dev/null |
+        awk -F, -v node="$gpu_node" '!/^#/ && (node < 0 || $3 == node) && !seen[$2]++ { print $1 }' | paste -sd, -)" || true
+      if [ -n "$ASV_CPUS" ] && command -v taskset > /dev/null; then
+        echo "GPU 0 ($gpu_bus_id) is on NUMA node $gpu_node; asv runs on CPUs $ASV_CPUS"
+      else
+        ASV_CPUS=
+        echo "WARNING: failed to find the CPUs for GPU 0 ($gpu_bus_id); asv runs on all CPUs"
       fi
     - curl -LsSf https://astral.sh/uv/install.sh | sh
     - export PATH="$HOME/.local/bin:$PATH"
@@ -248,11 +284,12 @@
       section_start() { echo -e "\e[0Ksection_start:$(date +%s):$1[collapsed=true]\r\e[0K$2"; }
       section_end() { echo -e "\e[0Ksection_end:$(date +%s):$1\r\e[0K"; }
       asv_progress='^(·|\[ *[0-9.]+%\] (··|···) [^=])'
+      on_gpu_cpus() { if [ -n "$ASV_CPUS" ]; then taskset -c "$ASV_CPUS" "$@"; else "$@"; fi; }
 
       date -u +"asv continuous start: %FT%TZ"
       {
         asv_rc=0
-        uvx asv continuous -e --interleave-rounds --append-samples --no-only-changed -f "$ASV_FACTOR" --bench "$ASV_BENCH_FILTER" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || asv_rc=$?
+        on_gpu_cpus uvx asv continuous -e --interleave-rounds --append-samples --no-only-changed -f "$ASV_FACTOR" --bench "$ASV_BENCH_FILTER" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || asv_rc=$?
         echo "$asv_rc" > asv-continuous.rc
       } | tee asv-continuous.log | LC_ALL=C grep --line-buffered -E "$asv_progress" || true
       rc="$(cat asv-continuous.rc)"
@@ -271,8 +308,9 @@
       # rc=1: regressions detected. rc>1: benchmark failures (e.g. a new
       # benchmark uses an API not yet on the compare ref); the table still
       # covers the benchmarks that ran. The exit status is propagated at the
-      # end.
-      uvx asv compare --split -f "$ASV_FACTOR" --machine "$ASV_MACHINE_NAME" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || true
+      # end. Each group is sorted by descending ratio, so slowdowns too small
+      # to count as regressions top the unchanged group.
+      uvx asv compare --split --sort ratio -f "$ASV_FACTOR" --machine "$ASV_MACHINE_NAME" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || true
       printf '\n'
 
       if [ "$rc" -eq 1 ]; then
@@ -280,15 +318,20 @@
         # The job fails either way: a regression that goes away on rerun
         # points at a noisy benchmark, which needs fixing too. Rows marked
         # `+` are regressions; the last column is the benchmark name, with
-        # parameters in the form `--bench` matches.
+        # parameters in the form `--bench` matches. The rerun saves its
+        # results to asv/results-rerun so the main run's samples stay in
+        # asv/results. asv has no option for the results directory and
+        # resolves config paths relative to the config file, so the rerun
+        # uses a copy of asv.conf.json next to the original.
         regressed="$(uvx asv compare --only-changed -f "$ASV_FACTOR" --machine "$ASV_MACHINE_NAME" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>/dev/null |
           awk -F'|' '$2 ~ /^ *\+ *$/ { name = $6; gsub(/^ +| +$/, "", name); print name }')" || true
         if [ -n "$regressed" ]; then
           rerun_filter="^($(printf '%s\n' "$regressed" | sed 's/[][\.*^$()+?{}|]/\\&/g' | paste -sd '|'))\$"
           printf 'Rerunning regressed benchmarks:\n%s\n\n' "$regressed"
+          uv run --no-project python -c 'import json; conf = json.load(open("asv.conf.json")); conf["results_dir"] = "asv/results-rerun"; json.dump(conf, open("asv-rerun.conf.json", "w"), indent=2)'
           {
             rerun_rc=0
-            uvx asv continuous -e --interleave-rounds -f "$ASV_FACTOR" --bench "$rerun_filter" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || rerun_rc=$?
+            on_gpu_cpus uvx asv continuous --config asv-rerun.conf.json -e --interleave-rounds -f "$ASV_FACTOR" --bench "$rerun_filter" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || rerun_rc=$?
             echo "$rerun_rc" > asv-rerun.rc
           } | tee -a asv-continuous.log | LC_ALL=C grep --line-buffered -E "$asv_progress|^\|" || true
           rerun_rc="$(cat asv-rerun.rc)"
@@ -326,6 +369,15 @@
         echo "CPU governor restored to $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor)"
         rm -f /tmp/warp-asv-prev-governor
       fi
+      if [ -e /tmp/warp-asv-reset-gpu-clocks ]; then
+        echo "GPU core clock before reset: $(nvidia-smi --query-gpu=clocks.gr --format=csv,noheader -i 0)"
+        if sudo -n nvidia-smi -rgc > /dev/null 2>&1; then
+          echo "GPU core clock lock removed"
+        else
+          echo "WARNING: failed to remove the GPU core clock lock"
+        fi
+        rm -f /tmp/warp-asv-reset-gpu-clocks
+      fi
       if [ -e /tmp/warp-asv-restore-persistence ]; then
         sudo -n nvidia-smi -pm 0 > /dev/null 2>&1 || true
         echo "GPU persistence mode restored to $(nvidia-smi --query-gpu=persistence_mode --format=csv,noheader -i 0)"
@@ -334,6 +386,7 @@
   artifacts:
     paths:
       - asv/results/
+      - asv/results-rerun/
       - asv-continuous.log
     expire_in: 1 week
     when: always
@@ -357,6 +410,9 @@
     MACHINE_OS: ubuntu22-04-5
     MACHINE_KIND: "EPYC_9124_1XRTXPRO6000_BW_SV"
     MACHINE_DRIVER: "NVIDIA-Linux-x86_64-595.58.03"
+    # The base clock, which the GPU sustains within its power limit. Unlocked,
+    # short GPU work on this pool runs at one of two speeds in each process.
+    ASV_GPU_CLOCK_MHZ: "1590"
 
 # One booking holds a whole 8-GPU DGX B200. The benchmarks only use cuda:0,
 # and asv starts a fresh process for every sample, so exposing only GPU 0

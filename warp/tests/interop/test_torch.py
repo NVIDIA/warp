@@ -1018,6 +1018,49 @@ def test_torch_tape_autograd_torch_stream(test, device):
     torch.testing.assert_close(grad, 2.0 * expected_x)
 
 
+def test_torch_stream_native_scratch(test, device):
+    """Release scan scratch on a borrowed non-blocking stream.
+
+    This test detects the scratch lifetime race only under Compute Sanitizer with
+    ``--track-stream-ordered-races all``.
+    """
+    torch = _import_torch()
+    torch_stream = torch.cuda.Stream(device=wp.device_to_torch(device))
+    stream = wp.stream_from_torch(torch_stream)
+    test.assertFalse(stream.is_blocking)
+
+    with wp.ScopedStream(stream):
+        values = wp.array([3, 1, 4, 1], dtype=wp.int32, device=device)
+        result = wp.empty_like(values)
+        wp.utils.array_scan(values, result)
+
+    torch_stream.synchronize()
+    np.testing.assert_array_equal(result.numpy(), [3, 4, 8, 9])
+
+
+def test_torch_stream_unregister_sort_scratch(test, device):
+    """Release cached sort scratch when a borrowed non-blocking stream is unregistered.
+
+    This test detects the scratch lifetime race only under Compute Sanitizer with
+    ``--track-stream-ordered-races all``.
+    """
+    torch = _import_torch()
+    torch_stream = torch.cuda.Stream(device=wp.device_to_torch(device))
+    stream = wp.stream_from_torch(torch_stream)
+
+    with wp.ScopedStream(stream):
+        keys = wp.array([3, 1, 4, 1, 0, 0, 0, 0], dtype=wp.int32, device=device)
+        values = wp.array([0, 1, 2, 3, 0, 0, 0, 0], dtype=wp.int32, device=device)
+        wp.utils.radix_sort_pairs(keys, values, 4)
+
+    # Unregistering the wrapper releases the stream's cached sort scratch.
+    del stream
+
+    torch_stream.synchronize()
+    np.testing.assert_array_equal(keys.numpy()[:4], [1, 1, 3, 4])
+    np.testing.assert_array_equal(values.numpy()[:4], [1, 3, 0, 2])
+
+
 def test_torch_graph_torch_stream(test, device):
     """Capture a Torch graph on a Torch stream."""
 
@@ -1528,6 +1571,20 @@ else:
         )
 
     if torch_cuda_candidate_devices:
+        add_function_test(
+            TestTorch,
+            "test_torch_stream_native_scratch",
+            test_torch_stream_native_scratch,
+            devices=torch_cuda_candidate_devices,
+            device_check=_check_torch_device,
+        )
+        add_function_test(
+            TestTorch,
+            "test_torch_stream_unregister_sort_scratch",
+            test_torch_stream_unregister_sort_scratch,
+            devices=torch_cuda_candidate_devices,
+            device_check=_check_torch_device,
+        )
         add_function_test(
             TestTorch,
             "test_torch_graph_torch_stream",

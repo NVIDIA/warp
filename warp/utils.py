@@ -10,6 +10,7 @@
 from warp._src.utils import array_cast as array_cast
 from warp._src.utils import array_inner as array_inner
 from warp._src.utils import array_scan as array_scan
+from warp._src.utils import array_scan_temp_storage_size as array_scan_temp_storage_size
 from warp._src.utils import array_sum as array_sum
 
 

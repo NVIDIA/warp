@@ -36,6 +36,7 @@ from warp._src.module_registry import register_module_source as _register_module
 # fmt: off
 _register_module_source("warp.autograd", "warp._src.autograd")
 _register_module_source("warp.geometry", "warp._src.geometry.delaunay")
+_register_module_source("warp.geometry.intersect", "warp._src.geometry.intersect")
 _register_module_source("warp.geometry.marching_cubes", "warp._src.geometry.marching_cubes")
 _register_module_source("warp.geometry.sparse_marching_cubes", "warp._src.geometry.sparse_marching_cubes")
 _register_module_source("warp.geometry.surface_nets", "warp._src.geometry.surface_nets")
@@ -81,6 +82,8 @@ _register_module_source("warp.fem.quadrature.pic_quadrature", "warp._src.fem.qua
 _register_module_source("warp.fem.quadrature.quadrature", "warp._src.fem.quadrature.quadrature")
 _register_module_source("warp.fem.space.basis_function_space", "warp._src.fem.space.basis_function_space")
 _register_module_source("warp.fem.space.basis_space", "warp._src.fem.space.basis_space")
+_register_module_source("warp.fem.space.constrained_basis_space", "warp._src.fem.space.constrained_basis_space")
+_register_module_source("warp.fem.space.constraints", "warp._src.fem.space.constraints")
 _register_module_source("warp.fem.space.dof_mapper", "warp._src.fem.space.dof_mapper")
 _register_module_source("warp.fem.space.function_space", "warp._src.fem.space.function_space")
 _register_module_source("warp.fem.space.grid_2d_function_space", "warp._src.fem.space.grid_2d_function_space")
@@ -343,6 +346,9 @@ from warp._src.context import synchronize as synchronize
 
 from warp._src.tape import Tape as Tape
 
+from warp._src.jet import JetSpace as JetSpace
+from warp._src.jet import JetSpace2 as JetSpace2
+
 
 # category: Device Management
 
@@ -359,6 +365,7 @@ from warp._src.context import get_cuda_device as get_cuda_device
 from warp._src.context import get_cuda_supported_archs as get_cuda_supported_archs
 from warp._src.context import get_cuda_toolkit_version as get_cuda_toolkit_version
 from warp._src.context import get_cuda_driver_version as get_cuda_driver_version
+from warp._src.context import get_libmathdx_version as get_libmathdx_version
 
 from warp._src.context import map_cuda_device as map_cuda_device
 from warp._src.context import unmap_cuda_device as unmap_cuda_device
@@ -586,7 +593,6 @@ from warp._src.constants import *
 
 # category: Submodules
 
-from . import build_experimental as build_experimental
 from . import config as config
 from . import types as types
 from . import utils as utils
@@ -611,8 +617,20 @@ if _TYPE_CHECKING:
 
     MarchingCubes = _IsoSurfaceMarchingCubes
 
+    # Deprecated alias of `warp.experimental.build`, kept visible to type checkers
+    # until its removal in Warp 1.24. At runtime it resolves through __getattr__.
+    from . import build_experimental as build_experimental
+
 
 def __getattr__(name):
+    # Deprecated module `warp.build_experimental`, imported lazily so that a plain
+    # `import warp` neither loads it nor warns. The module itself warns when one of
+    # its forwarded names is used.
+    if name == "build_experimental":
+        import warp.build_experimental  # noqa: PLC0415
+
+        return warp.build_experimental
+
     # Deprecated alias of `warp.geometry.IsoSurfaceMarchingCubes`, resolved lazily
     # so that `wp.MarchingCubes` *is* the new class rather than a subclass of it.
     # The isosurface API itself lives in `warp.geometry`, imported explicitly.

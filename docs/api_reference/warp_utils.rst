@@ -16,6 +16,7 @@ Array Operations
    array_cast
    array_inner
    array_scan
+   array_scan_temp_storage_size
    array_sum
 
 Sorting

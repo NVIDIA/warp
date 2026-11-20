@@ -39,15 +39,16 @@ on platforms with NVIDIA CUDA support. The following table summarizes platform s
     | **macOS**           | ``x86-64``   | Intel-based Mac      | Discontinued       | None                |
     +---------------------+--------------+----------------------+--------------------+---------------------+
 
-Windows on Arm supports CPU execution and experimental CUDA acceleration through source builds.
-See :ref:`windows-arm64-builds` for requirements and current limitations.
+Windows on Arm supports CPU execution and experimental CUDA acceleration. Starting with Warp 1.19.0,
+PyPI releases and release candidates include a Windows on Arm wheel; nightly builds do not.
+See :ref:`windows-on-arm` for current limitations.
 
 Runtime requirements
 --------------------
 
 The following requirements apply when running Warp:
 
-**Python**: Version 3.10 or newer
+**Python**: Version 3.11 or newer
 
 **Dependencies**: `NumPy <https://numpy.org>`__ (required)
 
@@ -89,10 +90,9 @@ see the :ref:`cuda-12-arm-limitation`.
   * Warp packages built with CUDA Toolkit 13.x require an NVIDIA R580-series or newer driver.
   * Builds using ``--quick`` can require a newer driver; see :ref:`cuda-requirements`.
 
-* **Advanced Features**: Half-precision (``float16``) atomic operations require compute capability 7.0+ (Volta).
-  On older GPUs, these operations return zero. Double-precision (``float64``) atomic addition
-  requires compute capability 6.0+ (Pascal). When targeting older GPUs, it returns zero without modifying
-  the target memory.
+* **Advanced Features**: ``float16`` and ``bfloat16`` atomic operations require compute capability 7.0+ (Volta).
+  ``float64`` atomic addition and subtraction require compute capability 6.0+ (Pascal).
+  Kernels compiled for older GPUs skip these updates without raising an error.
 
 * **CPU-only execution** is supported on all supported platforms for users without a compatible GPU or driver.
 
@@ -109,7 +109,7 @@ To build Warp from source, you need:
 
 **Core Tools:**
 
-* Python 3.10+
+* Python 3.11+
 * `Git LFS <https://git-lfs.com>`__ (for assets used in tests, examples, and documentation)
 * NumPy
 
@@ -281,10 +281,10 @@ operations to direct storage mutation.
 New allocations and views have no subclass or metadata propagation guarantee.
 Existing operations that return the input for a no-op retain that identity,
 and an explicit ``out`` buffer remains the caller's object. Python metadata and
-helper methods are unavailable inside kernels; subclass compatibility adds no
-operation interception hooks. Dispatch and metadata propagation require a
-separate protocol; see `GH-1834 <https://github.com/NVIDIA/warp/issues/1834>`_
-for the independently tracked discussion.
+helper methods are unavailable inside kernels. Subclassing alone adds no
+operation interception hooks. To intercept supported host APIs and apply
+its own metadata propagation policy, a subclass can implement the opt-in
+:ref:`__warp_function__ protocol <array-function-overrides>`.
 
 Differentiation, interoperability, and capture follow the parent's capabilities
 and ownership rules. Python metadata is not serialized as capture state.
@@ -340,7 +340,8 @@ All supported components (e.g. API functions, Python versions, GPU architectures
 
 * **Experimental**: A new feature that is still under active development.
   It is available for early adopters to test and provide feedback, but its design may change with little or no notice,
-  including in bugfix releases.
+  including in bugfix releases. Experimental modules live under :mod:`warp.experimental` and must be imported
+  explicitly (for example, ``import warp.experimental.build``).
 * **Stable**: The default state for most features. Changes to stable features follow our deprecation timeline 
   and backward compatibility guarantees.
 * **Deprecated**: A feature that is scheduled for removal in a future release.
@@ -367,8 +368,8 @@ only in feature releases, never in bugfix releases.
   flags the upcoming removal in the next release.
 * ``v1.12.0`` (month 4): Feature is removed. Using it will result in an error.
 
-While we strive to abide by the above deprecation timeline, there may be circumstances in which a feature is removed
-with a briefer or longer deprecation period.
+Python versions that have already reached end-of-life may follow a shorter announced deprecation
+schedule. Other circumstances may also require a briefer or longer deprecation period.
 
 How deprecations are communicated
 ---------------------------------
@@ -403,8 +404,8 @@ What to do when you see a deprecation warning
 2. Check the **Deprecated** section of :doc:`/project/changelog` to find the release in which the
    deprecation was first announced. Combined with the deprecation timeline above, this tells you
    roughly when the feature will be removed.
-3. Migrate your code to the replacement API. The deprecated feature will remain functional for at
-   least 4 months, giving you multiple feature releases to complete the migration.
+3. Migrate your code to the replacement API. Deprecated features typically remain functional for at
+   least 4 months, unless a different removal timeline is explicitly announced.
 4. If migration is blocked by a gap in the replacement, raise a `GitHub issue
    <https://github.com/NVIDIA/warp/issues>`__.
 
@@ -456,10 +457,10 @@ Support for newly released Python versions is added in the next Warp feature rel
 Python version's stable release (e.g., if Python 3.15.0 is released during the Warp 1.10.x series,
 support will be added in Warp 1.11.0).
 
-When a Python version reaches end-of-life, we follow the deprecation timeline described above
-before dropping support, allowing users time to migrate.
-
-Python 3.10 is deprecated as of Warp 1.19 and will be removed in Warp 1.20.
+Once a Python version has reached end-of-life, Warp may deprecate and remove support on a shorter
+announced schedule than the usual four-month period. These versions no longer receive upstream
+security fixes. The deprecation notice states the Warp release targeted for removal, and deprecations
+and removals still occur only in feature releases.
 
 Dependencies
 ~~~~~~~~~~~~

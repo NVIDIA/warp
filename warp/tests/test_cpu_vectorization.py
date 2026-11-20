@@ -116,6 +116,23 @@ class TestCpuVectorization(unittest.TestCase):
                 wp.launch(kernel, dim=len(a), inputs=[a, b], outputs=[output], device="cpu", block_dim=1)
                 np.testing.assert_allclose(output.numpy(), expected, rtol=1.0e-6, atol=1.0e-6)
 
+    def test_vec4_subnormal_arithmetic(self):
+        """Preserve valid subnormal operands under the CPU compiler defaults."""
+        bits = np.array([1, 2, 3, 0x007FFFFF, 0x80000001, 0x80000002, 0x80000003, 0x807FFFFF], dtype=np.uint32)
+        a_np = bits.view(np.float32).reshape(2, 4)
+        b_np = np.full_like(a_np, 2.0)
+        # A fixed bit oracle also detects flushing in the host FP environment.
+        expected = np.array(
+            [3, 6, 9, 0x013FFFFE, 0x80000003, 0x80000006, 0x80000009, 0x813FFFFE], dtype=np.uint32
+        ).reshape(2, 4)
+        for kernel in (cpu_vec4_component_o1_kernel, cpu_vec4_component_kernel):
+            with self.subTest(optimization_level=kernel.module.options["optimization_level"]):
+                a = wp.array(a_np, dtype=wp.vec4f, device="cpu")
+                b = wp.array(b_np, dtype=wp.vec4f, device="cpu")
+                output = wp.empty_like(a)
+                wp.launch(kernel, dim=len(a), inputs=[a, b], outputs=[output], device="cpu", block_dim=1)
+                np.testing.assert_array_equal(output.numpy().view(np.uint32), expected)
+
     def test_vec4_component_slp_optimization_record(self):
         """Check that SLP runs at CPU O2 but not at O1 or with the opt-out."""
         if wp.config.mode == "debug":

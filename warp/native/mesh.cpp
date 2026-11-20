@@ -3,6 +3,8 @@
 
 #include "warp.h"
 
+#include "apic.h"
+#include "apic_internal.h"
 #include "bvh.h"
 #include "cuda_util.h"
 #include "error.h"
@@ -230,8 +232,36 @@ void wp_mesh_destroy_host(uint64_t id)
     wp_free_host(m);
 }
 
+// Record a host mesh update into the active APIC byte stream (CPU graph
+// capture); returns true if it was recorded (and therefore should NOT execute
+// eagerly). CPU capture is record-only, so executing the update now would read
+// capture-time data and never re-run on replay. Same rationale as the BVH
+// update hooks in bvh.cpp.
+static bool apic_capture_mesh_refit_host(uint64_t id)
+{
+    APICState* state = wp_apic_get_recording_state();
+    if (!state)
+        return false;
+    apic_record_mesh_refit(state, id);
+    return true;
+}
+
+static bool apic_capture_mesh_set_array_host(APICOpType op_type, uint64_t id, const wp::array_t<wp::vec3>& array)
+{
+    APICState* state = wp_apic_get_recording_state();
+    if (!state)
+        return false;
+    apic_record_mesh_set_array(
+        state, op_type, id, array.data, array.grad, array.shape[0], array.strides[0], array.flags
+    );
+    return true;
+}
+
 void wp_mesh_refit_host(uint64_t id)
 {
+    if (apic_capture_mesh_refit_host(id))
+        return;
+
     Mesh* m = (Mesh*)(id);
 
     float sum = 0.0;
@@ -272,6 +302,9 @@ void wp_mesh_set_points_host(uint64_t id, wp::array_t<wp::vec3> points)
         return;
     }
 
+    if (apic_capture_mesh_set_array_host(APIC_OP_MESH_SET_POINTS, id, points))
+        return;
+
     m->points = points;
 
     wp_mesh_refit_host(id);
@@ -288,7 +321,23 @@ void wp_mesh_set_velocities_host(uint64_t id, wp::array_t<wp::vec3> velocities)
         );
         return;
     }
+
+    if (apic_capture_mesh_set_array_host(APIC_OP_MESH_SET_VELOCITIES, id, velocities))
+        return;
+
     m->velocities = velocities;
+}
+
+uint64_t wp_mesh_get_points_ptr_host(uint64_t id)
+{
+    const Mesh* m = (const Mesh*)(id);
+    return (uint64_t)m->points.data;
+}
+
+uint64_t wp_mesh_get_velocities_ptr_host(uint64_t id)
+{
+    const Mesh* m = (const Mesh*)(id);
+    return (uint64_t)m->velocities.data;
 }
 
 // stubs for non-CUDA platforms

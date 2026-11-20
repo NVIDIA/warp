@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import ast
+import copy
 import functools
 import gc
 import importlib
@@ -22,6 +23,8 @@ import warp as wp
 from warp._src import codegen
 from warp.tests import aux_test_array_slot_operators as slot_operators
 from warp.tests import aux_test_extract_source_patterns as patterns
+from warp.tests import aux_test_function_double as function_double
+from warp.tests import aux_test_function_triple as function_triple
 from warp.tests.aux_test_extract_source_patterns import contains_truncating_string
 from warp.tests.unittest_utils import *
 
@@ -1937,6 +1940,26 @@ def test_unary_minus_on_64bit_constant(test, device):
     np.testing.assert_array_equal(out_i64.numpy(), [-7 * 2])
 
 
+@wp.kernel(module="unique")
+def _non_ascii_source_kernel(out: wp.array[int]):
+    out[0] = 1  # Copied into the generated source: λ → ═
+
+
+def test_non_ascii_source(test, device):
+    # The generated source must be written as UTF-8 regardless of the locale encoding.
+    out = wp.zeros(1, dtype=int, device=device)
+    wp.launch(_non_ascii_source_kernel, dim=1, inputs=[out], device=device)
+    np.testing.assert_array_equal(out.numpy(), [1])
+
+
+_SCAN_SCALE = 2.0
+
+
+@wp.func
+def _scan_apply(f: wp.Function, x: float):
+    return f(x)
+
+
 class TestCodeGen(unittest.TestCase):
     def _codegen_cuda_source(self, kernel):
         module = kernel.module
@@ -2180,10 +2203,8 @@ class TestCodeGen(unittest.TestCase):
         """Verify ``get_arg_type`` returns ``Any`` for generic parameters.
 
         ``Any`` marks an unspecialized generic parameter and must be returned
-        as-is, both when passed directly and when carried on a ``Var``. Before
-        Python 3.11 ``Any`` is a ``typing._SpecialForm`` instance rather than a
-        ``type``, so a regressed implementation falls through to ``type(arg)``
-        and yields ``typing._SpecialForm``, which has no type code.
+        as-is, both when passed directly and when carried on a ``Var``, so
+        downstream signature logic can treat it as generic.
         """
         self.assertIs(codegen.get_arg_type(Any), Any)
         self.assertIs(codegen.get_arg_type(codegen.Var("coords", Any)), Any)
@@ -2432,6 +2453,62 @@ class TestCodeGen(unittest.TestCase):
 
         self.assertEqual(adj.kernel_dim, 2)
 
+    def test_reference_scan_resolves_repeated_names_once(self):
+        """Resolve names repeated in a function as often as names used once, with the same results."""
+
+        def single_kernel(out: wp.array[wp.vec3]):
+            out[0] = wp.vec3(_SCAN_SCALE)
+
+        def repeated_kernel(out: wp.array[wp.vec3]):
+            out[0] = wp.vec3(_SCAN_SCALE) + wp.vec3(_SCAN_SCALE) * wp.vec3(_SCAN_SCALE)
+
+        def scan(func):
+            adj = codegen.Adjoint(func)
+            with (
+                mock.patch.object(
+                    codegen.Adjoint,
+                    "resolve_external_reference",
+                    autospec=True,
+                    side_effect=codegen.Adjoint.resolve_external_reference,
+                ) as names,
+                mock.patch.object(
+                    codegen.Adjoint,
+                    "resolve_static_expression",
+                    autospec=True,
+                    side_effect=codegen.Adjoint.resolve_static_expression,
+                ) as paths,
+            ):
+                references = adj.get_references()
+            return names.call_count + paths.call_count, references
+
+        self.assertEqual(scan(single_kernel), scan(repeated_kernel))
+
+    def test_reference_scan_collects_function_arguments_of_every_call(self):
+        """Collect the function arguments of every call, also of calls to the same function."""
+
+        def apply_kernel(out: wp.array[float]):
+            out[0] = _scan_apply(function_double.function_external_module_double_it, 1.0) + _scan_apply(
+                function_triple.function_external_module_triple_it, 1.0
+            )
+
+        _, _, functions = codegen.Adjoint(apply_kernel).get_references()
+
+        self.assertIn(function_double.function_external_module_double_it, functions)
+        self.assertIn(function_triple.function_external_module_triple_it, functions)
+
+    def test_dependency_scan_collects_function_arguments_of_every_call(self):
+        """Depend on the modules of the function arguments of every call, also of calls to the same function."""
+
+        @wp.kernel(module="unique")
+        def apply_kernel(out: wp.array[float]):
+            out[0] = _scan_apply(function_double.function_external_module_double_it, 1.0) + _scan_apply(
+                function_triple.function_external_module_triple_it, 1.0
+            )
+
+        references = apply_kernel.module.references
+        self.assertIn(function_double.function_external_module_double_it.module, references)
+        self.assertIn(function_triple.function_external_module_triple_it.module, references)
+
     def test_namespaced_tid_call_sets_kernel_dim(self):
         namespace = types.SimpleNamespace(warp=wp)
 
@@ -2660,6 +2737,7 @@ class TestCodeGen(unittest.TestCase):
 
         # The view no longer matches the shared tree's derived caches.
         self.assertIsNone(adj._shared_source)
+        self.assertIsNot(adj.syntax(), shared.syntax)
 
     def test_substitute_nodes_one_frame_per_level(self):
         """Copy a deep path to a replacement with one stack frame per tree level."""
@@ -2731,6 +2809,7 @@ class TestCodeGen(unittest.TestCase):
         self.assertIsNotNone(k1.adj._shared_source)
         self.assertIs(k1.adj._shared_source, k2.adj._shared_source)
         self.assertIs(k1.adj.tree, k2.adj.tree)
+        self.assertIs(k1.adj.syntax(), k2.adj.syntax())
         self.assertNotEqual(k1.module.name, k2.module.name)
         self.assertIs(make(1.0), k1)
 
@@ -2819,6 +2898,51 @@ class TestCodeGen(unittest.TestCase):
         dead_id = make_dead_entry()
         gc.collect()
         self.assertNotIn(dead_id, codegen._shared_function_sources)
+
+    def test_overload_matching_positional_arguments(self):
+        """Accept and reject positional argument types for every builtin overload as Python's call binding does."""
+
+        def outcome(func, arg_types, allow_erasure):
+            try:
+                return codegen.func_match_args(func, arg_types, {}, allow_erasure=allow_erasure)
+            except Exception as e:
+                return type(e), str(e)
+
+        overloads = [
+            f for func in wp._src.context.builtin_functions.values() for f in getattr(func, "overloads", (func,))
+        ]
+        for i, func in enumerate(overloads):
+            own = tuple(func.input_types.values())
+            other = tuple(overloads[i - 1].input_types.values())
+            for arg_types in {*(own[:n] for n in range(len(own) + 1)), (*own, float), other}:
+                for allow_erasure in (False, True):
+                    with self.subTest(func=func.key, arg_types=arg_types, allow_erasure=allow_erasure):
+                        # a list takes the Signature.bind() path
+                        self.assertEqual(
+                            outcome(func, arg_types, allow_erasure), outcome(func, list(arg_types), allow_erasure)
+                        )
+
+    def test_overload_matching_rejects_argument_given_twice(self):
+        """Reject a call that passes the same parameter positionally and by keyword."""
+
+        @wp.func
+        def plain(a: float):
+            return a
+
+        self.assertTrue(codegen.func_match_args(plain, (float,), {}))
+        self.assertFalse(codegen.func_match_args(plain, (float,), {"a": float}))
+
+    def test_overload_matching_follows_replaced_signature(self):
+        """Match against a function's signature after it has been replaced, not the one matched first."""
+
+        @wp.func
+        def plain(a: float):
+            return a
+
+        self.assertTrue(codegen.func_match_args(plain, (float,), {}))
+        plain = copy.copy(plain)
+        plain.signature = inspect.Signature([inspect.Parameter("a", inspect.Parameter.KEYWORD_ONLY, annotation=float)])
+        self.assertFalse(codegen.func_match_args(plain, (float,), {}))
 
 
 devices = get_test_devices()
@@ -3119,6 +3243,7 @@ add_function_test(
     test_unary_minus_on_64bit_constant,
     devices=devices,
 )
+add_function_test(TestCodeGen, "test_non_ascii_source", test_non_ascii_source, devices=devices)
 
 
 if __name__ == "__main__":

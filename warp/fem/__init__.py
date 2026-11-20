@@ -91,10 +91,13 @@ from warp._src.fem.adaptivity import adaptive_nanogrid_from_field as adaptive_na
 from warp._src.fem.adaptivity import adaptive_nanogrid_from_hierarchy as adaptive_nanogrid_from_hierarchy
 from warp._src.fem.cache import borrow_temporary as borrow_temporary
 from warp._src.fem.cache import borrow_temporary_like as borrow_temporary_like
+from warp._src.fem.space import hanging_node_prolongation as hanging_node_prolongation
 from warp._src.fem.operator import integrand as integrand
 from warp._src.fem.integrate import integrate as integrate
 from warp._src.fem.integrate import interpolate as interpolate
 from warp._src.fem.space import make_collocated_function_space as make_collocated_function_space
+from warp._src.fem.space import make_conforming_basis_space as make_conforming_basis_space
+from warp._src.fem.space import make_constrained_basis_space as make_constrained_basis_space
 from warp._src.fem.space import make_contravariant_function_space as make_contravariant_function_space
 from warp._src.fem.space import make_covariant_function_space as make_covariant_function_space
 from warp._src.fem.field import make_discrete_field as make_discrete_field
@@ -108,6 +111,7 @@ from warp._src.fem.space import make_space_restriction as make_space_restriction
 from warp._src.fem.field import make_test as make_test
 from warp._src.fem.field import make_trial as make_trial
 from warp._src.fem.dirichlet import normalize_dirichlet_projector as normalize_dirichlet_projector
+from warp._src.fem.space import periodic_prolongation as periodic_prolongation
 from warp._src.fem.dirichlet import project_linear_system as project_linear_system
 from warp._src.fem.dirichlet import project_system_matrix as project_system_matrix
 from warp._src.fem.dirichlet import project_system_rhs as project_system_rhs

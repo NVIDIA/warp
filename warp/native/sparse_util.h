@@ -76,11 +76,13 @@ CUDA_CALLABLE inline int bsr_active_row_end(const int* offsets, const int* row_c
 }
 
 // Row-local in-place compression: tag zero input blocks via prune_values (if provided),
-// insertion-sort columns, and coalesce runs of equal columns.
+// insertion-sort columns as unsigned keys, and coalesce runs of equal columns.
+// Negative and out-of-range columns become keys >= col_count and are sorted last, then dropped.
 // Shared by the host serial pass and the CUDA serial fallback kernel.
 template <typename T, bool CompressValues>
 CUDA_CALLABLE inline void bsr_compress_inplace_row(
     int row,
+    int col_count,
     int block_size,
     const int* bsr_offsets,
     const int* bsr_row_counts,
@@ -104,7 +106,8 @@ CUDA_CALLABLE inline void bsr_compress_inplace_row(
 
     for (int block = row_beg + 1; block < row_end; ++block) {
         int scan = block;
-        while (scan > row_beg && bsr_columns[scan] < bsr_columns[scan - 1]) {
+        while (scan > row_beg
+               && static_cast<uint32_t>(bsr_columns[scan]) < static_cast<uint32_t>(bsr_columns[scan - 1])) {
             const int col = bsr_columns[scan];
             bsr_columns[scan] = bsr_columns[scan - 1];
             bsr_columns[scan - 1] = col;
@@ -119,9 +122,8 @@ CUDA_CALLABLE inline void bsr_compress_inplace_row(
     int read = row_beg;
     while (read < row_end) {
         const int col = bsr_columns[read];
-        if (col < 0) {
-            ++read;
-            continue;
+        if (static_cast<uint32_t>(col) >= static_cast<uint32_t>(col_count)) {
+            break;
         }
 
         if (write != read) {

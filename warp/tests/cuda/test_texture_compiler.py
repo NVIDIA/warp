@@ -308,7 +308,7 @@ TEXTURE_COMPILER_KERNELS = {}
 for cuda_output, optimization_level in COMPILER_CONFIGS:
     module = wp.Module(f"test_texture_compiler_{cuda_output}_{optimization_level}")
     wp.set_module_options(
-        {"cuda_output": cuda_output, "optimization_level": optimization_level},
+        {"cuda_output": cuda_output, "optimization_level": optimization_level, "enable_backward": False},
         module=module,
     )
     for kernel_key, kernel_func in KERNEL_FUNCTIONS.items():

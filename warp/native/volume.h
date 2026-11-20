@@ -618,23 +618,27 @@ CUDA_CALLABLE inline void adj_volume_sample_grad(
 }
 
 // Sampling a float volume at the given index-space coordinates, uvw can be fractional
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline float volume_sample_f(uint64_t id, vec3 uvw, int sampling_mode)
 {
     return volume_sample<float>(id, uvw, sampling_mode);
 }
 
 // Sampling an int volume at the given index-space coordinates, uvw can be fractional
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline int32_t volume_sample_i(uint64_t id, vec3 uvw)
 {
     return volume_sample<int32_t>(id, uvw, volume::CLOSEST);
 }
 
 // Sampling a vector volume at the given index-space coordinates, uvw can be fractional
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline vec3 volume_sample_v(uint64_t id, vec3 uvw, int sampling_mode)
 {
     return volume_sample<vec3>(id, uvw, sampling_mode);
 }
 
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline void adj_volume_sample_f(
     uint64_t id,
     vec3 uvw,
@@ -648,6 +652,7 @@ CUDA_CALLABLE inline void adj_volume_sample_f(
     adj_volume_sample(id, uvw, sampling_mode, adj_id, adj_uvw, adj_sampling_mode, adj_ret);
 }
 
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline void adj_volume_sample_v(
     uint64_t id,
     vec3 uvw,
@@ -662,11 +667,13 @@ CUDA_CALLABLE inline void adj_volume_sample_v(
 }
 
 // Sampling the volume at the given index-space coordinates, uvw can be fractional
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline float volume_sample_grad_f(uint64_t id, vec3 uvw, int sampling_mode, vec3& grad)
 {
     return volume_sample_grad<float>(id, uvw, sampling_mode, grad);
 }
 
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline void adj_volume_sample_grad_f(
     uint64_t id,
     vec3 uvw,
@@ -764,16 +771,19 @@ template <typename T> CUDA_CALLABLE inline T volume_lookup(uint64_t id, int32_t 
     return val;
 }
 
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline float volume_lookup_f(uint64_t id, int32_t i, int32_t j, int32_t k)
 {
     return volume_lookup<float>(id, i, j, k);
 }
 
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline int32_t volume_lookup_i(uint64_t id, int32_t i, int32_t j, int32_t k)
 {
     return volume_lookup<int32_t>(id, i, j, k);
 }
 
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline vec3 volume_lookup_v(uint64_t id, int32_t i, int32_t j, int32_t k)
 {
     return volume_lookup<vec3>(id, i, j, k);
@@ -845,16 +855,19 @@ CUDA_CALLABLE inline void volume_store(uint64_t id, int32_t i, int32_t j, int32_
     }
 }
 
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline void volume_store_f(uint64_t id, int32_t i, int32_t j, int32_t k, const float& value)
 {
     volume_store(id, i, j, k, value);
 }
 
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline void volume_store_v(uint64_t id, int32_t i, int32_t j, int32_t k, const vec3& value)
 {
     volume_store(id, i, j, k, value);
 }
 
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline void volume_store_i(uint64_t id, int32_t i, int32_t j, int32_t k, const int32_t& value)
 {
     volume_store(id, i, j, k, value);

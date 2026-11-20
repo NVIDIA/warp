@@ -253,29 +253,45 @@ class AdjointField(SpaceField):
         return eval_div_outer
 
     def _make_at_node(self):
+        is_test_field = isinstance(self, TestField)
+
         @cache.dynamic_func(suffix=self.name)
         def at_node(args: self.ElementEvalArg, s: self.SampleType):
-            dof = self._get_dof(s)
-            node_coords = self.space.basis.node_coords_in_element(
+            node, coord, valid = _dof_slots(self._get_dof(s))
+            if not valid:
+                return s
+            element_index, node_coords, owner_slot = self.space.basis.node_sample(
                 args.elt_arg,
                 args.eval_arg.topo_arg,
                 args.eval_arg.basis_arg,
                 s.element_index,
-                get_node_index_in_element(dof),
+                node,
             )
-            return self.SampleType(s.element_index, node_coords, s.qp_index, s.qp_weight, s.test_dof, s.trial_dof)
+            own_dof = DofIndex(owner_slot, coord)
+            if wp.static(is_test_field):
+                other_dof = s.trial_dof
+            else:
+                other_dof = s.test_dof
+            if wp.static(self.space.basis.moves_node_samples):
+                # The other slot refers to the original element of the other field's
+                # topology, so it cannot follow the sample: evaluate that field to zero
+                if element_index != s.element_index:
+                    other_dof = NULL_DOF_INDEX
+
+            if wp.static(is_test_field):
+                return self.SampleType(element_index, node_coords, s.qp_index, s.qp_weight, own_dof, other_dof)
+            return self.SampleType(element_index, node_coords, s.qp_index, s.qp_weight, other_dof, own_dof)
 
         return at_node
 
     def _make_node_index(self):
         @cache.dynamic_func(suffix=self.name)
         def node_index(args: self.ElementEvalArg, s: self.SampleType):
-            dof = self._get_dof(s)
+            node, _coord, valid = _dof_slots(self._get_dof(s))
+            if not valid:
+                return NULL_NODE_INDEX
             topo_arg = args.eval_arg.topo_arg
-            node_idx = self.space.topology.element_node_index(
-                args.elt_arg, topo_arg, s.element_index, get_node_index_in_element(dof)
-            )
-            return node_idx
+            return self.space.topology.element_node_index(args.elt_arg, topo_arg, s.element_index, node)
 
         return node_index
 
@@ -290,50 +306,51 @@ class AdjointField(SpaceField):
     def _make_node_inner_weight(self):
         @cache.dynamic_func(suffix=self.name)
         def node_inner_weight(args: self.ElementEvalArg, s: self.SampleType):
-            dof = self._get_dof(s)
+            node, _coord, valid = _dof_slots(self._get_dof(s))
             node_weight = self.space.basis.element_inner_weight(
                 args.elt_arg,
                 args.eval_arg.topo_arg,
                 args.eval_arg.basis_arg,
                 s.element_index,
                 s.element_coords,
-                get_node_index_in_element(dof),
+                node,
                 s.qp_index,
             )
-            return node_weight
+            return wp.where(valid, node_weight, type(node_weight)(0.0))
 
         return node_inner_weight
 
     def _make_node_outer_weight(self):
         @cache.dynamic_func(suffix=self.name)
         def node_outer_weight(args: self.ElementEvalArg, s: self.SampleType):
-            dof = self._get_dof(s)
+            node, _coord, valid = _dof_slots(self._get_dof(s))
             node_weight = self.space.basis.element_outer_weight(
                 args.elt_arg,
                 args.eval_arg.topo_arg,
                 args.eval_arg.basis_arg,
                 s.element_index,
                 s.element_coords,
-                get_node_index_in_element(dof),
+                node,
                 s.qp_index,
             )
-            return node_weight
+            return wp.where(valid, node_weight, type(node_weight)(0.0))
 
         return node_outer_weight
 
     def _make_node_inner_weight_gradient(self):
         @cache.dynamic_func(suffix=self.name)
         def node_inner_weight_gradient(args: self.ElementEvalArg, s: self.SampleType):
-            dof = self._get_dof(s)
+            node, _coord, valid = _dof_slots(self._get_dof(s))
             node_weight_gradient = self.space.basis.element_inner_weight_gradient(
                 args.elt_arg,
                 args.eval_arg.topo_arg,
                 args.eval_arg.basis_arg,
                 s.element_index,
                 s.element_coords,
-                get_node_index_in_element(dof),
+                node,
                 s.qp_index,
             )
+            node_weight_gradient = wp.where(valid, node_weight_gradient, type(node_weight_gradient)(0.0))
             grad_transform = self.space.element_inner_reference_gradient_transform(args.elt_arg, s)
             return node_weight_gradient * grad_transform
 
@@ -342,16 +359,17 @@ class AdjointField(SpaceField):
     def _make_node_outer_weight_gradient(self):
         @cache.dynamic_func(suffix=self.name)
         def node_outer_weight_gradient(args: self.ElementEvalArg, s: self.SampleType):
-            dof = self._get_dof(s)
+            node, _coord, valid = _dof_slots(self._get_dof(s))
             node_weight_gradient = self.space.basis.element_outer_weight_gradient(
                 args.elt_arg,
                 args.eval_arg.topo_arg,
                 args.eval_arg.basis_arg,
                 s.element_index,
                 s.element_coords,
-                get_node_index_in_element(dof),
+                node,
                 s.qp_index,
             )
+            node_weight_gradient = wp.where(valid, node_weight_gradient, type(node_weight_gradient)(0.0))
             grad_transform = self.space.element_outer_reference_gradient_transform(args.elt_arg, s)
             return node_weight_gradient * grad_transform
 

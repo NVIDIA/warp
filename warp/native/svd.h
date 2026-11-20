@@ -498,8 +498,23 @@ void _svd(// input A
     );
 }
 
+// Below MIN_TRACE = sqrt(smallest normal) / epsilon, the squared terms of the discriminant can underflow, which loses
+// its precision or fakes a repeated singular value. MAX is the largest finite value. Only float and double are defined:
+// lower precisions are solved in float32.
+template <typename Type> struct _svd2_limits;
+
+template <> struct _svd2_limits<float> {
+    static constexpr float MIN_TRACE = 1.0e-12f;
+    static constexpr float MAX = 3.40282347e38f;
+};
+
+template <> struct _svd2_limits<double> {
+    static constexpr double MIN_TRACE = 1.0e-138;
+    static constexpr double MAX = 1.7976931348623157e308;
+};
+
 template <typename Type>
-inline CUDA_CALLABLE void _svd_2( // input A
+inline CUDA_CALLABLE void _svd_2_core( // input A
     Type a11, Type a12, Type a21, Type a22,
     // output U
     Type& u11, Type& u12, Type& u21, Type& u22,
@@ -520,19 +535,31 @@ inline CUDA_CALLABLE void _svd_2( // input A
 
     // Step 3: Singular values
     if (discriminant == Type(0)) {
-        // Duplicate eigenvalue, A ~ s Id
-        s1 = s2 = sqrt(Type(0.5) * trace);
-        u11 = v11 = Type(1);
-        u12 = v12 = Type(0);
-        u21 = v21 = Type(0);
-        u22 = v22 = Type(1);
+        // Duplicate eigenvalue, A is a scaled orthogonal matrix
+        // On GPU, one reciprocal square root is cheaper than a square root and a division. On CPU, recipSqrt() is
+        // itself a square root and a division.
+#if defined(__CUDA_ARCH__)
+        Type inv_sigma = recipSqrt(Type(0.5) * trace);
+        Type sigma = Type(0.5) * trace * inv_sigma;
+#else
+        Type sigma = sqrt(Type(0.5) * trace);
+        Type inv_sigma = Type(1) / sigma;
+#endif
+        s1 = s2 = sigma;
+        v11 = v22 = Type(1);
+        v12 = v21 = Type(0);
+        u11 = a11 * inv_sigma;
+        u12 = a12 * inv_sigma;
+        u21 = a21 * inv_sigma;
+        u22 = a22 * inv_sigma;
         return;
     }
 
     // General case
     Type sqrt_term = sqrt(discriminant);
     Type lambda1 = (trace + sqrt_term) * Type(0.5);
-    Type lambda2 = (trace - sqrt_term) * Type(0.5);
+    // Rounding can make the smaller eigenvalue of a rank-deficient A^T A slightly negative.
+    Type lambda2 = max((trace - sqrt_term) * Type(0.5), Type(0));
     Type inv_sigma1 = recipSqrt(lambda1);
     Type sigma1 = Type(1) / inv_sigma1;
     Type sigma2 = sqrt(lambda2);
@@ -562,6 +589,44 @@ inline CUDA_CALLABLE void _svd_2( // input A
     // Step 6: Set S
     s1 = sigma1;
     s2 = sigma2;
+}
+
+template <typename Type>
+inline CUDA_CALLABLE void _svd_2( // input A
+    Type a11, Type a12, Type a21, Type a22,
+    // output U
+    Type& u11, Type& u12, Type& u21, Type& u22,
+    // output S
+    Type& s1, Type& s2,
+    // output V
+    Type& v11, Type& v12, Type& v21, Type& v22)
+{
+    Type ATA11 = a11 * a11 + a21 * a21;
+    Type ATA12 = a11 * a12 + a21 * a22;
+    Type ATA22 = a12 * a12 + a22 * a22;
+    Type trace = ATA11 + ATA22;
+    Type diff = ATA11 - ATA22;
+    Type discriminant = diff * diff + Type(4) * ATA12 * ATA12;
+
+    // Inputs small enough to underflow, or large enough to overflow, are solved after dividing A by its largest
+    // absolute entry. That path has its own copy of the solve, so the common path doesn't merge rescaled values.
+    if (trace < Type(_svd2_limits<Type>::MIN_TRACE) || trace > Type(_svd2_limits<Type>::MAX)
+        || discriminant > Type(_svd2_limits<Type>::MAX)) {
+        Type scale = max(max(abs(a11), abs(a12)), max(abs(a21), abs(a22)));
+        if (scale == Type(0)) {
+            s1 = s2 = Type(0);
+            u11 = v11 = u22 = v22 = Type(1);
+            u12 = v12 = u21 = v21 = Type(0);
+            return;
+        }
+
+        _svd_2_core(a11 / scale, a12 / scale, a21 / scale, a22 / scale, u11, u12, u21, u22, s1, s2, v11, v12, v21, v22);
+        s1 = s1 * scale;
+        s2 = s2 * scale;
+        return;
+    }
+
+    _svd_2_core(a11, a12, a21, a22, u11, u12, u21, u22, s1, s2, v11, v12, v21, v22);
 }
 
 template <typename Type>
@@ -656,41 +721,123 @@ inline CUDA_CALLABLE void adj_svd2(
 {
     const Type epsilon = _svd_config<Type>::SVD_EPSILON;
 
-    Type s1_squared = sigma[0] * sigma[0];
-    Type s2_squared = sigma[1] * sigma[1];
+    // With P = U^T dA V, the singular vectors turn as dU = U [[0, a], [-a, 0]] and dV = V [[0, b], [-b, 0]], where
+    // a - b = (P01 - P10) / (s1 + s2) and a + b = (P01 + P10) / (s2 - s1). Combining both into a single
+    // 1 / (s2^2 - s1^2) factor and clamping it near repeated singular values would also wipe out the well-defined
+    // first term, so keep them separate.
+    mat_t<2, 2, Type> Ut_adj_U = mul(transpose(U), adj_U);
+    mat_t<2, 2, Type> Vt_adj_V = mul(transpose(V), adj_V);
+    Type a_u = Ut_adj_U.data[0][1] - Ut_adj_U.data[1][0];
+    Type a_v = Vt_adj_V.data[0][1] - Vt_adj_V.data[1][0];
 
-    // Compute inverse of (s1^2 - s2^2) if possible, use small epsilon to prevent division by zero
-    Type F01 = Type(1) / min(s2_squared - s1_squared, Type(-epsilon));
+    // Halve before adding and dividing, so that no intermediate overflows unless the result does: neither the sums nor
+    // the denominators for singular values near the largest finite value, nor the quotients for subnormal ones.
+    Type half_a_u = Type(0.5) * a_u;
+    Type half_a_v = Type(0.5) * a_v;
+    Type half_s_sum = Type(0.5) * sigma[0] + Type(0.5) * sigma[1];
+    Type s_diff = sigma[0] - sigma[1];
 
-    // Construct the matrix F for the adjoint
-    mat_t<2, 2, Type> F = mat_t<2, 2, Type>(0.0, F01, -F01, 0.0);
+    // Rotating A turns U and V in opposite directions, which is well defined unless A = 0.
+    Type c_skew = half_s_sum > Type(0) ? Type(0.5) * (half_a_u - half_a_v) / half_s_sum : Type(0);
 
-    // Create a matrix to handle the adjoint of the singular values (diagonal matrix)
-    mat_t<2, 2, Type> adj_sigma_mat = mat_t<2, 2, Type>(adj_sigma[0], 0.0, 0.0, adj_sigma[1]);
+    // Turning U and V together leaves A unchanged when the singular values repeat, so this term has no unique value
+    // there. Dropping it keeps the gradients of the singular values and of U V^T exact. Gradients through other
+    // combinations of the factors, such as U diag(sigma) V^T, lose their symmetric part at repeated singular values:
+    // they reach this function with the same adjoints as U V^T, so no choice here can be exact for both.
+    Type c_sym = s_diff > Type(2) * Type(epsilon) * half_s_sum ? -(half_a_u + half_a_v) / s_diff : Type(0);
 
-    // Matrix for handling singular values (diagonal matrix with sigma values)
-    mat_t<2, 2, Type> s_mat = mat_t<2, 2, Type>(sigma[0], 0.0, 0.0, sigma[1]);
-
-    // Compute the transpose of U and V
-    mat_t<2, 2, Type> UT = transpose(U);
-    mat_t<2, 2, Type> VT = transpose(V);
-
-    // Compute the term for sigma (diagonal matrix of adjoint singular values)
-    mat_t<2, 2, Type> sigma_term = mul(U, mul(adj_sigma_mat, VT));
-
-    // Compute the adjoint contributions for U (left singular vectors)
-    mat_t<2, 2, Type> skew_u = cw_mul(F, mul(UT, adj_U) - mul(transpose(adj_U), U));
-    mat_t<2, 2, Type> block_u = mul(skew_u, s_mat);
-    mat_t<2, 2, Type> u_term = mul(mul(U, block_u), VT);
-
-    // Compute the adjoint contributions for V (right singular vectors)
-    mat_t<2, 2, Type> skew_v = cw_mul(F, mul(VT, adj_V) - mul(transpose(adj_V), V));
-    mat_t<2, 2, Type> block_v = mul(skew_v, VT);
-    mat_t<2, 2, Type> v_term = mul(U, mul(s_mat, block_v));
-
-    // Combine the terms to compute the adjoint of A
-    adj_A = adj_A + (u_term + v_term + sigma_term);
+    mat_t<2, 2, Type> adj_P = mat_t<2, 2, Type>(adj_sigma[0], c_skew + c_sym, c_sym - c_skew, adj_sigma[1]);
+    adj_A = adj_A + mul(U, mul(adj_P, transpose(V)));
 }
+
+// Compute float16 and bfloat16 decompositions in float32: squaring their entries overflows or underflows across much of
+// their range (float16 squares overflow above about 256), and emulated low-precision arithmetic is slower anyway.
+template <typename Type>
+inline CUDA_CALLABLE void
+_svd2_in_float(const mat_t<2, 2, Type>& A, mat_t<2, 2, Type>& U, vec_t<2, Type>& sigma, mat_t<2, 2, Type>& V)
+{
+    mat_t<2, 2, float> U_float;
+    vec_t<2, float> sigma_float;
+    mat_t<2, 2, float> V_float;
+    svd2(mat_t<2, 2, float>(A), U_float, sigma_float, V_float);
+    U = mat_t<2, 2, Type>(U_float);
+    sigma = vec_t<2, Type>(sigma_float);
+    V = mat_t<2, 2, Type>(V_float);
+}
+
+template <typename Type>
+inline CUDA_CALLABLE void _adj_svd2_in_float(
+    const mat_t<2, 2, Type>& A,
+    mat_t<2, 2, Type>& adj_A,
+    const mat_t<2, 2, Type>& adj_U,
+    const vec_t<2, Type>& adj_sigma,
+    const mat_t<2, 2, Type>& adj_V
+)
+{
+    // Recompute the factors in float32 rather than widening their rounded values.
+    mat_t<2, 2, float> A_float(A);
+    mat_t<2, 2, float> U_float;
+    vec_t<2, float> sigma_float;
+    mat_t<2, 2, float> V_float;
+    svd2(A_float, U_float, sigma_float, V_float);
+
+    mat_t<2, 2, float> adj_A_float(0.0f);
+    adj_svd2(
+        A_float, U_float, sigma_float, V_float, adj_A_float, mat_t<2, 2, float>(adj_U), vec_t<2, float>(adj_sigma),
+        mat_t<2, 2, float>(adj_V)
+    );
+    adj_A = adj_A + mat_t<2, 2, Type>(adj_A_float);
+}
+
+// The overloads below are templates only so that their bodies, and the float32 solve they instantiate, compile when
+// they're used: as plain functions, they added about 20% to the compile time of every CPU module.
+template <typename Unused = void>
+inline CUDA_CALLABLE void
+svd2(const mat_t<2, 2, half>& A, mat_t<2, 2, half>& U, vec_t<2, half>& sigma, mat_t<2, 2, half>& V)
+{
+    _svd2_in_float(A, U, sigma, V);
+}
+
+template <typename Unused = void>
+inline CUDA_CALLABLE void adj_svd2(
+    const mat_t<2, 2, half>& A,
+    const mat_t<2, 2, half>& U,
+    const vec_t<2, half>& sigma,
+    const mat_t<2, 2, half>& V,
+    mat_t<2, 2, half>& adj_A,
+    const mat_t<2, 2, half>& adj_U,
+    const vec_t<2, half>& adj_sigma,
+    const mat_t<2, 2, half>& adj_V
+)
+{
+    _adj_svd2_in_float(A, adj_A, adj_U, adj_sigma, adj_V);
+}
+
+#ifndef WP_NO_BFLOAT16
+
+template <typename Unused = void>
+inline CUDA_CALLABLE void
+svd2(const mat_t<2, 2, bfloat16>& A, mat_t<2, 2, bfloat16>& U, vec_t<2, bfloat16>& sigma, mat_t<2, 2, bfloat16>& V)
+{
+    _svd2_in_float(A, U, sigma, V);
+}
+
+template <typename Unused = void>
+inline CUDA_CALLABLE void adj_svd2(
+    const mat_t<2, 2, bfloat16>& A,
+    const mat_t<2, 2, bfloat16>& U,
+    const vec_t<2, bfloat16>& sigma,
+    const mat_t<2, 2, bfloat16>& V,
+    mat_t<2, 2, bfloat16>& adj_A,
+    const mat_t<2, 2, bfloat16>& adj_U,
+    const vec_t<2, bfloat16>& adj_sigma,
+    const mat_t<2, 2, bfloat16>& adj_V
+)
+{
+    _adj_svd2_in_float(A, adj_A, adj_U, adj_sigma, adj_V);
+}
+
+#endif  // WP_NO_BFLOAT16
 
 
 template <typename Type>

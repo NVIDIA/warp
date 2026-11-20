@@ -1766,6 +1766,38 @@ def test_ffi_jax_callable_pmap_multi_stage(test, device):
     assert_np_equal(np.asarray(combined), ref)
 
 
+@unittest.skipUnless(_jax_version() >= JAX_SHARD_MAP_MIN_VERSION, "JAX version too old")
+def test_ffi_jax_callable_shard_map_graph_modes(test, device):
+    """Capture and replay Warp graphs for the same call on every device of one process."""
+    jax = _import_jax()
+    jp = _import_jax_numpy()
+
+    devices = jax.local_devices()
+    if len(devices) < 2:
+        test.skipTest("At least two local JAX devices are required")
+
+    mesh = jax.sharding.Mesh(np.array(devices), ("devices",))
+    spec = jax.sharding.PartitionSpec("devices")
+    per_device = 64
+    x = jp.arange(len(devices) * per_device, dtype=jp.float32)
+
+    def on_each_device(jax_double):
+        return jax.jit(jax.shard_map(lambda v: jax_double(v)[0], mesh=mesh, in_specs=spec, out_specs=spec))
+
+    for graph_mode in (
+        wp.JaxCallableGraphMode.WARP,
+        wp.JaxCallableGraphMode.WARP_STAGED,
+        wp.JaxCallableGraphMode.WARP_STAGED_EX,
+    ):
+        with test.subTest(graph_mode=graph_mode):
+            double = on_each_device(wp.jax_callable(double_func, graph_mode=graph_mode))
+
+            # the first call captures a graph on each device, the second replays them
+            for scale in (1.0, 3.0):
+                y = double(scale * x)
+                assert_np_equal(np.asarray(y), 2.0 * scale * np.asarray(x))
+
+
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_callback(test, device):
     if device.ordinal > 0:
@@ -1892,7 +1924,7 @@ def test_ffi_jax_kernel_block_dim_autodiff(test, device):
                 jax.block_until_ready((output, gradient))
 
                 if block_dim is None:
-                    multiplier = 1.0 if device.is_cpu else 256.0
+                    multiplier = 256.0 if device.is_cuda or wp.config.enable_cpu_blocks else 1.0
                 else:
                     multiplier = float(block_dim) if device.is_cuda or wp.config.enable_cpu_blocks else 1.0
                 np.testing.assert_allclose(np.asarray(output), input_data * multiplier)
@@ -2818,6 +2850,43 @@ class TestJax(unittest.TestCase):
         self.assertIsNone(jax_kernel_autodiff_default.block_dim)
 
     @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
+    def test_ffi_jax_kernel_autodiff_retains_cpu_block_dim(self):
+        """Keep forward and adjoint launches on the construction-time CPU block dimension."""
+        jax = _import_jax()
+        jnp = _import_jax_numpy()
+        jax_cpu = self._get_jax_cpu_device()
+        input_data = np.arange(257, dtype=np.float32)
+
+        with jax.default_device(jax_cpu):
+            values = jnp.asarray(input_data)
+            for enabled in (False, True):
+                for block_dim in (None, 1, 64):
+                    for forward_enabled in (enabled, not enabled):
+                        with self.subTest(enabled=enabled, block_dim=block_dim, forward_enabled=forward_enabled):
+                            with mock.patch.object(wp.config, "enable_cpu_blocks", enabled):
+                                wrapper = wp.jax_kernel(
+                                    block_dim_scale_kernel,
+                                    num_outputs=1,
+                                    block_dim=block_dim,
+                                    enable_backward=True,
+                                    module_preload_mode=wp.JaxModulePreloadMode.NONE,
+                                )
+
+                            with mock.patch.object(wp.config, "enable_cpu_blocks", forward_enabled):
+                                output, pullback = jax.vjp(lambda x, wrapper=wrapper: wrapper(x)[0], values)
+                                jax.block_until_ready(output)
+
+                            with mock.patch.object(wp.config, "enable_cpu_blocks", not forward_enabled):
+                                (gradient,) = pullback(jnp.ones_like(output))
+                                jax.block_until_ready(gradient)
+
+                            expected = (256 if block_dim is None else block_dim) if enabled else 1
+                            np.testing.assert_allclose(np.asarray(output), input_data * expected)
+                            np.testing.assert_allclose(
+                                np.asarray(gradient), np.full(input_data.size, expected, dtype=np.float32)
+                            )
+
+    @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
     def test_ffi_jax_kernel_cpu_shaped_tile_store(self):
         """Test jax_kernel on CPU with a kernel that stores a fixed-shape tile."""
         jax = _import_jax()
@@ -3011,46 +3080,28 @@ class TestJax(unittest.TestCase):
         fake_jax = mock.Mock()
         fake_jax.local_devices.side_effect = lambda *, backend: jax_devices_by_backend[backend]
 
-        module = _RecordingFfiModule()
-        with (
-            mock.patch.object(ffi_module, "_get_jax", return_value=fake_jax),
-            mock.patch.object(
-                ffi_module.wp,
-                "device_from_jax",
-                side_effect=warp_devices_by_jax_device.__getitem__,
-            ),
-        ):
-            ffi_module._preload_ffi_module(
-                module,
-                wp.JaxModulePreloadMode.ALL_DEVICES,
-                block_dim=JAX_TILE_BLOCK_DIM,
-            )
+        for enabled in (False, True):
+            for requested in (None, JAX_TILE_BLOCK_DIM):
+                with self.subTest(enabled=enabled, requested=requested):
+                    module = _RecordingFfiModule()
+                    with (
+                        mock.patch.object(ffi_module, "_get_jax", return_value=fake_jax),
+                        mock.patch.object(
+                            ffi_module.wp,
+                            "device_from_jax",
+                            side_effect=warp_devices_by_jax_device.__getitem__,
+                        ),
+                        mock.patch.object(wp.config, "enable_cpu_blocks", enabled),
+                    ):
+                        ffi_module._preload_ffi_module(
+                            module,
+                            wp.JaxModulePreloadMode.ALL_DEVICES,
+                            block_dim=requested,
+                        )
 
-        self.assertEqual(
-            module.load_calls,
-            [(warp_cpu, 1), (warp_cuda, JAX_TILE_BLOCK_DIM)],
-        )
-
-        module = _RecordingFfiModule()
-        with (
-            mock.patch.object(ffi_module, "_get_jax", return_value=fake_jax),
-            mock.patch.object(
-                ffi_module.wp,
-                "device_from_jax",
-                side_effect=warp_devices_by_jax_device.__getitem__,
-            ),
-            mock.patch.object(wp.config, "enable_cpu_blocks", True),
-        ):
-            ffi_module._preload_ffi_module(
-                module,
-                wp.JaxModulePreloadMode.ALL_DEVICES,
-                block_dim=JAX_TILE_BLOCK_DIM,
-            )
-
-        self.assertEqual(
-            module.load_calls,
-            [(warp_cpu, JAX_TILE_BLOCK_DIM), (warp_cuda, JAX_TILE_BLOCK_DIM)],
-        )
+                    cuda_block_dim = 256 if requested is None else requested
+                    cpu_block_dim = cuda_block_dim if enabled else 1
+                    self.assertEqual(module.load_calls, [(warp_cpu, cpu_block_dim), (warp_cuda, cuda_block_dim)])
 
     @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
     def test_ffi_module_preload_load_error(self):
@@ -3359,6 +3410,7 @@ else:
                 test_ffi_jax_callable_pmap_multi_output,
                 test_ffi_jax_callable_pmap_mul,
                 test_ffi_jax_callable_pmap_multi_stage,
+                test_ffi_jax_callable_shard_map_graph_modes,
                 test_ffi_jax_kernel_autodiff_pmap_triple,
                 test_ffi_jax_kernel_autodiff_pmap_multi_output,
             )

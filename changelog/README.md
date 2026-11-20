@@ -79,6 +79,6 @@ links.
 Render the pending fragments without modifying the changelog:
 
 ```console
-uvx --from towncrier==25.8.0 towncrier build --draft \
+uvx --from towncrier==26.9.0 towncrier build --draft \
   --version X.Y.Z --date YYYY-MM-DD
 ```

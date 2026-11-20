@@ -36,6 +36,15 @@
         "linux-x86_64",
         "linux-sbsa"
       ]
+    },
+    "13.5.0": {
+      "component_set": "cuda13-warp-build",
+      "platforms": [
+        "windows-x86_64",
+        "windows-arm64",
+        "linux-x86_64",
+        "linux-sbsa"
+      ]
     }
   }
 }

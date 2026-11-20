@@ -10,9 +10,10 @@
 // APIC Format Constants
 // =============================================================================
 
-#define APIC_FORMAT_VERSION 18
-// Intentionally require recapture rather than decode unbounded legacy relocations.
-#define APIC_MIN_SUPPORTED_FORMAT_VERSION 18
+#define APIC_FORMAT_VERSION 20
+// The loader also requires the producing Warp version, so require recapture
+// rather than decode older layouts.
+#define APIC_MIN_SUPPORTED_FORMAT_VERSION 20
 #define APIC_UNSIGNED_LAUNCH_BOUNDS_VERSION 16
 #define APIC_MAGIC "WRP1"
 #define APIC_MAGIC_VALUE 0x31505257  // "WRP1" as little-endian uint32
@@ -48,6 +49,22 @@ enum APICOpType : uint32_t {
     APIC_OP_BVH_REFIT = 17,  // wp_bvh_refit_host
     APIC_OP_BVH_REBUILD = 18,  // wp_bvh_rebuild_host
     APIC_OP_HASH_GRID_UPDATE = 19,  // wp_hash_grid_update_host
+    APIC_OP_BSR_COMPRESS = 20,  // wp_bsr_compress_inplace_host/device
+    APIC_OP_CHILD_GRAPH = 21,  // Graph branch of wp.capture_if/capture_while (live CPU only)
+    APIC_OP_ARRAY_FILL = 22,  // wp_array_fill_host/device (strided or indexed arr.fill_)
+    APIC_OP_MESH_REFIT = 23,  // wp_mesh_refit_host
+    APIC_OP_MESH_SET_POINTS = 24,  // wp_mesh_set_points_host
+    APIC_OP_MESH_SET_VELOCITIES = 25,  // wp_mesh_set_velocities_host
+    APIC_OP_VOLUME_REBUILD = 26,  // wp_volume_*rebuild_from_*_host
+    APIC_OP_VOLUME_GET_TILES = 27,  // wp_volume_get_tiles_host
+    APIC_OP_VOLUME_GET_VOXELS = 28,  // wp_volume_get_voxels_host
+};
+
+// Host rebuild entry point recorded by APIC_OP_VOLUME_REBUILD.
+enum APICVolumeRebuildKind : uint8_t {
+    APIC_VOLUME_REBUILD_TILES = 0,  // wp_volume_rebuild_from_tiles_host
+    APIC_VOLUME_REBUILD_INDEX_TILES = 1,  // wp_volume_index_rebuild_from_tiles_host
+    APIC_VOLUME_REBUILD_ACTIVE_VOXELS = 2,  // wp_volume_rebuild_from_active_voxels_host
 };
 
 enum APICReductionKind : uint8_t {
@@ -327,6 +344,31 @@ struct APICMemtileRecord {
 };  // 32 bytes fixed
 static_assert(sizeof(APICMemtileRecord) == 32, "APICMemtileRecord must remain 32 bytes");
 
+// Strided or indexed array fill (variable: trailing inline value blob of value_size bytes).
+// Records a wp_array_fill_host / wp_array_fill_device call on a non-contiguous
+// wp.array or a wp.indexedarray, so replay writes the value through the index
+// arrays' replay-time contents. A strided array is an indexed array without
+// index arrays. Dimension d of the fill selects shape[d] elements: the indices
+// read from its index region when indices_region_id[d] >= 0, otherwise all
+// data_shape[d] elements of the underlying array. Fields past ndim are zero,
+// and their index regions are -1.
+struct APICArrayFillRecord {
+    APICOpHeader header;  // op_type = APIC_OP_ARRAY_FILL
+    int32_t data_region_id;
+    uint32_t value_size;  // bytes per element
+    uint64_t data_offset;  // byte offset of the underlying array's first element
+    uint8_t ndim;  // 1..APIC_MAX_DIMS
+    uint8_t flags;  // reserved, must be 0
+    uint8_t _pad[6];
+    int32_t shape[APIC_MAX_DIMS];  // filled extent: the index count of an indexed dimension
+    int32_t data_shape[APIC_MAX_DIMS];  // extent of the underlying array
+    int32_t strides[APIC_MAX_DIMS];  // byte strides of the underlying array, non-negative
+    int32_t indices_region_id[APIC_MAX_DIMS];  // int32 index array per dimension, -1 if none
+    uint64_t indices_offset[APIC_MAX_DIMS];
+    // followed by value_size bytes of inline value data
+};  // 128 bytes fixed
+static_assert(sizeof(APICArrayFillRecord) == 128, "APICArrayFillRecord must remain 128 bytes");
+
 // In-graph allocation (fixed size)
 struct APICAllocRecord {
     APICOpHeader header;  // op_type = APIC_OP_ALLOC
@@ -512,6 +554,40 @@ struct APICBsrTransposeRecord {
     uint64_t status_offset;
 };
 
+// BSR in-place compression op (format version >= 19). Records a
+// wp_bsr_compress_inplace_host/device() call so replay sorts and coalesces the
+// active row ranges of the current (replay-time) topology. The host function
+// would otherwise run once at capture time, and the CUDA kernels it launches
+// are invisible to a saved graph. ``compress_values`` selects whether
+// ``values`` is moved with the columns (in-place compression) or only read to
+// prune zero blocks (topology-only compression of an out-of-place compress).
+// Buffer sizes derive from ``row_count`` and ``nnz_upper_bound``. Region ids
+// are -1 for absent optional pointers (row_counts, values) and for columns
+// when ``nnz_upper_bound`` is 0.
+struct APICBsrCompressRecord {
+    APICOpHeader header;  // op_type = APIC_OP_BSR_COMPRESS
+    int32_t row_count;
+    int32_t col_count;
+    int32_t block_size;
+    int32_t scalar_size_in_bytes;
+    int32_t scalar_type;  // BSR_SCALAR_* code; used only when compress_values is set
+    int32_t nnz_upper_bound;
+    uint8_t prune_numerical_zeros;
+    uint8_t make_compact;
+    uint8_t compress_values;
+    uint8_t _pad[5];
+    uint64_t scalar_zero_mask;
+    int32_t offsets_region_id;
+    int32_t row_counts_region_id;  // -1 if absent
+    int32_t columns_region_id;  // -1 if nnz_upper_bound == 0
+    int32_t values_region_id;  // -1 if absent
+    uint64_t offsets_offset;
+    uint64_t row_counts_offset;
+    uint64_t columns_offset;
+    uint64_t values_offset;
+};
+static_assert(sizeof(APICBsrCompressRecord) == 96, "APICBsrCompressRecord must remain 96 bytes");
+
 // Same-process host BVH update (APIC_OP_BVH_REFIT or APIC_OP_BVH_REBUILD).
 // Records a wp_bvh_refit_host() / wp_bvh_rebuild_host() call so CPU graph
 // replay re-runs the update against the (replay-time) lowers/uppers the BVH
@@ -529,6 +605,78 @@ struct APICBvhRecord {
     int32_t constructor_type;  // rebuild constructor; -1 for refit
     uint32_t _pad;
 };  // 24 bytes
+
+// Same-process host mesh update (APIC_OP_MESH_REFIT, APIC_OP_MESH_SET_POINTS,
+// or APIC_OP_MESH_SET_VELOCITIES). Records a wp_mesh_refit_host() /
+// wp_mesh_set_points_host() / wp_mesh_set_velocities_host() call so CPU graph
+// replay re-runs it in operation order against replay-time data. Same
+// rationale and serialization limits as APICBvhRecord: ``mesh_id`` is a live,
+// process-local handle, so wp_apic_state_save() refuses a stream carrying it.
+// The setters carry the assigned 1D array: its data and gradient as live
+// regions (-1 when absent), its element count, and its byte stride. Refit
+// leaves the array fields empty (regions -1, count 0).
+struct APICMeshUpdateRecord {
+    APICOpHeader header;
+    uint64_t mesh_id;
+    int32_t data_region_id;
+    int32_t grad_region_id;
+    uint64_t data_offset;
+    uint64_t grad_offset;
+    int32_t count;
+    int32_t stride;
+    uint16_t flags;  // wp::array_t::flags of the assigned array, such as ARRAY_FLAG_RETAIN_GRAD
+    uint8_t _pad[6];  // Reserved, must be 0.
+};  // 56 bytes
+
+static_assert(sizeof(APICMeshUpdateRecord) == 56, "APIC mesh record must remain 56 bytes");
+
+// Same-process host volume rebuild (APIC_OP_VOLUME_REBUILD). Records a
+// wp_volume_rebuild_from_tiles_host() / wp_volume_index_rebuild_from_tiles_host()
+// / wp_volume_rebuild_from_active_voxels_host() call so CPU graph replay
+// rebuilds the topology from replay-time points, mask, and status. The points
+// (``num_points`` 12-byte coordinates), optional mask (int32 per point), and
+// optional status (one uint32) are live regions (-1 when absent). The
+// transform and background value are small host buffers, so they are copied
+// inline; ``bg_value_size`` is 0 for index and active-voxel rebuilds. Same
+// serialization limits as APICBvhRecord: ``volume_id`` is process-local.
+struct APICVolumeRebuildRecord {
+    APICOpHeader header;  // op_type = APIC_OP_VOLUME_REBUILD
+    uint64_t volume_id;
+    int32_t points_region_id;
+    int32_t point_mask_region_id;
+    uint64_t points_offset;
+    uint64_t point_mask_offset;
+    int32_t status_region_id;
+    int32_t num_points;
+    uint64_t status_offset;
+    float transform[9];
+    float translation[3];
+    uint32_t bg_value_size;
+    uint8_t kind;  // APICVolumeRebuildKind
+    uint8_t points_in_world_space;
+    uint8_t _pad[2];
+    uint8_t bg_value[32];  // large enough for the largest builder type (Vec4d)
+    char bg_value_type[16];  // NUL-terminated NanoVDB type name
+};  // 160 bytes
+
+static_assert(sizeof(APICVolumeRebuildRecord) == 160, "APIC volume rebuild record must remain 160 bytes");
+
+// Same-process host volume coordinate query (APIC_OP_VOLUME_GET_TILES or
+// APIC_OP_VOLUME_GET_VOXELS). Records a wp_volume_get_tiles_host() /
+// wp_volume_get_voxels_host() call so CPU graph replay reads the topology a
+// recorded rebuild produced. ``out_size`` is the byte span the query may
+// write: the volume's tile or voxel count, which is fixed by its capacity for
+// rebuildable volumes and by its topology otherwise.
+struct APICVolumeGetCoordsRecord {
+    APICOpHeader header;
+    uint64_t volume_id;
+    int32_t out_region_id;
+    uint32_t _pad;
+    uint64_t out_offset;
+    uint64_t out_size;
+};  // 40 bytes
+
+static_assert(sizeof(APICVolumeGetCoordsRecord) == 40, "APIC volume coordinate query record must remain 40 bytes");
 
 struct APICHashGridUpdateRecord {
     APICOpHeader header;
@@ -565,6 +713,16 @@ struct APICCondRecord {
     // followed by branch_a_size bytes of inner ops
     // followed by branch_b_size bytes of inner ops
 };  // 40 bytes fixed
+
+// Live-only reference to a finished CPU capture, indexed in APICState::child_states.
+// Replay executes the child's stream; save and load reject this record.
+struct APICChildGraphRecord {
+    APICOpHeader header;  // op_type = APIC_OP_CHILD_GRAPH
+    uint32_t child_index;
+    uint32_t _pad;
+};  // 16 bytes
+
+static_assert(sizeof(APICChildGraphRecord) == 16, "APICChildGraphRecord must remain 16 bytes");
 
 // =============================================================================
 // Memory Section Records

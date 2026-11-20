@@ -490,6 +490,40 @@ def run_python_subprocess(
         raise
 
 
+def _get_importable_test_id(test: unittest.TestCase) -> str:
+    """Return the test ID with a ``__main__`` module replaced by its importable name.
+
+    Running a test file by path names its module ``__main__``, which a child
+    interpreter cannot import. Recover the module name from ``python -m`` or
+    from the file's location relative to the directory holding the ``warp``
+    package. Return the test ID unchanged when neither is available.
+    """
+    test_id = test.id()
+    main_prefix = "__main__."
+    if not test_id.startswith(main_prefix):
+        return test_id
+
+    main_module = sys.modules["__main__"]
+    main_spec = getattr(main_module, "__spec__", None)
+    if main_spec is not None and main_spec.name:
+        module_name = main_spec.name
+    else:
+        main_file = getattr(main_module, "__file__", None)
+        if main_file is None:
+            return test_id
+        package_parent = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        try:
+            relative_path = os.path.relpath(os.path.abspath(main_file), package_parent)
+        except ValueError:
+            # Windows paths on different drives have no relative path.
+            return test_id
+        if relative_path.startswith(os.pardir):
+            return test_id
+        module_name = os.path.splitext(relative_path)[0].replace(os.sep, ".")
+
+    return f"{module_name}.{test_id[len(main_prefix) :]}"
+
+
 def run_test_in_subprocess(
     test: unittest.TestCase,
     *,
@@ -516,7 +550,7 @@ def run_test_in_subprocess(
         so the caller can execute the test body there.
     """
 
-    test_id = test.id()
+    test_id = _get_importable_test_id(test)
     isolation_env = "WARP_ISOLATED_TEST_ID"
     if os.environ.get(isolation_env) == test_id:
         return False
