@@ -56,7 +56,7 @@ assembly step.
 | R8  | Second-order jets giving a dense local Hessian in one forward pass                  | Should   | `wp.JetSpace2`; no tape required                 |
 
 **Non-goals**: second-order jets for matrix payloads
-([GH-2185](https://github.com/NVIDIA/warp/issues/2185)); quaternion jet types; a native symmetric matrix type for the
+([GH-2185](https://github.com/NVIDIA/warp/issues/2185)); a native symmetric matrix type for the
 Hessian; comparison operators dispatching through the overload table so
 `a < b` works on a jet ([GH-2184](https://github.com/NVIDIA/warp/issues/2184)); assembling the sparse
 global Hessian from the local blocks; choosing a sparsity pattern or a linear
@@ -160,8 +160,15 @@ J = wp.JetSpace((wp.vec2, wp.float32, wp.mat22))  # width 7
 J = wp.JetSpace(4)  # four scalar slots
 ```
 
-Supported slot types are scalars, `vec2`, `vec3`, and the matrix shapes the
-matrix jets cover. An integer `n` means `n` scalar slots. The scalar type is
+Supported slot types are scalars, `vec2`, `vec3`, `quat`, and the matrix
+shapes the matrix jets cover (second-order spaces take scalars, `vec2`, `vec3`
+and `quat`). A `quat` slot carries four directions, one per component, without
+the unit-norm constraint; `J.exp_map()` maps a `vec3` rotation-vector jet to a
+unit quaternion jet, for derivatives along rotations. A first-order jet
+quaternion holds a `4 x width` gradient, and a second-order one is four scalar
+jets, like the vector jets. Its operations are written once, as generic
+functions of the components (`_quat_mul_parts`, `_quat_rotate_parts`), and
+follow the native formulas term by term. An integer `n` means `n` scalar slots. The scalar type is
 inferred from the slots unless `dtype` is given; mixing precisions is an error.
 
 `J.seed(*values)` takes one value per slot and returns one jet per slot, with
@@ -490,10 +497,12 @@ operation family.
 | Reverse-over-jet Hessian via `wp.Tape`                                             |        ✓         |          ✓          |         ✓          |       n/a        |         n/a         |
 | Reverse-over-jet Hessian via in-kernel `wp.grad` (no tape)                         |        ✓         |          ✓          |         ✓          |       n/a        |         n/a         |
 | Pure-forward Hessian (no tape, no reverse)                                         |       n/a        |         n/a         |        n/a         |        ✓         |          ✓          |
+| Quaternions (`+ - * neg`, `quat_rotate quat_rotate_inv quat_inverse quat_from_axis_angle dot length normalize`, `q[i]`, `exp_map`) | – | ✓ (quat) | – | – | ✓ (quat) |
 
 Not covered: second-order matrix jets ([GH-2185](https://github.com/NVIDIA/warp/issues/2185)); a native symmetric
-matrix type for the Hessian; overloaded comparisons ([GH-2184](https://github.com/NVIDIA/warp/issues/2184)); quaternion
-jets.
+matrix type for the Hessian; overloaded comparisons ([GH-2184](https://github.com/NVIDIA/warp/issues/2184)).
+Quaternion jets are checked in `test_jet_quat.py` against native reverse mode,
+with Hessians against finite differences of it, on CPU and CUDA.
 
 ## Testing Strategy
 

@@ -241,9 +241,11 @@ python -m warp.examples.browse
         </tr>
         <tr>
             <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_implicit_projection.py"><img src="./docs/img/examples/optim_implicit_projection.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_quat_shape_align.py"><img src="./docs/img/examples/optim_quat_shape_align.png"></a></td>
         </tr>
         <tr>
             <td align="center">implicit projection</td>
+            <td align="center">quaternion shape alignment</td>
         </tr>
     </tbody>
 </table>
