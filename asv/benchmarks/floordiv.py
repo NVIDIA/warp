@@ -7,10 +7,12 @@ import numpy as np
 
 import warp as wp
 
-from .benchmarks_utils import setup_once
+from .benchmarks_utils import page_aligned_cpu_arrays, setup_once
 
 DIVISIONS_PER_THREAD = 8
 CPU_NUM_ELEMENTS = 1 << 20
+# Puts the CPU arrays (values, divisors, output) 1 KiB apart modulo 4 KiB.
+CPU_ARRAY_GAP_BYTES = 1024
 CUDA_NUM_ELEMENTS = 1 << 20
 DIVISOR_KINDS = ("runtime", "constant")
 
@@ -48,7 +50,7 @@ class SignedFloorDivCPU:
 
     params = DIVISOR_KINDS
     param_names = ("divisor_kind",)
-    repeat = 15  # Samples have low variance at 3-24 ms each.
+    repeat = 15  # Samples vary little within a process.
     number = 1
 
     @setup_once
@@ -63,11 +65,16 @@ class SignedFloorDivCPU:
         divisors_np[2::4] *= -1
         divisors_np[3::4] *= -1
 
-        self.values = wp.array(values_np, dtype=wp.int32, device=self.device)
-        self.output = wp.empty(CPU_NUM_ELEMENTS, dtype=wp.int32, device=self.device)
+        # The vectorized 'constant' kernel slows down by a different amount in
+        # each process when `output` lands 64 bytes past `values` modulo
+        # 4 KiB, which separate allocations do in some processes.
+        self.storage, (self.values, self.divisors, self.output) = page_aligned_cpu_arrays(
+            wp.int32, CPU_NUM_ELEMENTS, 3, CPU_ARRAY_GAP_BYTES
+        )
+        self.values.assign(values_np)
+        self.divisors.assign(divisors_np)
 
         if divisor_kind == "runtime":
-            self.divisors = wp.array(divisors_np, dtype=wp.int32, device=self.device)
             self.command = wp.launch(
                 floordiv_runtime_kernel,
                 dim=CPU_NUM_ELEMENTS,

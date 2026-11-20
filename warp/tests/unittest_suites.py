@@ -13,6 +13,7 @@ can be used in parallel or serial unit tests (with optional code coverage)
 # cleared Warp caches. Keep this exception local to this file.
 # ruff: noqa: PLC0415
 
+import importlib
 import os
 import unittest
 
@@ -111,14 +112,18 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.cuda.test_peer import TestPeer
     from warp.tests.cuda.test_pinned import TestPinned
     from warp.tests.cuda.test_streams import TestStreams
+    from warp.tests.cuda.test_sync_errors import TestSyncErrors
     from warp.tests.cuda.test_texture import TestTexture
     from warp.tests.cuda.test_texture_compiler import TestTextureCompiler
     from warp.tests.cuda.test_unified_memory import TestUnifiedMemory
+    from warp.tests.cuda.test_utils_device import TestUtilsDevice
     from warp.tests.deterministic.test_deterministic_backward import TestDeterministicBackward
     from warp.tests.deterministic.test_deterministic_counter import TestDeterministicCounter
     from warp.tests.deterministic.test_deterministic_graph_capture import TestDeterministicGraph
     from warp.tests.deterministic.test_deterministic_options import TestDeterministicOptions
     from warp.tests.deterministic.test_deterministic_scatter import TestDeterministicScatter
+    from warp.tests.fem.test_fem_constrained_space import TestFemConstrainedSpace
+    from warp.tests.fem.test_fem_dirichlet import TestFemDirichlet
     from warp.tests.fem.test_fem_examples import TestFemDiffusionExamples, TestFemExamples
     from warp.tests.fem.test_fem_field import TestFemField
     from warp.tests.fem.test_fem_fp64 import TestFemFp64
@@ -130,12 +135,17 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.fem.test_fem_shape import TestFemShape
     from warp.tests.geometry.test_bvh import TestBvh
     from warp.tests.geometry.test_delaunay import TestDelaunay
+    from warp.tests.geometry.test_geometry_obb import TestGeometryOBB
     from warp.tests.geometry.test_hash_grid import TestHashGrid
+    from warp.tests.geometry.test_intersect_aabb import TestIntersectAABB
+    from warp.tests.geometry.test_intersect_tri import TestIntersectTri
     from warp.tests.geometry.test_marching_cubes import TestMarchingCubes
     from warp.tests.geometry.test_mesh import TestMesh
+    from warp.tests.geometry.test_mesh_intersect_hash import TestMeshIntersectHash
     from warp.tests.geometry.test_mesh_query_aabb import TestMeshQueryAABBMethods
     from warp.tests.geometry.test_mesh_query_point import TestMeshQueryPoint
     from warp.tests.geometry.test_mesh_query_ray import TestMeshQueryRay
+    from warp.tests.geometry.test_self_intersect_tri_tri import TestSelfIntersectTriTri
     from warp.tests.geometry.test_sparse_marching_cubes import TestSparseMarchingCubes
     from warp.tests.geometry.test_surface_nets import TestSurfaceNets
     from warp.tests.geometry.test_swept_volume import TestSweptVolume
@@ -143,6 +153,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.geometry.test_volume_validation import TestVolumeValidation
     from warp.tests.geometry.test_volume_write import TestVolumeWrite
     from warp.tests.interop.test_dlpack import TestDLPack
+    from warp.tests.interop.test_function_dispatch_interop import TestFunctionDispatchInterop
     from warp.tests.interop.test_jax import TestJax
     from warp.tests.interop.test_torch import TestTorch
     from warp.tests.matrix.test_mat import TestMat
@@ -167,6 +178,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_arithmetic import TestArithmetic
     from warp.tests.test_array import TestArray
     from warp.tests.test_array_reduce import TestArrayReduce
+    from warp.tests.test_array_subclass import TestArraySubclass
     from warp.tests.test_atomic import TestAtomic
     from warp.tests.test_atomic_bitwise import TestAtomicBitwise
     from warp.tests.test_atomic_cas import TestAtomicCAS
@@ -183,6 +195,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_compile_consts import TestConstants
     from warp.tests.test_composite_component_adjoint import TestCompositeComponentAdjoint
     from warp.tests.test_conditional import TestConditional
+    from warp.tests.test_conditional_captures import TestConditionalCaptures
     from warp.tests.test_constant_precision import TestConstantPrecision
     from warp.tests.test_context import TestContext
     from warp.tests.test_copy import TestCopy
@@ -212,6 +225,8 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_func import TestFunc
     from warp.tests.test_func_inline import TestFuncInline
     from warp.tests.test_func_parameter_targets import TestFuncParameterTargets
+    from warp.tests.test_function_dispatch import TestFunctionDispatch, TestFunctionDispatchDevices
+    from warp.tests.test_function_dispatch_recording import TestFunctionDispatchRecording
     from warp.tests.test_future_annotations import TestFutureAnnotations
     from warp.tests.test_generics import TestGenerics
     from warp.tests.test_grad import TestGrad
@@ -222,6 +237,9 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_indexedarray import TestIndexedArray
     from warp.tests.test_intersect import TestIntersect
     from warp.tests.test_iter import TestIter
+    from warp.tests.test_jet import TestJet, TestJetSpace
+    from warp.tests.test_jet_ops import TestJetOps
+    from warp.tests.test_jet_quat import TestJetQuat
     from warp.tests.test_kernel_cache import TestKernelCache
     from warp.tests.test_large import TestLarge
     from warp.tests.test_launch import TestLaunch
@@ -240,7 +258,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_modules_lite import TestModuleLite
     from warp.tests.test_noise import TestNoise
     from warp.tests.test_operators import TestOperators
-    from warp.tests.test_options import TestOptions
+    from warp.tests.test_options import TestCpuKernelCacheKey, TestOptions
     from warp.tests.test_overwrite import TestOverwrite
     from warp.tests.test_print import TestPrint
     from warp.tests.test_quat import TestQuat
@@ -255,6 +273,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_sgd import TestSGD
     from warp.tests.test_smoothstep import TestSmoothstep
     from warp.tests.test_snippet import TestSnippets
+    from warp.tests.test_solve_action import TestSolveAction
     from warp.tests.test_sparse import TestSparse
     from warp.tests.test_spatial import TestSpatial
     from warp.tests.test_special_values import TestSpecialValues
@@ -287,12 +306,14 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.tile.test_tile_func_arg import TestTileFuncArg
     from warp.tests.tile.test_tile_fused_ops import TestTileFusedOps
     from warp.tests.tile.test_tile_large_offsets import TestTileLargeOffsets
+    from warp.tests.tile.test_tile_ldlt import TestTileLDLT
     from warp.tests.tile.test_tile_load import TestTileLoad
     from warp.tests.tile.test_tile_load_assign import TestTileLoadAssign
     from warp.tests.tile.test_tile_load_extract import TestTileLoadExtract
     from warp.tests.tile.test_tile_load_indexed import TestTileLoadIndexed
     from warp.tests.tile.test_tile_load_vectorized import TestTileLoadVectorized
     from warp.tests.tile.test_tile_low_precision_stack import TestTileLowPrecisionStack
+    from warp.tests.tile.test_tile_lu import TestTileLU
     from warp.tests.tile.test_tile_matmul import TestTileMatmul
     from warp.tests.tile.test_tile_matmul_no_mathdx import TestTileMatmulNoMathDx
     from warp.tests.tile.test_tile_matmul_strides import TestTileMatmulStrides
@@ -323,6 +344,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestArray,
         TestArrayFillCapture,
         TestArrayReduce,
+        TestArraySubclass,
         TestAsync,
         TestAtomic,
         TestAtomicBitwise,
@@ -346,12 +368,14 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestCompositeComponentAdjoint,
         TestConstants,
         TestConditional,
+        TestConditionalCaptures,
         TestConstantPrecision,
         TestContext,
         TestCopy,
         TestCoreLibraryBinary,
         TestCpuBlockCodegen,
         TestCpuBlockDim,
+        TestCpuKernelCacheKey,
         TestCpuPrecompiledHeaders,
         TestCpuVectorization,
         TestCTypes,
@@ -377,6 +401,8 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestFabricArray,
         TestFastMath,
         TestFemDiffusionExamples,
+        TestFemConstrainedSpace,
+        TestFemDirichlet,
         TestFemExamples,
         TestFemField,
         TestFemFp64,
@@ -392,6 +418,10 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestFunc,
         TestFuncInline,
         TestFuncParameterTargets,
+        TestFunctionDispatch,
+        TestFunctionDispatchDevices,
+        TestFunctionDispatchInterop,
+        TestFunctionDispatchRecording,
         TestFutureAnnotations,
         TestGenerics,
         TestGrad,
@@ -404,14 +434,20 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestIntersect,
         TestIter,
         TestJax,
+        TestJet,
+        TestJetSpace,
+        TestJetQuat,
+        TestJetOps,
         TestKernelAttributes,
         TestKernelCache,
         TestLarge,
         TestLaunch,
         TestLerp,
         TestLinearSolvers,
+        TestSolveAction,
         TestLogger,
         TestLValue,
+        TestGeometryOBB,
         TestMarchingCubes,
         TestSparseMarchingCubes,
         TestSurfaceNets,
@@ -426,6 +462,10 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestCudaMaxRegisters,
         TestMempool,
         TestMesh,
+        TestIntersectAABB,
+        TestIntersectTri,
+        TestSelfIntersectTriTri,
+        TestMeshIntersectHash,
         TestMeshQueryAABBMethods,
         TestMeshQueryPoint,
         TestMeshQueryRay,
@@ -467,6 +507,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestStreams,
         TestStruct,
         TestSubscriptTypes,
+        TestSyncErrors,
         TestTape,
         TestTemplateLaunchBounds,
         TestTexture,
@@ -476,6 +517,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestTileBlockDimMismatch,
         TestTileCholesky,
         TestTileCholeskyNoMathDx,
+        TestTileLU,
         TestTileCompositeRow,
         TestTileConstruction,
         TestTileEmpty,
@@ -484,6 +526,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestTileFuncArg,
         TestTileFusedOps,
         TestTileLargeOffsets,
+        TestTileLDLT,
         TestTileLoad,
         TestTileLoadAssign,
         TestTileLoadExtract,
@@ -512,6 +555,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestUniqueModule,
         TestUnifiedMemory,
         TestUtils,
+        TestUtilsDevice,
         TestVec,
         TestVecConstructors,
         TestVecLite,
@@ -572,7 +616,6 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.cuda.test_capture_mode import TestCaptureMode
     from warp.tests.cuda.test_clang_cuda import TestClangCUDA
     from warp.tests.cuda.test_cluster_dim import TestClusterDim
-    from warp.tests.cuda.test_conditional_captures import TestConditionalCaptures
     from warp.tests.cuda.test_cuda_arch_suffix import TestCudaArchSuffix
     from warp.tests.cuda.test_ipc import TestIpc
     from warp.tests.cuda.test_mempool import TestMempool
@@ -589,6 +632,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.deterministic.test_deterministic_scatter import TestDeterministicScatter
     from warp.tests.fem.test_fem_linalg import TestFemLinalg
     from warp.tests.geometry.test_bvh import TestBvh
+    from warp.tests.geometry.test_geometry_obb import TestGeometryOBB
     from warp.tests.geometry.test_grouped_bvh import TestGroupedBvh
     from warp.tests.geometry.test_hash_grid import TestHashGrid
     from warp.tests.geometry.test_marching_cubes import TestMarchingCubes
@@ -640,6 +684,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.test_compile_consts import TestConstants
     from warp.tests.test_composite_component_adjoint import TestCompositeComponentAdjoint
     from warp.tests.test_conditional import TestConditional
+    from warp.tests.test_conditional_captures import TestConditionalCaptures
     from warp.tests.test_constant_precision import TestConstantPrecision
     from warp.tests.test_context import TestContext
     from warp.tests.test_cpu_block_codegen import TestCpuBlockCodegen
@@ -760,12 +805,14 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     from warp.tests.tile.test_tile_func_arg import TestTileFuncArg
     from warp.tests.tile.test_tile_fused_ops import TestTileFusedOps
     from warp.tests.tile.test_tile_large_offsets import TestTileLargeOffsets
+    from warp.tests.tile.test_tile_ldlt import TestTileLDLT
     from warp.tests.tile.test_tile_load import TestTileLoad
     from warp.tests.tile.test_tile_load_assign import TestTileLoadAssign
     from warp.tests.tile.test_tile_load_extract import TestTileLoadExtract
     from warp.tests.tile.test_tile_load_indexed import TestTileLoadIndexed
     from warp.tests.tile.test_tile_load_vectorized import TestTileLoadVectorized
     from warp.tests.tile.test_tile_low_precision_stack import TestTileLowPrecisionStack
+    from warp.tests.tile.test_tile_lu import TestTileLU
     from warp.tests.tile.test_tile_matmul import TestTileMatmul
     from warp.tests.tile.test_tile_matmul_no_mathdx import TestTileMatmulNoMathDx
     from warp.tests.tile.test_tile_matmul_strides import TestTileMatmulStrides
@@ -873,6 +920,7 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestUnifiedMemory,
         TestFemLinalg,
         TestHashGrid,
+        TestGeometryOBB,
         TestMarchingCubes,
         TestSurfaceNets,
         TestVolume,
@@ -985,10 +1033,12 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
         TestVerifyLibraryVersion,
         TestVersion,
         TestTileCholeskyNoMathDx,
+        TestTileLU,
         TestTileEmpty,
         TestTileFuncArg,
         TestTileFusedOps,
         TestTileLargeOffsets,
+        TestTileLDLT,
         TestTileSolve,
         TestTileSolveNoMathDx,
         TestTileStack,
@@ -1008,6 +1058,103 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
     return _create_suite_from_test_classes(test_loader, test_classes)
 
 
+def llvm_cuda_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
+    """Focused test suite for validating ``warp.config.llvm_cuda = True``.
+
+    NVRTC compiles Warp's native code with ``--device-as-default-execution-space``,
+    which treats functions without ``CUDA_CALLABLE`` as device functions.
+    Clang-based toolchains such as HIP treat them as host functions and reject
+    device code that calls them, as does the Clang backend that ``llvm_cuda``
+    selects.
+
+    The suite runs every discovered test class except those in ``excluded``, so
+    new test classes run with the Clang backend without being listed here. Each
+    excluded class lists the known causes of its failures. After fixing a cause,
+    delete its variable; Ruff then flags each entry that still lists it. Delete
+    an entry once its class passes with ``--warp-llvm-cuda``. Tests that run in
+    a child process still compile with NVRTC.
+
+    Usage:
+        python -m warp.tests --suite llvm-cuda --warp-llvm-cuda
+    """
+    # Known causes of failures with the Clang backend.
+    aot_apic = "AOT and APIC reject modules compiled with llvm_cuda."
+    child_process = "Runs each example in a child process, which compiles with NVRTC regardless of --warp-llvm-cuda."
+    cluster_ptx = "Clang always emits sm_75 PTX, so cluster probes fail to JIT on sm_90+ GPUs."
+    fast_math = "llvm_cuda ignores the fast_math option."
+    mathdx = "llvm_cuda can't link mathdx code."
+    no_align = "cuda_crt.h lacks __align__."
+    no_atomic_bitwise = "cuda_crt.h lacks atomicAnd/atomicOr/atomicXor."
+    no_shfl_64 = "cuda_crt.h lacks __shfl_down_sync/__shfl_xor_sync for 64-bit types."
+    no_shfl_up = "cuda_crt.h lacks __shfl_up_sync."
+    shared_ctor = "tile.h declares a __shared__ variable whose type has a constructor."
+    shared_init = "One test's control case relies on NVRTC accepting a __shared__ initializer with a warning."
+    texture_zeros = "Texture sampling returns zeros with llvm_cuda."
+    ulp = "Float results differ from NVRTC by 1 ulp."
+    verify_fp = "llvm_cuda ignores the verify_fp option."
+
+    excluded = {
+        "warp.tests.aot.test_module_aot.TestModuleAOT": [aot_apic],
+        "warp.tests.cuda.test_cluster_dim.TestClusterDim": [cluster_ptx],
+        "warp.tests.cuda.test_kernel_attributes.TestKernelAttributes": [no_align],
+        "warp.tests.cuda.test_occupancy.TestOccupancy": [no_align],
+        "warp.tests.cuda.test_texture.TestTexture": [texture_zeros],
+        "warp.tests.cuda.test_texture_compiler.TestTextureCompiler": [texture_zeros],
+        "warp.tests.deterministic.test_deterministic_counter.TestDeterministicCounter": [no_atomic_bitwise],
+        "warp.tests.fem.test_fem_constrained_space.TestFemConstrainedSpace": [no_shfl_64, no_atomic_bitwise],
+        "warp.tests.fem.test_fem_dirichlet.TestFemDirichlet": [no_shfl_64],
+        "warp.tests.fem.test_fem_examples.TestFemDiffusionExamples": [child_process],
+        "warp.tests.fem.test_fem_examples.TestFemExamples": [child_process],
+        "warp.tests.fem.test_fem_fp64.TestFemFp64": [no_shfl_64, no_atomic_bitwise],
+        "warp.tests.fem.test_fem_geometry.TestFemGeometry": [no_atomic_bitwise],
+        "warp.tests.fem.test_fem_integrate.TestFemIntegrate": [no_shfl_64],
+        "warp.tests.fem.test_fem_multi_env.TestFemMultiEnv": [no_atomic_bitwise],
+        "warp.tests.fem.test_fem_quadrature.TestFemQuadrature": [no_shfl_64],
+        "warp.tests.test_apic.TestApic": [mathdx, aot_apic],
+        "warp.tests.test_atomic_bitwise.TestAtomicBitwise": [no_atomic_bitwise],
+        "warp.tests.test_codegen.TestCodeGen": [ulp],
+        "warp.tests.test_composite_component_adjoint.TestCompositeComponentAdjoint": [no_atomic_bitwise],
+        "warp.tests.test_examples.TestCoreExamples": [child_process],
+        "warp.tests.test_examples.TestGeometryExamples": [child_process],
+        "warp.tests.test_examples.TestOptimExamples": [child_process],
+        "warp.tests.test_examples.TestTileExamples": [child_process],
+        "warp.tests.test_fast_math.TestFastMath": [fast_math],
+        "warp.tests.test_grad_customs.TestGradCustoms": [mathdx],
+        "warp.tests.test_linear_solvers.TestLinearSolvers": [no_shfl_64, no_shfl_up, mathdx],
+        "warp.tests.test_map.TestMap": [ulp],
+        "warp.tests.test_solve_action.TestSolveAction": [no_shfl_64, no_shfl_up, mathdx],
+        "warp.tests.test_sparse.TestSparse": [no_shfl_64],
+        "warp.tests.test_tuple.TestTuple": [ulp],
+        "warp.tests.test_verify_fp.TestVerifyFP": [verify_fp],
+        "warp.tests.tile.test_tile_atomic_bitwise.TestTileAtomicBitwise": [no_atomic_bitwise],
+        "warp.tests.tile.test_tile_cholesky.TestTileCholesky": [mathdx],
+        "warp.tests.tile.test_tile_fft.TestTileFFT": [mathdx],
+        "warp.tests.tile.test_tile_matmul.TestTileMatmul": [mathdx],
+        "warp.tests.tile.test_tile_matmul_strides.TestTileMatmulStrides": [mathdx],
+        "warp.tests.tile.test_tile_reduce.TestTileReduce": [no_shfl_up, shared_init],
+        "warp.tests.tile.test_tile_solve.TestTileSolve": [mathdx],
+        "warp.tests.tile.test_tile_sort.TestTileSort": [no_shfl_64, no_shfl_up],
+        "warp.tests.tile.test_tile_struct.TestTileStruct": [shared_ctor, no_shfl_64],
+    }
+
+    # Resolve names by import rather than against discovery, which drops
+    # classes left without tests by -k or missing optional dependencies.
+    for name in excluded:
+        module_name, class_name = name.rsplit(".", 1)
+        try:
+            getattr(importlib.import_module(module_name), class_name)
+        except (ImportError, AttributeError) as e:
+            raise RuntimeError(f"Cannot resolve excluded test class '{name}'; update or remove its entry") from e
+
+    suite = unittest.TestSuite()
+    for class_suite in _iter_class_suites(auto_discover_suite(test_loader)):
+        test_class = type(next(iter(class_suite)))
+        if f"{test_class.__module__}.{test_class.__qualname__}" not in excluded:
+            suite.addTest(class_suite)
+
+    return suite
+
+
 # Registry of named test-suite factories keyed by the ``--suite`` value that
 # selects them. This is the single source of truth for the runner's suite
 # choices: ``unittest_parallel`` derives its accepted ``--suite`` values from
@@ -1017,4 +1164,5 @@ def debug_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader):
 SUITE_FACTORIES = {
     "default": default_suite,
     "debug": debug_suite,
+    "llvm-cuda": llvm_cuda_suite,
 }

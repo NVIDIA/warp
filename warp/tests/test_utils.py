@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import contextlib
+import ctypes
 import gc
 import io
 import os
@@ -200,6 +201,400 @@ def test_array_scan_error_device_failure_is_reported(test, device):
         test.assertRaises(RuntimeError),
     ):
         wp.utils.array_scan(values, result, True)
+
+
+def _scan_temp_storage(count, dtype, device, temp_dtype=wp.uint8):
+    nbytes = wp.utils.array_scan_temp_storage_size(count, dtype, device)
+    itemsize = wp._src.types.type_size_in_bytes(temp_dtype)
+    return wp.empty((nbytes + itemsize - 1) // itemsize, dtype=temp_dtype, device=device)
+
+
+def test_array_scan_temp_storage(test, device):
+    """Verify scans with caller-provided temporary storage match NumPy for all supported types."""
+    rng = np.random.default_rng(42)
+    n = 4097
+
+    for dtype in (wp.int32, wp.int64, wp.float32, wp.float64, wp.vec3, wp.vec2i):
+        length = wp._src.types.type_size(dtype)
+        np_type = wp.dtype_to_numpy(wp._src.types.type_scalar_type(dtype))
+        values_np = rng.integers(0, 5, size=(n, length)).astype(np_type)
+        if length == 1:
+            values_np = values_np.reshape(n)
+        values = wp.array(values_np, dtype=dtype, device=device)
+        result = wp.empty_like(values)
+
+        # One buffer serves both scan kinds and every vector component.
+        temp = _scan_temp_storage(n, dtype, device)
+        for inclusive in (True, False):
+            wp.utils.array_scan(values, result, inclusive=inclusive, temp_storage=temp)
+            expected = np.cumsum(values_np, axis=0)
+            if not inclusive:
+                expected = expected - values_np
+            np.testing.assert_allclose(result.numpy(), expected, err_msg=f"{dtype}, inclusive={inclusive}")
+
+
+def test_array_scan_temp_storage_reuse(test, device):
+    """Verify a buffer sized for the largest scan serves smaller scans, whatever its data type."""
+    max_n = 100000
+    temp = _scan_temp_storage(max_n, wp.float64, device, temp_dtype=wp.int64)
+
+    for n in (1, 129, 4097, 65537, max_n):
+        values_np = np.arange(n, dtype=np.float64) % 7
+        values = wp.array(values_np, dtype=wp.float64, device=device)
+        result = wp.empty_like(values)
+        wp.utils.array_scan(values, result, inclusive=False, temp_storage=temp)
+        np.testing.assert_allclose(result.numpy(), np.cumsum(values_np) - values_np)
+
+
+def test_array_scan_temp_storage_size(test, device):
+    for alias, dtype in ((int, wp.int32), (float, wp.float32)):
+        for count in (0, 4096):
+            with test.subTest(alias=alias, count=count):
+                test.assertEqual(
+                    wp.utils.array_scan_temp_storage_size(count, alias, device),
+                    wp.utils.array_scan_temp_storage_size(count, dtype, device),
+                )
+
+    for dtype in (wp.int32, wp.int64, wp.float32, wp.float64):
+        test.assertEqual(wp.utils.array_scan_temp_storage_size(0, dtype, device), 0)
+
+        sizes = [wp.utils.array_scan_temp_storage_size(n, dtype, device) for n in (1, 1000, 100000, 10000000)]
+        if device.is_cpu:
+            test.assertEqual(sizes, [0, 0, 0, 0])
+        else:
+            test.assertGreater(sizes[0], 0)
+            test.assertEqual(sizes, sorted(sizes))
+
+        # Vector types scan their components one after another with the same storage.
+        vec_type = wp.types.vector(3, dtype)
+        test.assertEqual(
+            wp.utils.array_scan_temp_storage_size(1000, vec_type, device),
+            wp.utils.array_scan_temp_storage_size(1000, dtype, device),
+        )
+
+    with test.assertRaisesRegex(ValueError, r"count must be in the range"):
+        wp.utils.array_scan_temp_storage_size(-1, wp.int32, device)
+
+    with test.assertRaisesRegex(ValueError, r"count must be in the range"):
+        wp.utils.array_scan_temp_storage_size(2**31, wp.int32, device)
+
+    # The largest count the native scan accepts can be sized without allocating.
+    largest = wp.utils.array_scan_temp_storage_size(2**31 - 1, wp.float64, device)
+    test.assertGreaterEqual(largest, wp.utils.array_scan_temp_storage_size(10000000, wp.float64, device))
+
+    # The query targets the given device, not the current one.
+    expected = wp.utils.array_scan_temp_storage_size(4097, wp.int32, device)
+    with wp.ScopedDevice("cpu"):
+        test.assertEqual(wp.utils.array_scan_temp_storage_size(4097, wp.int32, device), expected)
+
+    with test.assertRaisesRegex(RuntimeError, r"Unsupported data type: vec3h$"):
+        wp.utils.array_scan_temp_storage_size(10, wp.vec3h, device)
+
+
+def test_array_scan_temp_storage_errors(test, device):
+    n = 1000
+    values = wp.zeros(n, dtype=wp.int32, device=device)
+    result = wp.zeros_like(values)
+    required = wp.utils.array_scan_temp_storage_size(n, wp.int32, device)
+
+    with test.assertRaisesRegex(RuntimeError, r"temp_storage must be a Warp array, got ndarray$"):
+        wp.utils.array_scan(values, result, temp_storage=np.zeros(required, dtype=np.uint8))
+
+    strided = wp.empty(2 * max(required, 8), dtype=wp.uint8, device=device)[::2]
+    with test.assertRaisesRegex(RuntimeError, r"temp_storage must be contiguous$"):
+        wp.utils.array_scan(values, result, temp_storage=strided)
+
+    if device.is_cpu:
+        # CPU scans need no storage, so any CPU buffer is accepted.
+        wp.utils.array_scan(values, result, temp_storage=wp.empty(0, dtype=wp.uint8, device=device))
+        return
+
+    pattern = rf"temporary storage is too small: {required} bytes required, {{}} bytes provided$"
+    with suppress_native_error_output(), test.assertRaisesRegex(RuntimeError, pattern.format(required - 1)):
+        wp.utils.array_scan(values, result, temp_storage=wp.empty(required - 1, dtype=wp.uint8, device=device))
+
+    with test.assertRaisesRegex(RuntimeError, pattern.format(0)):
+        wp.utils.array_scan(values, result, temp_storage=wp.empty(0, dtype=wp.uint8, device=device))
+
+    with test.assertRaisesRegex(RuntimeError, r"temp_storage device does not match the array device"):
+        wp.utils.array_scan(values, result, temp_storage=wp.empty(required, dtype=wp.uint8, device="cpu"))
+
+
+def test_array_scan_temp_storage_capture_while(test, device):
+    """Verify a scan with caller-provided storage inside a conditional body graph, where allocations are rejected."""
+    if not wp.is_conditional_graph_supported():
+        test.skipTest("Conditional graph nodes not supported")
+
+    n = 4097
+    counts_np = (np.arange(n) % 5).astype(np.int32)
+    counts = wp.array(counts_np, dtype=wp.int32, device=device)
+    offsets = wp.zeros_like(counts)
+    temp = _scan_temp_storage(n, wp.int32, device)
+    counter = wp.empty(1, dtype=wp.int32, device=device)
+
+    @wp.kernel
+    def decrement_counter(c: wp.array[wp.int32]):
+        c[0] = c[0] - 1
+
+    def body():
+        wp.utils.array_scan(counts, offsets, inclusive=False, temp_storage=temp)
+        wp.launch(decrement_counter, dim=1, inputs=[counter], device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+        counter.fill_(1)
+        wp.capture_while(counter, while_body=body)
+
+    for _ in range(2):
+        offsets.zero_()
+        wp.capture_launch(capture.graph)
+        np.testing.assert_array_equal(offsets.numpy(), np.cumsum(counts_np) - counts_np)
+
+
+class _CudaDriverGraph:
+    """Captures a CUDA graph through the driver API, as a framework other than Warp would."""
+
+    CU_STREAM_CAPTURE_MODE_THREAD_LOCAL = 1
+
+    def __init__(self, test, stream):
+        try:
+            self.cuda = ctypes.WinDLL("nvcuda.dll") if sys.platform == "win32" else ctypes.CDLL("libcuda.so.1")
+        except OSError:
+            test.skipTest("CUDA driver library not found")
+
+        cuda = self.cuda
+        cuda.cuStreamBeginCapture_v2.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        cuda.cuStreamEndCapture.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p)]
+        cuda.cuGraphInstantiateWithFlags.argtypes = [
+            ctypes.POINTER(ctypes.c_void_p),
+            ctypes.c_void_p,
+            ctypes.c_ulonglong,
+        ]
+        cuda.cuGraphLaunch.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        cuda.cuGraphExecDestroy.argtypes = [ctypes.c_void_p]
+        cuda.cuGraphDestroy.argtypes = [ctypes.c_void_p]
+
+        self.test = test
+        self.stream = ctypes.c_void_p(stream.cuda_stream)
+        self.graph = ctypes.c_void_p()
+        self.graph_exec = ctypes.c_void_p()
+
+    def capture(self, func):
+        """Run ``func`` inside a driver-level capture and instantiate the resulting graph."""
+        self.test.assertEqual(
+            self.cuda.cuStreamBeginCapture_v2(self.stream, self.CU_STREAM_CAPTURE_MODE_THREAD_LOCAL), 0
+        )
+        try:
+            func()
+        finally:
+            end_result = self.cuda.cuStreamEndCapture(self.stream, ctypes.byref(self.graph))
+        self.test.assertEqual(end_result, 0, "cuStreamEndCapture failed")
+        self.test.assertEqual(self.cuda.cuGraphInstantiateWithFlags(ctypes.byref(self.graph_exec), self.graph, 0), 0)
+
+    def launch(self):
+        self.test.assertEqual(self.cuda.cuGraphLaunch(self.graph_exec, self.stream), 0)
+
+    def destroy(self):
+        if self.graph_exec:
+            self.cuda.cuGraphExecDestroy(self.graph_exec)
+        if self.graph:
+            self.cuda.cuGraphDestroy(self.graph)
+
+
+@wp.kernel
+def _scan_test_decrement_counter(c: wp.array[wp.int32]):
+    c[0] = c[0] - 1
+
+
+def _exclusive_scan_np(values):
+    return np.cumsum(values, axis=0, dtype=values.dtype) - values
+
+
+def _run_foreign_capture_scan(test, device, register_with_warp, conditional):
+    """Run scans with caller-provided storage in a CUDA capture that Warp did not start.
+
+    Replays the graph several times with new input so the captured scan must
+    read the input and the temporary storage at replay time.
+    """
+    if conditional and not wp.is_conditional_graph_supported():
+        test.skipTest("Conditional graph nodes not supported")
+
+    n = 4097
+    rng = np.random.default_rng(7)
+    counts = wp.zeros(n, dtype=wp.int32, device=device)
+    offsets = wp.zeros_like(counts)
+    temp = _scan_temp_storage(n, wp.int32, device)
+    counter = wp.zeros(1, dtype=wp.int32, device=device)
+
+    def scan():
+        wp.utils.array_scan(counts, offsets, inclusive=False, temp_storage=temp)
+
+    def body():
+        scan()
+        wp.launch(_scan_test_decrement_counter, dim=1, inputs=[counter], device=device)
+
+    def captured_work():
+        if register_with_warp:
+            wp.capture_begin(device=device, force_module_load=False, external=True)
+        try:
+            if conditional:
+                counter.fill_(2)
+                wp.capture_while(counter, while_body=body)
+            else:
+                scan()
+        finally:
+            if register_with_warp:
+                wp.capture_end(device=device)
+
+    wp.load_module(device=device)
+    driver_graph = _CudaDriverGraph(test, device.stream)
+    try:
+        driver_graph.capture(captured_work)
+        for _ in range(3):
+            counts_np = rng.integers(0, 5, size=n).astype(np.int32)
+            counts.assign(counts_np)
+            offsets.zero_()
+            driver_graph.launch()
+            np.testing.assert_array_equal(offsets.numpy(), _exclusive_scan_np(counts_np))
+    finally:
+        driver_graph.destroy()
+
+
+def test_array_scan_temp_storage_foreign_capture(test, device):
+    """Verify a scan in a capture that Warp did not start and does not know about (GH-2247)."""
+    _run_foreign_capture_scan(test, device, register_with_warp=False, conditional=False)
+
+
+def test_array_scan_temp_storage_foreign_capture_registered(test, device):
+    """Verify a scan in a foreign capture registered with ``wp.capture_begin(external=True)``."""
+    _run_foreign_capture_scan(test, device, register_with_warp=True, conditional=False)
+
+
+def test_array_scan_temp_storage_foreign_capture_while(test, device):
+    """Verify a scan in a conditional body nested in a foreign capture registered with Warp."""
+    _run_foreign_capture_scan(test, device, register_with_warp=True, conditional=True)
+
+
+def test_array_scan_temp_storage_capture_if(test, device):
+    """Verify a scan with caller-provided storage in both branches of a ``wp.capture_if`` (GH-2247)."""
+    if not wp.is_conditional_graph_supported():
+        test.skipTest("Conditional graph nodes not supported")
+
+    n = 1025
+    values_np = (np.arange(n) % 7).astype(np.float32)
+    values = wp.array(values_np, dtype=wp.float32, device=device)
+    result = wp.zeros_like(values)
+    temp = _scan_temp_storage(n, wp.float32, device)
+    cond = wp.zeros(1, dtype=wp.int32, device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+        wp.capture_if(
+            cond,
+            on_true=lambda: wp.utils.array_scan(values, result, inclusive=True, temp_storage=temp),
+            on_false=lambda: wp.utils.array_scan(values, result, inclusive=False, temp_storage=temp),
+        )
+
+    for flag, expected in ((1, np.cumsum(values_np)), (0, _exclusive_scan_np(values_np))):
+        cond.fill_(flag)
+        result.zero_()
+        wp.capture_launch(capture.graph)
+        np.testing.assert_allclose(result.numpy(), expected)
+
+
+def test_array_scan_temp_storage_capture_while_multiple_scans(test, device):
+    """Verify several scans of mixed types and sizes sharing one buffer across loop iterations.
+
+    Mirrors the use case in GH-2247: a solver step in a conditional body that
+    runs several exclusive scans on preallocated scratch.
+    """
+    if not wp.is_conditional_graph_supported():
+        test.skipTest("Conditional graph nodes not supported")
+
+    rng = np.random.default_rng(11)
+    specs = [(129, wp.int32), (4097, wp.int32), (65537, wp.int64), (1000, wp.float64), (300, wp.vec3)]
+
+    inputs = []
+    for n, dtype in specs:
+        length = wp._src.types.type_size(dtype)
+        np_type = wp.dtype_to_numpy(wp._src.types.type_scalar_type(dtype))
+        shape = (n, length) if length > 1 else (n,)
+        # Small values keep the repeated scans exact in every type.
+        values_np = rng.integers(0, 2, size=shape).astype(np_type)
+        inputs.append((values_np, wp.array(values_np, dtype=dtype, device=device)))
+    outputs = [wp.zeros_like(values) for _, values in inputs]
+
+    # One buffer serves every scan when sized for the largest requirement.
+    nbytes = max(wp.utils.array_scan_temp_storage_size(n, dtype, device) for n, dtype in specs)
+    temp = wp.empty(nbytes, dtype=wp.uint8, device=device)
+
+    iterations = 2
+    counter = wp.zeros(1, dtype=wp.int32, device=device)
+
+    def body():
+        # Each iteration scans the previous iteration's output, so stale
+        # temporary storage between scans would corrupt the result.
+        for (_, values), result in zip(inputs, outputs, strict=True):
+            wp.utils.array_scan(values, result, inclusive=False, temp_storage=temp)
+            wp.copy(values, result)
+        wp.launch(_scan_test_decrement_counter, dim=1, inputs=[counter], device=device)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+        counter.fill_(iterations)
+        wp.capture_while(counter, while_body=body)
+
+    wp.capture_launch(capture.graph)
+
+    for (values_np, _), result in zip(inputs, outputs, strict=True):
+        expected = values_np
+        for _ in range(iterations):
+            expected = _exclusive_scan_np(expected)
+        np.testing.assert_allclose(result.numpy(), expected)
+
+
+def test_array_scan_temp_storage_graph_replay(test, device):
+    """Verify a top-level capture with caller-provided storage replays against updated input."""
+    n = 65537
+    rng = np.random.default_rng(3)
+    values = wp.zeros(n, dtype=wp.int32, device=device)
+    result = wp.zeros_like(values)
+    temp = _scan_temp_storage(n, wp.int32, device)
+
+    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+        wp.utils.array_scan(values, result, inclusive=False, temp_storage=temp)
+
+    for _ in range(3):
+        values_np = rng.integers(0, 5, size=n).astype(np.int32)
+        values.assign(values_np)
+        wp.capture_launch(capture.graph)
+        np.testing.assert_array_equal(result.numpy(), _exclusive_scan_np(values_np))
+
+
+def test_array_scan_temp_storage_streams(test, device):
+    """Verify concurrent scans on separate streams, each with its own buffer."""
+    n = 262145
+    num_streams = 4
+    rng = np.random.default_rng(5)
+    streams = [wp.Stream(device) for _ in range(num_streams)]
+
+    values_np = [rng.integers(0, 5, size=n).astype(np.int32) for _ in range(num_streams)]
+    values = [wp.array(v, dtype=wp.int32, device=device) for v in values_np]
+    results = [wp.zeros_like(v) for v in values]
+    temps = [_scan_temp_storage(n, wp.int32, device) for _ in range(num_streams)]
+
+    main_stream = device.stream
+    for stream in streams:
+        stream.wait_stream(main_stream)
+    for i, stream in enumerate(streams):
+        with wp.ScopedStream(stream):
+            for _ in range(4):
+                wp.utils.array_scan(values[i], results[i], inclusive=True, temp_storage=temps[i])
+    for stream in streams:
+        main_stream.wait_stream(stream)
+
+    for v, r in zip(values_np, results, strict=True):
+        np.testing.assert_array_equal(r.numpy(), np.cumsum(v))
 
 
 def test_radix_sort_pairs(test, device):
@@ -942,6 +1337,7 @@ def test_segmented_sort_pairs_error_unsupported_dtype(test, device):
 
 
 def test_array_sum(test, device):
+    """Verify sums returned on the host or written to an output array."""
     for dtype in (wp.float32, wp.float64):
         with test.subTest(dtype=dtype):
             values = wp.array((1.0, 2.0, 3.0), dtype=dtype, device=device)
@@ -953,7 +1349,56 @@ def test_array_sum(test, device):
             test.assertEqual(result.numpy()[0], 6.0)
 
 
+def test_array_sum_strided_views(test, device):
+    """Reduce strided views and logical prefixes with host and array outputs."""
+    for dtype in (wp.float32, wp.float64):
+        base = wp.array((1.0, 100.0, 2.0, 200.0, 3.0, 300.0), dtype=dtype, device=device)
+        matrix = wp.array(((1.0, 2.0, 3.0), (4.0, 5.0, 6.0)), dtype=dtype, device=device)
+        for values in (base[::2], matrix.transpose(), matrix[:, ::2]):
+            for count in (None, values.size, 2):
+                with test.subTest(dtype=dtype, shape=values.shape, strides=values.strides, count=count):
+                    expected = np.sum(values.numpy().flatten()[:count])
+                    test.assertEqual(wp.utils.array_sum(values, value_count=count), expected)
+
+                    result = wp.empty(shape=(1,), dtype=dtype, device=device)
+                    wp.utils.array_sum(values, out=result, value_count=count)
+                    test.assertEqual(result.numpy()[0], expected)
+
+
+def test_array_sum_inner_compact_views(test, device):
+    """Reduce compact transposed inputs without copying their storage."""
+    for dtype in (wp.float32, wp.float64):
+        values = wp.array(((1.0, 2.0, 3.0), (4.0, 5.0, 6.0)), dtype=dtype, device=device).transpose()
+        other = wp.array(((7.0, 8.0, 9.0), (10.0, 11.0, 12.0)), dtype=dtype, device=device).transpose()
+        sum_out = wp.empty(1, dtype=dtype, device=device)
+        inner_out = wp.empty(1, dtype=dtype, device=device)
+
+        for count in (None, values.size):
+            with test.subTest(dtype=dtype, count=count):
+                with patch.object(wp, "copy", wraps=wp.copy) as copy:
+                    wp.utils.array_sum(values, out=sum_out, value_count=count)
+                    wp.utils.array_inner(values, other, out=inner_out, count=count)
+                    copy.assert_not_called()
+
+                test.assertEqual(sum_out.numpy()[0], 21.0)
+                test.assertEqual(inner_out.numpy()[0], 217.0)
+
+
+def test_array_sum_error_count_exceeds_size(test, device):
+    """Reject sum counts exceeding the logical array or reduction axis."""
+    for dtype in (wp.float32, wp.float64, wp.vec3, wp.mat22):
+        # Padding keeps a missing count guard from overrunning the allocation.
+        base = wp.zeros(24, dtype=dtype, device=device)
+        for values in (base[:6].reshape((2, 3)), base[:0].reshape((0, 3)), base[:0].reshape((2, 0))):
+            for axis in (None, 0, 1, -1, -2):
+                limit = values.size if axis is None else values.shape[axis]
+                with test.subTest(dtype=dtype, shape=values.shape, axis=axis):
+                    with test.assertRaisesRegex(RuntimeError, r"array_sum\(\).*value_count.*exceed"):
+                        wp.utils.array_sum(values, value_count=limit + 1, axis=axis)
+
+
 def test_array_sum_error_out_dtype_mismatch(test, device):
+    """Reject sum output arrays whose data type differs from the input."""
     values = wp.array((1.0, 2.0, 3.0), dtype=wp.float32, device=device)
     result = wp.empty(shape=(1,), dtype=wp.float64, device=device)
     with test.assertRaisesRegex(
@@ -963,7 +1408,43 @@ def test_array_sum_error_out_dtype_mismatch(test, device):
         wp.utils.array_sum(values, out=result)
 
 
+def test_array_sum_inner_strided_composite_views(test, device):
+    """Reduce strided vector and matrix views by logical element count."""
+    for dtype in (wp.vec3, wp.mat22):
+        data = np.arange(6 * wp._src.types.type_size(dtype), dtype=np.float32).reshape((6, *dtype._shape_))
+        base = wp.array(data, dtype=dtype, device=device)
+        values = base[::2]
+        for count in (None, 2):
+            with test.subTest(dtype=dtype, count=count):
+                expected = data[::2][:count]
+                np.testing.assert_array_equal(wp.utils.array_sum(values, value_count=count), expected.sum(axis=0))
+                test.assertEqual(wp.utils.array_inner(values, values, count=count), np.sum(expected * expected))
+
+
+def test_array_sum_inner_strided_graph(test, device):
+    """Replay strided reductions in a CUDA graph after updating input data."""
+    base = wp.array((1.0, 100.0, 2.0, 200.0, 3.0, 300.0), dtype=wp.float32, device=device)
+    values = base[::2]
+    other = wp.array((4.0, 5.0, 6.0), dtype=wp.float32, device=device)
+    sum_out = wp.empty(1, dtype=wp.float32, device=device)
+    inner_out = wp.empty(1, dtype=wp.float32, device=device)
+
+    with wp.ScopedCapture(device=device, apic=False, force_module_load=False) as capture:
+        wp.utils.array_sum(values, out=sum_out)
+        wp.utils.array_inner(values, other, out=inner_out)
+
+    wp.capture_launch(capture.graph)
+    test.assertEqual(sum_out.numpy()[0], 6.0)
+    test.assertEqual(inner_out.numpy()[0], 32.0)
+
+    base.assign((7.0, 100.0, 8.0, 200.0, 9.0, 300.0))
+    wp.capture_launch(capture.graph)
+    test.assertEqual(sum_out.numpy()[0], 24.0)
+    test.assertEqual(inner_out.numpy()[0], 122.0)
+
+
 def test_array_sum_error_out_shape_mismatch(test, device):
+    """Reject sum output arrays with an incompatible shape."""
     values = wp.array((1.0, 2.0, 3.0), dtype=wp.float32, device=device)
     result = wp.empty(shape=(2,), dtype=wp.float32, device=device)
     with test.assertRaisesRegex(
@@ -983,6 +1464,7 @@ def test_array_sum_error_unsupported_dtype(test, device):
 
 
 def test_array_inner(test, device):
+    """Verify scalar and vector inner products with host and array outputs."""
     for dtype in (wp.float32, wp.float64, wp.vec3):
         a = wp.array((1.0, 2.0, 3.0), dtype=dtype, device=device)
         b = wp.array((1.0, 2.0, 3.0), dtype=dtype, device=device)
@@ -998,6 +1480,39 @@ def test_array_inner(test, device):
     a = wp.array((1.0, 2.0, 3.0), dtype=wp.vec3, device=device)
     b = wp.array((1.0, 2.0, 3.0), dtype=wp.types.vector(3, float), device=device)
     test.assertEqual(wp.utils.array_inner(a, b), 14.0)
+
+
+def test_array_inner_strided_views(test, device):
+    """Reduce strided operands and logical prefixes with host and array outputs."""
+    for dtype in (wp.float32, wp.float64):
+        base = wp.array((1.0, 100.0, 2.0, 200.0, 3.0, 300.0), dtype=dtype, device=device)
+        matrix = wp.array(((1.0, 2.0, 3.0), (4.0, 5.0, 6.0)), dtype=dtype, device=device)
+        for view in (base[::2], matrix.transpose(), matrix[:, ::2]):
+            contiguous = wp.array(view.numpy() + 1, dtype=dtype, device=device)
+            for a, b in ((view, view), (view, contiguous), (contiguous, view)):
+                for count in (None, view.size, 2):
+                    with test.subTest(
+                        dtype=dtype, shape=a.shape, a_strides=a.strides, b_strides=b.strides, count=count
+                    ):
+                        expected = np.dot(a.numpy().flatten()[:count], b.numpy().flatten()[:count])
+                        test.assertEqual(wp.utils.array_inner(a, b, count=count), expected)
+
+                        result = wp.empty(shape=(1,), dtype=dtype, device=device)
+                        wp.utils.array_inner(a, b, out=result, count=count)
+                        test.assertEqual(result.numpy()[0], expected)
+
+
+def test_array_inner_error_count_exceeds_size(test, device):
+    """Reject inner-product counts exceeding the logical array or reduction axis."""
+    for dtype in (wp.float32, wp.float64, wp.vec3, wp.mat22):
+        # Padding keeps a missing count guard from overrunning the allocation.
+        base = wp.zeros(24, dtype=dtype, device=device)
+        for values in (base[:6].reshape((2, 3)), base[:0].reshape((0, 3)), base[:0].reshape((2, 0))):
+            for axis in (None, 0, 1, -1, -2):
+                limit = values.size if axis is None else values.shape[axis]
+                with test.subTest(dtype=dtype, shape=values.shape, axis=axis):
+                    with test.assertRaisesRegex(RuntimeError, r"array_inner\(\).*count.*exceed"):
+                        wp.utils.array_inner(values, values, count=limit + 1, axis=axis)
 
 
 def test_array_inner_error_shapes_mismatch(test, device):
@@ -1094,6 +1609,52 @@ def test_array_cast(test, device):
     test.assertEqual(result.dtype, wp.int32)
     test.assertEqual(result.shape, (2, 2))
     assert_np_equal(result.numpy(), np.array(((1, 2), (3, 4)), dtype=int))
+
+
+def test_array_cast_multidim(test, device):
+    for shape in ((3, 4), (2, 3, 2), (2, 1, 3, 2)):
+        expected = np.arange(np.prod(shape), dtype=np.float32).reshape(shape)
+        values = wp.array(expected, dtype=wp.float32, device=device)
+        result = wp.zeros(shape, dtype=wp.float64, device=device)
+        wp.utils.array_cast(values, result)
+        test.assertEqual(result.dtype, wp.float64)
+        test.assertEqual(result.shape, shape)
+        assert_np_equal(result.numpy(), expected.astype(np.float64))
+
+    # A one-dimensional cast still works after the multi-dimensional ones.
+    values = wp.array((1.5, 2.5), dtype=wp.float32, device=device)
+    result = wp.zeros(2, dtype=wp.int32, device=device)
+    wp.utils.array_cast(values, result)
+    assert_np_equal(result.numpy(), np.array((1, 2), dtype=np.int32))
+
+
+def test_array_cast_error_shape_mismatch(test, device):
+    values = wp.zeros((2, 3), dtype=wp.float32, device=device)
+    result = wp.zeros((3, 2), dtype=wp.float64, device=device)
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"Array shapes do not match \(\(2, 3\) vs \(3, 2\)\)$",
+    ):
+        wp.utils.array_cast(values, result)
+
+
+def test_array_cast_error_count_exceeds_size(test, device):
+    values = wp.array(np.arange(1, 11, dtype=np.float32), device=device)
+    result = wp.zeros(10, dtype=wp.int32, device=device)
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"Cast count \(10\) exceeds the input size \(10\) or output size \(3\)$",
+    ):
+        wp.utils.array_cast(values, result[:3])
+
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"Cast count \(5\) exceeds the input size \(3\) or output size \(10\)$",
+    ):
+        wp.utils.array_cast(values[:3], result, count=5)
+
+    # Nothing may be written past the end of the output view.
+    assert_np_equal(result.numpy(), np.zeros(10, dtype=np.int32))
 
 
 def test_array_cast_error_unsupported_partial_cast(test, device):
@@ -1374,6 +1935,60 @@ add_function_test(
 add_function_test(
     TestUtils, "test_array_scan_error_unsupported_dtype", test_array_scan_error_unsupported_dtype, devices=devices
 )
+add_function_test(TestUtils, "test_array_scan_temp_storage", test_array_scan_temp_storage, devices=devices)
+add_function_test(TestUtils, "test_array_scan_temp_storage_reuse", test_array_scan_temp_storage_reuse, devices=devices)
+add_function_test(TestUtils, "test_array_scan_temp_storage_size", test_array_scan_temp_storage_size, devices=devices)
+add_function_test(
+    TestUtils, "test_array_scan_temp_storage_errors", test_array_scan_temp_storage_errors, devices=devices
+)
+add_function_test(
+    TestUtils,
+    "test_array_scan_temp_storage_capture_while",
+    test_array_scan_temp_storage_capture_while,
+    devices=get_selected_cuda_test_devices(),
+)
+add_function_test(
+    TestUtils,
+    "test_array_scan_temp_storage_foreign_capture",
+    test_array_scan_temp_storage_foreign_capture,
+    devices=get_selected_cuda_test_devices(),
+)
+add_function_test(
+    TestUtils,
+    "test_array_scan_temp_storage_foreign_capture_registered",
+    test_array_scan_temp_storage_foreign_capture_registered,
+    devices=get_selected_cuda_test_devices(),
+)
+add_function_test(
+    TestUtils,
+    "test_array_scan_temp_storage_foreign_capture_while",
+    test_array_scan_temp_storage_foreign_capture_while,
+    devices=get_selected_cuda_test_devices(),
+)
+add_function_test(
+    TestUtils,
+    "test_array_scan_temp_storage_capture_if",
+    test_array_scan_temp_storage_capture_if,
+    devices=get_selected_cuda_test_devices(),
+)
+add_function_test(
+    TestUtils,
+    "test_array_scan_temp_storage_capture_while_multiple_scans",
+    test_array_scan_temp_storage_capture_while_multiple_scans,
+    devices=get_selected_cuda_test_devices(),
+)
+add_function_test(
+    TestUtils,
+    "test_array_scan_temp_storage_graph_replay",
+    test_array_scan_temp_storage_graph_replay,
+    devices=get_selected_cuda_test_devices(),
+)
+add_function_test(
+    TestUtils,
+    "test_array_scan_temp_storage_streams",
+    test_array_scan_temp_storage_streams,
+    devices=get_selected_cuda_test_devices(),
+)
 add_function_test(TestUtils, "test_radix_sort_pairs", test_radix_sort_pairs, devices=devices)
 add_function_test(
     TestUtils,
@@ -1524,6 +2139,23 @@ add_function_test(
 )
 add_function_test(TestUtils, "test_array_sum", test_array_sum, devices=devices)
 add_function_test(
+    TestUtils, "test_array_sum_error_count_exceeds_size", test_array_sum_error_count_exceeds_size, devices=devices
+)
+add_function_test(TestUtils, "test_array_sum_strided_views", test_array_sum_strided_views, devices=devices)
+add_function_test(TestUtils, "test_array_sum_inner_compact_views", test_array_sum_inner_compact_views, devices=devices)
+add_function_test(
+    TestUtils,
+    "test_array_sum_inner_strided_composite_views",
+    test_array_sum_inner_strided_composite_views,
+    devices=devices,
+)
+add_function_test(
+    TestUtils,
+    "test_array_sum_inner_strided_graph",
+    test_array_sum_inner_strided_graph,
+    devices=get_cuda_test_devices_with_mempool(),
+)
+add_function_test(
     TestUtils, "test_array_sum_error_out_dtype_mismatch", test_array_sum_error_out_dtype_mismatch, devices=devices
 )
 add_function_test(
@@ -1533,6 +2165,10 @@ add_function_test(
     TestUtils, "test_array_sum_error_unsupported_dtype", test_array_sum_error_unsupported_dtype, devices=devices
 )
 add_function_test(TestUtils, "test_array_inner", test_array_inner, devices=devices)
+add_function_test(
+    TestUtils, "test_array_inner_error_count_exceeds_size", test_array_inner_error_count_exceeds_size, devices=devices
+)
+add_function_test(TestUtils, "test_array_inner_strided_views", test_array_inner_strided_views, devices=devices)
 add_function_test(
     TestUtils, "test_array_inner_error_shapes_mismatch", test_array_inner_error_shapes_mismatch, devices=devices
 )
@@ -1549,6 +2185,13 @@ add_function_test(
     TestUtils, "test_array_inner_error_unsupported_dtype", test_array_inner_error_unsupported_dtype, devices=devices
 )
 add_function_test(TestUtils, "test_array_cast", test_array_cast, devices=devices)
+add_function_test(TestUtils, "test_array_cast_multidim", test_array_cast_multidim, devices=devices)
+add_function_test(
+    TestUtils, "test_array_cast_error_shape_mismatch", test_array_cast_error_shape_mismatch, devices=devices
+)
+add_function_test(
+    TestUtils, "test_array_cast_error_count_exceeds_size", test_array_cast_error_count_exceeds_size, devices=devices
+)
 add_function_test(
     TestUtils,
     "test_array_scan_error_device_failure_is_reported",

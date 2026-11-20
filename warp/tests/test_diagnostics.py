@@ -8,11 +8,11 @@ import subprocess
 import sys
 import textwrap
 import unittest
+from unittest.mock import patch
 
 import warp as wp
 from warp._src.context import (
     get_host_compiler_version,
-    get_libmathdx_version,
     get_llvm_version,
     get_nanovdb_version,
     get_nvrtc_version,
@@ -172,11 +172,23 @@ class TestDiagnostics(unittest.TestCase):
             self.assertGreater(version[0], 0)
 
     def test_libmathdx_version(self):
-        version = get_libmathdx_version()
-        self.assertIsInstance(version, str)
-        # If MathDx is enabled, version should be a valid version string
-        if version:
-            self.assertRegex(version, r"^\d+\.\d+\.\d+$")
+        """Verify the public libmathdx version tuple and its consistency with diagnostics."""
+        version = wp.get_libmathdx_version()
+        if version is not None:
+            self.assertIsInstance(version, tuple)
+            self.assertEqual(len(version), 3)
+            for component in version:
+                self.assertIsInstance(component, int)
+                self.assertGreaterEqual(component, 0)
+        info, _ = self.get_print_diagnostics_output()
+        self.assertEqual(info["libmathdx"], ".".join(map(str, version)) if version is not None else None)
+
+    def test_libmathdx_version_conversion(self):
+        """Verify conversion of libmathdx version strings to an integer tuple or None."""
+        for native_version, expected in (("0.3.10", (0, 3, 10)), ("", None)):
+            with self.subTest(native_version=native_version):
+                with patch("warp._src.context.Runtime.get_libmathdx_version", return_value=native_version):
+                    self.assertEqual(wp.get_libmathdx_version(), expected)
 
 
 if __name__ == "__main__":

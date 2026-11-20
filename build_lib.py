@@ -1,5 +1,5 @@
 # /// script
-# requires-python = ">=3.10"
+# requires-python = ">=3.11"
 # dependencies = [
 #     "numpy",
 # ]
@@ -30,6 +30,25 @@ import warp._src.build_dll as build_dll
 import warp.config as config
 from warp._src.build_architecture import machine_architecture
 from warp._src.generated_files import generate_exports_header_file, generate_version_header
+
+
+def _nightly_build_date() -> datetime.date:
+    """Return the date to stamp into a nightly build's version.
+
+    Every build job stamps its own copy of the version files, and the wheel packaging
+    jobs combine binaries from all of them. The pipeline creation time is the same for
+    every job in the pipeline, including jobs that are retried later or that run on
+    runners in other time zones, so every binary gets the same version as the packaged
+    ``config.py``. Outside GitLab CI, fall back to the local date.
+    """
+    created_at = os.environ.get("CI_PIPELINE_CREATED_AT")
+    if created_at:
+        try:
+            created = datetime.datetime.fromisoformat(created_at.replace("Z", "+00:00"))
+            return created.astimezone(datetime.UTC).date()
+        except ValueError:
+            print(f"Warning: could not parse CI_PIPELINE_CREATED_AT={created_at!r}; using the local date")
+    return datetime.date.today()
 
 
 def handle_ci_nightly_build(base_path: str) -> str | None:
@@ -68,7 +87,7 @@ def handle_ci_nightly_build(base_path: str) -> str | None:
     else:
         base_version_incremented = increment_minor(base_version)
 
-    dateint = datetime.date.today().strftime("%Y%m%d")
+    dateint = _nightly_build_date().strftime("%Y%m%d")
     dev_version_string = f"{base_version_incremented}.dev{dateint}"
 
     # Update files
@@ -125,9 +144,9 @@ def resolve_libmathdx_path(libmathdx_path: str) -> str:
     """Return the directory that holds libmathdx's ``include`` and ``lib`` subdirectories.
 
     libmathdx 0.4.0 and newer ship archives that wrap the payload in a single top-level
-    directory (e.g. ``libmathdx-linux-x86_64``), one level above the layout Warp compiles
-    and links against. Descend into that wrapper when the given path does not already
-    hold the expected layout.
+    directory (``libmathdx-<platform>`` through 0.4.1, ``libmathdx`` since 0.4.2), one level
+    above the layout Warp compiles and links against. Descend into that wrapper when the
+    given path does not already hold the expected layout.
 
     Args:
         libmathdx_path: Path to a libmathdx installation.
@@ -139,7 +158,7 @@ def resolve_libmathdx_path(libmathdx_path: str) -> str:
     if os.path.isdir(os.path.join(libmathdx_path, "include")):
         return libmathdx_path
 
-    for nested in sorted(glob.glob(os.path.join(libmathdx_path, "libmathdx-*"))):
+    for nested in sorted(glob.glob(os.path.join(libmathdx_path, "libmathdx*"))):
         if os.path.isdir(os.path.join(nested, "include")):
             print(f"Using nested libmathdx directory '{nested}'")
             return nested
@@ -161,7 +180,10 @@ def validate_libmathdx_path(libmathdx_path: str) -> bool:
         return False
 
     # Check for required subdirectories
-    libmathdx_lib_subdir = "lib/x64" if platform.system() == "Windows" else "lib"
+    if platform.system() == "Windows":
+        libmathdx_lib_subdir = "lib/arm64" if machine_architecture() == "aarch64" else "lib/x64"
+    else:
+        libmathdx_lib_subdir = "lib"
     required_dirs = {
         "include": os.path.join(libmathdx_path, "include"),
         libmathdx_lib_subdir: os.path.join(libmathdx_path, libmathdx_lib_subdir),

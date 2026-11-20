@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import tempfile
 import unittest
 from typing import Any
 
@@ -417,12 +418,7 @@ def test_tile_cholesky_upper_backward(dtype):
 def test_tile_cholesky_block_cholesky(test, device):
     BLOCK_SIZE = wp.constant(TILE_M // 2)
 
-    # enable_backward belongs in module_options, not as a kernel kwarg: the LTO
-    # dispatch for tile_matmul/tile_cholesky/tile_lower_solve reads the module
-    # builder's options, which kernel kwargs are not merged into. As a kwarg it
-    # still suppresses the C++ backward, but libmathdx builds the unused
-    # backward GEMM/TRSM LTOs anyway.
-    @wp.kernel(module="unique", module_options={"enable_backward": False})
+    @wp.kernel(enable_backward=False, module="unique")
     def block_cholesky_kernel(
         A: wp.array2d[float],
         L: wp.array2d[float],
@@ -466,7 +462,7 @@ def test_tile_cholesky_block_cholesky(test, device):
 
                 wp.tile_store(L, sol_tile, offset=(i, k))
 
-    @wp.kernel(module="unique", module_options={"enable_backward": False})
+    @wp.kernel(enable_backward=False, module="unique")
     def block_cholesky_solve_kernel(
         L: wp.array2d[float],
         b: wp.array2d[float],
@@ -670,6 +666,55 @@ def test_tile_cholesky_upper_inplace(test, device):
 
 
 @wp.kernel(module="test_cholesky_fwd")
+def tile_math_cholesky_lower_inplace_keep_opposite(gA: wp.array2d[wp.float64], gy: wp.array1d[wp.float64]):
+    a = wp.tile_load(gA, shape=(TILE_M, TILE_M), storage="shared")
+    y = wp.tile_load(gy, shape=TILE_M, storage="shared")
+    wp.tile_cholesky_inplace(a, zero_opposite=False)
+    wp.tile_cholesky_solve_inplace(a, y)
+    wp.tile_store(gA, a)
+    wp.tile_store(gy, y)
+
+
+@wp.kernel(module="test_cholesky_fwd")
+def tile_math_cholesky_upper_inplace_keep_opposite(gA: wp.array2d[wp.float64], gy: wp.array1d[wp.float64]):
+    a = wp.tile_load(gA, shape=(TILE_M, TILE_M), storage="shared")
+    y = wp.tile_load(gy, shape=TILE_M, storage="shared")
+    wp.tile_cholesky_inplace(a, fill_mode="upper", zero_opposite=False)
+    wp.tile_cholesky_solve_inplace(a, y, fill_mode="upper")
+    wp.tile_store(gA, a)
+    wp.tile_store(gy, y)
+
+
+def _test_tile_cholesky_inplace_keep_opposite(test, device, kernel, upper):
+    """Check that the factor and solve are unchanged and the opposite triangle keeps the input."""
+    rng = np.random.default_rng(7)
+    L_h = np.tril(rng.random((TILE_M, TILE_M))) + np.eye(TILE_M)
+    A_h = L_h @ L_h.T
+    y_h = np.arange(TILE_M, dtype=np.float64)
+
+    A_wp = wp.array(A_h, dtype=wp.float64, device=device)
+    y_wp = wp.array(y_h, dtype=wp.float64, device=device)
+    wp.launch_tiled(kernel, dim=[1, 1], inputs=[A_wp, y_wp], block_dim=TILE_DIM, device=device)
+
+    F = A_wp.numpy()
+    if upper:
+        np.testing.assert_allclose(np.triu(F), L_h.T)
+        np.testing.assert_array_equal(np.tril(F, k=-1), np.tril(A_h, k=-1))
+    else:
+        np.testing.assert_allclose(np.tril(F), L_h)
+        np.testing.assert_array_equal(np.triu(F, k=1), np.triu(A_h, k=1))
+    np.testing.assert_allclose(y_wp.numpy(), np.linalg.solve(A_h, y_h))
+
+
+def test_tile_cholesky_lower_inplace_keep_opposite(test, device):
+    _test_tile_cholesky_inplace_keep_opposite(test, device, tile_math_cholesky_lower_inplace_keep_opposite, False)
+
+
+def test_tile_cholesky_upper_inplace_keep_opposite(test, device):
+    _test_tile_cholesky_inplace_keep_opposite(test, device, tile_math_cholesky_upper_inplace_keep_opposite, True)
+
+
+@wp.kernel(module="test_cholesky_fwd")
 def tile_math_cholesky_upper_multiple_rhs(
     gA: wp.array2d[wp.float64],
     gD: wp.array1d[wp.float64],
@@ -851,6 +896,13 @@ def test_tile_cholesky_solve_upper_multiple_rhs_inplace(test, device):
     np.testing.assert_allclose(Y_wp.numpy(), X_np)
 
 
+@wp.func
+def new_int32_shared_tile():
+    # In device-debug builds, nvJitLink fails to link this function's adjoint
+    # for targets older than sm_100 unless it links without optimization.
+    return wp.tile_empty(shape=(3,), dtype=wp.int32, storage="shared")
+
+
 all_devices = get_test_devices()
 cuda_devices = get_cuda_test_devices()
 
@@ -864,7 +916,23 @@ cuda_devices = get_cuda_test_devices()
     "MathDx is not enabled or is enabled but CUDA toolkit version is less than 12.6",
 )
 class TestTileCholesky(unittest.TestCase):
-    pass
+    def test_tile_cholesky_debug_link(self):
+        """Link device-debug MathDx code for a target older than ``sm_100``."""
+        arch = 80
+        if arch not in wp.get_cuda_supported_archs():
+            self.skipTest(f"NVRTC does not support compute capability {arch}")
+        if not wp._src.context.runtime.core.wp_is_mathdx_enabled():
+            self.skipTest("MathDx is not enabled")
+
+        @wp.kernel(module="unique", module_options={"mode": "debug", "block_dim": TILE_DIM, "enable_backward": True})
+        def kernel(A: wp.array2d[float], L: wp.array2d[float], P: wp.array1d[wp.int32]):
+            a = wp.tile_load(A, shape=(3, 3), storage="shared")
+            wp.tile_store(L, wp.tile_cholesky(a))
+            wp.tile_store(P, new_int32_shared_tile())
+
+        # A fresh output directory forces compilation even with a warm kernel cache.
+        with tempfile.TemporaryDirectory() as output_dir:
+            wp.compile_aot_module(kernel.module, module_dir=output_dir, arch=arch, use_ptx=True)
 
 
 add_function_test(
@@ -917,6 +985,20 @@ add_function_test(
     TestTileCholesky,
     "test_tile_cholesky_upper_inplace",
     test_tile_cholesky_upper_inplace,
+    devices=all_devices,
+    check_output=False,
+)
+add_function_test(
+    TestTileCholesky,
+    "test_tile_cholesky_lower_inplace_keep_opposite",
+    test_tile_cholesky_lower_inplace_keep_opposite,
+    devices=all_devices,
+    check_output=False,
+)
+add_function_test(
+    TestTileCholesky,
+    "test_tile_cholesky_upper_inplace_keep_opposite",
+    test_tile_cholesky_upper_inplace_keep_opposite,
     devices=all_devices,
     check_output=False,
 )

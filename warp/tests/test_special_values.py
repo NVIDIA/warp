@@ -772,7 +772,79 @@ devices = get_test_devices()
 
 
 class TestSpecialValues(unittest.TestCase):
-    pass
+    def test_is_special_python_scope(self):
+        """Classify special values with isnan(), isinf(), and isfinite() at the Python scope."""
+        for dtype in (float, wp.float16, wp.bfloat16, wp.float32, wp.float64):
+            with self.subTest(dtype=dtype.__name__):
+                self.assertIs(wp.isnan(dtype(1.0)), False)
+                self.assertIs(wp.isinf(dtype(1.0)), False)
+                self.assertIs(wp.isfinite(dtype(1.0)), True)
+
+                self.assertIs(wp.isnan(dtype(math.inf)), False)
+                self.assertIs(wp.isinf(dtype(math.inf)), True)
+                self.assertIs(wp.isfinite(dtype(math.inf)), False)
+
+                self.assertIs(wp.isnan(dtype(-math.inf)), False)
+                self.assertIs(wp.isinf(dtype(-math.inf)), True)
+                self.assertIs(wp.isfinite(dtype(-math.inf)), False)
+
+                self.assertIs(wp.isnan(dtype(math.nan)), True)
+                self.assertIs(wp.isinf(dtype(math.nan)), False)
+                self.assertIs(wp.isfinite(dtype(math.nan)), False)
+
+        # Composites hold the special value in their last element only, so checking the first one isn't enough.
+        for dtype in (wp.float16, wp.float32, wp.float64):
+            vec3 = wp.types.vector(length=3, dtype=dtype)
+            quat = wp.types.quaternion(dtype=dtype)
+            mat22 = wp.types.matrix(shape=(2, 2), dtype=dtype)
+            with self.subTest(dtype=dtype.__name__):
+                self.assertIs(wp.isnan(vec3(0.0, 0.0, 1.0)), False)
+                self.assertIs(wp.isinf(vec3(0.0, 0.0, 1.0)), False)
+                self.assertIs(wp.isfinite(vec3(0.0, 0.0, 1.0)), True)
+
+                self.assertIs(wp.isnan(vec3(0.0, 0.0, math.inf)), False)
+                self.assertIs(wp.isinf(vec3(0.0, 0.0, math.inf)), True)
+                self.assertIs(wp.isfinite(vec3(0.0, 0.0, math.inf)), False)
+
+                self.assertIs(wp.isnan(vec3(0.0, 0.0, -math.inf)), False)
+                self.assertIs(wp.isinf(vec3(0.0, 0.0, -math.inf)), True)
+                self.assertIs(wp.isfinite(vec3(0.0, 0.0, -math.inf)), False)
+
+                self.assertIs(wp.isnan(vec3(0.0, 0.0, math.nan)), True)
+                self.assertIs(wp.isinf(vec3(0.0, 0.0, math.nan)), False)
+                self.assertIs(wp.isfinite(vec3(0.0, 0.0, math.nan)), False)
+
+                self.assertIs(wp.isnan(quat(0.0, 0.0, 0.0, 1.0)), False)
+                self.assertIs(wp.isinf(quat(0.0, 0.0, 0.0, 1.0)), False)
+                self.assertIs(wp.isfinite(quat(0.0, 0.0, 0.0, 1.0)), True)
+
+                self.assertIs(wp.isnan(quat(0.0, 0.0, 0.0, math.inf)), False)
+                self.assertIs(wp.isinf(quat(0.0, 0.0, 0.0, math.inf)), True)
+                self.assertIs(wp.isfinite(quat(0.0, 0.0, 0.0, math.inf)), False)
+
+                self.assertIs(wp.isnan(quat(0.0, 0.0, 0.0, -math.inf)), False)
+                self.assertIs(wp.isinf(quat(0.0, 0.0, 0.0, -math.inf)), True)
+                self.assertIs(wp.isfinite(quat(0.0, 0.0, 0.0, -math.inf)), False)
+
+                self.assertIs(wp.isnan(quat(0.0, 0.0, 0.0, math.nan)), True)
+                self.assertIs(wp.isinf(quat(0.0, 0.0, 0.0, math.nan)), False)
+                self.assertIs(wp.isfinite(quat(0.0, 0.0, 0.0, math.nan)), False)
+
+                self.assertIs(wp.isnan(mat22(0.0, 0.0, 0.0, 1.0)), False)
+                self.assertIs(wp.isinf(mat22(0.0, 0.0, 0.0, 1.0)), False)
+                self.assertIs(wp.isfinite(mat22(0.0, 0.0, 0.0, 1.0)), True)
+
+                self.assertIs(wp.isnan(mat22(0.0, 0.0, 0.0, math.inf)), False)
+                self.assertIs(wp.isinf(mat22(0.0, 0.0, 0.0, math.inf)), True)
+                self.assertIs(wp.isfinite(mat22(0.0, 0.0, 0.0, math.inf)), False)
+
+                self.assertIs(wp.isnan(mat22(0.0, 0.0, 0.0, -math.inf)), False)
+                self.assertIs(wp.isinf(mat22(0.0, 0.0, 0.0, -math.inf)), True)
+                self.assertIs(wp.isfinite(mat22(0.0, 0.0, 0.0, -math.inf)), False)
+
+                self.assertIs(wp.isnan(mat22(0.0, 0.0, 0.0, math.nan)), True)
+                self.assertIs(wp.isinf(mat22(0.0, 0.0, 0.0, math.nan)), False)
+                self.assertIs(wp.isfinite(mat22(0.0, 0.0, 0.0, math.nan)), False)
 
 
 for dtype in [wp.float16, wp.float32, wp.float64]:

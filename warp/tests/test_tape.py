@@ -1010,7 +1010,10 @@ def test_tape_backward_cuda_launch_failure(test, device):
     test.assertEqual(len(launch), 8)
     launch[6] = 2048  # block_dim
 
-    with test.assertRaisesRegex(RuntimeError, r"Error launching kernel: .*mul_constant.*Warp CUDA error"):
+    with (
+        suppress_native_error_output(),
+        test.assertRaisesRegex(RuntimeError, r"Error launching kernel: .*mul_constant.*Warp CUDA error"),
+    ):
         tape.backward(grads={y: wp.ones_like(y)})
 
 

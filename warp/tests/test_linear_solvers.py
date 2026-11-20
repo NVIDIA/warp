@@ -1,18 +1,38 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import contextlib
+import inspect
+import io
 import itertools
+import os
+import tempfile
 import unittest
+import warnings
 
 import numpy as np
 
 import warp as wp
+from warp._src import logger as _logger_module
 from warp._src.optim.linear import (
     TiledDot,
     _create_segmented_tiled_dot_kernels,
     _run_solver_loop,
 )
-from warp.optim.linear import CG, CR, GMRES, BiCGSTAB, aslinearoperator, bicgstab, cg, cr, gmres, preconditioner
+from warp.optim.linear import (
+    CG,
+    CR,
+    GMRES,
+    BiCGSTAB,
+    LinearOperator,
+    LinearSolverState,
+    aslinearoperator,
+    bicgstab,
+    cg,
+    cr,
+    gmres,
+    preconditioner,
+)
 from warp.sparse import bsr_from_triplets, bsr_identity, bsr_mv, bsr_set_from_triplets, bsr_zeros
 from warp.tests.unittest_utils import *
 
@@ -35,7 +55,7 @@ def _check_linear_solve(test, A, b, func, *args, **kwargs):
     # test from zero
     x = wp.zeros_like(b)
     with wp.ScopedDevice(A.device):
-        niter, err, atol = func(A, b, x, *args, use_cuda_graph=True, **kwargs)
+        niter, err, atol = func(A, b, x, *args, use_graph=True, **kwargs)
 
     test.assertLessEqual(err, atol)
 
@@ -44,7 +64,7 @@ def _check_linear_solve(test, A, b, func, *args, **kwargs):
         x.zero_()
         with wp.ScopedDevice(A.device):
             with wp.ScopedCapture() as capture:
-                niter, err, atol = func(A, b, x, *args, use_cuda_graph=True, check_every=0, **kwargs)
+                niter, err, atol = func(A, b, x, *args, use_graph=True, check_every=0, **kwargs)
 
             wp.capture_launch(capture.graph)
 
@@ -56,7 +76,7 @@ def _check_linear_solve(test, A, b, func, *args, **kwargs):
 
     # test with warm start
     with wp.ScopedDevice(A.device):
-        niter_warm, err, atol = func(A, b, x, *args, use_cuda_graph=False, **kwargs)
+        niter_warm, err, atol = func(A, b, x, *args, use_graph=False, **kwargs)
 
     if isinstance(niter_warm, wp.array):
         niter_warm = niter_warm.numpy()[0]
@@ -177,7 +197,7 @@ def test_conjugate_solver_restart(test, device):
                         M=preconditioner_op,
                         callback=make_callback(callback_iterations),
                         check_every=1,
-                        use_cuda_graph=True,
+                        use_graph=True,
                         restart=3,
                     )
 
@@ -246,7 +266,7 @@ def test_cg_restart_float32_drift(test, device):
                     maxiter=512,
                     M=preconditioner_op,
                     check_every=interval,
-                    use_cuda_graph=True,
+                    use_graph=True,
                     restart=interval,
                 )
 
@@ -311,7 +331,7 @@ def test_conjugate_solver_restart_conditional_graph(test, device):
                     tol=1.0e-6,
                     maxiter=6,
                     check_every=0,
-                    use_cuda_graph=True,
+                    use_graph=True,
                     run=False,
                     restart=3,
                 )
@@ -350,7 +370,7 @@ def test_gmres_conditional_graph_cycle_iterations(test, device):
             restart=3,
             maxiter=6,
             check_every=0,
-            use_cuda_graph=True,
+            use_graph=True,
             run=False,
         )
 
@@ -370,6 +390,33 @@ def test_gmres_conditional_graph_cycle_iterations(test, device):
         wp.capture_launch(capture.graph)
         test.assertEqual(niter.numpy()[0], 0)
         test.assertLessEqual(residual_sq.numpy()[0], tolerance_sq.numpy()[0])
+
+
+def test_batched_check_every_zero_checks_all_batches(test, device):
+    if device.is_cuda and not wp.is_conditional_graph_supported():
+        test.skipTest("conditional CUDA graphs are not supported")
+
+    # Every batch but the last converges after one CG iteration. The last one has five
+    # distinct eigenvalues and needs five, so the device-side check must cover it.
+    batch_count = 40
+    batch_size = 5
+    diag_np = np.full((batch_count, batch_size), 2.0)
+    diag_np[-1] = (1.0, 2.0, 3.0, 4.0, 5.0)
+    diag = wp.array(diag_np.ravel(), dtype=wp.float64, device=device)
+    b = wp.ones(batch_count * batch_size, dtype=wp.float64, device=device)
+    offsets = _batch_offsets([batch_size] * batch_count, device)
+    A = aslinearoperator(diag, batch_offsets=offsets, max_batch_length=batch_size)
+
+    x = wp.zeros_like(b)
+    host_iterations, _err, _atol = cg(A, b, x, tol=1.0e-10, maxiter=100, check_every=1, use_graph=False)
+
+    x.zero_()
+    iterations, residual_sq, tolerance_sq = cg(A, b, x, tol=1.0e-10, maxiter=100, check_every=0, use_graph=True)
+
+    test.assertGreater(host_iterations, 1)
+    test.assertEqual(iterations.numpy()[0], host_iterations)
+    test.assertTrue(np.all(residual_sq.numpy() <= tolerance_sq.numpy()))
+    np.testing.assert_allclose(x.numpy(), 1.0 / diag_np.ravel(), rtol=1.0e-8)
 
 
 def test_cr(test, device):
@@ -458,7 +505,7 @@ def test_batched_host_loop_per_batch_tolerance(test, device):
         atol_sq=atol_sq,
         callback=None,
         check_every=1,
-        use_cuda_graph=False,
+        use_graph=False,
         device=r_norm_sq.device,
     )
 
@@ -540,7 +587,7 @@ def test_batched_vector_offsets(test, device):
         (gmres, {"restart": 2}),
     ):
         x = wp.zeros_like(b)
-        solver(A, b, x, tol=1.0e-7, maxiter=4, check_every=1, use_cuda_graph=False, **kwargs)
+        solver(A, b, x, tol=1.0e-7, maxiter=4, check_every=1, use_graph=False, **kwargs)
         np.testing.assert_allclose(x.numpy(), expected, rtol=1.0e-5, atol=1.0e-5)
 
 
@@ -585,7 +632,7 @@ def test_batched_vector_inactive_tail(test, device):
         (gmres, {"restart": 2}),
     ):
         x = wp.array(initial, dtype=wp.vec2d, device=device)
-        _, err, atol = solver(A, b, x, tol=1.0e-8, maxiter=8, check_every=1, use_cuda_graph=False, **kwargs)
+        _, err, atol = solver(A, b, x, tol=1.0e-8, maxiter=8, check_every=1, use_graph=False, **kwargs)
         test.assertLessEqual(err, atol)
         np.testing.assert_allclose(x.numpy(), expected, rtol=1.0e-7, atol=1.0e-7)
 
@@ -614,7 +661,7 @@ def test_batched_gmres_right_preconditioned_inactive_tail(test, device):
         maxiter=2,
         check_every=1,
         tol=1.0e-12,
-        use_cuda_graph=True,
+        use_graph=True,
     )
 
     test.assertLessEqual(err, atol)
@@ -746,6 +793,40 @@ def test_tiled_dot_plan_offsets_int_max(test, device):
     np.testing.assert_array_equal(output_offsets.numpy(), (0, 4_194_304))
 
 
+def test_tiled_dot_tile_size_one(test, device):
+    length = 1000
+    rng = np.random.default_rng(42)
+    a_np = np.abs(rng.standard_normal(length)).astype(np.float32)
+    b_np = np.abs(rng.standard_normal(length)).astype(np.float32)
+    a = wp.array(a_np, device=device)
+    b = wp.array(b_np, device=device)
+
+    # One-element tiles can't shrink a reduction tree, so this must not loop forever
+    tiled_dot = TiledDot(length, wp.float32, tile_size=1, device=device)
+    tiled_dot.compute(a, b)
+
+    expected = np.dot(a_np.astype(np.float64), b_np.astype(np.float64))
+    np.testing.assert_allclose(tiled_dot.col().numpy(), (expected,), rtol=1.0e-6)
+
+
+def test_tiled_dot_float32_accuracy(test, device):
+    # Accumulating 2**20 positive float32 terms one by one drifts by about 4e-4 relative,
+    # which is enough to perturb the convergence checks of float32 solves.
+    length = 1 << 20
+    rng = np.random.default_rng(7)
+    values = np.abs(rng.standard_normal(length)).astype(np.float32)
+    a = wp.array(values, device=device)
+    expected = np.dot(values.astype(np.float64), values.astype(np.float64))
+
+    single_dot = TiledDot(length, wp.float32, device=device)
+    single_dot.compute(a, a)
+    test.assertLess(abs(single_dot.col().numpy()[0] - expected) / expected, 1.0e-5)
+
+    batched_dot = TiledDot(length, wp.float32, device=device, batch_offsets=_batch_offsets([length], device))
+    batched_dot.compute(a, a)
+    test.assertLess(abs(batched_dot.col().numpy()[0] - expected) / expected, 1.0e-5)
+
+
 def _run_batched_gmres(test, device, dtype, batch_sizes, seed_base, tol, restart):
     rows = sum(batch_sizes)
     A_np_full = np.zeros((rows, rows), dtype=np.float64 if dtype == wp.float64 else np.float32)
@@ -853,7 +934,7 @@ def test_functor_iteration_buffer_reuse(test, device):
                 x,
                 maxiter=2,
                 check_every=0,
-                use_cuda_graph=False,
+                use_graph=False,
                 run=False,
                 **kwargs,
             )
@@ -879,7 +960,7 @@ def test_functor_iteration_buffer_reuse(test, device):
                     x,
                     maxiter=2,
                     check_every=0,
-                    use_cuda_graph=True,
+                    use_graph=True,
                     run=False,
                     **kwargs,
                 )
@@ -894,6 +975,170 @@ def test_functor_iteration_buffer_reuse(test, device):
                 wp.capture_launch(capture.graph)
                 test.assertEqual(final_iteration.ptr, capture_state._cur_iter_and_condition.ptr)
                 test.assertLessEqual(err.numpy()[0], atol.numpy()[0])
+
+
+def _counting_diagonal_system(device):
+    """Return ``(A, b, x, counts)`` for a 64-dof diagonal system with distinct eigenvalues.
+
+    ``A`` is a :class:`LinearOperator` whose Python ``matvec`` increments ``counts["matvec"]``.
+    A captured solve calls it only while recording; an eager solve calls it at least once per iteration.
+    """
+    n = 64
+    diag = wp.array(np.arange(1.0, n + 1.0), dtype=wp.float64, device=device)
+    diag_op = aslinearoperator(diag)
+    counts = {"matvec": 0}
+
+    def matvec(x, y, z, alpha, beta):
+        counts["matvec"] += 1
+        diag_op.matvec(x, y, z, alpha, beta)
+
+    A = LinearOperator(diag_op.shape, diag_op.dtype, device, matvec=matvec)
+    b = wp.ones(n, dtype=wp.float64, device=device)
+    x = wp.zeros_like(b)
+    return A, b, x, counts
+
+
+def _solve_counting_matvec_calls(test, device, check_every, **kwargs):
+    """Solve with CG and return how often ``matvec`` ran in Python, and the iteration count.
+
+    A captured solve calls ``matvec`` a fixed number of times while recording, whatever the
+    iteration count; an eager solve calls it at least once per iteration.
+    """
+    A, b, x, counts = _counting_diagonal_system(device)
+
+    iterations, _err, _atol = cg(A, b, x, tol=1.0e-10, maxiter=200, check_every=check_every, **kwargs)
+    if check_every == 0:
+        iterations = int(iterations.numpy()[0])
+
+    test.assertGreaterEqual(iterations, 10)
+    np.testing.assert_allclose(x.numpy(), 1.0 / np.arange(1.0, b.shape[0] + 1.0), rtol=1.0e-6)
+    return counts["matvec"], iterations
+
+
+@contextlib.contextmanager
+def _capture_warp_warnings():
+    """Collect the Warp warnings printed inside the block, each followed by its source location.
+
+    The logger prints each ``DeprecationWarning`` once per process, so its record of printed
+    warnings starts empty here and is restored on exit.
+    """
+    saved_warnings_seen = _logger_module._warnings_seen.copy()
+    saved_verbose_warnings = wp.config.verbose_warnings
+    _logger_module._warnings_seen.clear()
+    wp.config.verbose_warnings = True
+    try:
+        with warnings.catch_warnings(), contextlib.redirect_stderr(io.StringIO()) as stderr:
+            warnings.simplefilter("always", DeprecationWarning)
+            yield stderr
+    finally:
+        wp.config.verbose_warnings = saved_verbose_warnings
+        _logger_module._warnings_seen.clear()
+        _logger_module._warnings_seen.update(saved_warnings_seen)
+
+
+def _check_use_cuda_graph_deprecated(test, solve, entry_point, x, counts):
+    """Check that ``solve()`` warns once about ``use_cuda_graph``, at its own line, and forwards ``True``.
+
+    ``solve`` must be a lambda written on one line that passes ``use_cuda_graph=True`` to
+    ``entry_point``. It returns the solver's ``(iterations, residual, tolerance)``, a solver
+    state, which is then run, or ``None`` when there is nothing to solve.
+    """
+
+    def run():
+        result = solve()
+        return result() if isinstance(result, LinearSolverState) else result
+
+    x.zero_()
+    counts["matvec"] = 0
+    with _capture_warp_warnings() as stderr:
+        result = run()
+        output = stderr.getvalue()
+        matvec_calls = counts["matvec"]
+        run()
+        repeat_output = stderr.getvalue()[len(output) :]
+
+    test.assertEqual(output.count("Warp DeprecationWarning"), 1, output)
+    test.assertIn(
+        f"Warp DeprecationWarning: {entry_point}() argument `use_cuda_graph` is deprecated and will be removed in "
+        "Warp 1.24. Use `use_graph` instead.",
+        output,
+    )
+    # The warning points at the caller's line, not at a line inside the solver module
+    test.assertIn(f"({__file__}:{solve.__code__.co_firstlineno})", output)
+    # Each entry point warns once per process
+    test.assertEqual(repeat_output, "")
+    if result is not None:
+        # True captures on CPU, so matvec only runs while recording, fewer times than there are iterations
+        test.assertLess(matvec_calls, result[0])
+
+
+def _check_use_graph_signature(test, entry_point, expected_parameters):
+    signature = inspect.signature(entry_point)
+    test.assertEqual(tuple(signature.parameters), expected_parameters)
+    test.assertIs(signature.parameters["use_graph"].kind, inspect.Parameter.POSITIONAL_OR_KEYWORD)
+    test.assertIs(signature.parameters["use_graph"].default, None)
+    test.assertIs(signature.parameters["use_cuda_graph"].kind, inspect.Parameter.KEYWORD_ONLY)
+    # help() and inspect.signature() show the sentinel default as None
+    test.assertEqual(repr(signature.parameters["use_cuda_graph"].default), "None")
+
+
+class _StateWithoutSolver(LinearSolverState):
+    """Minimal subclass, constructed the way a user-defined solver state would be."""
+
+    def _allocate(self):
+        pass
+
+
+def test_use_graph_resolution(test, device):
+    calls, iterations = _solve_counting_matvec_calls(test, device, check_every=10, use_graph=False)
+    test.assertGreaterEqual(calls, iterations)
+
+    calls, _iterations = _solve_counting_matvec_calls(test, device, check_every=10, use_graph=True)
+    test.assertLessEqual(calls, 3)
+
+    # The default captures on CUDA only
+    calls, iterations = _solve_counting_matvec_calls(test, device, check_every=10)
+    if device.is_cuda:
+        test.assertLessEqual(calls, 3)
+    else:
+        test.assertGreaterEqual(calls, iterations)
+
+    if device.is_cuda and not wp.is_conditional_graph_supported():
+        return
+
+    calls, iterations = _solve_counting_matvec_calls(test, device, check_every=0, use_graph=False)
+    test.assertGreaterEqual(calls, iterations)
+
+    calls, _iterations = _solve_counting_matvec_calls(test, device, check_every=0, use_graph=True)
+    test.assertLessEqual(calls, 3)
+
+    calls, iterations = _solve_counting_matvec_calls(test, device, check_every=0)
+    if device.is_cuda:
+        test.assertLessEqual(calls, 3)
+    else:
+        test.assertGreaterEqual(calls, iterations)
+
+
+def _solve_with_host_matvec(test, device, check_every):
+    n = 32
+    rng = np.random.default_rng(11)
+    C = rng.standard_normal((n, n))
+    A_np = 4.0 * np.eye(n) + 0.01 * (C @ C.T) / n
+    b_np = rng.standard_normal(n)
+
+    def matvec(x, y, z, alpha, beta):
+        # Host-side work that a graph capture would only run once, at record time
+        result = alpha * (A_np @ x.numpy())
+        if beta != 0.0:
+            result += beta * y.numpy()
+        z.numpy()[:] = result
+
+    A = LinearOperator((n, n), wp.float64, device, matvec=matvec)
+    b = wp.array(b_np, dtype=wp.float64, device=device)
+    x = wp.zeros_like(b)
+    cg(A, b, x, tol=1.0e-10, maxiter=100, check_every=check_every)
+
+    np.testing.assert_allclose(x.numpy(), np.linalg.solve(A_np, b_np), rtol=1.0e-6)
 
 
 def test_functor_preconditioner(test, device):
@@ -1045,10 +1290,10 @@ def test_block_jacobi_preconditioner_convergence(test, device):
         )
 
         x_diag = wp.zeros_like(b)
-        niter_diag, _err, _atol = cg(A, b, x_diag, M=preconditioner(A, "diag"), maxiter=1000, use_cuda_graph=False)
+        niter_diag, _err, _atol = cg(A, b, x_diag, M=preconditioner(A, "diag"), maxiter=1000, use_graph=False)
 
         x_bj = wp.zeros_like(b)
-        niter_bj, _err, _atol = cg(A, b, x_bj, M=preconditioner(A, ptype), maxiter=1000, use_cuda_graph=False)
+        niter_bj, _err, _atol = cg(A, b, x_bj, M=preconditioner(A, ptype), maxiter=1000, use_graph=False)
 
         test.assertLessEqual(niter_bj, niter_diag, msg=ptype)
 
@@ -1446,12 +1691,355 @@ def test_fsai_preconditioned_solvers(test, device):
             _check_linear_solve(test, A, b, solver, M=M, maxiter=1000, tol=tol, is_left_preconditioner=True)
 
 
+def test_solver_capture_host_checks(test, device):
+    """Reject host-side solver convergence checks during graph capture."""
+    A_np = 2.2 * np.eye(8) - np.eye(8, k=1) - np.eye(8, k=-1)
+    b_np = np.random.default_rng(2199).standard_normal(8)
+    A = wp.array(A_np, dtype=wp.float64, device=device)
+    b = wp.array(b_np, dtype=wp.float64, device=device)
+
+    for solve in (cg, cr, bicgstab, gmres):
+        for use_graph in (False, True):
+            for mode in ("fresh", "reused"):
+                with test.subTest(solver=solve.__name__, use_graph=use_graph, mode=mode):
+                    x = wp.zeros_like(b)
+                    kwargs = {"tol": 1.0e-10, "maxiter": 32, "use_graph": use_graph}
+                    if solve is gmres:
+                        kwargs["restart"] = 8
+                    state = solve(A, b, x, run=False, **kwargs)
+
+                    # Leave converged residuals in the state.
+                    _, err, atol = state()
+                    test.assertLessEqual(err, atol)
+                    np.testing.assert_allclose(x.numpy(), np.linalg.solve(A_np, b_np), rtol=1.0e-8, atol=1.0e-8)
+                    x.zero_()
+
+                    with test.assertRaisesRegex(RuntimeError, "set check_every=0"):
+                        with wp.ScopedCapture(device=device, apic=True, force_module_load=False):
+                            if mode == "fresh":
+                                solve(A, b, x, **kwargs)
+                            else:
+                                state()
+
+                    test.assertFalse(wp.get_device(device).is_capturing)
+                    # A rejected solve must leave capture usable.
+                    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+                        x.fill_(1.0)
+                    wp.capture_launch(capture.graph)
+                    np.testing.assert_array_equal(x.numpy(), np.ones(8))
+
+
+def test_solver_capture_replay(test, device):
+    """Replay captured and serialized solvers against updated right-hand sides."""
+    A_np = 2.2 * np.eye(8) - np.eye(8, k=1) - np.eye(8, k=-1)
+    b_np = np.random.default_rng(2199).standard_normal(8)
+    A = wp.array(A_np, dtype=wp.float64, device=device)
+
+    for solve in (cg, cr, bicgstab, gmres):
+        for use_graph in (False, True):
+            if wp.get_device(device).is_cuda and use_graph and not wp.is_conditional_graph_supported():
+                continue
+            for allocate in (False, True):
+                with test.subTest(solver=solve.__name__, use_graph=use_graph, allocate=allocate):
+                    b = wp.array(b_np, dtype=wp.float64, device=device)
+                    x = wp.zeros_like(b)
+                    kwargs = {
+                        "tol": 1.0e-10,
+                        "maxiter": 32,
+                        "check_every": 0,
+                        "use_graph": use_graph,
+                    }
+                    if solve is gmres:
+                        kwargs["restart"] = 8
+                    state = solve(A, b, x, run=False, **kwargs)
+                    state()
+                    expected_x = x.numpy().copy()
+                    x.zero_()
+
+                    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+                        if allocate:
+                            solve(A, b, x, **kwargs)
+                        else:
+                            state()
+
+                    for scale in (1.0, 2.0):
+                        b.assign(scale * b_np)
+                        x.zero_()
+                        wp.capture_launch(capture.graph)
+                        np.testing.assert_allclose(x.numpy(), scale * expected_x, rtol=1.0e-8, atol=1.0e-8)
+                        np.testing.assert_allclose(
+                            x.numpy(), np.linalg.solve(A_np, scale * b_np), rtol=1.0e-8, atol=1.0e-8
+                        )
+
+                    with tempfile.TemporaryDirectory() as tmpdir:
+                        path = os.path.join(tmpdir, "solver")
+                        wp.capture_save(capture.graph, path, inputs={"b": b}, outputs={"x": x})
+                        loaded = wp.capture_load(path, device=device)
+                        b.assign(3.0 * b_np)
+                        x.zero_()
+                        loaded.set_param("b", b)
+                        loaded.set_param("x", x)
+                        wp.capture_launch(loaded)
+                        loaded.get_param("x", x)
+                        np.testing.assert_allclose(x.numpy(), 3.0 * expected_x, rtol=1.0e-8, atol=1.0e-8)
+                        np.testing.assert_allclose(
+                            x.numpy(), np.linalg.solve(A_np, 3.0 * b_np), rtol=1.0e-8, atol=1.0e-8
+                        )
+
+
 class TestLinearSolvers(unittest.TestCase):
-    pass
+    def test_capturable_solvers_stop_on_cpu(self):
+        """Check that solvers without host checks stop at convergence on CPU instead of running maxiter."""
+        n = 64
+        a = np.diag(np.linspace(1.0, 4.0, n)) + np.diag(np.full(n - 1, 0.3), 1) + np.diag(np.full(n - 1, 0.3), -1)
+        rows, cols = np.nonzero(a)
+        with wp.ScopedDevice("cpu"):
+            A = bsr_from_triplets(
+                n, n, wp.array(rows, dtype=int), wp.array(cols, dtype=int), wp.array(a[rows, cols], dtype=wp.float64)
+            )
+            b = wp.array(np.linspace(-1.0, 1.0, n), dtype=wp.float64)
+            maxiter = 5000
+            for func in (cg, cr, bicgstab, gmres):
+                x = wp.zeros_like(b)
+                niter, err_sq, atol_sq = func(A, b, x, tol=1e-10, maxiter=maxiter, check_every=0)
+                niter = int(niter.numpy()[0])
+                self.assertLess(niter, maxiter, func.__name__)
+                self.assertLessEqual(err_sq.numpy()[0], atol_sq.numpy()[0], func.__name__)
+                np.testing.assert_allclose(x.numpy(), np.linalg.solve(a, b.numpy()), rtol=1e-7, atol=1e-9)
+                # Host-checked solves stop at a check boundary, so they never do fewer iterations.
+                x.zero_()
+                niter_checked, _, _ = func(A, b, x, tol=1e-10, maxiter=maxiter, check_every=1)
+                self.assertLessEqual(niter, niter_checked, func.__name__)
+                np.testing.assert_allclose(x.numpy(), np.linalg.solve(a, b.numpy()), rtol=1e-7, atol=1e-9)
+
+    def test_capturable_solvers_replay_on_cpu(self):
+        """Check that CPU graph replays of converged solvers without host checks redo the solve and stop early."""
+        n = 64
+        a = np.diag(np.linspace(1.0, 4.0, n)) + np.diag(np.full(n - 1, 0.3), 1) + np.diag(np.full(n - 1, 0.3), -1)
+        rows, cols = np.nonzero(a)
+        with wp.ScopedDevice("cpu"):
+            A = bsr_from_triplets(
+                n, n, wp.array(rows, dtype=int), wp.array(cols, dtype=int), wp.array(a[rows, cols], dtype=wp.float64)
+            )
+            b = wp.array(np.linspace(-1.0, 1.0, n), dtype=wp.float64)
+            expected = np.linalg.solve(a, b.numpy())
+            maxiter = 5000
+            for func in (cg, cr, bicgstab, gmres):
+                x = wp.zeros_like(b)
+                solver = func(A, b, x, tol=1e-10, maxiter=maxiter, check_every=0, run=False)
+                # Leave the solver's convergence flag cleared before capture, as after any completed solve.
+                solver()
+                x.zero_()
+                with wp.ScopedCapture() as capture:
+                    niter, err_sq, atol_sq = solver()
+                x.zero_()
+                wp.capture_launch(capture.graph)
+                self.assertLess(int(niter.numpy()[0]), maxiter, func.__name__)
+                self.assertLessEqual(err_sq.numpy()[0], atol_sq.numpy()[0], func.__name__)
+                np.testing.assert_allclose(x.numpy(), expected, rtol=1e-7, atol=1e-9, err_msg=func.__name__)
+
+    def test_host_matvec_default(self):
+        # By default, CPU solves don't capture, so host-side operators keep working
+        device = wp.get_device("cpu")
+        _solve_with_host_matvec(self, device, check_every=10)
+        _solve_with_host_matvec(self, device, check_every=0)
+
+    def test_linear_operator_device_alias(self):
+        """Resolve a device alias passed to ``LinearOperator`` to its ``wp.Device``."""
+        device = wp.get_device()
+        A = LinearOperator((4, 4), wp.float32, device.alias, matvec=lambda x, y, z, alpha, beta: None)
+        self.assertIs(A.device, device)
+
+    def test_use_graph_signatures(self):
+        # use_graph takes use_cuda_graph's former position, so positional calls keep their meaning
+        cg_parameters = ("A", "b", "x", "tol", "atol", "maxiter", "M", "callback", "check_every", "use_graph", "run")
+        _check_use_graph_signature(self, cg, (*cg_parameters, "restart", "use_cuda_graph"))
+        _check_use_graph_signature(self, cr, (*cg_parameters, "restart", "use_cuda_graph"))
+        _check_use_graph_signature(
+            self,
+            bicgstab,
+            (
+                *("A", "b", "x", "tol", "atol", "maxiter", "M", "callback", "check_every", "use_graph"),
+                *("is_left_preconditioner", "run", "use_cuda_graph"),
+            ),
+        )
+        _check_use_graph_signature(
+            self,
+            gmres,
+            (
+                *("A", "b", "x", "tol", "atol", "restart", "maxiter", "M", "callback", "check_every", "use_graph"),
+                *("is_left_preconditioner", "run", "use_cuda_graph"),
+            ),
+        )
+
+        state_parameters = ("A", "b", "x", "tol", "atol", "maxiter", "M", "callback", "check_every", "use_graph")
+        _check_use_graph_signature(self, LinearSolverState, (*state_parameters, "use_cuda_graph"))
+        _check_use_graph_signature(self, CG, (*state_parameters, "restart", "use_cuda_graph"))
+        _check_use_graph_signature(self, CR, (*state_parameters, "restart", "use_cuda_graph"))
+        _check_use_graph_signature(self, BiCGSTAB, (*state_parameters, "is_left_preconditioner", "use_cuda_graph"))
+        _check_use_graph_signature(
+            self,
+            GMRES,
+            (
+                *("A", "b", "x", "tol", "atol", "restart", "maxiter", "M", "callback", "check_every", "use_graph"),
+                *("is_left_preconditioner", "use_cuda_graph"),
+            ),
+        )
+
+    def test_use_graph_positional(self):
+        device = wp.get_device("cpu")
+        A, b, x, counts = _counting_diagonal_system(device)
+
+        # True in use_graph's position captures on CPU: matvec runs only while recording
+        iterations, _err, _atol = cg(A, b, x, None, None, 0, None, None, 10, True)
+        self.assertLess(counts["matvec"], iterations)
+
+        x.zero_()
+        counts["matvec"] = 0
+        iterations, _err, _atol = cr(A, b, x, None, None, 0, None, None, 10, True)
+        self.assertLess(counts["matvec"], iterations)
+
+        x.zero_()
+        counts["matvec"] = 0
+        iterations, _err, _atol = bicgstab(A, b, x, None, None, 0, None, None, 10, True)
+        self.assertLess(counts["matvec"], iterations)
+
+        x.zero_()
+        counts["matvec"] = 0
+        iterations, _err, _atol = gmres(A, b, x, None, None, 31, 0, None, None, 31, True)
+        self.assertLess(counts["matvec"], iterations)
+
+        # The arguments after use_graph keep their positions: run=False returns the state without solving
+        counts["matvec"] = 0
+        state = cg(A, b, x, None, None, 0, None, None, 10, True, False)
+        self.assertIsInstance(state, CG)
+        self.assertIs(state._use_graph, True)
+        state = cr(A, b, x, None, None, 0, None, None, 10, True, False)
+        self.assertIsInstance(state, CR)
+        self.assertIs(state._use_graph, True)
+        state = bicgstab(A, b, x, None, None, 0, None, None, 10, True, False, False)
+        self.assertIsInstance(state, BiCGSTAB)
+        self.assertIs(state._use_graph, True)
+        state = gmres(A, b, x, None, None, 31, 0, None, None, 31, True, False, False)
+        self.assertIsInstance(state, GMRES)
+        self.assertIs(state._use_graph, True)
+        self.assertEqual(counts["matvec"], 0)
+
+    def test_use_cuda_graph_deprecated(self):
+        device = wp.get_device("cpu")
+        A, b, x, counts = _counting_diagonal_system(device)
+
+        _check_use_cuda_graph_deprecated(self, lambda: cg(A, b, x, use_cuda_graph=True), "cg", x, counts)
+        _check_use_cuda_graph_deprecated(self, lambda: cr(A, b, x, use_cuda_graph=True), "cr", x, counts)
+        _check_use_cuda_graph_deprecated(self, lambda: bicgstab(A, b, x, use_cuda_graph=True), "bicgstab", x, counts)
+        _check_use_cuda_graph_deprecated(self, lambda: gmres(A, b, x, use_cuda_graph=True), "gmres", x, counts)
+        _check_use_cuda_graph_deprecated(self, lambda: CG(A, b, x, use_cuda_graph=True), "CG", x, counts)
+        _check_use_cuda_graph_deprecated(self, lambda: CR(A, b, x, use_cuda_graph=True), "CR", x, counts)
+        _check_use_cuda_graph_deprecated(self, lambda: BiCGSTAB(A, b, x, use_cuda_graph=True), "BiCGSTAB", x, counts)
+        _check_use_cuda_graph_deprecated(self, lambda: GMRES(A, b, x, use_cuda_graph=True), "GMRES", x, counts)
+
+        # A user subclass that passes the alias to LinearSolverState.__init__()
+        states = []
+        _check_use_cuda_graph_deprecated(
+            self,
+            lambda: states.append(_StateWithoutSolver(A, b, x, use_cuda_graph=True)),
+            "_StateWithoutSolver",
+            x,
+            counts,
+        )
+        self.assertIs(states[0]._use_graph, True)
+
+    def test_use_cuda_graph_explicit_none(self):
+        device = wp.get_device("cpu")
+        A, b, x, counts = _counting_diagonal_system(device)
+
+        with _capture_warp_warnings() as stderr:
+            iterations, _err, _atol = cg(A, b, x, use_cuda_graph=None)
+
+        # An explicit None is still the deprecated name, and it keeps its meaning: no capture on CPU
+        self.assertIn("cg() argument `use_cuda_graph` is deprecated", stderr.getvalue())
+        self.assertGreaterEqual(counts["matvec"], iterations)
+
+    def test_use_graph_none_defers_to_use_cuda_graph(self):
+        device = wp.get_device("cpu")
+        A, b, x, counts = _counting_diagonal_system(device)
+
+        # An explicit use_graph=None can't be told apart from an omitted one, so use_cuda_graph=True applies
+        _check_use_cuda_graph_deprecated(
+            self, lambda: cg(A, b, x, use_graph=None, use_cuda_graph=True), "cg", x, counts
+        )
+        _check_use_cuda_graph_deprecated(
+            self, lambda: CG(A, b, x, use_graph=None, use_cuda_graph=True), "CG", x, counts
+        )
+
+    def test_use_graph_does_not_warn(self):
+        device = wp.get_device("cpu")
+        A, b, x, _counts = _counting_diagonal_system(device)
+
+        with _capture_warp_warnings() as stderr:
+            cg(A, b, x, use_graph=True)
+            CG(A, b, x, use_graph=True)()
+            gmres(A, b, x, use_graph=False)
+
+        self.assertEqual(stderr.getvalue(), "")
+
+    def test_use_graph_and_use_cuda_graph_raises(self):
+        device = wp.get_device("cpu")
+        A, b, x, counts = _counting_diagonal_system(device)
+        message = "Cannot specify both `use_graph` and `use_cuda_graph`"
+
+        with _capture_warp_warnings() as stderr:
+            with self.assertRaisesRegex(TypeError, message):
+                cg(A, b, x, use_graph=True, use_cuda_graph=True)
+            with self.assertRaisesRegex(TypeError, message):
+                cr(A, b, x, use_graph=True, use_cuda_graph=True)
+            with self.assertRaisesRegex(TypeError, message):
+                bicgstab(A, b, x, use_graph=True, use_cuda_graph=True)
+            with self.assertRaisesRegex(TypeError, message):
+                gmres(A, b, x, use_graph=True, use_cuda_graph=True)
+            with self.assertRaisesRegex(TypeError, message):
+                CG(A, b, x, use_graph=True, use_cuda_graph=True)
+            with self.assertRaisesRegex(TypeError, message):
+                CR(A, b, x, use_graph=True, use_cuda_graph=True)
+            with self.assertRaisesRegex(TypeError, message):
+                BiCGSTAB(A, b, x, use_graph=True, use_cuda_graph=True)
+            with self.assertRaisesRegex(TypeError, message):
+                GMRES(A, b, x, use_graph=True, use_cuda_graph=True)
+            with self.assertRaisesRegex(TypeError, message):
+                _StateWithoutSolver(A, b, x, use_graph=True, use_cuda_graph=True)
+            # An explicit use_cuda_graph=None is a real value, so it still conflicts with use_graph
+            with self.assertRaisesRegex(TypeError, message):
+                cg(A, b, x, use_graph=False, use_cuda_graph=None)
+
+        # The conflict raises before warning, and before any solve
+        self.assertEqual(stderr.getvalue(), "")
+        self.assertEqual(counts["matvec"], 0)
+
+    def test_unknown_keyword_raises(self):
+        device = wp.get_device("cpu")
+        A, b, x, _counts = _counting_diagonal_system(device)
+
+        with self.assertRaises(TypeError):
+            cg(A, b, x, use_graphs=True)
+        with self.assertRaises(TypeError):
+            CG(A, b, x, use_graphs=True)
 
 
 devices = get_test_devices()
 devices_with_graph_capture_allocation = get_test_devices_with_graph_capture_allocation()
+
+add_function_test(
+    TestLinearSolvers,
+    "test_solver_capture_host_checks",
+    test_solver_capture_host_checks,
+    devices=devices_with_graph_capture_allocation,
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_solver_capture_replay",
+    test_solver_capture_replay,
+    devices=devices_with_graph_capture_allocation,
+)
 
 add_function_test(TestLinearSolvers, "test_cg", test_cg, devices=devices_with_graph_capture_allocation)
 add_function_test(TestLinearSolvers, "test_conjugate_solver_restart", test_conjugate_solver_restart, devices=devices)
@@ -1478,6 +2066,12 @@ add_function_test(
     "test_gmres_conditional_graph_cycle_iterations",
     test_gmres_conditional_graph_cycle_iterations,
     devices=get_cuda_test_devices_with_mempool(),
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_batched_check_every_zero_checks_all_batches",
+    test_batched_check_every_zero_checks_all_batches,
+    devices=devices,
 )
 add_function_test(TestLinearSolvers, "test_cr", test_cr, devices=devices_with_graph_capture_allocation)
 add_function_test(TestLinearSolvers, "test_bicgstab", test_bicgstab, devices=devices_with_graph_capture_allocation)
@@ -1514,7 +2108,7 @@ add_function_test(
     TestLinearSolvers,
     "test_tiled_dot_large_single_batch",
     test_tiled_dot_large_single_batch,
-    devices=get_cuda_test_devices(),
+    devices=devices,
 )
 add_function_test(
     TestLinearSolvers,
@@ -1534,6 +2128,18 @@ add_function_test(
     test_tiled_dot_plan_offsets_int_max,
     devices=get_cuda_test_devices(),
 )
+add_function_test(
+    TestLinearSolvers,
+    "test_tiled_dot_tile_size_one",
+    test_tiled_dot_tile_size_one,
+    devices=devices,
+)
+add_function_test(
+    TestLinearSolvers,
+    "test_tiled_dot_float32_accuracy",
+    test_tiled_dot_float32_accuracy,
+    devices=devices,
+)
 add_function_test(TestLinearSolvers, "test_functor_reuse", test_functor_reuse, devices=devices)
 add_function_test(
     TestLinearSolvers,
@@ -1541,6 +2147,7 @@ add_function_test(
     test_functor_iteration_buffer_reuse,
     devices=devices,
 )
+add_function_test(TestLinearSolvers, "test_use_graph_resolution", test_use_graph_resolution, devices=devices)
 add_function_test(TestLinearSolvers, "test_functor_preconditioner", test_functor_preconditioner, devices=devices)
 add_function_test(TestLinearSolvers, "test_functor_compat_errors", test_functor_compat_errors, devices=devices)
 add_function_test(

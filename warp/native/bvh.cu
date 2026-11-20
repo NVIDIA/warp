@@ -164,6 +164,8 @@ public:
     );
 
 private:
+    void* stream;
+
     // temporary data used during building
     int* indices;
     uint64_t* keys;
@@ -489,7 +491,8 @@ __global__ void compute_total_inv_edges(const vec3* total_lower, const vec3* tot
 
 
 LinearBVHBuilderGPU::LinearBVHBuilderGPU()
-    : indices(NULL)
+    : stream(wp_cuda_stream_get_current())
+    , indices(NULL)
     , keys(NULL)
     , deltas(NULL)
     , range_lefts(NULL)
@@ -506,9 +509,9 @@ LinearBVHBuilderGPU::LinearBVHBuilderGPU()
 
 LinearBVHBuilderGPU::~LinearBVHBuilderGPU()
 {
-    wp_free_device(WP_CURRENT_CONTEXT, total_lower);
-    wp_free_device(WP_CURRENT_CONTEXT, total_upper);
-    wp_free_device(WP_CURRENT_CONTEXT, total_inv_edges);
+    free_device_on_stream(WP_CURRENT_CONTEXT, total_lower, stream);
+    free_device_on_stream(WP_CURRENT_CONTEXT, total_upper, stream);
+    free_device_on_stream(WP_CURRENT_CONTEXT, total_inv_edges, stream);
 }
 
 
@@ -603,13 +606,13 @@ void LinearBVHBuilderGPU::build(
     );
 
     // free temporary memory
-    wp_free_device(WP_CURRENT_CONTEXT, indices);
-    wp_free_device(WP_CURRENT_CONTEXT, keys);
-    wp_free_device(WP_CURRENT_CONTEXT, deltas);
+    free_device_on_stream(WP_CURRENT_CONTEXT, indices, stream);
+    free_device_on_stream(WP_CURRENT_CONTEXT, keys, stream);
+    free_device_on_stream(WP_CURRENT_CONTEXT, deltas, stream);
 
-    wp_free_device(WP_CURRENT_CONTEXT, range_lefts);
-    wp_free_device(WP_CURRENT_CONTEXT, range_rights);
-    wp_free_device(WP_CURRENT_CONTEXT, num_children);
+    free_device_on_stream(WP_CURRENT_CONTEXT, range_lefts, stream);
+    free_device_on_stream(WP_CURRENT_CONTEXT, range_rights, stream);
+    free_device_on_stream(WP_CURRENT_CONTEXT, num_children, stream);
 }
 
 // buffer_size is the number of T, not the number of bytes

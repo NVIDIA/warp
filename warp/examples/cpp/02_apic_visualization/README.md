@@ -37,7 +37,7 @@ During Python capture, `apic=True` records a serializable APIC operation stream 
 This example runs from within the Warp repository.
 
 **Requirements:**
-- **Python 3.10+**
+- **Python 3.11+**
 - **CUDA Toolkit 12.0+** (includes `nvcc` compiler)
 - **NVIDIA GPU**
 - **GLFW library** (for OpenGL window creation)

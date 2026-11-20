@@ -10,12 +10,7 @@ import tempfile
 import unittest
 import weakref
 from pathlib import Path
-from typing import Any
-
-try:
-    from typing import get_overloads
-except ImportError:
-    get_overloads = None
+from typing import Any, get_overloads
 
 import numpy as np
 
@@ -607,7 +602,6 @@ class TestFunc(unittest.TestCase):
         length = get_array_len(arr)
         assert length == 8
 
-    @unittest.skipUnless(sys.version_info >= (3, 11), "get_overloads() is only available in Python 3.11 and later")
     def test_func_decorator_has_overloads(self):
         """Verify @wp.func has @overload signatures for static type checkers.
 
@@ -626,7 +620,6 @@ class TestFunc(unittest.TestCase):
             "Without these, static type checkers cannot infer decorated function signatures.",
         )
 
-    @unittest.skipUnless(sys.version_info >= (3, 11), "get_overloads() is only available in Python 3.11 and later")
     def test_func_decorator_overloads_preserve_signature(self):
         """Verify @wp.func overloads return Callable types to preserve signatures."""
         overloads = get_overloads(wp.func)

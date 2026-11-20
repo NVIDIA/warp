@@ -8,11 +8,13 @@ import ctypes
 import enum
 import functools
 import inspect
+import itertools
 import math
 import operator
 import struct
 import sys
 import types
+import weakref
 import zlib
 from collections.abc import Callable, Mapping, Sequence
 from typing import (
@@ -32,6 +34,7 @@ import numpy as np
 
 import warp
 import warp.config
+from warp._src.function_dispatch import default_warp_function, register_api_method, suppress_warp_function
 from warp._src.logger import log_warning
 
 # NumPy versions before 2.4 incorrectly take an undocumented scalar path when
@@ -404,10 +407,27 @@ class uint64(int_base):
 
 
 class handle(uint64):
-    """Type for object handles (Mesh, Volume, BVH) in kernel parameters.
+    """Object handle type for meshes, volumes, BVHs, and hash grids.
 
-    Behaves identically to ``uint64`` but allows APIC to detect which
-    parameters need pointer remapping during graph replay.
+    Use this type for scalar object IDs in kernel parameters and struct fields,
+    for example ``mesh: wp.handle``.
+
+    For arrays of object IDs, annotate kernel parameters as ``wp.array[wp.handle]``
+    and construct the arrays with ``dtype=wp.handle``. An annotation alone does not
+    change an array's dtype.
+    An existing Warp array of 64-bit integer IDs can be reinterpreted with
+    ``ids.view(wp.handle)`` without copying its storage.
+
+    Handles use the same native 64-bit representation as :class:`warp.uint64`.
+    See :ref:`object_handle_arrays` for legacy integer compatibility and
+    :ref:`apic_save_load` for resource serialization requirements and limitations.
+
+    A handle does not keep its object alive. Keep the corresponding
+    :class:`warp.Mesh`, :class:`warp.Volume`, :class:`warp.Bvh`, or
+    :class:`warp.HashGrid` alive while its handle is in use.
+
+    :func:`warp.tile_load` and :func:`warp.tile_store` do not yet support
+    arrays with ``dtype=wp.handle``. Handle arrays support ordinary kernel indexing.
     """
 
     _wp_native_name_ = "uint64"
@@ -605,6 +625,8 @@ class Array(Generic[DType, NDim]):
         ndim: int
         size: int
 
+    __warp_function__ = classmethod(default_warp_function)
+
     def __add__(self, other) -> array:
         return warp.map(warp.add, self, other)  # type: ignore
 
@@ -799,6 +821,260 @@ def _np_bfloat16_bits_to_float32(arr_u16: np.ndarray) -> np.ndarray:
 def _is_bit_converted_float(dtype):
     """Check if a scalar type requires bit conversion (stored as uint16 internally)."""
     return dtype is float16 or dtype is bfloat16
+
+
+def _decode_bit_converted_floats(bits: np.ndarray, scalar_type: type) -> np.ndarray:
+    """Return the values of float16 or bfloat16 bits as a NumPy array."""
+    if scalar_type is float16:
+        return bits.view(np.float16)
+    return _np_bfloat16_bits_to_float32(bits)
+
+
+# Whether NumPy reads float16 and bfloat16 composite values as their values rather than
+# their stored bits. Python 3.12 is the first to let these types export a buffer of their own.
+_NUMPY_READS_BIT_CONVERTED_FLOATS = sys.version_info >= (3, 12)
+
+
+def _export_float16_composite_buffer(self, flags):
+    """Export the stored bits of a float16 composite value as the float16 values that they encode."""
+    return ctypes.Array.__buffer__(self, flags).cast("B").cast("e")
+
+
+def _refuse_bfloat16_composite_buffer(self, flags):
+    """Refuse to export a bfloat16 composite value as a buffer, so that NumPy reads it through ``__array__()``."""
+    raise BufferError("No buffer format describes bfloat16 values")
+
+
+def _read_bfloat16_composite_array(self, dtype=None, copy=None):
+    """Return the values of a bfloat16 composite value as a new float32 NumPy array."""
+    if copy is False:
+        raise ValueError("bfloat16 values can only be read into a new array")
+    values = _np_bfloat16_bits_to_float32(np.frombuffer(ctypes.Array.__buffer__(self, 0), dtype=np.uint16))
+    return values if dtype is None else values.astype(dtype, copy=False)
+
+
+# Types that NumPy reads as scalars even though some of them are sequences.
+_NUMPY_SCALAR_TYPES = (float, int, complex, str, bytes, np.generic)
+
+# Types that NumPy never reads as sequences of items.
+_NUMPY_NON_SEQUENCE_TYPES = (*_NUMPY_SCALAR_TYPES, np.ndarray, ctypes.Array)
+
+_PySequence_Check = ctypes.pythonapi.PySequence_Check
+_PySequence_Check.argtypes = (ctypes.py_object,)
+_PySequence_Check.restype = ctypes.c_int
+
+_PyObject_CheckBuffer = ctypes.pythonapi.PyObject_CheckBuffer
+_PyObject_CheckBuffer.argtypes = (ctypes.py_object,)
+_PyObject_CheckBuffer.restype = ctypes.c_int
+
+# Most dimensions NumPy allows in an array (32 before NumPy 2). Deeper inputs are left
+# for NumPy to reject, which also stops the walk through sequences that contain themselves.
+_NUMPY_MAX_DIMS = 64
+
+# How many composite values have their bytes joined at a time. A join holds memory for
+# every value that it joins until it returns, which slows down longer joins.
+_COMPOSITE_JOIN_BATCH_COUNT = 65_536
+
+
+def _is_numpy_sequence(value) -> builtins.bool:
+    """Check if NumPy reads a value as a sequence of items, like a list, rather than as a scalar or an array.
+
+    NumPy reads strings as scalars, and objects with a buffer or an array interface as
+    arrays. It reads other objects as sequences when they support indexing and ``len()``.
+    """
+    if (
+        isinstance(value, (str, bytes))
+        or _PyObject_CheckBuffer(value)
+        or hasattr(value, "__array__")
+        or hasattr(value, "__array_interface__")
+        or hasattr(value, "__array_struct__")
+        or not _PySequence_Check(value)
+    ):
+        return False
+    try:
+        len(value)
+    except Exception:
+        return False
+    return True
+
+
+def _read_numpy_sequences(value, max_depth):
+    """Read every sequence in ``value`` that NumPy would read, down to ``max_depth`` levels, into a tuple."""
+    if max_depth >= 0 and (type(value) in (list, tuple) or _is_numpy_sequence(value)):
+        return tuple(map(_read_numpy_sequences, value, itertools.repeat(max_depth - 1)))
+    return value
+
+
+@functools.cache
+def _get_composite_buffer_dtypes(composite_type: type) -> tuple[np.dtype, np.dtype]:
+    """Return the NumPy dtypes of a composite value's raw bytes and of its stored scalars."""
+    return np.dtype((np.void, ctypes.sizeof(composite_type))), np.dtype(composite_type._type_)
+
+
+def _is_composite_cast_left_to_numpy(composite_type: type, dtype) -> builtins.bool:
+    """Check if NumPy must read composite values of a type one at a time to cast them to ``dtype``.
+
+    NumPy's results for NaN, infinite, and out-of-range float32 and float64 values cast to an
+    integer type depend on how it splits the cast, so these casts stay as NumPy does them.
+    """
+    return dtype is not None and composite_type._wp_scalar_type_ in (float32, float64) and np.dtype(dtype).kind in "iu"
+
+
+def _copy_composite_values(values, count: int, composite_type: type) -> np.ndarray:
+    """Copy ``count`` composite values of one type into a NumPy array of their values, one row per value."""
+    bytes_dtype, scalar_dtype = _get_composite_buffer_dtypes(composite_type)
+    if composite_type._wp_is_bit_converted_ and _NUMPY_READS_BIT_CONVERTED_FLOATS:
+        # These values don't export their stored bits, so read them through the base type.
+        result = np.fromiter(map(ctypes.Array.__buffer__, values, itertools.repeat(0)), dtype=bytes_dtype, count=count)
+        result = result.view(scalar_dtype).reshape(count, -1)
+    else:
+        if count <= _COMPOSITE_JOIN_BATCH_COUNT:
+            buffer = bytearray().join(values)
+        else:
+            # Join slices of a list, which take less time to join than batches read from an iterator.
+            if type(values) not in (list, tuple):
+                values = list(values)
+            buffer = bytearray()
+            for start in range(0, count, _COMPOSITE_JOIN_BATCH_COUNT):
+                buffer += b"".join(values[start : start + _COMPOSITE_JOIN_BATCH_COUNT])
+        result = np.ndarray((count, composite_type._length_), scalar_dtype, buffer)
+    if composite_type._wp_is_bit_converted_:
+        return _decode_bit_converted_floats(result, composite_type._wp_scalar_type_)
+    return result
+
+
+def _convert_composites_to_numpy(data, dtype=None, max_depth=_NUMPY_MAX_DIMS):
+    """Replace the composite values (vectors, matrices, quaternions, transformations) in ``data`` with NumPy arrays.
+
+    NumPy reads composite values one at a time, which is much slower than copying a whole
+    sequence of them at once. Before Python 3.12, it also reads float16 and bfloat16 ones
+    through their raw ``uint16`` bits, as if the bits were the values.
+
+    Args:
+        data: The data to convert.
+        dtype: The NumPy type that the result gets cast to, if any.
+        max_depth: How many levels of sequences NumPy still allows inside ``data``.
+            Anything deeper is left as is.
+    """
+    # Only plain lists and tuples skip NumPy's array protocols: it reads their subclasses
+    # through them when they define one, like any other object.
+    if type(data) not in (list, tuple):
+        if not _NUMPY_READS_BIT_CONVERTED_FLOATS and getattr(data, "_wp_is_bit_converted_", False):
+            return _decode_bit_converted_floats(np.frombuffer(data, dtype=np.uint16), data._wp_scalar_type_)
+        if isinstance(data, np.ndarray) or not _is_numpy_sequence(data):
+            return data
+        # Another sequence, which gets read once into a tuple, as NumPy would.
+        data = tuple(data)
+
+    # A flat sequence of one composite type, the usual case.
+    if data:
+        item_type = type(data[0])
+        if hasattr(item_type, "_wp_generic_type_hint_") and operator.countOf(map(type, data), item_type) == len(data):
+            if _is_composite_cast_left_to_numpy(item_type, dtype):
+                return data
+            return _copy_composite_values(data, len(data), item_type)
+
+    # NumPy only accepts nested sequences whose items at each depth have the same shape,
+    # and reads a composite value as one dimension of scalars, so composite values can
+    # only sit at the one depth that the first item of each sequence reveals.
+    depth = 0
+    first = data
+    while True:
+        while type(first) in (list, tuple):
+            if not first or depth == max_depth:
+                return data
+            first = first[0]
+            depth += 1
+
+        if isinstance(first, _NUMPY_SCALAR_TYPES):
+            # A scalar, so the sequences one depth up hold the scalars.
+            depth -= 1
+        elif isinstance(first, ctypes.Array):
+            pass
+        elif isinstance(first, np.ndarray):
+            depth += first.ndim - 1
+        elif isinstance(first, scalar_and_bool_types):
+            depth -= 1
+        elif _is_numpy_sequence(first):
+            if isinstance(first, (list, tuple)):
+                # A list or tuple subclass, like a named tuple, which gets probed in place
+                # rather than read into a tuple.
+                if not first or depth == max_depth:
+                    return data
+                first = first[0]
+                depth += 1
+                continue
+            # Another sequence: read each one once into a tuple, as NumPy would, and start over.
+            return _convert_composites_to_numpy(_read_numpy_sequences(data, max_depth), dtype, max_depth)
+        else:
+            # Another scalar, or an array-like that NumPy reads as an array.
+            depth += np.ndim(first) - 1
+        break
+
+    if depth <= 0 or (_NUMPY_READS_BIT_CONVERTED_FLOATS and not isinstance(first, ctypes.Array)):
+        # No composite values, or from Python 3.12, no sequence of them to copy in a single pass.
+        return data
+
+    # Gather the sequences that hold the items at that depth, descending only through
+    # lists and tuples so that no other iterable gets consumed.
+    rows = data
+    levels = []
+    for i in range(depth - 1):
+        if i:
+            rows = tuple(itertools.chain.from_iterable(rows))
+        row_types = set(map(type, rows))
+        if not row_types.issubset((list, tuple)):
+            if not all(issubclass(t, _NUMPY_NON_SEQUENCE_TYPES) for t in row_types.difference((list, tuple))):
+                others = itertools.compress(rows, map(operator.not_, map((list, tuple).__contains__, map(type, rows))))
+                if any(map(_is_numpy_sequence, others)):
+                    # Another sequence: read each one once into a tuple, as NumPy would, and start over.
+                    return _convert_composites_to_numpy(_read_numpy_sequences(data, max_depth), dtype, max_depth)
+            if row_types.isdisjoint((list, tuple)):
+                # No list or tuple to hold composite values at the next depth.
+                return data
+            levels = None
+            rows = tuple(itertools.compress(rows, map((list, tuple).__contains__, map(type, rows))))
+        if levels is not None:
+            levels.append(rows)
+
+    # The shape of the sequences while every one at each depth has the same length.
+    shape = [len(data)]
+    for level in levels or ():
+        lengths = set(map(len, level))
+        if len(lengths) != 1:
+            levels = None
+            break
+        shape.append(lengths.pop())
+    count = math.prod(shape) if levels is not None else sum(map(len, rows))
+
+    # The type of the items at that depth, if they all have the same one.
+    item_type = None
+    if count:
+        if depth == 1:
+            first_type = type(data[0])
+        else:
+            first_type = type(rows[0][0] if rows[0] else next(itertools.chain.from_iterable(rows)))
+        items = data if depth == 1 else itertools.chain.from_iterable(rows)
+        if operator.countOf(map(type, items), first_type) == count:
+            item_type = first_type
+
+    if item_type is not None:
+        if not type_is_composite(item_type) or _is_composite_cast_left_to_numpy(item_type, dtype):
+            return data
+        if levels is not None:
+            values = data if depth == 1 else itertools.chain.from_iterable(rows)
+            return _copy_composite_values(values, count, item_type).reshape(*shape, -1)
+        if _NUMPY_READS_BIT_CONVERTED_FLOATS or not item_type._wp_is_bit_converted_:
+            return data
+    elif _NUMPY_READS_BIT_CONVERTED_FLOATS or not any(
+        getattr(t, "_wp_is_bit_converted_", False)
+        for t in set(map(type, data if depth == 1 else itertools.chain.from_iterable(rows)))
+    ):
+        return data
+
+    # Before Python 3.12, float16 and bfloat16 values that NumPy can't take in a single pass
+    # get replaced one sequence at a time.
+    return tuple(map(_convert_composites_to_numpy, data, itertools.repeat(dtype), itertools.repeat(max_depth - 1)))
 
 
 def safe_len(obj):
@@ -996,6 +1272,15 @@ def vector(length, dtype):
                 return x
 
         _wp_is_bit_converted_ = _is_bit_converted_float(_wp_scalar_type_)
+
+        # NumPy reads composite values through the buffer that they export, which would
+        # otherwise hold the stored bits of float16 and bfloat16 values.
+        if _wp_is_bit_converted_ and _NUMPY_READS_BIT_CONVERTED_FLOATS:
+            if _wp_scalar_type_ is float16:
+                __buffer__ = _export_float16_composite_buffer
+            else:
+                __buffer__ = _refuse_bfloat16_composite_buffer
+                __array__ = _read_bfloat16_composite_array
 
         def __init__(self, *args):
             num_args = len(args)
@@ -1246,6 +1531,15 @@ def matrix(shape, dtype):
 
         _wp_is_bit_converted_ = _is_bit_converted_float(_wp_scalar_type_)
 
+        # NumPy reads composite values through the buffer that they export, which would
+        # otherwise hold the stored bits of float16 and bfloat16 values.
+        if _wp_is_bit_converted_ and _NUMPY_READS_BIT_CONVERTED_FLOATS:
+            if _wp_scalar_type_ is float16:
+                __buffer__ = _export_float16_composite_buffer
+            else:
+                __buffer__ = _refuse_bfloat16_composite_buffer
+                __array__ = _read_bfloat16_composite_array
+
         def __init__(self, *args):
             num_args = len(args)
             if num_args == 0:
@@ -1354,6 +1648,18 @@ def matrix(shape, dtype):
             return True
 
         def get_row(self, r):
+            """Return row ``r`` of the matrix as a new vector.
+
+            Args:
+                r: Zero-based row index in the range ``-rows <= r < rows``, where ``rows`` is the number of matrix rows.
+                    Negative values count from the end, so ``-1`` is the last row.
+
+            Returns:
+                A vector with one component per matrix column and the matrix's scalar type.
+
+            Raises:
+                IndexError: If ``r`` is out of range.
+            """
             if r < -self._shape_[0] or r >= self._shape_[0]:
                 raise IndexError("Invalid row index")
             if r < 0:
@@ -1367,6 +1673,18 @@ def matrix(shape, dtype):
                 return self._wp_row_type_(row_data)
 
         def get_col(self, c):
+            """Return column ``c`` of the matrix as a new vector.
+
+            Args:
+                c: Zero-based column index in the range ``-cols <= c < cols``, where ``cols`` is the number of matrix
+                    columns. Negative values count from the end, so ``-1`` is the last column.
+
+            Returns:
+                A vector with one component per matrix row and the matrix's scalar type.
+
+            Raises:
+                IndexError: If ``c`` is out of range.
+            """
             if c < -self._shape_[1] or c >= self._shape_[1]:
                 raise IndexError("Invalid column index")
             if c < 0:
@@ -1381,6 +1699,18 @@ def matrix(shape, dtype):
                 return self._wp_col_type_(col_data)
 
         def set_row(self, r, v):
+            """Set row ``r`` of the matrix to ``v`` in place.
+
+            Args:
+                r: Zero-based row index in the range ``-rows <= r < rows``, where ``rows`` is the number of matrix rows.
+                    Negative values count from the end, so ``-1`` is the last row.
+                v: Scalar to assign to every element of the row, or a sequence with one value per matrix column,
+                    such as a vector, list, or tuple. Values must be compatible with the matrix's scalar type.
+                    Currently, integer matrices require integer values.
+
+            Raises:
+                IndexError: If ``r`` is out of range.
+            """
             if r < -self._shape_[0] or r >= self._shape_[0]:
                 raise IndexError("Invalid row index")
             if r < 0:
@@ -1417,6 +1747,18 @@ def matrix(shape, dtype):
             super().__setitem__(slice(row_start, row_end), v)
 
         def set_col(self, c, v):
+            """Set column ``c`` of the matrix to ``v`` in place.
+
+            Args:
+                c: Zero-based column index in the range ``-cols <= c < cols``, where ``cols`` is the number of matrix
+                    columns. Negative values count from the end, so ``-1`` is the last column.
+                v: Scalar to assign to every element of the column, or a sequence with one value per matrix row,
+                    such as a vector, list, or tuple. Values must be compatible with the matrix's scalar type.
+                    Currently, integer matrices require integer values.
+
+            Raises:
+                IndexError: If ``c`` is out of range.
+            """
             if c < -self._shape_[1] or c >= self._shape_[1]:
                 raise IndexError("Invalid col index")
             if c < 0:
@@ -2212,6 +2554,7 @@ warp_type_to_np_dtype = {
     uint16: np.uint16,
     uint32: np.uint32,
     uint64: np.uint64,
+    handle: np.uint64,
     float16: np.float16,
     bfloat16: np.uint16,  # TODO: Use ml_dtypes.bfloat16 when available (see also _np_float32_to_bfloat16_bits)
     float32: np.float32,
@@ -2639,7 +2982,7 @@ def type_ctype(dtype):
         return ctypes.c_float
     elif dtype is int:
         return ctypes.c_int32
-    elif dtype is bool:
+    elif dtype is builtins.bool:
         return ctypes.c_bool
     elif issubclass(dtype, (ctypes.Array, ctypes.Structure)):
         return dtype
@@ -2793,7 +3136,8 @@ def type_repr(t) -> str:
     if t is Any:
         return "Any"
     if is_array(t):
-        cls_name = concrete_array_type(t).__name__
+        # Diagnostics describe the Python object, while compiler types use its native family.
+        cls_name = t._concrete_cls.__name__ if isinstance(t, _ArrayAnnotationBase) else type(t).__name__
         if isinstance(t, _ArrayAnnotationBase) or (hasattr(t, "device") and t.device is None):
             # array is used as a type annotation - display ndim instead of shape
             ndim_repr = "Any" if t.ndim is Any else t.ndim
@@ -2897,7 +3241,7 @@ _native_value_types: set[type] = set()
 
 
 def is_native_type(t: Any) -> builtins.bool:
-    """Return whether ``t`` is a native value type registered through ``warp.build_experimental``."""
+    """Return whether ``t`` is a native value type registered through ``warp.experimental.build``."""
     return isinstance(t, type) and t in _native_value_types
 
 
@@ -2989,10 +3333,13 @@ def matches_array_class(t, cls) -> builtins.bool:
 
 
 def concrete_array_type(t) -> type:
-    """Return the concrete array class for an annotation or instance."""
-    if isinstance(t, _ArrayAnnotationBase):
+    """Return an array's native family, preserving ``type(t)`` for non-arrays."""
+    cls = type(t)
+    if issubclass(cls, _ArrayAnnotationBase):
         return t._concrete_cls
-    return type(t)
+    if id(cls) in _ARRAY_FAMILY_IDS:
+        return cls
+    return _resolve_array_family(t) or cls
 
 
 def is_tuple(x) -> builtins.bool:
@@ -3043,7 +3390,7 @@ def scalars_equal_generic(a, b, match_generic=True):
         if a is Float and b is Float:
             return True
 
-    # handle and uint64 are interchangeable (handle is a semantic alias for uint64)
+    # Preserve legacy uint64 object IDs while handle identifies resource references.
     if (a is handle and b is uint64) or (a is uint64 and b is handle):
         return True
 
@@ -3416,6 +3763,7 @@ class array(Array[DType, NDim]):
         instance._memory_kind = None
         return instance
 
+    @suppress_warp_function
     def __init__(
         self,
         data: list | tuple | np.ndarray | None = None,
@@ -3707,11 +4055,25 @@ class array(Array[DType, NDim]):
             self._ref = data
             return
 
+        # Whether to convert the composite values in the data before NumPy reads it: always
+        # before Python 3.12, where NumPy would read float16 and bfloat16 ones as their stored
+        # bits, and from then on only for sequences of them, which get copied in a single pass.
+        if isinstance(data, np.ndarray):
+            convert_composites = False
+        elif _NUMPY_READS_BIT_CONVERTED_FLOATS and (type(data) is list or type(data) is tuple):
+            # Sequences of composite values start with one, or with a nested sequence.
+            first = data[0] if data else None
+            if isinstance(first, (list, tuple)):
+                first = first[0] if first else None
+            convert_composites = isinstance(first, (ctypes.Array, list, tuple))
+        else:
+            convert_composites = True
+
         # convert input data to ndarray (handles lists, tuples, etc.) and determine dtype
         if dtype is Any:
             # infer dtype from data
             try:
-                arr = np.asarray(data)
+                arr = np.asarray(_convert_composites_to_numpy(data) if convert_composites else data)
             except Exception as e:
                 raise RuntimeError(f"Failed to convert input data to an array: {e}") from e
             dtype = np_dtype_to_warp_type.get(arr.dtype)
@@ -3819,9 +4181,16 @@ class array(Array[DType, NDim]):
                     elif ml_bf16 is not None and isinstance(data, np.ndarray) and data.dtype == ml_bf16:
                         arr = data.view(np.uint16)
                     else:
-                        arr = _np_float32_to_bfloat16_bits(np.asarray(data, dtype=np.float32))
+                        arr = _np_float32_to_bfloat16_bits(
+                            np.asarray(
+                                _convert_composites_to_numpy(data, np.float32) if convert_composites else data,
+                                dtype=np.float32,
+                            )
+                        )
                 else:
-                    arr = np.asarray(data, dtype=npdtype)
+                    arr = np.asarray(
+                        _convert_composites_to_numpy(data, npdtype) if convert_composites else data, dtype=npdtype
+                    )
             except Exception as e:
                 raise RuntimeError(f"Failed to convert input data to an array with type {npdtype}: {e}") from e
 
@@ -3890,15 +4259,29 @@ class array(Array[DType, NDim]):
         else:
             # copy data into a new array
             self._init_new(dtype, shape, None, device, pinned)
-            src = array(
-                ptr=arr.ctypes.data,
-                dtype=dtype,
-                shape=shape,
-                strides=strides,
-                device="cpu",
-                copy=False,
-            )
-            warp.copy(self, src)
+            runtime = warp._src.context.runtime
+            if arr.flags.c_contiguous and runtime._apic_capture is None:
+                # The new array is contiguous too, so copy the bytes directly rather than
+                # through a temporary source array and the general-purpose copy.
+                if self.capacity:
+                    if device.is_cuda:
+                        result = runtime.core.wp_memcpy_h2d(
+                            device.context, self.ptr, arr.ctypes.data, self.capacity, device.stream.cuda_stream
+                        )
+                    else:
+                        result = runtime.core.wp_memcpy_h2h(self.ptr, arr.ctypes.data, self.capacity)
+                    if not result:
+                        raise RuntimeError(f"Warp copy error: {runtime.get_error_string()}")
+            else:
+                src = array(
+                    ptr=arr.ctypes.data,
+                    dtype=dtype,
+                    shape=shape,
+                    strides=strides,
+                    device="cpu",
+                    copy=False,
+                )
+                warp.copy(self, src)
 
     def _init_from_ptr(self, ptr, dtype, shape, strides, capacity, device, pinned, deleter):
         try:
@@ -4369,6 +4752,12 @@ class array(Array[DType, NDim]):
 
     @property
     def grad(self):
+        """Array that accumulates gradients for this array during the backward pass, or ``None``.
+
+        Assigning an array also sets :attr:`requires_grad` to ``True``. The assigned array must have the same
+        dtype, shape, strides, and device as this array. Assigning ``None`` removes the gradient array and sets
+        :attr:`requires_grad` to ``False``.
+        """
         return self._grad
 
     @grad.setter
@@ -4404,6 +4793,12 @@ class array(Array[DType, NDim]):
 
     @property
     def requires_grad(self):
+        """Whether gradients are tracked for this array.
+
+        Setting this to ``True`` allocates a zero-initialized :attr:`grad` array if none exists. Setting it to
+        ``False`` removes :attr:`grad` and sets :attr:`retain_grad` to ``False``. See :class:`warp.Tape` for how
+        gradients are recorded and propagated.
+        """
         return self._requires_grad
 
     @requires_grad.setter
@@ -4423,6 +4818,16 @@ class array(Array[DType, NDim]):
 
     @property
     def retain_grad(self):
+        """Whether the backward pass preserves this array's gradient instead of zeroing it.
+
+        By default, the backward pass zeroes an element's gradient after propagating it through a write to that
+        element, so only the final forward-pass write to each element receives the gradient. Set this to ``True``
+        to keep the gradient of an intermediate or output array for inspection after the backward pass. Only do so
+        when each element is written at most once during the forward pass; otherwise, gradients are double-counted.
+
+        Raises:
+            ValueError: If ``retain_grad`` is set to ``True`` while :attr:`requires_grad` is ``False``.
+        """
         return self._retain_grad
 
     @retain_grad.setter
@@ -4537,8 +4942,6 @@ class array(Array[DType, NDim]):
         if self.size == 0:
             return
 
-        self._apic_ensure_tracked()
-
         # try to convert the given value to the array dtype
         try:
             if isinstance(self.dtype, warp._src.codegen.Struct):
@@ -4579,38 +4982,18 @@ class array(Array[DType, NDim]):
         cvalue_ptr = ctypes.pointer(cvalue)
         cvalue_size = ctypes.sizeof(cvalue)
 
+        if self.is_contiguous:
+            _check_fill_capturable(self.device, cvalue_size)
+        else:
+            _check_fill_capturable(self.device, cvalue_size, self.strides, self.dtype, value)
+        self._apic_ensure_tracked()
+
         # prefer using memtile for contiguous arrays, because it should be faster than generic fill
         if self.is_contiguous:
-            # Large multi-byte fills (> WP_FILL_VALUE_INLINE_BYTES_2 = 3968 bytes,
-            # defined in warp/native/warp.cu -- keep the literal below in sync)
-            # take a capturable_tmp_alloc fallback in wp_memtile_device (pause/resume
-            # + device staging) that the APIC byte-stream rebuild cannot reproduce,
-            # so a saved CUDA graph could not replay them. Surface the limitation
-            # instead of recording an unreplayable op. Small fills embed the value
-            # inline in the byte stream and replay fine.
-            apic_capture = warp._src.context._get_apic_capture_for_device(self.device)
-            if (
-                cvalue_size > 3968  # WP_FILL_VALUE_INLINE_BYTES_2 (warp/native/warp.cu)
-                and self.device.is_cuda
-                and apic_capture is not None
-            ):
-                raise NotImplementedError(
-                    "APIC capture does not yet support fill_() with values larger than 3968 bytes on CUDA arrays; "
-                    "use a smaller element type or move the fill outside the capture."
-                )
             self.device.memtile(self.ptr, cvalue_ptr, cvalue_size, self.size)
         else:
-            # The non-contiguous fill path (wp_array_fill_host / wp_array_fill_device)
-            # does not record into the APIC byte stream, so it would silently execute
-            # once at capture time and never replay. Surface the limitation now
-            # instead of producing wrong output at replay. Applies to both CPU
-            # (record-only) and CUDA (record-and-execute) captures.
-            apic_capture = warp._src.context._get_apic_capture_for_device(self.device)
-            if apic_capture is not None:
-                raise NotImplementedError(
-                    "APIC capture does not yet support fill_() on non-contiguous arrays; "
-                    "fill the underlying contiguous array first or move the fill outside the capture."
-                )
+            # During an APIC capture on this device, the native fill records an array-fill
+            # operation: record-only on CPU, record-and-execute on CUDA.
             carr = self.__ctype__()
             carr_ptr = ctypes.pointer(carr)
 
@@ -4868,6 +5251,10 @@ class array(Array[DType, NDim]):
                 ai = wp.ones(10, dtype=wp.int32)
                 au = ai.view(wp.uint32)
 
+                # reinterpret legacy object ID storage (illustrative IDs, not valid resources)
+                ids = wp.array([1, 2], dtype=wp.uint64)
+                handles = ids.view(wp.handle)
+
                 # view an array of vec4 as quat or mat22
                 av = wp.ones(10, dtype=wp.vec4)
                 aq = av.view(wp.quat)
@@ -5072,6 +5459,9 @@ class array(Array[DType, NDim]):
         warp._src.context.runtime.core.wp_cuda_ipc_get_mem_handle(self.ptr, ipc_handle_buffer)
 
         return ipc_handle_buffer.raw
+
+
+register_api_method(array, "__init__")
 
 
 # aliases for arrays with small dimensions
@@ -5346,16 +5736,21 @@ class noncontiguous_array_base(Array[DType, NDim]):
         except Exception as e:
             raise ValueError(f"Failed to convert the value to the array data type: {e}") from e
 
-        # The indexed/fabric fill path (wp_array_fill_host / wp_array_fill_device)
-        # does not record into the APIC byte stream yet, so it would silently
-        # execute once at capture time and never replay. Surface the limitation
-        # now instead of producing wrong output at replay.
         apic_capture = warp._src.context._get_apic_capture_for_device(self.device)
         if apic_capture is not None:
-            raise NotImplementedError(
-                "APIC capture does not yet support fill_() on wp.indexedarray / wp.fabricarray; "
-                "fill the underlying contiguous array first or move the fill outside the capture."
-            )
+            # During an APIC capture on this device, the native fill records an indexed
+            # array as an array-fill operation. Fabric buckets are raw pointers outside the
+            # APIC region model, so a Fabric fill would run once at capture time and never
+            # replay. Surface that limitation instead of producing wrong output at replay.
+            if self.type_id != ARRAY_TYPE_INDEXED:
+                raise NotImplementedError(
+                    "APIC capture does not yet support fill_() on wp.fabricarray / wp.indexedfabricarray; "
+                    "fill the underlying contiguous array first or move the fill outside the capture."
+                )
+            _check_fill_capturable(self.device, ctypes.sizeof(cvalue), self.data.strides, self.dtype, value)
+            apic_capture.track_array(self.data)
+            for indices in self.indices:
+                apic_capture.track_array(indices)
 
         cvalue_ptr = ctypes.pointer(cvalue)
         cvalue_size = ctypes.sizeof(cvalue)
@@ -5369,6 +5764,89 @@ class noncontiguous_array_base(Array[DType, NDim]):
             )
         else:
             warp._src.context.runtime.core.wp_array_fill_host(ctype_ptr, self.type_id, cvalue_ptr, cvalue_size)
+
+
+# Largest fill value, in bytes, that CUDA fills pass to their kernels by value.
+# Must match WP_FILL_VALUE_INLINE_BYTES_2 in warp/native/warp.cu.
+_FILL_VALUE_INLINE_BYTES = 3968
+
+
+def _fill_value_references_memory(dtype, value) -> builtins.bool:
+    """Return whether a fill value holds a non-null array, a non-zero ``wp.handle``, or a texture.
+
+    The value can be a handle itself, or a struct with such fields. Fill records store the
+    value's bytes, which a saved graph doesn't relocate, so a loaded graph would keep the
+    capturing process's pointers and handles.
+
+    Args:
+        dtype: The data type of the filled array.
+        value: The value passed to ``fill_()``.
+    """
+    if dtype is handle:
+        return builtins.bool(dtype._type_(getattr(value, "value", value)).value)
+    if not isinstance(dtype, warp._src.codegen.Struct) or not isinstance(value, dtype.cls):
+        return False
+    cvalue = value.__ctype__()
+    for name, var in dtype.vars.items():
+        if isinstance(var.type, warp._src.codegen.Struct):
+            if _fill_value_references_memory(var.type, getattr(value, name)):
+                return True
+        elif matches_array_class(var.type, array):
+            if getattr(cvalue, name).data:
+                return True
+        elif matches_array_class(var.type, indexedarray):
+            descriptor = getattr(cvalue, name)
+            if descriptor.data.data or any(descriptor.indices):
+                return True
+        elif is_array(var.type):
+            # Fabric arrays hold bucket pointers.
+            if getattr(value, name) is not None:
+                return True
+        elif var.type is handle:
+            if getattr(cvalue, name):
+                return True
+        elif warp._src.codegen._is_texture_type(var.type):
+            if getattr(cvalue, name).tex:
+                return True
+    return False
+
+
+def _check_fill_capturable(
+    device, value_size: int, strides: Sequence[int] = (), dtype: type | None = None, value: Any = None
+) -> None:
+    """Raise :exc:`NotImplementedError` if an APIC capture on ``device`` cannot record a fill.
+
+    A CUDA fill of a larger value stages it through ``capturable_tmp_alloc`` (pause/resume
+    plus device staging), which the APIC byte-stream rebuild cannot reproduce, so a saved
+    graph could not replay it. Smaller values are embedded in the byte stream. Strided and
+    indexed fills record their layout with non-negative strides only, and their value only
+    if it holds no array, non-zero handle, or texture, which a saved graph would not relocate.
+
+    Args:
+        device: The device of the filled array.
+        value_size: Size of the fill value in bytes.
+        strides: Byte strides of the filled memory, empty for a contiguous fill.
+        dtype: Data type of a strided or indexed fill, ``None`` for a contiguous fill.
+        value: Value of a strided or indexed fill, ``None`` for a contiguous fill.
+    """
+    if warp._src.context._get_apic_capture_for_device(device) is None:
+        return
+    if any(stride < 0 for stride in strides):
+        raise NotImplementedError(
+            "APIC capture does not yet support fill_() on arrays with negative strides; "
+            "move the fill outside the capture."
+        )
+    if _fill_value_references_memory(dtype, value):
+        raise NotImplementedError(
+            "APIC capture does not yet support fill_() on strided or indexed arrays with values that hold "
+            "arrays, non-zero wp.handle values, or textures; write the values with a kernel or move the fill "
+            "outside the capture."
+        )
+    if device.is_cuda and value_size > _FILL_VALUE_INLINE_BYTES:
+        raise NotImplementedError(
+            f"APIC capture does not yet support fill_() with values larger than {_FILL_VALUE_INLINE_BYTES} bytes "
+            "on CUDA arrays; use a smaller element type or move the fill outside the capture."
+        )
 
 
 # helper to check index array properties
@@ -5691,6 +6169,103 @@ _ARRAY_ANNOTATION_MAP = {
     indexedfabricarray: _IndexedFabricArrayAnnotation,
 }
 
+# Registered classes are retained by array_types. Compare identities without invoking
+# application metaclass hashing or equality; this is not a cache of user classes.
+_ARRAY_FAMILY_IDS = frozenset(id(cls) for cls in array_types)
+_ARRAY_CTYPE_MAP = {
+    array: array_t,
+    indexedarray: indexedarray_t,
+    fabricarray: fabricarray_t,
+    indexedfabricarray: indexedfabricarray_t,
+}
+
+
+def _resolve_array_family(value) -> type | None:
+    """Resolve a real array ancestor without consulting a spoofable ``__class__``.
+
+    Unrelated native families cannot share a descriptor layout. Mixins and diamonds
+    within one family are valid; ``fixedarray`` keeps its separate compiler type.
+    Lightweight annotations describe arrays but have no native array ancestor,
+    so they resolve to ``None``.
+    """
+    cls = type(value)
+    if id(cls) in _ARRAY_FAMILY_IDS:
+        return cls
+
+    # Most inputs are regular arrays or unrelated objects, requiring no MRO scan.
+    if not issubclass(cls, (indexedarray, fabricarray, indexedfabricarray, fixedarray, _ArrayAnnotationBase)):
+        return array if issubclass(cls, array) else None
+
+    candidates = [ancestor for ancestor in cls.__mro__ if id(ancestor) in _ARRAY_FAMILY_IDS]
+    if len(candidates) > 1:
+        candidates = [
+            candidate
+            for candidate in candidates
+            if not any(candidate is not other and candidate in other.__mro__ for other in candidates)
+        ]
+        if len(candidates) > 1:
+            names = ", ".join(f"wp.{candidate.__name__}" for candidate in candidates)
+            raise TypeError(
+                f"Array subclass '{cls.__qualname__}' derives from unrelated Warp array families ({names}); "
+                "exactly one native array family is required"
+            )
+    return candidates[0] if candidates else None
+
+
+def _normalize_array_argument_type(value):
+    """Describe host array values with storage-free native annotations."""
+    cls = type(value)
+    if cls is type or cls is int or cls is float or cls is builtins.bool or issubclass(cls, _ArrayAnnotationBase):
+        return value
+    family = _resolve_array_family(value)
+    if family is fixedarray:
+        raise TypeError(
+            "Cannot use wp.fixedarray as a host argument or kernel overload type; it is a compiler-only stack array"
+        )
+    annotation_cls = _ARRAY_ANNOTATION_MAP.get(family)
+    if annotation_cls is None:
+        return value
+    return annotation_cls(value.dtype, value.ndim)
+
+
+def _validate_array_subclass_descriptor(value, descriptor, expected_family, ndim):
+    """Validate a subclass descriptor's layout before passing it to native code.
+
+    This checks representation, not pointer validity or allocation ownership.
+    Exact built-in arrays retain their existing trusted descriptor path.
+    """
+    if type(value) is expected_family:
+        return descriptor
+    descriptor_cls = _ARRAY_CTYPE_MAP[expected_family]
+    if not issubclass(type(descriptor), descriptor_cls):
+        raise TypeError(
+            f"Array subclass '{type(value).__qualname__}' must return {descriptor_cls.__name__} from __ctype__(), "
+            f"got {type(descriptor).__name__}"
+        )
+    if ctypes.sizeof(descriptor) != ctypes.sizeof(descriptor_cls):
+        raise TypeError(
+            f"Array subclass '{type(value).__qualname__}' returned an incompatible {descriptor_cls.__name__} size"
+        )
+    if type(descriptor) is not descriptor_cls:
+        # Use native fields rather than potentially overridden Python properties,
+        # and keep CPU launch cache keys independent of application descriptor classes.
+        original_descriptor = descriptor
+        descriptor = descriptor_cls.from_buffer_copy(descriptor)
+        descriptor._ref = original_descriptor
+    if expected_family is array:
+        descriptor_ndim = descriptor.ndim
+    elif expected_family is indexedarray:
+        descriptor_ndim = descriptor.data.ndim
+    else:
+        return descriptor
+    expected_ndim = value.ndim if ndim is Any else ndim
+    if descriptor_ndim != expected_ndim:
+        raise ValueError(
+            f"Array subclass '{type(value).__qualname__}' returned a descriptor with {descriptor_ndim} dimension(s), "
+            f"expected {expected_ndim}"
+        )
+    return descriptor
+
 
 def _parse_array_subscript(cls, params):
     """Parse subscript parameters for array-like types.
@@ -5719,13 +6294,14 @@ def _parse_array_subscript(cls, params):
 
 
 def array_type_id(a):
-    if matches_array_class(a, array):
+    family = concrete_array_type(a)
+    if family is array or family is fixedarray:
         return ARRAY_TYPE_REGULAR
-    elif matches_array_class(a, indexedarray):
+    elif family is indexedarray:
         return ARRAY_TYPE_INDEXED
-    elif matches_array_class(a, fabricarray):
+    elif family is fabricarray:
         return ARRAY_TYPE_FABRIC
-    elif matches_array_class(a, indexedfabricarray):
+    elif family is indexedfabricarray:
         return ARRAY_TYPE_FABRIC_INDEXED
     else:
         raise ValueError("Invalid array type")
@@ -5948,7 +6524,8 @@ class Bvh:
         Depending on which device the input bounds live, it can be either a CPU tree or a GPU tree.
 
         Attributes:
-            id: Unique identifier for this BVH object, can be passed to kernels.
+            id: Object ID to pass to kernel parameters and struct fields of type :class:`warp.handle`.
+              Keep this BVH alive while its ID is in use.
             device: Device this object lives on, all buffers must live on the same device.
 
         Args:
@@ -6026,6 +6603,10 @@ class Bvh:
             For grouped BVHs built with ``"sah"`` or ``"median"``, the traversal depth limit applies separately
             to each group subtree. Start queries at the desired group's root to stay within this limit.
             Traversal from the global root is not guaranteed to fit the query stack for deep grouped trees.
+
+        Raises:
+            NotImplementedError: If called during CPU graph capture, which cannot record the build. Build the BVH
+                before capture and update it with :meth:`refit` or :meth:`rebuild` instead.
         """
         if len(lowers) != len(uppers):
             raise RuntimeError("The same number of lower and upper bounds must be provided")
@@ -6046,6 +6627,8 @@ class Bvh:
                 raise RuntimeError("groups must live on the same device as lowers/uppers")
             if len(groups) != len(lowers):
                 raise RuntimeError("groups must have the same length as lowers/uppers")
+
+        warp._src.context._raise_if_cpu_capturing(lowers.device, "wp.Bvh()")
 
         self.device = lowers.device
         self.lowers = lowers
@@ -6231,6 +6814,7 @@ class Mesh:
     def __new__(cls, *args, **kwargs):
         instance = super().__new__(cls)
         instance.id = None
+        instance._capture_retained_arrays = []
         return instance
 
     def __init__(
@@ -6246,7 +6830,8 @@ class Mesh:
         """Class representing a triangle mesh.
 
         Attributes:
-            id: Unique identifier for this mesh object, can be passed to kernels.
+            id: Object ID to pass to kernel parameters and struct fields of type :class:`warp.handle`.
+              Keep this mesh alive while its ID is in use.
             device: Device this object lives on, all buffers must live on the same device.
 
         Args:
@@ -6267,9 +6852,15 @@ class Mesh:
               value based on the ``bvh_constructor`` will be used.
             groups: Optional array of triangle group indices of data type :class:`warp.int32`.
               Should be a 1D array with shape ``(num_tris)``.
+
+        Raises:
+            NotImplementedError: If called during CPU graph capture, which cannot record the build. Build the mesh
+              before capture and update it with :meth:`refit` or by assigning :attr:`points` instead.
         """
         if points.device != indices.device:
             raise RuntimeError("Mesh points and indices must live on the same device")
+
+        warp._src.context._raise_if_cpu_capturing(points.device, "wp.Mesh()")
 
         if points.dtype != vec3 or not points.is_contiguous:
             raise RuntimeError("Mesh points should be a contiguous array of type wp.vec3")
@@ -6379,6 +6970,11 @@ class Mesh:
         """Refit the BVH to points.
 
         This should be called after users modify the ``points`` data.
+
+        Note:
+            Under a CPU graph capture the refit is recorded and re-run on replay against the
+            current ``points``. Such a graph is replay-only and cannot be serialized
+            with :func:`warp.capture_save`.
         """
 
         if self.device.is_cpu:
@@ -6388,6 +6984,40 @@ class Mesh:
                 raise RuntimeError(f"Failed to refit mesh: {self.runtime.get_error_string()}")
             self.runtime.verify_cuda_device(self.device)
 
+    def _retain_assigned_arrays(self, current, new):
+        """Keep the arrays an assignment swaps alive while the native mesh can still read them.
+
+        Under CPU graph capture, an assignment takes effect only at replay. Until then the native mesh keeps reading
+        ``current``; each replay repoints it to ``new``, and it keeps reading ``new`` after the graph is destroyed,
+        even if an eager assignment came in between. The graph keeps both arrays alive for its lifetime, and the
+        mesh keeps them until :meth:`_release_unread_arrays` finds that neither can be read anymore.
+        """
+        apic_capture = warp._src.context._get_apic_capture_for_device(self.device)
+        if apic_capture is None:
+            return
+
+        capture_ref = weakref.ref(apic_capture)
+        for arr in (current, new):
+            apic_capture.track_array(arr)
+            apic_capture.track_array(arr.grad)
+            self._capture_retained_arrays.append((capture_ref, arr))
+
+    def _release_unread_arrays(self):
+        """Release the arrays kept by :meth:`_retain_assigned_arrays` that the native mesh can no longer read.
+
+        An array stays readable while its graph is alive, since a replay can repoint the mesh to it, and while the
+        native mesh points at it.
+        """
+        read_ptrs = (
+            self.runtime.core.wp_mesh_get_points_ptr_host(self.id),
+            self.runtime.core.wp_mesh_get_velocities_ptr_host(self.id),
+        )
+        self._capture_retained_arrays = [
+            (capture_ref, arr)
+            for capture_ref, arr in self._capture_retained_arrays
+            if capture_ref() is not None or arr.ptr in read_ptrs
+        ]
+
     @property
     def points(self):
         """The array of mesh's vertex positions of type :class:`warp.vec3`.
@@ -6396,6 +7026,10 @@ class Mesh:
         but :meth:`refit` must be called manually after such modifications. Alternatively, assigning a new array
         to this property is also supported. The new array must have the same shape as the original, and once assigned,
         The :class:`Mesh` will automatically perform a refit operation based on the new vertex positions.
+
+        Under a CPU graph capture, an assignment is recorded and applied on each replay, in capture order, followed by
+        the refit. The property returns the new array immediately, but kernels see it only once the graph is
+        launched. Such a graph is replay-only and cannot be serialized with :func:`warp.capture_save`.
         """
         return self._points
 
@@ -6413,9 +7047,12 @@ class Mesh:
                 f"new points' shape is {points_new.shape}, while the old points' shape is {self._points.shape}."
             )
 
+        if self.device.is_cpu:
+            self._retain_assigned_arrays(self._points, points_new)
         self._points = points_new
         if self.device.is_cpu:
             self.runtime.core.wp_mesh_set_points_host(self.id, points_new.__ctype__())
+            self._release_unread_arrays()
         else:
             if not self.runtime.core.wp_mesh_set_points_device(self.id, points_new.__ctype__()):
                 raise RuntimeError(f"Failed to set mesh points: {self.runtime.get_error_string()}")
@@ -6427,6 +7064,10 @@ class Mesh:
 
         This is a property with a custom setter method. Users can modify the velocities in-place,
         or assign a new array to this property. No refitting is needed for changing velocities.
+
+        Under a CPU graph capture, an assignment is recorded and applied on each replay, in capture order. The property
+        returns the new array immediately, but kernels see it only once the graph is launched. Such a graph is
+        replay-only and cannot be serialized with :func:`warp.capture_save`.
         """
         return self._velocities
 
@@ -6444,9 +7085,12 @@ class Mesh:
                 f"new points' shape is {velocities_new.shape}, while the old points' shape is {self._velocities.shape}."
             )
 
+        if self.device.is_cpu:
+            self._retain_assigned_arrays(self._velocities, velocities_new)
         self._velocities = velocities_new
         if self.device.is_cpu:
             self.runtime.core.wp_mesh_set_velocities_host(self.id, velocities_new.__ctype__())
+            self._release_unread_arrays()
         else:
             self.runtime.core.wp_mesh_set_velocities_device(self.id, velocities_new.__ctype__())
             self.runtime.verify_cuda_device(self.device)
@@ -6504,6 +7148,10 @@ class Volume:
 
     def __init__(self, data: array, copy: builtins.bool = True):
         """Class representing a sparse grid.
+
+        Attributes:
+            id: Object ID to pass to kernel parameters and struct fields of type :class:`warp.handle`.
+              Keep this volume alive while its ID is in use.
 
         Args:
             data: Array of bytes representing the volume in NanoVDB format.
@@ -6576,6 +7224,11 @@ class Volume:
                 a new array will be allocated. ``out`` must be a contiguous array
                 of ``tile_count`` ``vec3i`` or ``tile_count x 3`` ``int32``
                 on the same device as this volume.
+
+        Note:
+            Under a CPU graph capture the query is recorded and re-run on replay, so ``out`` receives the
+            coordinates of the topology at replay time, including that of a rebuild recorded earlier in the
+            capture. Such a graph is replay-only and cannot be serialized with :func:`warp.capture_save`.
         """
 
         if self.id == 0:
@@ -6592,6 +7245,7 @@ class Volume:
             )
 
         if self.device.is_cpu:
+            self._track_capture_arrays(out)
             self.runtime.core.wp_volume_get_tiles_host(self.id, out.ptr)
         else:
             self.runtime.core.wp_volume_get_tiles_device(self.id, out.ptr)
@@ -6642,6 +7296,11 @@ class Volume:
             out: If provided, use the `out` array to store the voxel coordinates, otherwise
                 a new array will be allocated. `out` must be a contiguous array of ``voxel_count`` ``vec3i`` or ``voxel_count x 3`` ``int32``
                 on the same device as this volume.
+
+        Note:
+            Under a CPU graph capture the query is recorded and re-run on replay, so ``out`` receives the
+            coordinates of the topology at replay time, including that of a rebuild recorded earlier in the
+            capture. Such a graph is replay-only and cannot be serialized with :func:`warp.capture_save`.
         """
 
         if self.id == 0:
@@ -6658,6 +7317,7 @@ class Volume:
             )
 
         if self.device.is_cpu:
+            self._track_capture_arrays(out)
             self.runtime.core.wp_volume_get_voxels_host(self.id, out.ptr)
         else:
             self.runtime.core.wp_volume_get_voxels_device(self.id, out.ptr)
@@ -7352,6 +8012,13 @@ class Volume:
         translation_buf = (ctypes.c_float * 3)(translation[0], translation[1], translation[2])
         return transform_buf, translation_buf
 
+    def _track_capture_arrays(self, *arrays):
+        """Keep the arrays a CPU graph records for this volume alive for the graph's lifetime."""
+        apic_capture = warp._src.context._get_apic_capture_for_device(self.device)
+        if apic_capture is not None:
+            for arr in arrays:
+                apic_capture.track_array(arr)
+
     def _grid_transform_buffers(self):
         grid_info = self.get_grid_info()
         return Volume._fill_transform_buffers(None, grid_info.translation, grid_info.transform_matrix)
@@ -7420,9 +8087,11 @@ class Volume:
         reserved capacities and :meth:`get_active_stats` to inspect the current active topology.
 
         Rebuildable CUDA volumes can be allocated during CUDA graph capture when CUDA memory-pool allocation is
-        supported and enabled. Exact, non-rebuildable volume allocation is not graph-capture safe because determining
-        the exact topology size requires device synchronization. Active-topology queries such as
-        :meth:`get_active_stats` must also be performed outside graph capture.
+        supported and enabled. Rebuildable CPU volumes can be allocated during CPU graph capture: the storage is
+        reserved at capture time, and the topology is built from the points on every replay. Exact, non-rebuildable
+        volume allocation is not graph-capture safe because determining the exact topology size requires device
+        synchronization. Active-topology queries such as :meth:`get_active_stats` must also be performed outside
+        graph capture.
 
         Args:
             tile_points (:class:`warp.array`): Array of positions that define the tiles to be allocated.
@@ -7458,6 +8127,7 @@ class Volume:
             ValueError: If neither ``voxel_size`` nor ``transform`` is provided.
             ValueError: If both ``voxel_size`` and ``transform`` are provided.
             ValueError: If a rebuild capacity is not positive or does not fit in ``uint32``.
+            NotImplementedError: If a non-rebuildable volume is allocated during CPU graph capture.
 
         """
         device = warp.get_device(device)
@@ -7475,6 +8145,8 @@ class Volume:
 
         transform_buf, translation_buf = Volume._fill_transform_buffers(voxel_size, translation, transform)
         rebuildable = rebuildable or max_tiles is not None or max_lower_nodes is not None or max_upper_nodes is not None
+        if not rebuildable:
+            warp._src.context._raise_if_cpu_capturing(device, "wp.Volume.allocate_by_tiles() without rebuild capacity")
         status = _volume_rebuild_status_array(status, device) if rebuildable and status is not None else None
         max_tiles_c = _volume_rebuild_capacity(max_tiles, tile_points.shape[0], "max_tiles") if rebuildable else 0
         max_lower_nodes_c = (
@@ -7486,6 +8158,10 @@ class Volume:
         status_ptr = ctypes.c_void_p(status.ptr) if status is not None else ctypes.c_void_p(0)
         point_mask = _volume_point_mask_array(point_mask, tile_points.shape[0], device)
         point_mask_ptr = ctypes.c_void_p(0 if point_mask is None else point_mask.ptr)
+
+        if rebuildable and device.is_cpu:
+            # Under CPU graph capture, the native allocation records its rebuild from these arrays.
+            volume._track_capture_arrays(tile_points, point_mask, status)
 
         if bg_value is None:
             if volume.device.is_cuda:
@@ -7629,9 +8305,11 @@ class Volume:
         reserved capacities and :meth:`get_active_stats` to inspect the current active topology.
 
         Rebuildable CUDA volumes can be allocated during CUDA graph capture when CUDA memory-pool allocation is
-        supported and enabled. Exact, non-rebuildable volume allocation is not graph-capture safe because determining
-        the exact topology size requires device synchronization. Active-topology queries such as
-        :meth:`get_active_stats` must also be performed outside graph capture.
+        supported and enabled. Rebuildable CPU volumes can be allocated during CPU graph capture: the storage is
+        reserved at capture time, and the topology is built from the points on every replay. Exact, non-rebuildable
+        volume allocation is not graph-capture safe because determining the exact topology size requires device
+        synchronization. Active-topology queries such as :meth:`get_active_stats` must also be performed outside
+        graph capture.
 
         Unspecified node capacities use conservative sparse-grid defaults. In particular, ``max_leaf_nodes`` defaults
         to ``max_active_voxels`` because arbitrary voxel points can place one active voxel in each leaf node. For dense
@@ -7668,6 +8346,7 @@ class Volume:
             ValueError: If neither ``voxel_size`` nor ``transform`` is provided.
             ValueError: If both ``voxel_size`` and ``transform`` are provided.
             ValueError: If a rebuild capacity is not positive or does not fit in ``uint32``.
+            NotImplementedError: If a non-rebuildable volume is allocated during CPU graph capture.
         """
         device = warp.get_device(device)
 
@@ -7691,6 +8370,8 @@ class Volume:
             or max_upper_nodes is not None
         )
 
+        if not rebuildable:
+            warp._src.context._raise_if_cpu_capturing(device, "wp.Volume.allocate_by_voxels() without rebuild capacity")
         status = _volume_rebuild_status_array(status, device) if rebuildable and status is not None else None
         max_active_voxels_c = (
             _volume_rebuild_capacity(max_active_voxels, voxel_points.shape[0], "max_active_voxels")
@@ -7709,6 +8390,10 @@ class Volume:
         status_ptr = ctypes.c_void_p(status.ptr) if status is not None else ctypes.c_void_p(0)
         point_mask = _volume_point_mask_array(point_mask, voxel_points.shape[0], device)
         point_mask_ptr = ctypes.c_void_p(0 if point_mask is None else point_mask.ptr)
+
+        if rebuildable and device.is_cpu:
+            # Under CPU graph capture, the native allocation records its rebuild from these arrays.
+            volume._track_capture_arrays(voxel_points, point_mask, status)
 
         if volume.device.is_cuda:
             volume.id = volume.runtime.core.wp_volume_from_active_voxels_device(
@@ -7753,6 +8438,7 @@ class Volume:
                 max_lower_nodes_c,
                 max_upper_nodes_c,
             )
+
         return volume
 
     def rebuild(self, points: array, status: array | None = None, point_mask: array | None = None) -> array | None:
@@ -7775,6 +8461,11 @@ class Volume:
 
         Returns:
             The ``status`` array if one was provided, otherwise ``None``.
+
+        Note:
+            Under a CPU graph capture the rebuild is recorded and re-run on replay against the current ``points``,
+            ``point_mask``, and ``status``. Such a graph is replay-only and cannot be serialized with
+            :func:`warp.capture_save`.
 
         Raises:
             RuntimeError: If the volume is not rebuildable.
@@ -7809,6 +8500,8 @@ class Volume:
         point_mask_ptr = ctypes.c_void_p(0 if point_mask is None else point_mask.ptr)
         in_world_space = type_scalar_type(tile_points.dtype) is float32
         transform_buf, translation_buf = self._grid_transform_buffers()
+        if self.device.is_cpu:
+            self._track_capture_arrays(tile_points, point_mask, status)
 
         if self.is_index:
             if self.device.is_cuda:
@@ -7887,6 +8580,8 @@ class Volume:
         point_mask_ptr = ctypes.c_void_p(0 if point_mask is None else point_mask.ptr)
         in_world_space = type_scalar_type(voxel_points.dtype) is float32
         transform_buf, translation_buf = self._grid_transform_buffers()
+        if self.device.is_cpu:
+            self._track_capture_arrays(voxel_points, point_mask, status)
 
         if self.device.is_cuda:
             self.runtime.core.wp_volume_rebuild_from_active_voxels_device(
@@ -8089,7 +8784,8 @@ class HashGrid:
         """Class representing a hash grid object for accelerated point queries.
 
         Attributes:
-            id: Unique identifier for this hash grid object, can be passed to kernels.
+            id: Object ID to pass to kernel parameters and struct fields of type :class:`warp.handle`.
+              Keep this hash grid alive while its ID is in use.
             device: Device this object lives on, all buffers must live on the same device.
             dtype: Scalar data type (float16, float32, or float64).
 
@@ -8371,13 +9067,26 @@ def infer_argument_types(args: list[Any], template_types, arg_names: list[str] |
         arg = args[i]
         arg_type = type(arg)
         arg_name = arg_names[i] if arg_names else str(i)
-        if arg_type in array_types:
-            arg_types.append(arg_type(dtype=arg.dtype, ndim=arg.ndim))
+        if arg_type is int or arg_type is float or arg_type is builtins.bool:
+            arg_types.append(type_to_warp(arg_type))
+            continue
+        try:
+            family = None if issubclass(arg_type, _ArrayAnnotationBase) else _resolve_array_family(arg)
+        except TypeError as error:
+            raise TypeError(f"Unable to infer the type of argument '{arg_name}': {error}") from error
+        if family is not None:
+            annotation_cls = _ARRAY_ANNOTATION_MAP.get(family)
+            if annotation_cls is not None:
+                arg_types.append(annotation_cls(arg.dtype, arg.ndim))
+            else:
+                # A fixedarray has the type code of a regular array but a different native layout.
+                # Reject host values before they can register a colliding specialization.
+                raise TypeError(
+                    f"Unable to infer the type of argument '{arg_name}', got a wp.fixedarray, "
+                    "a compiler-only type for stack arrays inside kernels"
+                )
         elif arg_type in scalar_and_bool_types:
             arg_types.append(arg_type)
-        elif arg_type in (int, float, builtins.bool):
-            # canonicalize type
-            arg_types.append(type_to_warp(arg_type))
         elif hasattr(arg_type, "_wp_scalar_type_"):
             # vector/matrix type
             arg_types.append(arg_type)
@@ -8390,7 +9099,12 @@ def infer_argument_types(args: list[Any], template_types, arg_names: list[str] |
             # allow passing None for arrays
             t = template_types[i]
             if is_array(t):
-                arg_types.append(type(t)(dtype=t.dtype, ndim=t.ndim))
+                family = concrete_array_type(t)
+                annotation_cls = _ARRAY_ANNOTATION_MAP.get(family)
+                if annotation_cls is not None:
+                    arg_types.append(annotation_cls(t.dtype, t.ndim))
+                else:
+                    arg_types.append(family(dtype=t.dtype, shape=t.shape))
             else:
                 raise TypeError(f"Unable to infer the type of argument '{arg_name}', got None")
         else:
@@ -8460,20 +9174,9 @@ def is_builtin_callable_annotation(annotation) -> bool:
 def get_type_code(arg_type) -> str:
     if arg_type is Any:
         # special case for generics
-        # note: since Python 3.11 Any is a type, so we check for it first
         return "?"
     elif is_warp_function_annotation(arg_type):
         return "c"
-    elif (
-        sys.version_info < (3, 11)
-        and hasattr(types, "GenericAlias")
-        and isinstance(arg_type, types.GenericAlias)
-        and arg_type.__origin__ is tuple
-    ):
-        # Handle tuple[...] on Python <= 3.10 where it creates types.GenericAlias
-        # This must come before isinstance(arg_type, type) check
-        arg_types = arg_type.__args__
-        return f"tpl{len(arg_types)}{''.join(get_type_code(x) for x in arg_types)}"
     elif get_origin(arg_type) is Union or isinstance(arg_type, types.UnionType):
         raise TypeError(
             "Union type annotations are only supported at Python scope and are invalid in Warp kernels/functions"

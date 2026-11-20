@@ -10,8 +10,7 @@
 
     The llvm-sdk-* tag namespace is deliberate. It avoids v*, which is reserved for Warp product
     releases and is what the product-release and CodeQL workflows trigger on, so an SDK release
-    can never fire them. Bumping the SDK means editing the tag here and the matching block in
-    docker/warp-builder/Dockerfile; the two must always name the same release.
+    can never fire them.
 
     Do not delete this tag to tidy the tag list. Deleting the git tag of a published GitHub
     release reverts that release to a draft, and draft assets require authentication, so every

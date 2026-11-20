@@ -141,6 +141,7 @@ Introductory Examples
  - ``example_taylor_green.py``: 2D Taylor-Green vortex using mixed Taylor-Hood elements with semi-Lagrangian advection and BDF2 time integration
  - ``example_kelvin_helmholtz.py``: 2D Kelvin-Helmholtz instability using Discontinuous Galerkin for compressible Euler equations with Rusanov flux and positivity limiter
  - ``example_shallow_water.py``: 2D shallow water equations using Discontinuous Galerkin with Rusanov flux and positivity limiter
+ - ``example_periodic_homogenization.py``: Effective conductivity of a periodic composite from periodic correctors on grids, triangle meshes, triangle meshes deformed to fit the inclusion, or conforming adaptive grids
  - ``example_apic_fluid_multi_env.py``: Colocated multi-environment Affine
    Particle-In-Cell (APIC) fluid simulation using environment-aware particle
    quadrature and batched pressure solves
@@ -260,9 +261,109 @@ with power-of-two voxel scales. Helpers for building such geometries from hierar
 :func:`.adaptive_nanogrid_from_field` and :func:`.adaptive_nanogrid_from_hierarchy`.
 An example is provided in ``warp/examples/fem/example_adaptive_grid.py``.
 
-.. note::
-   The existence of "T-junctions" at resolution boundaries mean that usual tri-polynomial shape functions will no longer be globally
-   continuous. Discontinuous--Galerkin or similar techniques may be used to take into account the "jump" at multi-resolution faces.
+A facet is the full face of one cell. A side is an integration element that
+covers part or all of one or two adjacent cell facets. At a refinement
+interface, one coarse facet may be covered by several sides, while a side
+sample still identifies one integration element and its adjacent cell traces.
+``AdaptiveNanogrid.side_facet_incidence()`` gives the side-to-facet and
+facet-to-side mappings; construction of these arrays stays on the geometry
+device. This incidence is all that hanging-node elimination needs from the
+geometry, so other geometries that implement
+:meth:`.Geometry.side_facet_incidence` are supported as well.
+
+Continuous Lagrange spaces of any degree on a static :class:`.AdaptiveNanogrid`
+can eliminate hanging nodes at coarse-to-fine interfaces: each node of a fine
+cell lying on a coarser cell's facet takes the value of the coarse cell's
+interpolant there::
+
+   raw_basis = fem.make_polynomial_basis_space(geo, degree=2)
+   basis = fem.make_conforming_basis_space(raw_basis)
+   space = fem.make_collocated_function_space(basis, dtype=wp.vec3)
+
+The resulting space numbers only independent nodes. Its cell and side bases
+are built when ``make_conforming_basis_space()`` is called; side traces list
+each independent node of the two adjacent cells once. Use ``raw_basis`` when a boundary operation
+needs the original nodal points or ``assembly="nodal"``. Generic and dispatch
+assembly on ``space`` operate directly on the independent degrees of freedom.
+The constrained space must be reconstructed after changing the geometry.
+
+``basis.prolongation_matrix(dof_dtype)`` returns the sparse matrix ``P`` that
+maps independent degrees of freedom to raw ones, ``u_raw = P @ u``. Its
+transpose reduces raw vectors and matrices, for instance ``P.T @ K_raw @ P``;
+:func:`warp.sparse.bsr_transposed` builds it explicitly.
+
+Nodal assembly is not available on the constrained space: hanging nodes are
+not nodes of that space, so a nodal pass over it could not see a Dirichlet
+condition that touches one. For strong Dirichlet conditions, assemble the
+projector and prescribed values with ``assembly="nodal"`` on a space built from
+``raw_basis``, then restrict them to the independent nodes::
+
+   raw_space = fem.make_collocated_function_space(raw_basis, dtype=wp.vec3)
+   raw_test = fem.make_test(raw_space, domain=boundary)
+   raw_trial = fem.make_trial(raw_space, domain=boundary)
+   raw_projector = fem.integrate(projector_form, fields={"u": raw_trial, "v": raw_test}, assembly="nodal")
+   raw_values = fem.integrate(value_form, fields={"v": raw_test}, assembly="nodal", output_dtype=wp.vec3)
+   projector = basis.reduce_dirichlet_projector(raw_projector)
+   values = basis.gather_independent_values(raw_values)
+   fem.project_linear_system(matrix, rhs, projector, values)
+
+The raw space shares ``raw_basis`` with the constrained one, so it adds little
+memory. A hanging node takes its value from its master nodes, so its own
+projector block is dropped: a Dirichlet region should contain the masters of the
+hanging nodes it constrains. ``gather_independent_values()`` picks the entry of each
+independent node from any raw nodal array and drops hanging-node entries. The
+prescribed values must be scaled like the projector, so assemble them with the
+same nodal form rather than interpolating them. The projector is not
+normalized: :func:`.project_linear_system` normalizes it by default, or call
+:func:`.normalize_dirichlet_projector` explicitly.
+
+The hanging-node prolongation is also available on its own as
+:func:`.hanging_node_prolongation`. More generally,
+:func:`.make_constrained_basis_space` builds a constrained basis from any
+scalar polynomial basis and a user-supplied sparse prolongation ``P`` with
+scalar blocks, one row per raw node and one column per independent degree of
+freedom. Each column must have an anchor: a raw node whose row is the unit
+vector of that column, which gives the node's position. Passing a constrained
+basis composes ``P`` with its prolongation, so constraints can be layered
+without nesting spaces.
+
+On constrained spaces, :obj:`.at_node` samples a node in the current cell or
+side when it holds the node's anchor or a periodic copy of it. Otherwise, as
+for the coarse masters of a hanging node seen from a fine cell, the sample is
+taken at the anchor in another element. Positions and discrete fields can be
+read there as usual, for instance ``domain(fem.at_node(v, s))``. The other test
+or trial function, however, does not follow the sample to another element: it
+evaluates to zero there. Forms such as ``u(fem.at_node(v, s)) * v(s)`` are
+therefore only meaningful while the sample stays in its original element, as on
+periodic spaces; on adaptive grids, the contributions of moved samples are lost.
+
+Periodic boundary conditions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+:func:`.periodic_prolongation` ties each node that has a copy shifted by one of
+the given translations to that copy, for one to three translations; edge and
+corner nodes resolve to a single node. The translations need not be
+perpendicular to the faces: the edge vectors of a parallelogram cell work as
+well as those of a box. It matches nodes by position, so it works on grids,
+simplex, quad and hex meshes, and nanogrids, at any polynomial degree::
+
+   raw_basis = fem.make_polynomial_basis_space(geo, degree=2)
+   P = fem.periodic_prolongation(raw_basis, translations=[wp.vec2(1.0, 0.0), wp.vec2(0.0, 1.0)])
+   basis = fem.make_constrained_basis_space(raw_basis, P)
+   space = fem.make_collocated_function_space(basis)
+
+On an :class:`.AdaptiveNanogrid`, pass the basis returned by
+:func:`.make_conforming_basis_space` to combine periodicity with hanging-node
+elimination; refinement must then match on paired faces. Only nodes with a
+partner at ``x - T`` are tied: :func:`.periodic_prolongation` does not check
+that paired faces match, and nodes without a partner stay independent.
+
+The geometry is unchanged: paired faces remain boundary sides. Continuous
+Galerkin forms need no boundary term there, since contributions from paired
+faces cancel, but jumps and discontinuous Galerkin terms do not cross the seam
+and positions are not wrapped. With only periodic and natural conditions,
+scalar diffusion leaves a constant null space; pin one independent node with a
+diagonal projector, as in ``example_periodic_homogenization.py``.
 
 Memory management
 ^^^^^^^^^^^^^^^^^

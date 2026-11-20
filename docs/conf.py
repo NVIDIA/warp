@@ -133,6 +133,13 @@ nitpick_ignore_regex = [
     (r"py:obj", r"warp\.(Texture\w+|fixedarray|indexedarray|indexedfabricarray|fabricarray|fem\.).*"),
     # Members inherited from IsoSurfaceBase, listed in member tables but documented on the base class
     (r"py:obj", r"warp\.geometry\.IsoSurface(MarchingCubes|Nets)\.(resize|surface|extract)"),
+    # KrylovSolve inherits reset_stats from a private base; the user guide documents it.
+    (r"py:obj", r"warp\.optim\.linear\.KrylovSolve\.reset_stats"),
+    # MultiRHSOperator inherits these documented LinearOperator attributes.
+    (
+        "py:obj",
+        r"warp\.optim\.linear\.MultiRHSOperator\.(batch_count|batch_offsets|device|dtype|matvec|max_batch_length|scalar_type|shape)",
+    ),
     # FSAI inherits these attributes; their documentation is on LinearOperator.
     (
         r"py:obj",
@@ -281,8 +288,8 @@ autodoc_inherit_docstrings = False
 # unindented "alias of" line runs into the preceding ``.. autosummary::``
 # block and docutils reports "Explicit markup ends without a blank line".
 # Prepend a blank line so the generated reST stays well-formed. The private
-# ``_generate`` module was added in Sphinx 9, while Python <3.11 docs builds
-# still resolve to Sphinx 8 from ``uv.lock``.
+# ``_generate`` module was added in Sphinx 9. Keep the guard for environments
+# using an older Sphinx release.
 try:
     import sphinx.ext.autodoc._generate as _autodoc_generate
 except ModuleNotFoundError as e:
@@ -368,7 +375,7 @@ def _is_inherited_builtin_member(cls, member):
     return False
 
 
-def _hide_inherited_builtin_members(context):
+def _filter_class_members(context):
     module_name = context.get("module")
     object_name = context.get("objname")
     if not module_name or not object_name:
@@ -381,6 +388,13 @@ def _hide_inherited_builtin_members(context):
         return
 
     if not inspect.isclass(cls):
+        return
+
+    if cls is wp.fixedarray:
+        # fixedarray is a compiler-only type descriptor. Its inherited array API
+        # and internal vars property are not part of its public interface.
+        context["methods"] = []
+        context["attributes"] = []
         return
 
     for member_group in ("methods", "attributes"):
@@ -409,7 +423,7 @@ class AutosummaryRenderer(AutosummaryRenderer):
         context["wp_no_value"] = _is_type_var(context.get("fullname", ""))
 
         if context.get("objtype") == "class":
-            _hide_inherited_builtin_members(context)
+            _filter_class_members(context)
 
         # Autosummary classifies a `warp._src.context.Function` as data, which renders
         # its `repr()` in place of a signature.  Route the registered ones through the
@@ -496,12 +510,36 @@ intersphinx_timeout = 2
 linkcheck_anchors_ignore_for_url = [r"https://docs\.pytorch\.org/docs/stable/.*"]
 
 _sphinx_logger = sphinx.util.logging.getLogger(__name__)
+
+
+def _with_fallback_inventories(mapping, fallback_dir):
+    """Add cached inventories from ``fallback_dir`` as second locations.
+
+    CI can provide cached copies of the inventories, named ``<name>.inv``, so
+    that a slow or unreachable docs site does not fail a warnings-as-errors
+    build. Sphinx tries the URL first and reads the cached copy only if that
+    fails, which it reports at INFO level. The names must match the files CI
+    provides (``fetch-intersphinx-fallback`` in ``.gitlab/ci/common.yml``).
+    """
+    if not fallback_dir:
+        return mapping
+    result = {}
+    for name, (target_uri, inventory) in mapping.items():
+        cached = os.path.join(fallback_dir, f"{name}.inv")
+        result[name] = (target_uri, (inventory, cached)) if os.path.isfile(cached) else (target_uri, inventory)
+    with_fallback = sorted(name for name, (_, inventory) in result.items() if isinstance(inventory, tuple))
+    _sphinx_logger.info(f"intersphinx: cached fallback inventories for {', '.join(with_fallback) or 'none'}")
+    return result
+
+
 # WARP_DOCS_OFFLINE=1 skips external resolution entirely for known-offline builds.
 if os.environ.get("WARP_DOCS_OFFLINE") == "1":
     _sphinx_logger.info("intersphinx: WARP_DOCS_OFFLINE=1 set; skipping external cross-reference resolution.")
     intersphinx_mapping = {}
 else:
-    intersphinx_mapping = _intersphinx_mapping
+    intersphinx_mapping = _with_fallback_inventories(
+        _intersphinx_mapping, os.environ.get("WARP_INTERSPHINX_FALLBACK_DIR")
+    )
 
 
 # -- sphinx.ext.linkcode -----------------------------------------------------
@@ -875,6 +913,14 @@ DOC_REDIRECTS = {
     "user_guide/publications": "project/publications.html",
     "deep_dive/memory_access": "user_guide/execution_and_performance/memory_management.html",
     "user_guide/devices": "user_guide/runtime.html#devices",
+    # `warp.build_experimental` moved to `warp.experimental.build` in Warp 1.20.
+    "api_reference/warp_build_experimental": "api_reference/warp_experimental_build.html",
+    "api_reference/_generated/warp.build_experimental.add_builtin": (
+        "api_reference/_generated/warp.experimental.build.add_builtin.html"
+    ),
+    "api_reference/_generated/warp.build_experimental.add_native_type": (
+        "api_reference/_generated/warp.experimental.build.add_native_type.html"
+    ),
 }
 
 # Legacy fragments whose content moved to a different page or whose generated

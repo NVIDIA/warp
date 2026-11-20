@@ -3,7 +3,13 @@
 
 import warp as wp
 
-from ..benchmarks_utils import clear_kernel_cache
+from ..benchmarks_utils import (
+    LAUNCHES_PER_SAMPLE,
+    CudaEventTimer,
+    capture_launches,
+    clear_kernel_cache,
+    setup_once,
+)
 
 
 @wp.kernel
@@ -31,6 +37,11 @@ class CompileModule:
 
 
 class RunForwardKernel:
+    timer = CudaEventTimer()
+    repeat = 10
+    number = 1
+
+    @setup_once
     def setup(self):
         wp.init()
         wp.load_module(device="cuda:0")
@@ -38,22 +49,23 @@ class RunForwardKernel:
         N = (1024, 1024)
         self.x = wp.ones(N, dtype=float, device="cuda:0")
         self.y = wp.ones(N, dtype=float, device="cuda:0")
-
+        self.graph = capture_launches(
+            lambda: wp.launch(array2d_augassign_kernel, self.x.shape, inputs=[self.x, self.y], device="cuda:0"),
+            LAUNCHES_PER_SAMPLE,
+        )
+        wp.capture_launch(self.graph)
         wp.synchronize_device("cuda:0")
 
-    def track_cuda(self):
-        with wp.ScopedTimer("benchmark", print=False, cuda_filter=wp.TIMING_KERNEL, synchronize=True) as timer:
-            for _ in range(1000):
-                wp.launch(array2d_augassign_kernel, self.x.shape, inputs=[self.x, self.y], device="cuda:0")
-
-        average = sum(result.elapsed for result in timer.timing_results) / len(timer.timing_results)
-
-        return average * 1e-3
-
-    track_cuda.unit = "seconds"
+    def time_cuda(self):
+        wp.capture_launch(self.graph)
 
 
 class RunBackwardKernel:
+    timer = CudaEventTimer()
+    repeat = 10
+    number = 1
+
+    @setup_once
     def setup(self):
         wp.init()
         wp.load_module(device="cuda:0")
@@ -61,24 +73,20 @@ class RunBackwardKernel:
         N = (1024, 1024)
         self.x = wp.ones(N, dtype=float, device="cuda:0", requires_grad=True)
         self.y = wp.ones(N, dtype=float, device="cuda:0", requires_grad=True)
-
+        self.graph = capture_launches(
+            lambda: wp.launch(
+                array2d_augassign_kernel,
+                self.x.shape,
+                inputs=[self.x, self.y],
+                adj_inputs=[self.x.grad, self.y.grad],
+                adj_outputs=[],
+                adjoint=True,
+                device="cuda:0",
+            ),
+            LAUNCHES_PER_SAMPLE,
+        )
+        wp.capture_launch(self.graph)
         wp.synchronize_device("cuda:0")
 
-    def track_cuda(self):
-        with wp.ScopedTimer("benchmark", print=False, cuda_filter=wp.TIMING_KERNEL, synchronize=True) as timer:
-            for _ in range(1000):
-                wp.launch(
-                    array2d_augassign_kernel,
-                    self.x.shape,
-                    inputs=[self.x, self.y],
-                    adj_inputs=[self.x.grad, self.y.grad],
-                    adj_outputs=[],
-                    adjoint=True,
-                    device="cuda:0",
-                )
-
-        average = sum(result.elapsed for result in timer.timing_results) / len(timer.timing_results)
-
-        return average * 1e-3
-
-    track_cuda.unit = "seconds"
+    def time_cuda(self):
+        wp.capture_launch(self.graph)

@@ -160,6 +160,8 @@ class TetrahedronShapeFunction(ShapeFunction):
 class TetrahedronPolynomialShapeFunctions(TetrahedronShapeFunction):
     """Polynomial Lagrange shape functions on tetrahedral elements."""
 
+    INTERPOLATORY = True
+
     def __init__(self, degree: int, scalar_type: type = wp.float32):
         self.scalar_type = scalar_type
         self.CoordsType = cached_coords_type(scalar_type)
@@ -535,6 +537,8 @@ class TetrahedronPolynomialShapeFunctions(TetrahedronShapeFunction):
 
 class TetrahedronNonConformingPolynomialShapeFunctions(ShapeFunction):
     """Non-conforming polynomial shape functions on tetrahedral elements."""
+
+    INTERPOLATORY = True
 
     def __init__(self, degree: int, scalar_type: type = wp.float32):
         self.scalar_type = scalar_type
