@@ -1540,7 +1540,9 @@ def func(
             Warp infers the module from ``f``. Pass ``"unique"`` to create a
             new module, or a string to register the function in a named module.
         inline: Whether the function is inlined into its call sites. ``None``
-            leaves the choice to the backend compiler. ``True`` requires
+            leaves the choice to the backend compiler, except that CUDA
+            functions with Warp struct arguments are inlined to avoid invalid
+            parameter loads during compiler optimization. ``True`` requires
             inlining (CUDA ``__forceinline__``), overriding the compiler's own
             heuristic. ``False`` keeps the function out of line (CUDA
             ``__noinline__``).
@@ -3333,6 +3335,13 @@ class ModuleHasher:
             # the inline hint changes the generated C++/CUDA, so it belongs in the cache key
             if ovl.inline_hint:
                 ch.update(bytes(ovl.inline_hint, "utf-8"))
+            for function in (ovl, ovl.custom_grad_func, ovl.custom_replay_func):
+                if function is not None:
+                    cuda_inline_hint = warp._src.codegen.get_func_inline_hint(
+                        function.inline_hint, function.input_types.values(), "cuda"
+                    )
+                    if cuda_inline_hint != function.inline_hint:
+                        ch.update(bytes(f"cuda:{cuda_inline_hint}", "utf-8"))
 
         h = ch.digest()
 
