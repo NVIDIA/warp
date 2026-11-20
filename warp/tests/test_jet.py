@@ -1,12 +1,16 @@
 # SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import threading
 import unittest
+import unittest.mock
 from typing import Any
 
 import numpy as np
 
 import warp as wp
+import warp._src.jet as jet_module
+from warp._src.codegen import _codegen_lock
 from warp.tests.unittest_utils import *
 
 # Two local variables per term, so width 2 seeds the identity and one forward
@@ -383,6 +387,68 @@ class TestJetSpace(unittest.TestCase):
         wp.JetSpace2(29, dtype=wp.float16)
         self.assertEqual(module_hash(), before)
 
+    def test_concurrent_space_creation_registers_once(self):
+        """Create one jet space from two overlapping threads and register its overloads once."""
+        add = wp._src.context.builtin_functions["add"]
+        # Widths no other test uses, so both spaces are created here.
+        before = len(add.overloads)
+        wp.JetSpace(31, dtype=wp.float64)
+        per_space = len(add.overloads) - before
+
+        make_jet_space = jet_module._make_jet_space
+        first_is_building = threading.Event()
+        resume_first = threading.Event()
+        build_count = 0
+
+        # Pause the first creator inside the build so the second one overlaps it deterministically.
+        def pausing_make_jet_space(width, dtype):
+            nonlocal build_count
+            build_count += 1
+            if build_count == 1:
+                first_is_building.set()
+                if not resume_first.wait(timeout=5.0):
+                    raise TimeoutError("Timed out waiting to resume the first jet space creator.")
+            return make_jet_space(width, dtype)
+
+        spaces = [None, None]
+        errors = []
+
+        def create(index):
+            try:
+                spaces[index] = wp.JetSpace(29, dtype=wp.float64)
+            except Exception as error:
+                errors.append(error)
+
+        before = len(add.overloads)
+        with unittest.mock.patch.object(jet_module, "_make_jet_space", pausing_make_jet_space):
+            first = threading.Thread(target=create, args=(0,))
+            second = threading.Thread(target=create, args=(1,))
+            first.start()
+            try:
+                self.assertTrue(first_is_building.wait(timeout=5.0), "The first creator did not start building.")
+
+                # The first creator must hold the codegen lock while it builds and caches the space.
+                acquired = _codegen_lock.acquire(blocking=False)
+                if acquired:
+                    _codegen_lock.release()
+                self.assertFalse(acquired, "Jet space creation does not hold the codegen lock while building.")
+
+                second.start()
+            finally:
+                resume_first.set()
+                first.join(timeout=5.0)
+                if second.ident is not None:
+                    second.join(timeout=5.0)
+            self.assertFalse(first.is_alive(), "The first creator did not finish.")
+            self.assertFalse(second.is_alive(), "The second creator did not finish.")
+
+        if errors:
+            raise errors[0]
+
+        self.assertEqual(build_count, 1)
+        self.assertEqual(len(add.overloads) - before, per_space)
+        self.assertIs(spaces[0], spaces[1])
+
     def test_jet_space_is_cached(self):
         """Check that repeating a (width, dtype) request returns the cached space."""
         self.assertIs(wp.JetSpace(2), J2)
@@ -452,7 +518,7 @@ class TestJetSpace(unittest.TestCase):
 
     def test_jet_space_rejects_unsupported_slots(self):
         """Check slot types without a jet type are rejected, as is an empty layout."""
-        for slot in (wp.vec4, wp.vec3i, wp.quat, int, "vec3"):
+        for slot in (wp.vec4, wp.vec3i, int, "vec3"):
             with self.subTest(slot=slot), self.assertRaises(TypeError):
                 wp.JetSpace((slot, wp.vec3))
 

@@ -88,12 +88,17 @@ import linecache
 import numbers
 import operator
 from types import SimpleNamespace
+from typing import Any
 
 import warp as wp
 import warp._src.context
-from warp._src.types import float_types, matrix, vector
+from warp._src.codegen import _codegen_lock
+from warp._src.types import float_types, matrix, quaternion, type_is_quaternion, vector
 
 # Specialized namespaces, keyed by (width, dtype): first order and second order.
+# Creating a space adds overloads to shared builtins such as ``add``, so it holds the
+# codegen lock: kernel builds resolve those overloads under the same lock, and two
+# threads creating the same space cannot both register it.
 _CACHE = {}
 _CACHE2 = {}
 
@@ -145,6 +150,37 @@ def _component_index(i: int, n: int) -> int:
     if i < 0:
         return i + n
     return i
+
+
+# Quaternion formulas shared by both jet orders. They take the components as
+# separate arguments, any of which may be plain floats or scalar jets, so one
+# definition serves jet/jet and mixed jet/plain operands at either order. Each
+# follows Warp's native quat_t formula term by term, so the values match the
+# native operation's.
+
+
+@wp.func
+def _quat_mul_parts(ax: Any, ay: Any, az: Any, aw: Any, bx: Any, by: Any, bz: Any, bw: Any):
+    # The Hamilton product a * b, as native mul(quat_t, quat_t).
+    return (
+        aw * bx + bw * ax + ay * bz - by * az,
+        aw * by + bw * ay + az * bx - bz * ax,
+        aw * bz + bw * az + ax * by - bx * ay,
+        aw * bw - ax * bx - ay * by - az * bz,
+    )
+
+
+@wp.func
+def _quat_rotate_parts(qx: Any, qy: Any, qz: Any, qw: Any, x0: Any, x1: Any, x2: Any, sign: Any, one: Any, two: Any):
+    # quat_rotate (sign = +1) and quat_rotate_inv (sign = -1), as native, which
+    # assume a unit quaternion.
+    c = two * qw * qw - one
+    d = two * (qx * x0 + qy * x1 + qz * x2)
+    return (
+        x0 * c + qx * d + sign * ((qy * x2 - qz * x1) * qw * two),
+        x1 * c + qy * d + sign * ((qz * x0 - qx * x2) * qw * two),
+        x2 * c + qz * d + sign * ((qx * x1 - qy * x0) * qw * two),
+    )
 
 
 def _make_jet_space(width: int, dtype):
@@ -2183,6 +2219,328 @@ def _make_jet_space(width: int, dtype):
     def scalar_value(x: JetScalar) -> dtype:
         return x.value
 
+    # ------------------------------------------------------------------
+    # Quaternions
+    #
+    # A jet quaternion carries the components x, y, z, w (Warp's storage order)
+    # and their derivatives. It is not normalized automatically: seeding a quat
+    # slot differentiates in the full 4-D space, while seeding a vec3 tangent and
+    # mapping it through exp_map() differentiates along unit rotations.
+    # ------------------------------------------------------------------
+
+    NativeQuat = quaternion(dtype)
+    GradQuat = matrix((4, width), dtype)
+
+    @wp.struct
+    class JetQuat:
+        value: NativeQuat
+        grad: GradQuat
+
+    @wp.func
+    def quat_component(q: JetQuat, k: int) -> JetScalar:
+        c = Grad()
+        for j in range(wp.static(width)):
+            c[j] = q.grad[k, j]
+        return JetScalar(q.value[k], c)
+
+    @wp.func
+    def quat_from_scalars(x: JetScalar, y: JetScalar, z: JetScalar, w: JetScalar) -> JetQuat:
+        g = GradQuat()
+        for j in range(wp.static(width)):
+            g[0, j] = x.grad[j]
+            g[1, j] = y.grad[j]
+            g[2, j] = z.grad[j]
+            g[3, j] = w.grad[j]
+        return JetQuat(NativeQuat(x.value, y.value, z.value, w.value), g)
+
+    @wp.func
+    def quat_constant(q: NativeQuat) -> JetQuat:
+        return JetQuat(q, GradQuat())
+
+    @wp.func
+    def jet_extract(q: JetQuat, i: int) -> JetScalar:
+        return quat_component(q, _component_index(i, 4))
+
+    @wp.func
+    def jet_add(a: JetQuat, b: JetQuat) -> JetQuat:
+        return JetQuat(a.value + b.value, a.grad + b.grad)
+
+    @wp.func
+    def jet_add(a: JetQuat, b: NativeQuat) -> JetQuat:
+        return JetQuat(a.value + b, a.grad)
+
+    @wp.func
+    def jet_add(a: NativeQuat, b: JetQuat) -> JetQuat:
+        return JetQuat(a + b.value, b.grad)
+
+    @wp.func
+    def jet_sub(a: JetQuat, b: JetQuat) -> JetQuat:
+        return JetQuat(a.value - b.value, a.grad - b.grad)
+
+    @wp.func
+    def jet_sub(a: JetQuat, b: NativeQuat) -> JetQuat:
+        return JetQuat(a.value - b, a.grad)
+
+    @wp.func
+    def jet_sub(a: NativeQuat, b: JetQuat) -> JetQuat:
+        return JetQuat(a - b.value, -b.grad)
+
+    @wp.func
+    def jet_neg(q: JetQuat) -> JetQuat:
+        return JetQuat(-q.value, -q.grad)
+
+    @wp.func
+    def jet_mul(q: JetQuat, s: dtype) -> JetQuat:
+        return JetQuat(q.value * s, q.grad * s)
+
+    @wp.func
+    def jet_mul(s: dtype, q: JetQuat) -> JetQuat:
+        return JetQuat(s * q.value, s * q.grad)
+
+    @wp.func
+    def jet_mul(q: JetQuat, s: JetScalar) -> JetQuat:
+        return quat_from_scalars(
+            quat_component(q, 0) * s, quat_component(q, 1) * s, quat_component(q, 2) * s, quat_component(q, 3) * s
+        )
+
+    @wp.func
+    def jet_mul(s: JetScalar, q: JetQuat) -> JetQuat:
+        return jet_mul(q, s)
+
+    @wp.func
+    def jet_mul(q: NativeQuat, s: JetScalar) -> JetQuat:
+        # A constant quaternion scaled by a jet, e.g. the endpoints of (1 - t) * q0 + t * q1.
+        return quat_from_scalars(s * q[0], s * q[1], s * q[2], s * q[3])
+
+    @wp.func
+    def jet_mul(s: JetScalar, q: NativeQuat) -> JetQuat:
+        return jet_mul(q, s)
+
+    @wp.func
+    def jet_mul(a: JetQuat, b: JetQuat) -> JetQuat:
+        x, y, z, w = _quat_mul_parts(
+            quat_component(a, 0),
+            quat_component(a, 1),
+            quat_component(a, 2),
+            quat_component(a, 3),
+            quat_component(b, 0),
+            quat_component(b, 1),
+            quat_component(b, 2),
+            quat_component(b, 3),
+        )
+        return quat_from_scalars(x, y, z, w)
+
+    @wp.func
+    def jet_mul(a: JetQuat, b: NativeQuat) -> JetQuat:
+        x, y, z, w = _quat_mul_parts(
+            quat_component(a, 0),
+            quat_component(a, 1),
+            quat_component(a, 2),
+            quat_component(a, 3),
+            b[0],
+            b[1],
+            b[2],
+            b[3],
+        )
+        return quat_from_scalars(x, y, z, w)
+
+    @wp.func
+    def jet_mul(a: NativeQuat, b: JetQuat) -> JetQuat:
+        x, y, z, w = _quat_mul_parts(
+            a[0],
+            a[1],
+            a[2],
+            a[3],
+            quat_component(b, 0),
+            quat_component(b, 1),
+            quat_component(b, 2),
+            quat_component(b, 3),
+        )
+        return quat_from_scalars(x, y, z, w)
+
+    @wp.func
+    def _rotate(q: JetQuat, x: JetVec3, sign: dtype) -> JetVec3:
+        r0, r1, r2 = _quat_rotate_parts(
+            quat_component(q, 0),
+            quat_component(q, 1),
+            quat_component(q, 2),
+            quat_component(q, 3),
+            jet_extract(x, 0),
+            jet_extract(x, 1),
+            jet_extract(x, 2),
+            sign,
+            dtype(1.0),
+            dtype(2.0),
+        )
+        return vec3_from_scalars(r0, r1, r2)
+
+    @wp.func
+    def _rotate(q: JetQuat, x: NativeVec3, sign: dtype) -> JetVec3:
+        r0, r1, r2 = _quat_rotate_parts(
+            quat_component(q, 0),
+            quat_component(q, 1),
+            quat_component(q, 2),
+            quat_component(q, 3),
+            x[0],
+            x[1],
+            x[2],
+            sign,
+            dtype(1.0),
+            dtype(2.0),
+        )
+        return vec3_from_scalars(r0, r1, r2)
+
+    @wp.func
+    def _rotate(q: NativeQuat, x: JetVec3, sign: dtype) -> JetVec3:
+        r0, r1, r2 = _quat_rotate_parts(
+            q[0],
+            q[1],
+            q[2],
+            q[3],
+            jet_extract(x, 0),
+            jet_extract(x, 1),
+            jet_extract(x, 2),
+            sign,
+            dtype(1.0),
+            dtype(2.0),
+        )
+        return vec3_from_scalars(r0, r1, r2)
+
+    @wp.func
+    def jet_quat_rotate(q: JetQuat, x: JetVec3) -> JetVec3:
+        return _rotate(q, x, dtype(1.0))
+
+    @wp.func
+    def jet_quat_rotate(q: JetQuat, x: NativeVec3) -> JetVec3:
+        return _rotate(q, x, dtype(1.0))
+
+    @wp.func
+    def jet_quat_rotate(q: NativeQuat, x: JetVec3) -> JetVec3:
+        return _rotate(q, x, dtype(1.0))
+
+    @wp.func
+    def jet_quat_rotate_inv(q: JetQuat, x: JetVec3) -> JetVec3:
+        return _rotate(q, x, dtype(-1.0))
+
+    @wp.func
+    def jet_quat_rotate_inv(q: JetQuat, x: NativeVec3) -> JetVec3:
+        return _rotate(q, x, dtype(-1.0))
+
+    @wp.func
+    def jet_quat_rotate_inv(q: NativeQuat, x: JetVec3) -> JetVec3:
+        return _rotate(q, x, dtype(-1.0))
+
+    @wp.func
+    def jet_quat_inverse(q: JetQuat) -> JetQuat:
+        return quat_from_scalars(
+            -quat_component(q, 0), -quat_component(q, 1), -quat_component(q, 2), quat_component(q, 3)
+        )
+
+    @wp.func
+    def jet_quat_from_axis_angle(axis: JetVec3, angle: JetScalar) -> JetQuat:
+        half = angle * dtype(0.5)
+        s = jet_sin(half)
+        return quat_from_scalars(
+            jet_extract(axis, 0) * s, jet_extract(axis, 1) * s, jet_extract(axis, 2) * s, jet_cos(half)
+        )
+
+    @wp.func
+    def jet_quat_from_axis_angle(axis: NativeVec3, angle: JetScalar) -> JetQuat:
+        half = angle * dtype(0.5)
+        s = jet_sin(half)
+        return quat_from_scalars(axis[0] * s, axis[1] * s, axis[2] * s, jet_cos(half))
+
+    @wp.func
+    def jet_quat_from_axis_angle(axis: JetVec3, angle: dtype) -> JetQuat:
+        half = angle * dtype(0.5)
+        s = wp.sin(half)
+        return quat_from_scalars(
+            jet_extract(axis, 0) * s, jet_extract(axis, 1) * s, jet_extract(axis, 2) * s, scalar_constant(wp.cos(half))
+        )
+
+    @wp.func
+    def jet_dot(a: JetQuat, b: JetQuat) -> JetScalar:
+        return (
+            quat_component(a, 0) * quat_component(b, 0)
+            + quat_component(a, 1) * quat_component(b, 1)
+            + quat_component(a, 2) * quat_component(b, 2)
+            + quat_component(a, 3) * quat_component(b, 3)
+        )
+
+    @wp.func
+    def jet_dot(a: JetQuat, b: NativeQuat) -> JetScalar:
+        return (
+            quat_component(a, 0) * b[0]
+            + quat_component(a, 1) * b[1]
+            + quat_component(a, 2) * b[2]
+            + quat_component(a, 3) * b[3]
+        )
+
+    @wp.func
+    def jet_dot(a: NativeQuat, b: JetQuat) -> JetScalar:
+        return jet_dot(b, a)
+
+    @wp.func
+    def jet_length_sq(q: JetQuat) -> JetScalar:
+        return jet_dot(q, q)
+
+    @wp.func
+    def jet_length(q: JetQuat) -> JetScalar:
+        # As for vectors: a zero quaternion has a zero gradient, like native length(),
+        # and a NaN length stays NaN.
+        length_sq = jet_dot(q, q)
+        if length_sq.value == dtype(0.0):
+            return JetScalar(dtype(0.0), Grad())
+        return jet_sqrt(length_sq)
+
+    @wp.func
+    def jet_normalize(q: JetQuat) -> JetQuat:
+        # Like native normalize(quat), a quaternion whose length is not positive (zero
+        # or NaN) normalizes to the identity rotation, with zero derivatives.
+        length_sq = jet_dot(q, q)
+        if length_sq.value > dtype(0.0):
+            length = jet_sqrt(length_sq)
+            return quat_from_scalars(
+                quat_component(q, 0) / length,
+                quat_component(q, 1) / length,
+                quat_component(q, 2) / length,
+                quat_component(q, 3) / length,
+            )
+        return quat_constant(NativeQuat(dtype(0.0), dtype(0.0), dtype(0.0), dtype(1.0)))
+
+    @wp.func
+    def quat_exp_map(v: JetVec3) -> JetQuat:
+        # The unit quaternion of rotation vector v: [v sin(|v|/2) / |v|, cos(|v|/2)].
+        # Both factors are smooth functions of s = |v|^2. Near s = 0 they are
+        # evaluated by their series, exactly in jet arithmetic; elsewhere by the
+        # closed form, which divides by |v| and is only evaluated when |v| > 0, so
+        # that reverse mode through the jet stays finite at the origin as well.
+        s = jet_dot(v, v)
+        s2 = s * s
+        s3 = s2 * s
+        cos_half = (
+            scalar_constant(dtype(1.0)) + s * dtype(-1.0 / 8.0) + s2 * dtype(1.0 / 384.0) + s3 * dtype(-1.0 / 46080.0)
+        )
+        sinc_half = (
+            scalar_constant(dtype(0.5))
+            + s * dtype(-1.0 / 48.0)
+            + s2 * dtype(1.0 / 3840.0)
+            + s3 * dtype(-1.0 / 645120.0)
+        )
+        if s.value >= dtype(1.0e-3):
+            angle = jet_sqrt(s)
+            half = angle * dtype(0.5)
+            cos_half = jet_cos(half)
+            sinc_half = jet_sin(half) / angle
+        return quat_from_scalars(
+            jet_extract(v, 0) * sinc_half, jet_extract(v, 1) * sinc_half, jet_extract(v, 2) * sinc_half, cos_half
+        )
+
+    _register("quat_rotate", jet_quat_rotate)
+    _register("quat_rotate_inv", jet_quat_rotate_inv)
+    _register("quat_inverse", jet_quat_inverse)
+    _register("quat_from_axis_angle", jet_quat_from_axis_angle)
+
     _register("value", scalar_value)
 
     _register("add", jet_add)
@@ -2284,8 +2642,15 @@ def _make_jet_space(width: int, dtype):
         make_mat32=mat32_from_cols,
         perp=jet_perp,
         cross2=jet_cross2,
+        quat=JetQuat,
+        grad_type_quat=GradQuat,
+        native_quat=NativeQuat,
+        make_quat=quat_from_scalars,
+        constant_quat=quat_constant,
+        exp_map=quat_exp_map,
         _slot_jet_types={
             "scalar": (JetScalar, Grad),
+            "quat": (JetQuat, GradQuat),
             "vec2": (JetVec2, GradVec2),
             "vec3": (JetVec3, GradVec3),
             "mat22": (JetMat22, GradMat4),
@@ -2308,8 +2673,10 @@ _SLOT_SHAPES = {
     "mat23": (2, 3),
 }
 _SHAPE_TO_KIND = {shape: kind for kind, shape in _SLOT_SHAPES.items()}
+# Quaternions are recognized by type, not shape, which they share with a 4-vector.
+_SLOT_SHAPES["quat"] = (4,)
 
-_SLOT_SUMMARY = "scalar, vec2, vec3, mat22, mat33, mat32 and mat23"
+_SLOT_SUMMARY = "scalar, vec2, vec3, quat, mat22, mat33, mat32 and mat23"
 
 # Layout-specific namespaces (what JetSpace and JetSpace2 return), keyed
 # by (order, width, dtype, slot kinds). Types and arithmetic live in _CACHE and
@@ -2355,6 +2722,10 @@ def _classify_slot(slot):
 
     shape = getattr(slot, "_shape_", None)
     scalar_dtype = getattr(slot, "_wp_scalar_type_", None)
+    if isinstance(slot, type) and type_is_quaternion(slot):
+        if scalar_dtype not in float_types:
+            raise TypeError(f"Jet slot {slot.__name__} must have a floating-point scalar type")
+        return "quat", scalar_dtype
     if shape is not None and scalar_dtype is not None and tuple(shape) in _SHAPE_TO_KIND:
         if scalar_dtype not in float_types:
             raise TypeError(f"Jet slot {slot.__name__} must have a floating-point scalar type")
@@ -2400,6 +2771,8 @@ def _normalize_slots(slots, dtype):
 
 
 def _native_slot_type(kind: str, dtype):
+    if kind == "quat":
+        return quaternion(dtype)
     shape = _SLOT_SHAPES[kind]
     if len(shape) == 0:
         return dtype
@@ -2572,9 +2945,9 @@ def JetSpace(slots, dtype=None, *, width=None):
     Args:
         slots: The inputs differentiated with respect to. Either an integer
             ``n``, meaning ``n`` scalar inputs, or a sequence of types, one per
-            input: ``wp.float32``, ``wp.vec2``, ``wp.vec3``, ``wp.mat22``,
-            ``wp.mat33``, ``wp.mat32`` or ``wp.mat23``. A spring over two nodes
-            is ``(wp.vec3, wp.vec3)``.
+            input: ``wp.float32``, ``wp.vec2``, ``wp.vec3``, ``wp.quat``,
+            ``wp.mat22``, ``wp.mat33``, ``wp.mat32`` or ``wp.mat23``. A spring
+            over two nodes is ``(wp.vec3, wp.vec3)``.
         dtype: Scalar type the jets are built on. Inferred from ``slots`` when
             they are Warp types; ``wp.float32`` when ``slots`` is an integer
             or contains only Python ``float``.
@@ -2587,10 +2960,12 @@ def JetSpace(slots, dtype=None, *, width=None):
 
     Returns:
         A namespace holding the generated jet types (``scalar``, ``vec2``,
-        ``vec3``, ``mat22``, ``mat33``, ``mat32``, ``mat23``), the type of
-        each one's ``grad`` field (``grad_type_scalar``, ``grad_type_vec2``,
-        and so on through ``grad_type_mat23``), the helpers that construct
-        jets, and ``slots``, the native type of each slot.
+        ``vec3``, ``quat``, ``mat22``, ``mat33``, ``mat32``, ``mat23``), the
+        type of each one's ``grad`` field (``grad_type_scalar``,
+        ``grad_type_vec2``, and so on through ``grad_type_mat23``), the helpers
+        that construct jets, including ``exp_map``, which maps a ``vec3``
+        rotation-vector jet to a unit quaternion jet, and ``slots``, the native
+        type of each slot.
 
     Jets are created inside a kernel or function with ``seed`` or
     ``directional``. With ``spring_energy`` an ordinary ``@wp.func`` that is
@@ -2668,12 +3043,13 @@ def JetSpace(slots, dtype=None, *, width=None):
         width = operator.index(width)
 
     key = (width, dtype)
-    base = _CACHE.get(key)
-    if base is None:
-        base = _make_jet_space(width, dtype)
-        _CACHE[key] = base
+    with _codegen_lock:
+        base = _CACHE.get(key)
+        if base is None:
+            base = _make_jet_space(width, dtype)
+            _CACHE[key] = base
 
-    return _layout_namespace(base, kinds, width, dtype, second_order=False)
+        return _layout_namespace(base, kinds, width, dtype, second_order=False)
 
 
 # ==========================================================================
@@ -3627,6 +4003,217 @@ def _make_jet_space2(width: int, dtype):
     def scalar_value(x: Jet2Scalar) -> dtype:
         return x.value
 
+    # ---- quaternions: one scalar jet per component, as for vectors ----
+
+    NativeQuat = quaternion(dtype)
+
+    @wp.struct
+    class Jet2Quat:
+        x: Jet2Scalar
+        y: Jet2Scalar
+        z: Jet2Scalar
+        w: Jet2Scalar
+
+    @wp.func
+    def quat_from_scalars(x: Jet2Scalar, y: Jet2Scalar, z: Jet2Scalar, w: Jet2Scalar) -> Jet2Quat:
+        return Jet2Quat(x, y, z, w)
+
+    @wp.func
+    def quat_constant(q: NativeQuat) -> Jet2Quat:
+        return Jet2Quat(scalar_constant(q[0]), scalar_constant(q[1]), scalar_constant(q[2]), scalar_constant(q[3]))
+
+    @wp.func
+    def jet_extract(q: Jet2Quat, i: int) -> Jet2Scalar:
+        component = wp.vec4i(0, 1, 2, 3)[i]
+        if component == 0:
+            return q.x
+        if component == 1:
+            return q.y
+        if component == 2:
+            return q.z
+        return q.w
+
+    @wp.func
+    def jet_add(a: Jet2Quat, b: Jet2Quat) -> Jet2Quat:
+        return Jet2Quat(a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w)
+
+    @wp.func
+    def jet_add(a: Jet2Quat, b: NativeQuat) -> Jet2Quat:
+        return Jet2Quat(a.x + b[0], a.y + b[1], a.z + b[2], a.w + b[3])
+
+    @wp.func
+    def jet_add(a: NativeQuat, b: Jet2Quat) -> Jet2Quat:
+        return Jet2Quat(a[0] + b.x, a[1] + b.y, a[2] + b.z, a[3] + b.w)
+
+    @wp.func
+    def jet_sub(a: Jet2Quat, b: Jet2Quat) -> Jet2Quat:
+        return Jet2Quat(a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w)
+
+    @wp.func
+    def jet_sub(a: Jet2Quat, b: NativeQuat) -> Jet2Quat:
+        return Jet2Quat(a.x - b[0], a.y - b[1], a.z - b[2], a.w - b[3])
+
+    @wp.func
+    def jet_sub(a: NativeQuat, b: Jet2Quat) -> Jet2Quat:
+        return Jet2Quat(a[0] - b.x, a[1] - b.y, a[2] - b.z, a[3] - b.w)
+
+    @wp.func
+    def jet_neg(q: Jet2Quat) -> Jet2Quat:
+        return Jet2Quat(-q.x, -q.y, -q.z, -q.w)
+
+    @wp.func
+    def jet_mul(q: Jet2Quat, s: dtype) -> Jet2Quat:
+        return Jet2Quat(q.x * s, q.y * s, q.z * s, q.w * s)
+
+    @wp.func
+    def jet_mul(s: dtype, q: Jet2Quat) -> Jet2Quat:
+        return Jet2Quat(s * q.x, s * q.y, s * q.z, s * q.w)
+
+    @wp.func
+    def jet_mul(q: Jet2Quat, s: Jet2Scalar) -> Jet2Quat:
+        return Jet2Quat(q.x * s, q.y * s, q.z * s, q.w * s)
+
+    @wp.func
+    def jet_mul(s: Jet2Scalar, q: Jet2Quat) -> Jet2Quat:
+        return Jet2Quat(s * q.x, s * q.y, s * q.z, s * q.w)
+
+    @wp.func
+    def jet_mul(q: NativeQuat, s: Jet2Scalar) -> Jet2Quat:
+        # A constant quaternion scaled by a jet, e.g. the endpoints of (1 - t) * q0 + t * q1.
+        return Jet2Quat(s * q[0], s * q[1], s * q[2], s * q[3])
+
+    @wp.func
+    def jet_mul(s: Jet2Scalar, q: NativeQuat) -> Jet2Quat:
+        return jet_mul(q, s)
+
+    @wp.func
+    def jet_mul(a: Jet2Quat, b: Jet2Quat) -> Jet2Quat:
+        x, y, z, w = _quat_mul_parts(a.x, a.y, a.z, a.w, b.x, b.y, b.z, b.w)
+        return Jet2Quat(x, y, z, w)
+
+    @wp.func
+    def jet_mul(a: Jet2Quat, b: NativeQuat) -> Jet2Quat:
+        x, y, z, w = _quat_mul_parts(a.x, a.y, a.z, a.w, b[0], b[1], b[2], b[3])
+        return Jet2Quat(x, y, z, w)
+
+    @wp.func
+    def jet_mul(a: NativeQuat, b: Jet2Quat) -> Jet2Quat:
+        x, y, z, w = _quat_mul_parts(a[0], a[1], a[2], a[3], b.x, b.y, b.z, b.w)
+        return Jet2Quat(x, y, z, w)
+
+    @wp.func
+    def jet_quat_rotate(q: Jet2Quat, x: Jet2Vec3) -> Jet2Vec3:
+        r0, r1, r2 = _quat_rotate_parts(q.x, q.y, q.z, q.w, x.x, x.y, x.z, dtype(1.0), dtype(1.0), dtype(2.0))
+        return Jet2Vec3(r0, r1, r2)
+
+    @wp.func
+    def jet_quat_rotate(q: Jet2Quat, x: NativeVec3) -> Jet2Vec3:
+        r0, r1, r2 = _quat_rotate_parts(q.x, q.y, q.z, q.w, x[0], x[1], x[2], dtype(1.0), dtype(1.0), dtype(2.0))
+        return Jet2Vec3(r0, r1, r2)
+
+    @wp.func
+    def jet_quat_rotate(q: NativeQuat, x: Jet2Vec3) -> Jet2Vec3:
+        r0, r1, r2 = _quat_rotate_parts(q[0], q[1], q[2], q[3], x.x, x.y, x.z, dtype(1.0), dtype(1.0), dtype(2.0))
+        return Jet2Vec3(r0, r1, r2)
+
+    @wp.func
+    def jet_quat_rotate_inv(q: Jet2Quat, x: Jet2Vec3) -> Jet2Vec3:
+        r0, r1, r2 = _quat_rotate_parts(q.x, q.y, q.z, q.w, x.x, x.y, x.z, dtype(-1.0), dtype(1.0), dtype(2.0))
+        return Jet2Vec3(r0, r1, r2)
+
+    @wp.func
+    def jet_quat_rotate_inv(q: Jet2Quat, x: NativeVec3) -> Jet2Vec3:
+        r0, r1, r2 = _quat_rotate_parts(q.x, q.y, q.z, q.w, x[0], x[1], x[2], dtype(-1.0), dtype(1.0), dtype(2.0))
+        return Jet2Vec3(r0, r1, r2)
+
+    @wp.func
+    def jet_quat_rotate_inv(q: NativeQuat, x: Jet2Vec3) -> Jet2Vec3:
+        r0, r1, r2 = _quat_rotate_parts(q[0], q[1], q[2], q[3], x.x, x.y, x.z, dtype(-1.0), dtype(1.0), dtype(2.0))
+        return Jet2Vec3(r0, r1, r2)
+
+    @wp.func
+    def jet_quat_inverse(q: Jet2Quat) -> Jet2Quat:
+        return Jet2Quat(-q.x, -q.y, -q.z, q.w)
+
+    @wp.func
+    def jet_quat_from_axis_angle(axis: Jet2Vec3, angle: Jet2Scalar) -> Jet2Quat:
+        half = angle * dtype(0.5)
+        s = jet_sin(half)
+        return Jet2Quat(axis.x * s, axis.y * s, axis.z * s, jet_cos(half))
+
+    @wp.func
+    def jet_quat_from_axis_angle(axis: NativeVec3, angle: Jet2Scalar) -> Jet2Quat:
+        half = angle * dtype(0.5)
+        s = jet_sin(half)
+        return Jet2Quat(axis[0] * s, axis[1] * s, axis[2] * s, jet_cos(half))
+
+    @wp.func
+    def jet_quat_from_axis_angle(axis: Jet2Vec3, angle: dtype) -> Jet2Quat:
+        half = angle * dtype(0.5)
+        s = wp.sin(half)
+        return Jet2Quat(axis.x * s, axis.y * s, axis.z * s, scalar_constant(wp.cos(half)))
+
+    @wp.func
+    def jet_dot(a: Jet2Quat, b: Jet2Quat) -> Jet2Scalar:
+        return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w
+
+    @wp.func
+    def jet_dot(a: Jet2Quat, b: NativeQuat) -> Jet2Scalar:
+        return a.x * b[0] + a.y * b[1] + a.z * b[2] + a.w * b[3]
+
+    @wp.func
+    def jet_dot(a: NativeQuat, b: Jet2Quat) -> Jet2Scalar:
+        return jet_dot(b, a)
+
+    @wp.func
+    def jet_length_sq(q: Jet2Quat) -> Jet2Scalar:
+        return jet_dot(q, q)
+
+    @wp.func
+    def jet_length(q: Jet2Quat) -> Jet2Scalar:
+        # As for vectors: a zero quaternion has zero derivatives, and a NaN length stays NaN.
+        length_sq = jet_dot(q, q)
+        if length_sq.value == dtype(0.0):
+            return Jet2Scalar(dtype(0.0), Grad(), Hess())
+        return jet_sqrt(length_sq)
+
+    @wp.func
+    def jet_normalize(q: Jet2Quat) -> Jet2Quat:
+        # Like native normalize(quat), a quaternion whose length is not positive (zero
+        # or NaN) normalizes to the identity rotation, with zero derivatives.
+        length_sq = jet_dot(q, q)
+        if length_sq.value > dtype(0.0):
+            length = jet_sqrt(length_sq)
+            return Jet2Quat(q.x / length, q.y / length, q.z / length, q.w / length)
+        return quat_constant(NativeQuat(dtype(0.0), dtype(0.0), dtype(0.0), dtype(1.0)))
+
+    @wp.func
+    def quat_exp_map(v: Jet2Vec3) -> Jet2Quat:
+        # As in the first-order space: series near the origin, closed form elsewhere.
+        s = jet_dot(v, v)
+        s2 = s * s
+        s3 = s2 * s
+        cos_half = (
+            scalar_constant(dtype(1.0)) + s * dtype(-1.0 / 8.0) + s2 * dtype(1.0 / 384.0) + s3 * dtype(-1.0 / 46080.0)
+        )
+        sinc_half = (
+            scalar_constant(dtype(0.5))
+            + s * dtype(-1.0 / 48.0)
+            + s2 * dtype(1.0 / 3840.0)
+            + s3 * dtype(-1.0 / 645120.0)
+        )
+        if s.value >= dtype(1.0e-3):
+            angle = jet_sqrt(s)
+            half = angle * dtype(0.5)
+            cos_half = jet_cos(half)
+            sinc_half = jet_sin(half) / angle
+        return Jet2Quat(v.x * sinc_half, v.y * sinc_half, v.z * sinc_half, cos_half)
+
+    _register("quat_rotate", jet_quat_rotate)
+    _register("quat_rotate_inv", jet_quat_rotate_inv)
+    _register("quat_inverse", jet_quat_inverse)
+    _register("quat_from_axis_angle", jet_quat_from_axis_angle)
+
     _register("value", scalar_value)
 
     _register("add", jet_add)
@@ -3695,7 +4282,17 @@ def _make_jet_space2(width: int, dtype):
         constant_vec3=vec3_constant,
         perp=jet_perp,
         cross2=jet_cross2,
-        _slot_jet_types={"scalar": (Jet2Scalar, Grad), "vec2": (Jet2Vec2, None), "vec3": (Jet2Vec3, None)},
+        quat=Jet2Quat,
+        native_quat=NativeQuat,
+        make_quat=quat_from_scalars,
+        constant_quat=quat_constant,
+        exp_map=quat_exp_map,
+        _slot_jet_types={
+            "scalar": (Jet2Scalar, Grad),
+            "vec2": (Jet2Vec2, None),
+            "vec3": (Jet2Vec3, None),
+            "quat": (Jet2Quat, None),
+        },
     )
 
 
@@ -3715,17 +4312,17 @@ def JetSpace2(slots, dtype=None):
     Args:
         slots: The inputs differentiated with respect to. Either an integer
             ``n``, meaning ``n`` scalar inputs, or a sequence of types, one per
-            input: ``wp.float32``, ``wp.vec2`` or ``wp.vec3``. A spring over two
-            nodes is ``(wp.vec3, wp.vec3)``, with width 6.
+            input: ``wp.float32``, ``wp.vec2``, ``wp.vec3`` or ``wp.quat``. A
+            spring over two nodes is ``(wp.vec3, wp.vec3)``, with width 6.
         dtype: Scalar type the jets are built on. Inferred from ``slots`` when
             they are Warp types; ``wp.float32`` when ``slots`` is an integer
             or contains only Python ``float``.
 
     Returns:
         A namespace holding the generated jet types (``scalar``, ``vec2``,
-        ``vec3``), the types of a scalar jet's ``grad`` and ``hess`` fields
-        (``grad_type_scalar``, ``hess_type_scalar``), the helpers that
-        construct jets, and ``jet_type(t)``, which looks a jet type up by the
+        ``vec3``, ``quat``), the types of a scalar jet's ``grad`` and ``hess``
+        fields (``grad_type_scalar``, ``hess_type_scalar``), the helpers that
+        construct jets, including ``exp_map``, and ``jet_type(t)``, which looks a jet type up by the
         Warp type of the value as in :func:`warp.JetSpace`.
 
     The width is always the total number of scalar components in ``slots``:
@@ -3752,6 +4349,12 @@ def JetSpace2(slots, dtype=None):
     the function written out per component. ``variable(x, direction)`` seeds a
     single scalar, for use in a loop.
 
+    A second-order jet carries the Hessian forward, so a kernel that only uses
+    second-order jets needs no reverse-mode code. Declare it with
+    ``@wp.kernel(enable_backward=False)``, or set the ``enable_backward`` module
+    option to ``False``: otherwise Warp still generates the unused adjoint, which
+    dominates compile time for long jet chains.
+
     As with :func:`warp.JetSpace`, the width is a compile-time constant and the
     types are for local derivatives of fixed, statically known arity. The
     quadratic state makes that limit tighter here: register pressure and compile
@@ -3760,17 +4363,18 @@ def JetSpace2(slots, dtype=None):
     :func:`warp.grad`), which reaches the same Hessian with linear state.
     """
     kinds, dtype = _normalize_slots(slots, dtype)
-    if any(kind not in ("scalar", "vec2", "vec3") for kind in kinds):
+    if any(kind not in ("scalar", "vec2", "vec3", "quat") for kind in kinds):
         raise TypeError(
-            "Second-order jets support scalar, vec2 and vec3 slots, not matrix slots. Pass a matrix as its "
+            "Second-order jets support scalar, vec2, vec3 and quat slots, not matrix slots. Pass a matrix as its "
             "columns or scalar components, or use a first-order JetSpace with a reverse sweep."
         )
     width = sum(len(_slot_components(kind)) for kind in kinds)
 
     key = (width, dtype)
-    base = _CACHE2.get(key)
-    if base is None:
-        base = _make_jet_space2(width, dtype)
-        _CACHE2[key] = base
+    with _codegen_lock:
+        base = _CACHE2.get(key)
+        if base is None:
+            base = _make_jet_space2(width, dtype)
+            _CACHE2[key] = base
 
-    return _layout_namespace(base, kinds, width, dtype, second_order=True)
+        return _layout_namespace(base, kinds, width, dtype, second_order=True)
