@@ -321,10 +321,6 @@ int cuda_init()
         return -1;
     }
 
-    // initialize default timing state
-    static CudaTimingState default_timing_state(0, NULL);
-    g_cuda_timing_state = &default_timing_state;
-
     return 0;
 }
 
@@ -6298,26 +6294,64 @@ void wp_cuda_graphics_unregister_resource(void* context, void* resource)
     delete res;
 }
 
-void wp_cuda_timing_begin(int flags) { g_cuda_timing_state = new CudaTimingState(flags, g_cuda_timing_state); }
+// Only timing bookkeeping is shared. CUDA submissions on independent streams
+// must be able to progress while another submission is blocked in the driver.
+std::atomic<int> g_cuda_timing_flags { 0 };
+static std::mutex g_cuda_timing_mutex;
+static CudaTimingState* g_cuda_timing_state = nullptr;
+
+uint64_t get_cuda_timing_scope(int flag)
+{
+    std::lock_guard<std::mutex> lock(g_cuda_timing_mutex);
+    return g_cuda_timing_state && (g_cuda_timing_state->flags & flag) ? g_cuda_timing_state->id : 0;
+}
+
+void record_cuda_timing_range(uint64_t scope, const CudaTimingRange& range)
+{
+    {
+        std::lock_guard<std::mutex> lock(g_cuda_timing_mutex);
+        for (auto* state = g_cuda_timing_state; state; state = state->parent) {
+            if (state->id == scope) {
+                state->ranges.push_back(range);
+                return;
+            }
+        }
+    }
+    // The scope ended while its CUDA operation was being submitted.
+    check_cu(cuEventDestroy_f(range.start));
+    check_cu(cuEventDestroy_f(range.end));
+}
+
+void wp_cuda_timing_begin(int flags)
+{
+    std::lock_guard<std::mutex> lock(g_cuda_timing_mutex);
+    static uint64_t next_id = 1;
+    g_cuda_timing_state = new CudaTimingState(next_id++, flags, g_cuda_timing_state);
+    g_cuda_timing_flags.store(flags, std::memory_order_relaxed);
+}
 
 int wp_cuda_timing_get_result_count()
 {
-    if (g_cuda_timing_state)
-        return int(g_cuda_timing_state->ranges.size());
-    return 0;
+    std::lock_guard<std::mutex> lock(g_cuda_timing_mutex);
+    return g_cuda_timing_state ? int(g_cuda_timing_state->ranges.size()) : 0;
 }
 
 void wp_cuda_timing_end(timing_result_t* results, int size)
 {
-    if (!g_cuda_timing_state)
-        return;
-
-    // number of results to write to the user buffer
-    int count = std::min(wp_cuda_timing_get_result_count(), size);
+    CudaTimingState* state;
+    {
+        std::lock_guard<std::mutex> lock(g_cuda_timing_mutex);
+        state = g_cuda_timing_state;
+        if (!state)
+            return;
+        g_cuda_timing_state = state->parent;
+        g_cuda_timing_flags.store(state->parent ? state->parent->flags : 0, std::memory_order_relaxed);
+    }
+    int count = std::min(int(state->ranges.size()), size);
 
     // compute timings and write results
     for (int i = 0; i < count; i++) {
-        const CudaTimingRange& range = g_cuda_timing_state->ranges[i];
+        const CudaTimingRange& range = state->ranges[i];
         timing_result_t& result = results[i];
         result.context = range.context;
         result.name = range.name;
@@ -6326,15 +6360,12 @@ void wp_cuda_timing_end(timing_result_t* results, int size)
     }
 
     // release events
-    for (CudaTimingRange& range : g_cuda_timing_state->ranges) {
+    for (CudaTimingRange& range : state->ranges) {
         check_cu(cuEventDestroy_f(range.start));
         check_cu(cuEventDestroy_f(range.end));
     }
 
-    // restore previous state
-    CudaTimingState* parent_state = g_cuda_timing_state->parent;
-    delete g_cuda_timing_state;
-    g_cuda_timing_state = parent_state;
+    delete state;
 }
 
 // #include "spline.inl"
