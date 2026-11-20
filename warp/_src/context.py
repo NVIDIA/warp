@@ -1350,9 +1350,21 @@ class Kernel:
         unknown = static_args.keys() - parameters.keys()
         if unknown:
             raise ValueError(f"Kernel has no arguments {sorted(unknown)} passed as static arguments")
+        # TODO: should we check integer overflow if the user is passing an int for wp.int32?
+        #    Is this already happening with non-static arguments? If so, we avoid fixing it here for static args
+        # TODO: Any structs, vec3 passed from the user can mutate while being captured
+        #   We should therefore recreate the static args dict with owned objects
+        # TODO: should we allow an integer to be passed where a float is required? No error but wrong precision in kernel.
+        #   This happens even outside kernels so I'd say no check
+
+        # Cache the static args to avoid them being modified before compilation
+        scalar_types = warp._src.types.scalar_and_bool_types
+        owned_static_args = {
+            name: type(v)(v.value) if type(v) in scalar_types else type(v)(v) for name, v in static_args.items()
+        }
 
         self.adj = warp._src.codegen.Adjoint(
-            func, transformers=code_transformers, source=source, static_args=static_args
+            func, transformers=code_transformers, source=source, static_args=owned_static_args
         )
         self.return_annotation = self.adj.arg_types.pop("return", None)
         if self.return_annotation is types.NoneType:
