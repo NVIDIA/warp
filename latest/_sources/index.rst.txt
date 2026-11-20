@@ -202,11 +202,12 @@ warp/examples/optim
       - navier-stokes perturbation
     * - .. image:: ./img/examples/optim_implicit_projection.png
            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_implicit_projection.py
-      -
+      - .. image:: ./img/examples/optim_quat_shape_align.png
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_quat_shape_align.py
       -
       -
     * - implicit projection
-      -
+      - quaternion shape alignment
       -
       -
 

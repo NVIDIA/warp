@@ -165,7 +165,8 @@ inputs. The :func:`wp.JetSpace <JetSpace>` constructor takes a tuple of types, c
 default, the width of the jets is the total number of scalar components (``width=4`` in the example above), so the jets
 carry the full Jacobian with respect to these inputs.
 
-The slot types are scalars, ``vec2``, ``vec3``, and the ``mat22``, ``mat33``, ``mat32`` and ``mat23`` matrices.
+The slot types are scalars, ``vec2``, ``vec3``, ``quat``, and the ``mat22``, ``mat33``, ``mat32`` and ``mat23``
+matrices (see :ref:`jets_rotations` for quaternions).
 :func:`wp.JetSpace <JetSpace>` returns a namespace of types that share the same derivative directions. For each slot
 type ``X`` it holds a jet type ``J.X`` (``J.scalar``, ``J.vec2``, ..., ``J.mat23``) and the type of that jet's
 ``grad`` field, ``J.grad_type_X``. For example, a ``J.vec2`` jet's gradients are a ``J.grad_type_vec2``, a
@@ -266,6 +267,53 @@ scalar jet with value ``x`` and a unit derivative along ``direction``.
 .. testoutput::
 
     gradient = [ 3. 12. 27. 48.]
+
+.. _jets_rotations:
+
+Rotations
+---------
+
+Quaternion jets differentiate through rotations. A :class:`wp.quat <warp.quat>` slot carries four directions, one per component, so
+its derivatives are with respect to all four components, without the unit-norm constraint. To differentiate along
+rotations instead, seed a ``vec3`` rotation vector and map it to a unit quaternion with ``J.exp_map()``. The map is
+smooth through the zero vector, so a jet seeded at zero gives derivatives along the three rotation directions. An
+intrinsic Newton step on a rotation ``q0`` seeds ``J.exp_map(theta) * q0`` at ``theta = 0`` and updates ``q0`` by the
+resulting step.
+
+Jet quaternions support ``+``, ``-``, negation, scaling, the Hamilton product ``*``,
+:func:`wp.quat_rotate() <warp._src.lang.quat_rotate>`, :func:`wp.quat_rotate_inv() <warp._src.lang.quat_rotate_inv>`,
+:func:`wp.quat_inverse() <warp._src.lang.quat_inverse>`,
+:func:`wp.quat_from_axis_angle() <warp._src.lang.quat_from_axis_angle>`, :func:`wp.dot() <warp._src.lang.dot>`,
+:func:`wp.length() <warp._src.lang.length>`, :func:`wp.normalize() <warp._src.lang.normalize>` and indexing, at both
+orders, with jet or plain operands. Scaling accepts a jet scalar with a plain quaternion, so a blend such as
+``(1 - t) * q0 + t * q1`` can differentiate along ``t`` alone. ``J.make_quat()`` builds a jet quaternion
+from four scalar jets, and ``J.constant_quat()`` from a plain quaternion. Rotating ``x = (1, 0, 0)`` by the rotation
+vector ``theta`` gives the derivatives of the rotated point along the three rotation directions at ``theta = 0``:
+
+.. testcode::
+
+    rotation_space = wp.JetSpace((wp.vec3,))  # a rotation vector, width 3
+
+    @wp.kernel
+    def rotation_derivative(out: wp.array[rotation_space.grad_type_vec3]):
+        theta = rotation_space.seed(wp.vec3(0.0, 0.0, 0.0))
+        x = wp.quat_rotate(rotation_space.exp_map(theta), wp.vec3(1.0, 0.0, 0.0))
+        out[0] = x.grad  # row r: derivatives of component r along the three rotation axes
+
+    out = wp.zeros(1, dtype=rotation_space.grad_type_vec3)
+    wp.launch(rotation_derivative, dim=1, outputs=[out])
+    print(out.numpy()[0])
+
+.. testoutput::
+
+    [[ 0.  0.  0.]
+     [ 0.  0.  1.]
+     [ 0. -1.  0.]]
+
+Rotating about ``y`` moves the point along ``-z``, and rotating about ``z`` moves it along ``+y``. For a Newton solve
+on rotations with second-order quaternion jets, see
+`example_quat_shape_align.py <https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_quat_shape_align.py>`__,
+which runs with ``python -m warp.examples.optim.example_quat_shape_align``.
 
 Hessians
 --------
@@ -617,6 +665,10 @@ The same holds for a kernel that calls :func:`wp.grad <grad>` on a function of j
 and Warp warns when such a call appears in a kernel that keeps its adjoint,
 because the call does not take part in that kernel's backward pass.
 
+A kernel that only uses second-order jets needs no reverse-mode code, since the jets carry the Hessian forward. Declare
+it with ``@wp.kernel(enable_backward=False)``, or set the ``enable_backward`` module option to ``False``, so that Warp
+does not generate the unused adjoint, which otherwise dominates the compile time of long jet chains.
+
 .. _jets_jacobian_performance:
 
 **Jacobian of a many-output function** (``benchmark_jet_jacobian.py``). Take a forward model with ``k = 3`` parameters
@@ -791,7 +843,7 @@ Limitations
 * Vector and matrix constructors such as ``wp.vec3(a, b, c)`` and ``wp.mat33(...)`` do not accept jets. Build vector
   and matrix jets with ``J.make_vec3()`` and ``J.make_mat33()`` (from columns), or assign components of an existing jet
   (``v[i] = s``, ``F[i, j] = s``).
-* Second-order jets take scalar, ``vec2`` and ``vec3`` slots. Matrix slots are not supported; a matrix input
+* Second-order jets take scalar, ``vec2``, ``vec3`` and ``quat`` slots. Matrix slots are not supported; a matrix input
   decomposes into its components.
 * Jet dtypes must be floating point.
 * A plain scalar, vector or matrix of the jet's dtype can be either operand of a jet operation, and is treated as a
