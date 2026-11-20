@@ -1,0 +1,6 @@
+﻿warp.empty
+==========
+
+.. currentmodule:: warp
+
+.. autofunction:: empty

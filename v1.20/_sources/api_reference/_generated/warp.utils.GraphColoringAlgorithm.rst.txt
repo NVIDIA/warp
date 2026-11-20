@@ -1,0 +1,19 @@
+﻿warp.utils.GraphColoringAlgorithm
+=================================
+
+.. currentmodule:: warp.utils
+
+.. autoclass:: GraphColoringAlgorithm
+   
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~GraphColoringAlgorithm.MCS
+      ~GraphColoringAlgorithm.GREEDY
+   
+   

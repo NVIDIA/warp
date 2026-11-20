@@ -1,0 +1,20 @@
+﻿warp.geometry.OBBMeasureType
+============================
+
+.. currentmodule:: warp.geometry
+
+.. autoclass:: OBBMeasureType
+   
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~OBBMeasureType.VOLUME
+      ~OBBMeasureType.SURFACE_AREA
+      ~OBBMeasureType.MEAN_WIDTH
+   
+   

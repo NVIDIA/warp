@@ -1,0 +1,13 @@
+﻿warp.erf
+========
+
+.. currentmodule:: warp._src.lang
+
+.. function:: erf(x: Float) -> Float
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Compute the error function of ``x``.

@@ -1,0 +1,6 @@
+﻿warp.is\_cubql\_available
+=========================
+
+.. currentmodule:: warp
+
+.. autofunction:: is_cubql_available

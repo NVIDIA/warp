@@ -1,0 +1,6 @@
+﻿warp.dtype\_to\_paddle
+======================
+
+.. currentmodule:: warp
+
+.. autofunction:: dtype_to_paddle

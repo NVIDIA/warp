@@ -1,0 +1,47 @@
+﻿warp.tile\_scan\_inclusive
+==========================
+
+.. currentmodule:: warp._src.lang
+
+.. function:: tile_scan_inclusive(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tuple[int, ...]]
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
+
+   Return a new tile containing the inclusive prefix sums of a tile.
+   
+   This is a cooperative operation: the threads of the block divide the work between
+   them, so every thread must reach the call.
+   
+   Element ``i`` of the result is the sum of input elements ``0`` through ``i``.
+   A multi-dimensional tile is scanned over its flattened row-major sequence and the
+   result keeps the input shape. On CUDA, this operation reserves a tile's worth of shared
+   memory (see :ref:`tile_shared_memory_budget`).
+   
+   :param a: The input tile. Must be a tile of :class:`warp.float32`, :class:`warp.int32`,
+             or :class:`warp.uint32`.
+   
+   :returns: A register tile with the same shape and dtype as ``a``.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def running_totals(x: wp.array[float], out: wp.array[float]):
+           t = wp.tile_load(x, shape=4)
+           wp.tile_store(out, wp.tile_scan_inclusive(t))
+   
+       x = wp.array([3.0, 1.0, 4.0, 2.0], dtype=float)
+       out = wp.zeros(4, dtype=float)
+   
+       wp.launch_tiled(running_totals, dim=1, inputs=[x], outputs=[out], block_dim=2)
+   
+       print(out.numpy())
+   
+   .. testoutput::
+   
+       [ 3.  4.  8. 10.]
+   

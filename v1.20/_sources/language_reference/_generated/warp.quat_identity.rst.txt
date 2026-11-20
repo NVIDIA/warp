@@ -1,0 +1,18 @@
+﻿warp.quat\_identity
+===================
+
+.. currentmodule:: warp._src.lang
+
+.. function:: quat_identity(dtype: Float = ...) -> quatf
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Construct the identity quaternion.
+   
+   :param dtype: Scalar type of the components. Defaults to ``float32``.
+   
+   :returns: The quaternion ``(0, 0, 0, 1)``.
+   

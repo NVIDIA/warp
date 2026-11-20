@@ -1,0 +1,6 @@
+﻿warp.fem.hanging\_node\_prolongation
+====================================
+
+.. currentmodule:: warp.fem
+
+.. autofunction:: hanging_node_prolongation

@@ -1,0 +1,31 @@
+﻿warp.optim.linear.MultiRHSOperator
+==================================
+
+.. currentmodule:: warp.optim.linear
+
+.. autoclass:: MultiRHSOperator
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~MultiRHSOperator.with_nrhs
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MultiRHSOperator.batch_count
+      ~MultiRHSOperator.batch_offsets
+      ~MultiRHSOperator.device
+      ~MultiRHSOperator.dtype
+      ~MultiRHSOperator.matvec
+      ~MultiRHSOperator.max_batch_length
+      ~MultiRHSOperator.scalar_type
+      ~MultiRHSOperator.shape
+   
+   

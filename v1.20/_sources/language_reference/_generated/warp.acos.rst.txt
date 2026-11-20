@@ -1,0 +1,15 @@
+﻿warp.acos
+=========
+
+.. currentmodule:: warp._src.lang
+
+.. function:: acos(x: Float) -> Float
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Compute arccos of ``x`` in radians.
+   
+   Inputs are automatically clamped to [-1.0, 1.0].

@@ -1,0 +1,27 @@
+﻿warp.tile\_ifft
+===============
+
+.. currentmodule:: warp._src.lang
+
+.. function:: tile_ifft(inout: Tile[Vector[Float, Literal[2]], tuple[int, ...]]) -> None
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
+
+   Compute the inverse FFT along the last dimension of an N-D tile, in place.
+   
+   Identical to :func:`~warp.tile_fft` apart from the sign of the exponent:
+   ``x[n] = sum_k X[k] * exp(+2*pi*i*k*n/N)``. The transform is unnormalized -- it does
+   not divide by ``N`` -- so a forward transform followed by an inverse transform
+   multiplies the data by ``N``. ``inout`` is overwritten with its inverse transform.
+   
+   Supported dtypes, tile requirements, backend selection, and the supported transform
+   sizes are the same as for :func:`~warp.tile_fft`; see it for details and a usage
+   example.
+   
+   This is a cooperative operation, so every thread in the block must call it.
+   
+   :param inout: The tile to transform in place.
+   

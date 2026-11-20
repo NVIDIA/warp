@@ -1,0 +1,43 @@
+﻿warp.isnan
+==========
+
+.. currentmodule:: warp._src.lang
+
+.. function:: isnan(a: Float) -> bool
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Check if ``a`` is NaN.
+
+.. function:: isnan(a: Vector[Float, Any]) -> bool
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Check if any element of ``a`` is NaN.
+
+.. function:: isnan(a: Quaternion[Float]) -> bool
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Check if any element of ``a`` is NaN.
+
+.. function:: isnan(a: Matrix[Float, Any, Any]) -> bool
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Check if any element of ``a`` is NaN.

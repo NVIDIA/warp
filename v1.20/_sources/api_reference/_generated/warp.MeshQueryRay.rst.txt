@@ -1,0 +1,18 @@
+﻿warp.MeshQueryRay
+=================
+
+.. currentmodule:: warp
+
+.. autoclass:: MeshQueryRay
+   
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~MeshQueryRay.vars
+   
+   

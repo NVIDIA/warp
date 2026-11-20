@@ -1,0 +1,13 @@
+﻿warp.floordiv
+=============
+
+.. currentmodule:: warp._src.lang
+
+.. function:: floordiv(a: Scalar, b: Scalar) -> Scalar
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Divide two scalars using floor division.

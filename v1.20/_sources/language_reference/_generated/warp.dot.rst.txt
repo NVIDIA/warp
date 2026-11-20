@@ -1,0 +1,31 @@
+﻿warp.dot
+========
+
+.. currentmodule:: warp._src.lang
+
+.. function:: dot(a: Vector[Scalar, Any], b: Vector[Scalar, Any]) -> Scalar
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Compute the dot product.
+
+.. function:: dot(a: Quaternion[Float], b: Quaternion[Float]) -> Float
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Return the dot product of the four components of ``a`` and ``b``.
+   
+   :param a: First quaternion.
+   :param b: Second quaternion.
+   
+   :returns: The scalar dot product. For unit quaternions, ``abs(dot(a, b))`` is the cosine of half the
+             angle of the rotation from ``a`` to ``b``, and a negative value means that ``-b`` is closer to
+             ``a`` than ``b`` is.
+   

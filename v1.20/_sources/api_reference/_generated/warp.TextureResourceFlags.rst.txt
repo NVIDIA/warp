@@ -1,0 +1,22 @@
+﻿warp.TextureResourceFlags
+=========================
+
+.. currentmodule:: warp
+
+.. autoclass:: TextureResourceFlags
+   
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~TextureResourceFlags.NONE
+      ~TextureResourceFlags.READ_ONLY
+      ~TextureResourceFlags.WRITE_DISCARD
+      ~TextureResourceFlags.SURFACE_LDST
+      ~TextureResourceFlags.TEXTURE_GATHER
+   
+   

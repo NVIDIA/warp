@@ -1,0 +1,12 @@
+﻿warp.bool
+=========
+
+.. currentmodule:: warp
+
+.. autoclass:: bool
+   
+   
+   
+   
+   
+   

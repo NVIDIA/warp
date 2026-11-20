@@ -1,0 +1,21 @@
+﻿warp.geometry.SweptVolumeSignMode
+=================================
+
+.. currentmodule:: warp.geometry
+
+.. autoclass:: SweptVolumeSignMode
+   
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~SweptVolumeSignMode.NORMAL
+      ~SweptVolumeSignMode.WINDING_NUMBER
+      ~SweptVolumeSignMode.PARITY
+      ~SweptVolumeSignMode.NO_SIGN
+   
+   

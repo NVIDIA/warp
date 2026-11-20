@@ -1,0 +1,6 @@
+﻿warp.fem.Sample\_f64
+====================
+
+.. currentmodule:: warp.fem
+
+.. autodata:: Sample_f64

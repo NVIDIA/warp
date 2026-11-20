@@ -1,0 +1,39 @@
+﻿warp.quat\_from\_matrix
+=======================
+
+.. currentmodule:: warp._src.lang
+
+.. function:: quat_from_matrix(mat: Matrix[Float, Literal[3], Literal[3]]) -> Quaternion[Float]
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Return the rotation quaternion of the rotation matrix ``mat``.
+   
+   :param mat: Rotation matrix that rotates column vectors as ``mat @ v``. It must be orthonormal with a
+               determinant of ``+1``; otherwise, the result is unspecified. Matrices using row-vector
+               conventions must be transposed first.
+   
+   :returns: A unit quaternion ``q`` such that ``quat_to_matrix(q)`` equals ``mat``. The sign of ``q`` is
+             unspecified.
+   
+
+.. function:: quat_from_matrix(mat: Matrix[Float, Literal[4], Literal[4]]) -> Quaternion[Float]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Return the rotation quaternion of the top-left 3x3 block of ``mat``.
+   
+   :param mat: Transformation matrix whose top-left 3x3 block rotates column vectors. That block must be
+               orthonormal with a determinant of ``+1``; otherwise, the result is unspecified. The
+               remaining entries, such as a translation, are ignored.
+   
+   :returns: A unit quaternion ``q`` such that ``quat_to_matrix(q)`` equals the top-left 3x3 block of
+             ``mat``. The sign of ``q`` is unspecified.
+   

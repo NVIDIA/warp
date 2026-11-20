@@ -1,0 +1,6 @@
+﻿warp.static
+===========
+
+.. currentmodule:: warp
+
+.. autofunction:: static

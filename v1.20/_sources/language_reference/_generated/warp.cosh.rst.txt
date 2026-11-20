@@ -1,0 +1,13 @@
+﻿warp.cosh
+=========
+
+.. currentmodule:: warp._src.lang
+
+.. function:: cosh(x: Float) -> Float
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Compute the cosh of ``x``.

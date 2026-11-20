@@ -1,0 +1,6 @@
+﻿warp.fem.average
+================
+
+.. currentmodule:: warp.fem
+
+.. autodata:: average

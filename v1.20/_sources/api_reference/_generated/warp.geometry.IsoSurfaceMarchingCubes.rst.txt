@@ -1,0 +1,34 @@
+﻿warp.geometry.IsoSurfaceMarchingCubes
+=====================================
+
+.. currentmodule:: warp.geometry
+
+.. autoclass:: IsoSurfaceMarchingCubes
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~IsoSurfaceMarchingCubes.extract
+      ~IsoSurfaceMarchingCubes.extract_surface_marching_cubes
+      ~IsoSurfaceMarchingCubes.resize
+      ~IsoSurfaceMarchingCubes.surface
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~IsoSurfaceMarchingCubes.CASE_TO_TRI_RANGE
+      ~IsoSurfaceMarchingCubes.CUBE_CORNER_OFFSETS
+      ~IsoSurfaceMarchingCubes.EDGE_TO_CORNERS
+      ~IsoSurfaceMarchingCubes.TRI_LOCAL_INDICES
+      ~IsoSurfaceMarchingCubes.domain_bounds_lower_corner
+      ~IsoSurfaceMarchingCubes.domain_bounds_upper_corner
+      ~IsoSurfaceMarchingCubes.verts
+      ~IsoSurfaceMarchingCubes.indices
+   
+   

@@ -1,0 +1,21 @@
+﻿warp.quat\_inverse
+==================
+
+.. currentmodule:: warp._src.lang
+
+.. function:: quat_inverse(quat: Quaternion[Float]) -> Quaternion[Float]
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Return the conjugate of ``quat``, which is its inverse when ``quat`` has unit length.
+   
+   For a nonzero quaternion without unit length, the multiplicative inverse is
+   ``quat_inverse(quat) / length_sq(quat)``.
+   
+   :param quat: Quaternion to conjugate.
+   
+   :returns: The quaternion ``(-quat[0], -quat[1], -quat[2], quat[3])``.
+   

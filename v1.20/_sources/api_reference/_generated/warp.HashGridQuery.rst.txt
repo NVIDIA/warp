@@ -1,0 +1,12 @@
+﻿warp.HashGridQuery
+==================
+
+.. currentmodule:: warp
+
+.. autoclass:: HashGridQuery
+   
+   
+   
+   
+   
+   

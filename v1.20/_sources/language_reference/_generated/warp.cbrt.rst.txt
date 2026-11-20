@@ -1,0 +1,13 @@
+﻿warp.cbrt
+=========
+
+.. currentmodule:: warp._src.lang
+
+.. function:: cbrt(x: Float) -> Float
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Compute the cube root of ``x``.

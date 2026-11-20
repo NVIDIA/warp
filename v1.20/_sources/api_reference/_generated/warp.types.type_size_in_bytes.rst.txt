@@ -1,0 +1,6 @@
+﻿warp.types.type\_size\_in\_bytes
+================================
+
+.. currentmodule:: warp.types
+
+.. autofunction:: type_size_in_bytes

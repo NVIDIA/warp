@@ -5,6 +5,11 @@
     "url": "https://nvidia.github.io/warp/latest/"
   },
   {
+    "version": "1.20",
+    "url": "https://nvidia.github.io/warp/v1.20/",
+    "name": "1.20 (prerelease)"
+  },
+  {
     "version": "1.19",
     "url": "https://nvidia.github.io/warp/v1.19/",
     "name": "1.19 (stable)",

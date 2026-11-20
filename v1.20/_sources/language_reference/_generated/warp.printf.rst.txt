@@ -1,0 +1,13 @@
+﻿warp.printf
+===========
+
+.. currentmodule:: warp._src.lang
+
+.. function:: printf(fmt: str, *args: Any) -> None
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
+
+   Allows printing formatted strings using C-style format specifiers.

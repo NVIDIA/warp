@@ -1,0 +1,13 @@
+﻿warp.matrix\_from\_cols
+=======================
+
+.. currentmodule:: warp._src.lang
+
+.. function:: matrix_from_cols(*args: Vector[Scalar, Any]) -> Matrix[Scalar, Any, Any]
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
+
+   Construct a matrix with each vector argument as a column.

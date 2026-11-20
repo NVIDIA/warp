@@ -1,0 +1,28 @@
+﻿warp.quat\_to\_rpy
+==================
+
+.. currentmodule:: warp._src.lang
+
+.. function:: quat_to_rpy(q: quatf) -> vec3f
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+      :source: https://github.com/NVIDIA/warp/blob/release-1.20/warp/_src/math.py#L222-L257
+
+   Return the roll, pitch, and yaw angles in radians of the rotation ``q``.
+   
+   This is the inverse of :func:`~warp.quat_rpy`, which applies roll, pitch, and yaw in that order
+   about the fixed ``x``, ``y``, and ``z`` axes (extrinsic x-y-z).
+   
+   Near gimbal lock, where pitch approaches ``pi/2`` or ``-pi/2``, the returned roll and yaw are
+   inaccurate and might not reproduce ``q``. ``quat_to_euler(q, 0, 1, 2)`` uses the same
+   convention and handles gimbal lock.
+   
+   :param q: Rotation quaternion, with unit length.
+   
+   :returns: ``(roll, pitch, yaw)`` in radians, with roll and yaw in ``[-pi, pi]`` and pitch in
+             ``[-pi/2, pi/2]``.
+   :rtype: warp.vec3
+   

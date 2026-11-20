@@ -1,0 +1,6 @@
+﻿warp.get\_suggested\_block\_size
+================================
+
+.. currentmodule:: warp
+
+.. autofunction:: get_suggested_block_size

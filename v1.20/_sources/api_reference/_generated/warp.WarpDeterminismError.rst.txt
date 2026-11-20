@@ -1,0 +1,6 @@
+﻿warp.WarpDeterminismError
+=========================
+
+.. currentmodule:: warp
+
+.. autoexception:: WarpDeterminismError

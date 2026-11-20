@@ -1,0 +1,20 @@
+﻿warp.spatial\_vectord
+=====================
+
+.. currentmodule:: warp
+
+.. autoclass:: spatial_vectord
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~spatial_vectord.from_ptr
+      ~spatial_vectord.scalar_export
+      ~spatial_vectord.scalar_import
+   
+   
+   
+   
+   

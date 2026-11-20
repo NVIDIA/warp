@@ -1,0 +1,6 @@
+﻿warp.geometry.sparse\_marching\_cubes
+=====================================
+
+.. currentmodule:: warp.geometry
+
+.. autofunction:: sparse_marching_cubes

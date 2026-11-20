@@ -1,0 +1,6 @@
+﻿warp.config.enable\_cpu\_blocks
+===============================
+
+.. currentmodule:: warp.config
+
+.. autodata:: enable_cpu_blocks

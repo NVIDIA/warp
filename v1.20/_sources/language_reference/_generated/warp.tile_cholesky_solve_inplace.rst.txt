@@ -1,0 +1,29 @@
+﻿warp.tile\_cholesky\_solve\_inplace
+===================================
+
+.. currentmodule:: warp._src.lang
+
+.. function:: tile_cholesky_solve_inplace(L: Tile[Float, tuple[int, int]], y: Tile[Float, tuple[int, ...]], fill_mode: str = "lower") -> None
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
+
+   Solve ``A x = y`` in place, overwriting ``y`` with ``x``.
+   
+   Behaves like :func:`~warp.tile_cholesky_solve`, including the meaning of ``L`` under
+   each ``fill_mode``, the dtype rules, the support for a 1D or 2D right-hand side, and
+   the backend selection, except that the solution overwrites ``y`` instead of being
+   returned.
+   
+   This is a cooperative operation, so every thread in the block must call it.
+   
+   This in-place variant avoids allocating shared memory for a separate output.
+   
+   :param L: A square triangular Cholesky factor of ``A``, with ``shape=(M, M)``.
+   :param y: The right-hand side, a tile with ``shape=(M,)`` or ``shape=(M, NRHS)``,
+             overwritten by the solution ``x``.
+   :param fill_mode: ``"lower"`` or ``"upper"``. Must be a compile-time constant.
+   
+   See :func:`~warp.tile_cholesky` for a usage example.

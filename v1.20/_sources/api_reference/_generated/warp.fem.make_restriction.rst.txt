@@ -1,0 +1,6 @@
+﻿warp.fem.make\_restriction
+==========================
+
+.. currentmodule:: warp.fem
+
+.. autofunction:: make_restriction

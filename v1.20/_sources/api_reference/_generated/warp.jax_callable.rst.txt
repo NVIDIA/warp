@@ -1,0 +1,6 @@
+﻿warp.jax\_callable
+==================
+
+.. currentmodule:: warp
+
+.. autofunction:: jax_callable

@@ -1,0 +1,110 @@
+﻿warp.tile\_reduce
+=================
+
+.. currentmodule:: warp._src.lang
+
+.. function:: tile_reduce(op: Callable, a: Tile[Any, tuple[int, ...]]) -> Tile[Any, tuple[Literal[1]]]
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
+
+   Apply a custom reduction operator across all elements of a tile.
+   
+   This is a cooperative operation: the threads of the block divide the work between
+   them, so every thread must reach the call.
+   
+   Elements of ``a`` are combined in an unspecified order, so ``op`` must be associative
+   and commutative for the result to be well defined; a non-commutative operator such as
+   :func:`~warp.sub` gives different answers for different values of ``block_dim`` and on
+   different devices.
+   
+   :param op: Callable taking two elements of the tile's dtype and returning one value of
+              the same type. May be a Warp built-in such as :func:`~warp.add` or a
+              user-defined function decorated with ``@wp.func``.
+   :param a: The input tile. The operator, or one of its overloads, must accept the tile's
+             element type.
+   
+   :returns: A shape-``(1,)`` register tile with the same dtype as ``a``. Read the value with
+             ``[0]``.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def multiply_elements(x: wp.array[int], out: wp.array[int]):
+           t = wp.tile_load(x, shape=4)
+           wp.tile_store(out, wp.tile_reduce(wp.mul, t))
+   
+       x = wp.array([3, 7, 4, 9], dtype=int)
+       out = wp.zeros(1, dtype=int)
+   
+       wp.launch_tiled(multiply_elements, dim=1, inputs=[x], outputs=[out], block_dim=2)
+   
+       print(out.numpy())
+   
+   .. testoutput::
+   
+       [756]
+   
+
+.. function:: tile_reduce(op: Callable, a: Tile[Scalar, tuple[int, ...]], axis: int32) -> Tile[Scalar, tuple[int, ...]]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
+
+   Apply a custom reduction operator along one axis of a tile.
+   
+   This is a cooperative operation: the threads of the block divide the work between
+   them, so every thread must reach the call.
+   
+   Reduces over ``axis``. Each slice is folded with ``op`` in an unspecified order, so
+   ``op`` must be associative and commutative for the result to be well defined. The
+   input tile is placed in shared memory automatically, so it counts against the block's
+   shared-memory budget (see :ref:`tile_shared_memory_budget`) even when the input uses
+   register storage.
+   
+   :param op: Callable taking two elements of the tile's dtype and returning one value of
+              the same type. May be a Warp built-in such as :func:`~warp.add` or a
+              user-defined function decorated with ``@wp.func``.
+   :param a: The input tile. Must have a scalar element type, unlike the whole-tile form,
+             which also accepts vector and matrix elements. The operator, or one of its
+             overloads, must accept the tile's element type.
+   :param axis: The axis to reduce over. Must be a compile-time constant in
+                ``[0, len(shape))``.
+   
+   :returns: A register tile with the same dtype as ``a``. For an input with two or more dimensions,
+             the result has the shape of ``a`` with ``axis`` removed. For a one-dimensional input,
+             it has shape ``(1,)``.
+   
+   On a partial CPU block, a slice with no active values returns the operation's identity for
+   ``wp.add``, ``wp.mul``, ``wp.min``, and ``wp.max``. Other operators have no declared
+   identity, so an empty slice triggers an assertion instead of returning an arbitrary value.
+   See :ref:`CPU Tile Semantics <cpu_tile_semantics>` for definitions of partial
+   CPU blocks and active lanes.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def row_products(x: wp.array2d[float], p: wp.array[float]):
+           t = wp.tile_load(x, shape=(2, 3))
+           wp.tile_store(p, wp.tile_reduce(wp.mul, t, axis=1))
+   
+       x = wp.array([[1.0, 2.0, 3.0], [10.0, 20.0, 30.0]], dtype=float)
+       p = wp.zeros(2, dtype=float)
+   
+       wp.launch_tiled(row_products, dim=1, inputs=[x], outputs=[p], block_dim=4)
+   
+       print(p.numpy())
+   
+   .. testoutput::
+   
+       [   6. 6000.]
+   

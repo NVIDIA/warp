@@ -1,0 +1,23 @@
+﻿warp.zeros
+==========
+
+.. currentmodule:: warp._src.lang
+
+.. function:: zeros(shape: tuple[int, ...], dtype: Any) -> Array[Scalar]
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
+
+   Create a zero-initialized fixed-size array of the given shape and dtype.
+
+.. function:: zeros(shape: int32, dtype: Any) -> Array[Scalar]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
+
+   Create a zero-initialized fixed-size array of the given length and dtype.

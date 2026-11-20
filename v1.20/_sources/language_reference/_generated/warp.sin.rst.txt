@@ -1,0 +1,13 @@
+﻿warp.sin
+========
+
+.. currentmodule:: warp._src.lang
+
+.. function:: sin(x: Float) -> Float
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Compute the sine of ``x`` in radians.

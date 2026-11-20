@@ -1,0 +1,13 @@
+﻿warp.log10
+==========
+
+.. currentmodule:: warp._src.lang
+
+.. function:: log10(x: Float) -> Float
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Compute the common logarithm (base-10) of ``x``, where ``x`` is positive.

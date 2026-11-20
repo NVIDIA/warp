@@ -1,0 +1,19 @@
+﻿warp.Bvh
+========
+
+.. currentmodule:: warp
+
+.. autoclass:: Bvh
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Bvh.rebuild
+      ~Bvh.refit
+   
+   
+   
+   
+   

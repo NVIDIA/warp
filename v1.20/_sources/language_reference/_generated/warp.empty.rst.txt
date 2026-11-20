@@ -1,0 +1,35 @@
+﻿warp.empty
+==========
+
+.. currentmodule:: warp._src.lang
+
+.. function:: empty(shape: tuple[int, ...], dtype: Any) -> Array[Scalar]
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
+
+   Create a fixed-size array of the given shape and dtype, leaving its data uninitialized.
+   
+   Use it instead of :func:`~warp._src.lang.zeros` when every element is written before being read.
+   
+   .. warning::
+   
+       Use it with caution: reading an element before it is written is undefined behavior.
+
+.. function:: empty(shape: int32, dtype: Any) -> Array[Scalar]
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
+
+   Create a fixed-size array of the given length and dtype, leaving its data uninitialized.
+   
+   Use it instead of :func:`~warp._src.lang.zeros` when every element is written before being read.
+   
+   .. warning::
+   
+       Use it with caution: reading an element before it is written is undefined behavior.

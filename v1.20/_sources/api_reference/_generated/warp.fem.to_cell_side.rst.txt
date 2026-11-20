@@ -1,0 +1,6 @@
+﻿warp.fem.to\_cell\_side
+=======================
+
+.. currentmodule:: warp.fem
+
+.. autodata:: to_cell_side

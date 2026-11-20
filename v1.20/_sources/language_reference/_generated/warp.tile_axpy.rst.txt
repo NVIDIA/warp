@@ -1,0 +1,48 @@
+﻿warp.tile\_axpy
+===============
+
+.. currentmodule:: warp._src.lang
+
+.. function:: tile_axpy(alpha: Any, src: Tile[Any, tuple[int, ...]], dest: Tile[Any, tuple[int, ...]]) -> None
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
+
+   Scale ``src`` by ``alpha`` and accumulate it into ``dest``, in place.
+   
+   This is a cooperative operation: the threads of the block divide the work between
+   them, so every thread must reach the call.
+   
+   Updates ``dest`` element-wise as ``dest += alpha * src`` without materializing the
+   scaled tile. Either tile may be in register or shared storage.
+   
+   :param alpha: Scalar multiplier. Must match the tiles' underlying scalar type, for
+                 example a :class:`warp.float32` value for a ``vec3f`` tile.
+   :param src: Source tile with the same shape and dtype as ``dest``. The element type must
+               be scalar, vector, or matrix.
+   :param dest: Destination tile, modified in place.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def scale_and_accumulate(src: wp.array[float], dest: wp.array[float]):
+           s = wp.tile_load(src, shape=4)
+           d = wp.tile_load(dest, shape=4)
+           wp.tile_axpy(2.0, s, d)
+           wp.tile_store(dest, d)
+   
+       src = wp.array([10.0, 20.0, 30.0, 40.0], dtype=float)
+       dest = wp.array([1.0, 2.0, 3.0, 4.0], dtype=float)
+   
+       wp.launch_tiled(scale_and_accumulate, dim=1, inputs=[src], outputs=[dest], block_dim=2)
+   
+       print(dest.numpy())
+   
+   .. testoutput::
+   
+       [21. 42. 63. 84.]
+   

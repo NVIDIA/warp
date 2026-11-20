@@ -1,0 +1,15 @@
+﻿warp.vector
+===========
+
+.. currentmodule:: warp._src.lang
+
+.. function:: vector(*args: Scalar, length: int32 = ..., dtype: Scalar = ...) -> Vector[Scalar, Any]
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
+
+   Construct a vector of given length and dtype.
+   
+   If no arguments are given, the vector is zero-initialized.

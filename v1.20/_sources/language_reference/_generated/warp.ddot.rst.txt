@@ -1,0 +1,13 @@
+﻿warp.ddot
+=========
+
+.. currentmodule:: warp._src.lang
+
+.. function:: ddot(a: Matrix[Scalar, Any, Any], b: Matrix[Scalar, Any, Any]) -> Scalar
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Compute the double dot product between two matrices.

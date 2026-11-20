@@ -1,0 +1,13 @@
+﻿warp.get\_diag
+==============
+
+.. currentmodule:: warp._src.lang
+
+.. function:: get_diag(mat: Matrix[Scalar, Any, Any]) -> Vector[Scalar, Any]
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Extract a vector containing the diagonal elements of square matrix ``mat``.

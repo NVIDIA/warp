@@ -1,0 +1,6 @@
+﻿warp.capture\_load\_from\_bytes
+===============================
+
+.. currentmodule:: warp
+
+.. autofunction:: capture_load_from_bytes

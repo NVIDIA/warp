@@ -1,0 +1,13 @@
+﻿warp.print
+==========
+
+.. currentmodule:: warp._src.lang
+
+.. function:: print(value: Any) -> None
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: true
+
+   Print a variable to stdout.

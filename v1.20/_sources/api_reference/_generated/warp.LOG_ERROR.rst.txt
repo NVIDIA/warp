@@ -1,0 +1,6 @@
+﻿warp.LOG\_ERROR
+===============
+
+.. currentmodule:: warp
+
+.. autodata:: LOG_ERROR

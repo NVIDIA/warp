@@ -1,0 +1,13 @@
+﻿warp.degrees
+============
+
+.. currentmodule:: warp._src.lang
+
+.. function:: degrees(x: Float) -> Float
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Convert ``x`` from radians into degrees.

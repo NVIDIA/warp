@@ -1,0 +1,19 @@
+﻿warp.fem.ElementKind
+====================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: ElementKind
+   
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~ElementKind.CELL
+      ~ElementKind.SIDE
+   
+   

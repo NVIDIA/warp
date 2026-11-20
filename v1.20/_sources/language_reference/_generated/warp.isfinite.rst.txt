@@ -1,0 +1,43 @@
+﻿warp.isfinite
+=============
+
+.. currentmodule:: warp._src.lang
+
+.. function:: isfinite(a: Float) -> bool
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Check if ``a`` is finite.
+
+.. function:: isfinite(a: Vector[Float, Any]) -> bool
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Check if all elements of ``a`` are finite.
+
+.. function:: isfinite(a: Quaternion[Float]) -> bool
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Check if all elements of ``a`` are finite.
+
+.. function:: isfinite(a: Matrix[Float, Any, Any]) -> bool
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: false
+
+   Check if all elements of ``a`` are finite.

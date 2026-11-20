@@ -1,0 +1,29 @@
+﻿warp.quat\_twist\_angle\_signed
+===============================
+
+.. currentmodule:: warp._src.lang
+
+.. function:: quat_twist_angle_signed(axis: vec3f, q: quatf) -> float
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+      :source: https://github.com/NVIDIA/warp/blob/release-1.20/warp/_src/math.py#L198-L219
+
+   Return the signed twist angle in radians of ``q`` around ``axis``.
+   
+   Unlike :func:`quat_twist_angle`, this preserves the sign of the twist, so
+   rotations by ``+theta`` and ``-theta`` around ``axis`` return opposite
+   values. Positive angles follow the right-hand rule about ``axis``.
+   
+   :param axis: Twist axis, with unit length.
+   :param q: Rotation quaternion.
+   
+   :returns: Signed twist angle in radians, in ``[-pi, pi]`` if ``q[3] >= 0`` and
+             in ``[-2*pi, 2*pi]`` otherwise, so ``q`` and ``-q`` can return different
+             angles even though they represent the same rotation. It is unspecified
+             when ``q`` is a rotation of 180 degrees about an axis perpendicular to
+             ``axis``.
+   :rtype: float
+   

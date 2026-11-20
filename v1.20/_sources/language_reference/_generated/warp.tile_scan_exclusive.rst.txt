@@ -1,0 +1,28 @@
+﻿warp.tile\_scan\_exclusive
+==========================
+
+.. currentmodule:: warp._src.lang
+
+.. function:: tile_scan_exclusive(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Scalar, tuple[int, ...]]
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
+
+   Return a new tile containing the exclusive prefix sums of a tile.
+   
+   This is a cooperative operation: the threads of the block divide the work between
+   them, so every thread must reach the call.
+   
+   Element ``i`` of the result is the sum of input elements ``0`` through ``i - 1``, so
+   element ``0`` is zero. A multi-dimensional tile is scanned over its flattened
+   row-major sequence and the result keeps the input shape. On CUDA, this operation reserves
+   a tile's worth of shared memory (see :ref:`tile_shared_memory_budget`).
+   
+   :param a: The input tile. Must be a tile of :class:`warp.float32`, :class:`warp.int32`,
+             or :class:`warp.uint32`.
+   
+   :returns: A register tile with the same shape and dtype as ``a``.
+   
+   See :func:`~warp.tile_scan_inclusive` for a usage example.

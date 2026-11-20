@@ -1,0 +1,6 @@
+﻿warp.fem.node\_inner\_weight
+============================
+
+.. currentmodule:: warp.fem
+
+.. autodata:: node_inner_weight

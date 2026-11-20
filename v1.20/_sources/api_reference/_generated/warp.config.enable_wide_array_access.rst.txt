@@ -1,0 +1,6 @@
+﻿warp.config.enable\_wide\_array\_access
+=======================================
+
+.. currentmodule:: warp.config
+
+.. autodata:: enable_wide_array_access

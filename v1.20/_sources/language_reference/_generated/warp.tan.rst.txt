@@ -1,0 +1,13 @@
+﻿warp.tan
+========
+
+.. currentmodule:: warp._src.lang
+
+.. function:: tan(x: Float) -> Float
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Compute the tangent of ``x`` in radians.

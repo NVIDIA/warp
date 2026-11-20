@@ -1,0 +1,51 @@
+﻿warp.tile\_argmin
+=================
+
+.. currentmodule:: warp._src.lang
+
+.. function:: tile_argmin(a: Tile[Scalar, tuple[int, ...]]) -> Tile[Int, tuple[Literal[1]]]
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: false
+      :differentiable: false
+
+   Compute the index of the minimum element of a tile.
+   
+   This is a cooperative operation: the threads of the block divide the work between
+   them, so every thread must reach the call.
+   
+   The index is the row-major linear index into the flattened tile, so in a shape-``(2, 4)``
+   tile the element at row 1, column 1 has index 5. If several elements are equal minima,
+   which of their indices is returned is unspecified: it depends on ``block_dim`` and on
+   the device.
+   
+   Currently, if ``a`` contains NaN, the returned index may point to a NaN element and may
+   not match :func:`~warp.tile_min`.
+   
+   :param a: The tile to reduce. Must have a scalar element type.
+   
+   :returns: A shape-``(1,)`` register tile of :class:`warp.int32` holding the index. Read the
+             value with ``[0]``.
+   
+   .. rubric:: Example
+   
+   .. testcode::
+   
+       @wp.kernel
+       def locate_min(x: wp.array2d[float], i: wp.array[int]):
+           t = wp.tile_load(x, shape=(2, 4))
+           wp.tile_store(i, wp.tile_argmin(t))
+   
+       x = wp.array([[3.0, 7.0, 4.0, 9.0], [5.0, 0.0, 2.0, 6.0]], dtype=float)
+       i = wp.zeros(1, dtype=int)
+   
+       wp.launch_tiled(locate_min, dim=1, inputs=[x], outputs=[i], block_dim=4)
+   
+       # the minimum 0.0 sits at row 1, column 1, i.e. linear index 5
+       print(i.numpy())
+   
+   .. testoutput::
+   
+       [5]
+   

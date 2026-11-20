@@ -1,0 +1,27 @@
+﻿warp.length\_sq
+===============
+
+.. currentmodule:: warp._src.lang
+
+.. function:: length_sq(a: Vector[Scalar, Any]) -> Scalar
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Compute the squared length of ``a``.
+   
+   Compute the squared length of a vector.
+
+.. function:: length_sq(a: Quaternion[Float]) -> Float
+   :noindex:
+
+   .. wp-function-tags::
+      :kernel: true
+      :python: true
+      :differentiable: true
+
+   Compute the squared length of ``a``.
+   
+   Compute the squared length of a quaternion.

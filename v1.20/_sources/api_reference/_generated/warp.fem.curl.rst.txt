@@ -1,0 +1,6 @@
+﻿warp.fem.curl
+=============
+
+.. currentmodule:: warp.fem
+
+.. autodata:: curl

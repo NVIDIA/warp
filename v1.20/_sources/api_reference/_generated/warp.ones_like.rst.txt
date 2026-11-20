@@ -1,0 +1,6 @@
+﻿warp.ones\_like
+===============
+
+.. currentmodule:: warp
+
+.. autofunction:: ones_like

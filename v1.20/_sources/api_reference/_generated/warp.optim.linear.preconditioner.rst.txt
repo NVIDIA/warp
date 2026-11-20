@@ -1,0 +1,6 @@
+﻿warp.optim.linear.preconditioner
+================================
+
+.. currentmodule:: warp.optim.linear
+
+.. autofunction:: preconditioner

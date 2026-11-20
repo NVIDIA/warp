@@ -1,0 +1,6 @@
+﻿warp.is\_cuda\_available
+========================
+
+.. currentmodule:: warp
+
+.. autofunction:: is_cuda_available

@@ -1,0 +1,27 @@
+﻿warp.Mesh
+=========
+
+.. currentmodule:: warp
+
+.. autoclass:: Mesh
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~Mesh.refit
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~Mesh.points
+      ~Mesh.vars
+      ~Mesh.velocities
+      ~Mesh.support_winding_number
+   
+   
