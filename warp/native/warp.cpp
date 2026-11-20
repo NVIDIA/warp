@@ -930,16 +930,60 @@ WP_API bool wp_array_copy_host(void* dst, void* src, int dst_type, int src_type,
 }
 
 
+// Compute each store's offset from the element index. Do not rewrite the
+// non-indexed loop as a pointer that advances by ``stride``: MSVC 14.51 for
+// ARM64 unrolls that loop with all stores addressed from one base register and
+// drops the second of every four 2-byte stores (the Windows ARM64 fill tests in
+// test_array.py and test_indexedarray.py catch it).
+template <typename T> static void array_fill_1d_value(char* data, int n, size_t stride, const int* indices, T value)
+{
+    if (indices) {
+        for (int i = 0; i < n; i++)
+            *reinterpret_cast<T*>(data + size_t(indices[i]) * stride) = value;
+    } else {
+        for (int i = 0; i < n; i++)
+            *reinterpret_cast<T*>(data + size_t(i) * stride) = value;
+    }
+}
+
+// Fill the innermost dimension: ``n`` elements ``stride`` bytes apart, or at the
+// multiples of ``stride`` that ``indices`` selects. Values of 1, 2, 4, or 8 bytes
+// use typed stores when every element is aligned, which is much faster than a
+// variable-size memcpy per element.
+static void array_fill_1d(char* data, int n, size_t stride, const int* indices, const void* value, size_t value_size)
+{
+    size_t alignment = reinterpret_cast<size_t>(data) | stride;
+    if (value_size == 8 && alignment % 8 == 0) {
+        int64_t v;
+        memcpy(&v, value, sizeof(v));
+        array_fill_1d_value(data, n, stride, indices, v);
+    } else if (value_size == 4 && alignment % 4 == 0) {
+        int32_t v;
+        memcpy(&v, value, sizeof(v));
+        array_fill_1d_value(data, n, stride, indices, v);
+    } else if (value_size == 2 && alignment % 2 == 0) {
+        int16_t v;
+        memcpy(&v, value, sizeof(v));
+        array_fill_1d_value(data, n, stride, indices, v);
+    } else if (value_size == 1) {
+        int8_t v;
+        memcpy(&v, value, sizeof(v));
+        array_fill_1d_value(data, n, stride, indices, v);
+    } else {
+        for (int i = 0; i < n; i++) {
+            size_t idx = indices ? size_t(indices[i]) : size_t(i);
+            memcpy(data + idx * stride, value, value_size);
+        }
+    }
+}
+
+
 static void
 array_fill_strided(void* data, const int* shape, const int* strides, int ndim, const void* value, size_t value_size)
 {
     size_t stride = strides[0];
     if (ndim == 1) {
-        char* p = (char*)data;
-        for (int i = 0; i < shape[0]; i++) {
-            memcpy(p, value, value_size);
-            p += stride;
-        }
+        array_fill_1d((char*)data, shape[0], stride, nullptr, value, value_size);
     } else {
         for (int i = 0; i < shape[0]; i++) {
             char* p = (char*)data + i * stride;
@@ -962,11 +1006,7 @@ static void array_fill_indexed(
 {
     size_t stride = strides[0];
     if (ndim == 1) {
-        for (int i = 0; i < shape[0]; i++) {
-            size_t idx = indices[0] ? indices[0][i] : i;
-            char* p = (char*)data + idx * stride;
-            memcpy(p, value, value_size);
-        }
+        array_fill_1d((char*)data, shape[0], stride, indices[0], value, value_size);
     } else {
         for (int i = 0; i < shape[0]; i++) {
             size_t idx = indices[0] ? indices[0][i] : i;
@@ -1004,6 +1044,18 @@ WP_API void wp_array_fill_host(void* arr_ptr, int arr_type, const void* value_pt
 {
     if (!arr_ptr || !value_ptr)
         return;
+
+    // During capture, record only — don't execute (matches CUDA graph semantics).
+    // Python rejects the layouts the record cannot express before calling here.
+    APICState* state = wp_apic_get_recording_state();
+    if (state && (arr_type == wp::ARRAY_TYPE_REGULAR || arr_type == wp::ARRAY_TYPE_INDEXED)) {
+        if (value_size <= 0
+            || !apic_record_array_fill(
+                state, /*live=*/false, arr_ptr, arr_type, value_ptr, static_cast<uint32_t>(value_size)
+            ))
+            fprintf(stderr, "Warp fill error: cannot record this fill during CPU graph capture\n");
+        return;
+    }
 
     if (arr_type == wp::ARRAY_TYPE_REGULAR) {
         wp::array_t<void>& arr = *static_cast<wp::array_t<void>*>(arr_ptr);
@@ -1109,7 +1161,7 @@ WP_API void wp_cuda_context_push_current(void* context) { }
 WP_API void wp_cuda_context_pop_current() { }
 WP_API void* wp_cuda_context_create(int device_ordinal) { return NULL; }
 WP_API void wp_cuda_context_destroy(void* context) { }
-WP_API void wp_cuda_context_synchronize(void* context) { }
+WP_API bool wp_cuda_context_synchronize(void* context) { return true; }
 WP_API bool wp_cuda_profiler_start(void* context) { return true; }
 WP_API bool wp_cuda_profiler_stop(void* context) { return true; }
 WP_API uint64_t wp_cuda_context_check(void* context) { return 0; }
@@ -1136,7 +1188,7 @@ WP_API int wp_cuda_stream_query(void* stream) { return 0; }
 WP_API void wp_cuda_stream_register(void* context, void* stream) { }
 WP_API void wp_cuda_stream_unregister(void* context, void* stream) { }
 WP_API void* wp_cuda_stream_get_current() { return NULL; }
-WP_API void wp_cuda_stream_synchronize(void* stream) { }
+WP_API bool wp_cuda_stream_synchronize(void* stream) { return true; }
 WP_API void wp_cuda_stream_wait_event(void* stream, void* event, bool external) { }
 WP_API void wp_cuda_stream_wait_stream(void* stream, void* other_stream, void* event, bool external) { }
 WP_API int wp_cuda_stream_is_capturing(void* stream) { return 0; }
@@ -1149,7 +1201,7 @@ WP_API void* wp_cuda_event_create(void* context, unsigned flags) { return NULL; 
 WP_API void wp_cuda_event_destroy(void* event) { }
 WP_API int wp_cuda_event_query(void* event) { return 0; }
 WP_API void wp_cuda_event_record(void* event, void* stream, bool external) { }
-WP_API void wp_cuda_event_synchronize(void* event) { }
+WP_API bool wp_cuda_event_synchronize(void* event) { return true; }
 WP_API float wp_cuda_event_elapsed_time(void* start_event, void* end_event) { return 0.0f; }
 
 WP_API bool wp_cuda_graph_begin_capture(void* context, void* stream, int external, int mode) { return false; }
@@ -1277,26 +1329,74 @@ WP_API void wp_cuda_set_context_restore_policy(bool always_restore) { }
 WP_API int wp_cuda_get_context_restore_policy() { return false; }
 
 WP_API bool wp_array_scan_int_device(
-    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
+    uint64_t in,
+    uint64_t out,
+    int len,
+    int in_stride,
+    int out_stride,
+    int type_len,
+    bool inclusive,
+    uint64_t temp_storage,
+    size_t temp_storage_bytes
 )
+{
+    return false;
+}
+WP_API bool wp_array_scan_int_device_temp_storage_size(void* context, int len, size_t* temp_storage_bytes)
 {
     return false;
 }
 WP_API bool wp_array_scan_int64_device(
-    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
+    uint64_t in,
+    uint64_t out,
+    int len,
+    int in_stride,
+    int out_stride,
+    int type_len,
+    bool inclusive,
+    uint64_t temp_storage,
+    size_t temp_storage_bytes
 )
+{
+    return false;
+}
+WP_API bool wp_array_scan_int64_device_temp_storage_size(void* context, int len, size_t* temp_storage_bytes)
 {
     return false;
 }
 WP_API bool wp_array_scan_float_device(
-    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
+    uint64_t in,
+    uint64_t out,
+    int len,
+    int in_stride,
+    int out_stride,
+    int type_len,
+    bool inclusive,
+    uint64_t temp_storage,
+    size_t temp_storage_bytes
 )
 {
     return false;
 }
+WP_API bool wp_array_scan_float_device_temp_storage_size(void* context, int len, size_t* temp_storage_bytes)
+{
+    return false;
+}
 WP_API bool wp_array_scan_double_device(
-    uint64_t in, uint64_t out, int len, int in_stride, int out_stride, int type_len, bool inclusive
+    uint64_t in,
+    uint64_t out,
+    int len,
+    int in_stride,
+    int out_stride,
+    int type_len,
+    bool inclusive,
+    uint64_t temp_storage,
+    size_t temp_storage_bytes
 )
+{
+    return false;
+}
+WP_API bool wp_array_scan_double_device_temp_storage_size(void* context, int len, size_t* temp_storage_bytes)
 {
     return false;
 }

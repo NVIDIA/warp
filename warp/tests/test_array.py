@@ -4,7 +4,7 @@
 import sys
 import unittest
 from functools import cache
-from typing import Any
+from typing import Any, NamedTuple
 
 import numpy as np
 
@@ -2746,6 +2746,499 @@ def test_array_from_data(test, device):
             assert_np_equal(dst.numpy(), expected)
 
 
+def test_array_from_contiguous_data(test, device):
+    """Copy contiguous data into a new array that doesn't share the input's memory."""
+    rows = ((1.0, 2.0, 3.0), (-4.0, 0.5, 6.0))
+    expected = np.array(rows, dtype=np.float32)
+
+    arr = wp.array(list(rows), dtype=wp.vec3, device=device)
+    test.assertEqual(arr.shape, (2,))
+    assert_np_equal(arr.numpy(), expected)
+
+    arr = wp.array([wp.vec3(*row) for row in rows], dtype=wp.vec3, device=device)
+    test.assertEqual(arr.shape, (2,))
+    assert_np_equal(arr.numpy(), expected)
+
+    source = np.array(rows, dtype=np.float32)
+    arr = wp.array(source, dtype=wp.vec3, device=device)
+    source[0, 0] = 100.0
+    test.assertEqual(arr.shape, (2,))
+    assert_np_equal(arr.numpy(), expected)
+
+    source = np.array((1, -2, 3, 4), dtype=np.int64)
+    arr = wp.array(source, dtype=wp.int64, device=device)
+    source[1] = 100
+    test.assertEqual(arr.shape, (4,))
+    assert_np_equal(arr.numpy(), np.array((1, -2, 3, 4), dtype=np.int64))
+
+
+def test_array_from_noncontiguous_data(test, device):
+    """Copy data whose layout differs from the new array's into it."""
+    source = np.arange(24, dtype=np.float32).reshape(4, 6)
+
+    arr = wp.array(source[:, ::2], dtype=wp.float32, device=device)
+    test.assertEqual(arr.shape, (4, 3))
+    assert_np_equal(arr.numpy(), np.arange(24, dtype=np.float32).reshape(4, 6)[:, ::2])
+
+    arr = wp.array(np.asfortranarray(source), dtype=wp.float32, device=device)
+    test.assertEqual(arr.shape, (4, 6))
+    assert_np_equal(arr.numpy(), np.arange(24, dtype=np.float32).reshape(4, 6))
+
+    arr = wp.array(source.reshape(8, 3)[::2], dtype=wp.vec3, device=device)
+    test.assertEqual(arr.shape, (4,))
+    assert_np_equal(arr.numpy(), np.arange(24, dtype=np.float32).reshape(8, 3)[::2])
+
+
+def test_array_from_empty_data(test, device):
+    """Build empty arrays from empty data."""
+    arr = wp.array([], dtype=wp.float32, device=device)
+    test.assertEqual(arr.shape, (0,))
+    test.assertEqual(arr.size, 0)
+
+    arr = wp.array(np.empty((0, 3), dtype=np.float32), dtype=wp.vec3, device=device)
+    test.assertEqual(arr.shape, (0,))
+    test.assertEqual(arr.size, 0)
+
+
+def test_array_from_composite_sequences(test, device):
+    """Build arrays from Python sequences of vectors, quaternions, matrices, and transforms of every scalar type."""
+
+    def read_float64(arr):
+        values = arr.numpy()
+        if getattr(arr.dtype, "_wp_scalar_type_", arr.dtype) is wp.bfloat16:
+            # bfloat16 arrays convert to NumPy as ml_dtypes.bfloat16 when installed, otherwise as their raw uint16 bits.
+            values = (values.view(np.uint16).astype(np.uint32) << 16).view(np.float32)
+        return values.astype(np.float64)
+
+    for scalar_type in (*wp._src.types.scalar_types, wp.bool):
+        if scalar_type in wp._src.types.float_types:
+            # Exact in every float type, and the float16 and bfloat16 bits differ from the values.
+            vec_values = (1.0, -2.0, 0.25)
+            mat_values = (1.0, -2.0, 0.25, 3.5, -0.125, 6.0)
+            quat_values = (0.5, -0.25, 0.125, 1.0)
+        elif scalar_type is wp.bool:
+            vec_values = (True, False, False)
+            mat_values = (True, False, True, True, False, False)
+        else:
+            vec_values = (1, 2, 3)
+            mat_values = (1, 2, 3, 4, 5, 6)
+
+        other_scalar_type = wp.float64 if scalar_type is wp.float32 else wp.float32
+        cases = (
+            (wp.types.vector(3, scalar_type), wp.types.vector(3, other_scalar_type), vec_values),
+            (wp.types.matrix((2, 3), scalar_type), wp.types.matrix((2, 3), other_scalar_type), mat_values),
+        )
+        if scalar_type in wp._src.types.float_types:
+            cases += (
+                (wp.types.quaternion(scalar_type), wp.types.quaternion(other_scalar_type), quat_values),
+                (
+                    wp.types.transformation(scalar_type),
+                    wp.types.transformation(other_scalar_type),
+                    (*vec_values, *quat_values),
+                ),
+            )
+
+        for dtype, other_dtype, values in cases:
+            type_name = wp.types.type_repr(dtype)
+            reversed_values = tuple(reversed(values))
+            a = dtype(*values)
+            b = dtype(*reversed_values)
+            expected_a = np.array(values, dtype=np.float64).reshape(dtype._shape_)
+            expected_b = np.array(reversed_values, dtype=np.float64).reshape(dtype._shape_)
+
+            with test.subTest(msg=f"{type_name}, list"):
+                arr = wp.array([a, b], dtype=dtype, device=device)
+                test.assertEqual(arr.dtype, dtype)
+                test.assertEqual(arr.shape, (2,))
+                assert_np_equal(read_float64(arr), np.stack((expected_a, expected_b)))
+
+            with test.subTest(msg=f"{type_name}, long list"):
+                arr = wp.array([a, b] * 20, dtype=dtype, device=device)
+                test.assertEqual(arr.shape, (40,))
+                assert_np_equal(read_float64(arr), np.stack((expected_a, expected_b) * 20))
+
+            with test.subTest(msg=f"{type_name}, list of one value"):
+                arr = wp.array([a], dtype=dtype, device=device)
+                test.assertEqual(arr.shape, (1,))
+                assert_np_equal(read_float64(arr), expected_a[np.newaxis])
+
+            with test.subTest(msg=f"{type_name}, tuple"):
+                arr = wp.array((a, b), dtype=dtype, device=device)
+                test.assertEqual(arr.shape, (2,))
+                assert_np_equal(read_float64(arr), np.stack((expected_a, expected_b)))
+
+            with test.subTest(msg=f"{type_name}, single value"):
+                arr = wp.array(a, dtype=dtype, device=device)
+                test.assertEqual(arr.shape, (1,))
+                assert_np_equal(read_float64(arr), expected_a[np.newaxis])
+
+            with test.subTest(msg=f"{type_name}, nested lists"):
+                arr = wp.array([[a, b], [b, a]], dtype=dtype, device=device)
+                test.assertEqual(arr.shape, (2, 2))
+                assert_np_equal(read_float64(arr), np.array([[expected_a, expected_b], [expected_b, expected_a]]))
+
+            with test.subTest(msg=f"{type_name}, long nested lists"):
+                arr = wp.array([[a, b, a], [b, a, b]] * 10, dtype=dtype, device=device)
+                test.assertEqual(arr.shape, (20, 3))
+                assert_np_equal(
+                    read_float64(arr),
+                    np.array([[expected_a, expected_b, expected_a], [expected_b, expected_a, expected_b]] * 10),
+                )
+
+            with test.subTest(msg=f"{type_name}, deeply nested tuples"):
+                arr = wp.array((((a, b), (b, a)),) * 10, dtype=dtype, device=device)
+                test.assertEqual(arr.shape, (10, 2, 2))
+                assert_np_equal(
+                    read_float64(arr), np.array((((expected_a, expected_b), (expected_b, expected_a)),) * 10)
+                )
+
+            with test.subTest(msg=f"{type_name}, inhomogeneous nested lists"):
+                with test.assertRaises(RuntimeError):
+                    wp.array([[a, b] * 10, [a, b] * 9 + [a]], dtype=dtype, device=device)
+                with test.assertRaises(RuntimeError):
+                    wp.array([[a, b] * 9 + [a], [a, b] * 10], dtype=dtype, device=device)
+
+            with test.subTest(msg=f"{type_name}, after a tuple of scalars"):
+                arr = wp.array([reversed_values, a], dtype=dtype, device=device)
+                test.assertEqual(arr.shape, (2,))
+                assert_np_equal(read_float64(arr), np.stack((expected_b, expected_a)))
+
+            with test.subTest(msg=f"{type_name}, after a value of another type"):
+                arr = wp.array([other_dtype(*reversed_values), a], dtype=dtype, device=device)
+                test.assertEqual(arr.shape, (2,))
+                assert_np_equal(read_float64(arr), np.stack((expected_b, expected_a)))
+
+            with test.subTest(msg=f"{type_name}, to {wp.types.type_repr(other_dtype)}"):
+                arr = wp.array([a, b], dtype=other_dtype, device=device)
+                test.assertEqual(arr.shape, (2,))
+                assert_np_equal(read_float64(arr), np.stack((expected_a, expected_b)))
+
+            with test.subTest(msg=f"{type_name}, to {scalar_type.__name__}"):
+                arr = wp.array([a, b], dtype=scalar_type, device=device)
+                test.assertEqual(arr.dtype, scalar_type)
+                assert_np_equal(read_float64(arr).flatten(), np.concatenate((expected_a, expected_b), axis=None))
+
+            with test.subTest(msg=f"{type_name}, long list to bfloat16"):
+                arr = wp.array([a, b] * 20, dtype=wp.bfloat16, device=device)
+                test.assertEqual(arr.dtype, wp.bfloat16)
+                assert_np_equal(read_float64(arr).flatten(), np.concatenate((expected_a, expected_b) * 20, axis=None))
+
+            if scalar_type is not wp.bfloat16:
+                # NumPy has no bfloat16 type to infer.
+                with test.subTest(msg=f"{type_name}, inferred dtype"):
+                    arr = wp.array([a, b], device=device)
+                    test.assertEqual(arr.dtype, scalar_type)
+                    assert_np_equal(read_float64(arr).flatten(), np.concatenate((expected_a, expected_b), axis=None))
+
+
+def test_array_from_composite_sequences_in_batches(test, device):
+    """Build arrays from sequences of vectors that are too long to copy in one batch."""
+    count = 2 * wp._src.types._COMPOSITE_JOIN_BATCH_COUNT + 1
+    values = (wp.vec3f(1.0, 2.0, 3.0), wp.vec3f(4.0, 5.0, 6.0), wp.vec3f(7.0, 8.0, 9.0))
+    # A pattern whose period doesn't divide the batch count, so a batch out of place would show.
+    expected = np.tile(np.array(values, dtype=np.float32), (count // 3 + 1, 1))[:count]
+
+    arr = wp.array(list(values) * (count // 3) + list(values[: count % 3]), dtype=wp.vec3f, device=device)
+    test.assertEqual(arr.shape, (count,))
+    assert_np_equal(arr.numpy(), expected)
+
+    rows = count // 3
+    arr = wp.array([list(values)] * rows, dtype=wp.vec3f, device=device)
+    test.assertEqual(arr.shape, (rows, 3))
+    assert_np_equal(arr.numpy(), np.tile(np.array(values, dtype=np.float32), (rows, 1, 1)))
+
+
+class ReadCountingSequence:
+    """A sequence that is neither a list nor a tuple, and that counts the reads of each item."""
+
+    def __init__(self, items):
+        self.items = tuple(items)
+        self.reads = [0] * len(self.items)
+
+    def __len__(self):
+        return len(self.items)
+
+    def __getitem__(self, index):
+        item = self.items[index]
+        self.reads[index] += 1
+        return item
+
+
+def test_array_from_custom_sequences(test, device):
+    """Build arrays from float16 and bfloat16 vectors held in sequences other than lists and tuples."""
+
+    def read_float64(arr):
+        values = arr.numpy()
+        if getattr(arr.dtype, "_wp_scalar_type_", arr.dtype) is wp.bfloat16:
+            # bfloat16 arrays convert to NumPy as ml_dtypes.bfloat16 when installed, otherwise as their raw uint16 bits.
+            values = (values.view(np.uint16).astype(np.uint32) << 16).view(np.float32)
+        return values.astype(np.float64)
+
+    for scalar_type in (wp.float16, wp.bfloat16):
+        vec3 = wp.types.vector(3, scalar_type)
+        type_name = wp.types.type_repr(vec3)
+        a = vec3(1.0, -2.0, 0.25)
+        b = vec3(0.25, -2.0, 1.0)
+        expected_a = np.array((1.0, -2.0, 0.25))
+        expected_b = np.array((0.25, -2.0, 1.0))
+
+        with test.subTest(msg=f"{type_name}, custom sequence"):
+            arr = wp.array(ReadCountingSequence((a, b)), dtype=vec3, device=device)
+            test.assertEqual(arr.shape, (2,))
+            assert_np_equal(read_float64(arr), np.stack((expected_a, expected_b)))
+
+        with test.subTest(msg=f"{type_name}, long custom sequence"):
+            arr = wp.array(ReadCountingSequence((a, b) * 20), dtype=vec3, device=device)
+            test.assertEqual(arr.shape, (40,))
+            assert_np_equal(read_float64(arr), np.stack((expected_a, expected_b) * 20))
+
+        with test.subTest(msg=f"{type_name}, list of custom sequences"):
+            arr = wp.array([ReadCountingSequence((a, b)), ReadCountingSequence((b, a))], dtype=vec3, device=device)
+            test.assertEqual(arr.shape, (2, 2))
+            assert_np_equal(read_float64(arr), np.array(((expected_a, expected_b), (expected_b, expected_a))))
+
+        with test.subTest(msg=f"{type_name}, custom sequence after a list"):
+            arr = wp.array([[a, b], ReadCountingSequence((b, a))], dtype=vec3, device=device)
+            test.assertEqual(arr.shape, (2, 2))
+            assert_np_equal(read_float64(arr), np.array(((expected_a, expected_b), (expected_b, expected_a))))
+
+        with test.subTest(msg=f"{type_name}, nested custom sequences"):
+            data = ReadCountingSequence((ReadCountingSequence((a, b)), ReadCountingSequence((b, a))))
+            arr = wp.array(data, dtype=vec3, device=device)
+            test.assertEqual(arr.shape, (2, 2))
+            assert_np_equal(read_float64(arr), np.array(((expected_a, expected_b), (expected_b, expected_a))))
+
+        with test.subTest(msg=f"{type_name}, to float32"):
+            arr = wp.array(ReadCountingSequence((a, b)), dtype=wp.vec3f, device=device)
+            assert_np_equal(arr.numpy(), np.stack((expected_a, expected_b)))
+
+        with test.subTest(msg=f"{type_name}, each item read once"):
+            inner = ReadCountingSequence((a, b))
+            outer = ReadCountingSequence((inner, ReadCountingSequence((b, a))))
+            wp.array(outer, dtype=vec3, device=device)
+            test.assertEqual(outer.reads, [1, 1])
+            test.assertEqual(inner.reads, [1, 1])
+
+    with test.subTest(msg="vec3h, inferred dtype"):
+        arr = wp.array(ReadCountingSequence((wp.vec3h(1.0, -2.0, 0.25),)), device=device)
+        test.assertEqual(arr.dtype, wp.float16)
+        assert_np_equal(arr.numpy().astype(np.float64), np.array(((1.0, -2.0, 0.25),)))
+
+
+class ArrayLikeList(list):
+    """A list that NumPy reads through its ``__array__()`` method rather than item by item."""
+
+    def __init__(self, items, array):
+        super().__init__(items)
+        self.array = array
+
+    def __array__(self, dtype=None, copy=None):
+        return self.array if dtype is None else self.array.astype(dtype)
+
+
+class ArrayWrapper:
+    """An object that NumPy reads through its ``__array__()`` method."""
+
+    def __init__(self, array):
+        self.array = array
+
+    def __array__(self, dtype=None, copy=None):
+        return self.array if dtype is None else self.array.astype(dtype)
+
+
+class ArrayInterfaceTuple(tuple):
+    """A tuple that NumPy reads through its ``__array_interface__`` rather than item by item."""
+
+    array = None
+
+    @property
+    def __array_interface__(self):
+        return self.array.__array_interface__
+
+
+def test_array_from_array_like_sequences(test, device):
+    """Build arrays from list and tuple subclasses that NumPy reads through an array protocol."""
+
+    with test.subTest(msg="long list of vec3f with __array__"):
+        array = np.full((20, 3), 7.0, dtype=np.float32)
+        arr = wp.array(ArrayLikeList([wp.vec3f(1.0, 2.0, 3.0)] * 20, array), dtype=wp.vec3f, device=device)
+        test.assertEqual(arr.shape, (20,))
+        assert_np_equal(arr.numpy(), array)
+
+    with test.subTest(msg="list of vec3h with __array__"):
+        array = np.full((2, 3), 7.0, dtype=np.float16)
+        arr = wp.array(ArrayLikeList([wp.vec3h(1.0, -2.0, 0.25)] * 2, array), dtype=wp.vec3h, device=device)
+        test.assertEqual(arr.shape, (2,))
+        assert_np_equal(arr.numpy(), array)
+
+    with test.subTest(msg="lists of vec3f with __array__ in a list"):
+        array = np.full((20, 3), 7.0, dtype=np.float32)
+        data = [
+            ArrayLikeList([wp.vec3f(1.0, 2.0, 3.0)] * 20, array),
+            ArrayLikeList([wp.vec3f(1.0, 2.0, 3.0)] * 20, array),
+        ]
+        arr = wp.array(data, dtype=wp.vec3f, device=device)
+        test.assertEqual(arr.shape, (2, 20))
+        assert_np_equal(arr.numpy(), np.stack((array, array)))
+
+    with test.subTest(msg="lists of vec3h with __array__ after a list of vec3h"):
+        array = np.full((2, 3), 7.0, dtype=np.float16)
+        data = [[wp.vec3h(1.0, -2.0, 0.25)] * 2, ArrayLikeList([wp.vec3h(1.0, -2.0, 0.25)] * 2, array)]
+        arr = wp.array(data, dtype=wp.vec3h, device=device)
+        test.assertEqual(arr.shape, (2, 2))
+        assert_np_equal(arr.numpy()[0], np.array(((1.0, -2.0, 0.25), (1.0, -2.0, 0.25)), dtype=np.float16))
+        assert_np_equal(arr.numpy()[1], array)
+
+    with test.subTest(msg="tuple of vec3h with __array_interface__"):
+        data = ArrayInterfaceTuple((wp.vec3h(1.0, -2.0, 0.25),) * 2)
+        data.array = np.full((2, 3), 7.0, dtype=np.float16)
+        arr = wp.array(data, dtype=wp.vec3h, device=device)
+        test.assertEqual(arr.shape, (2,))
+        assert_np_equal(arr.numpy(), data.array)
+
+    with test.subTest(msg="memoryviews of matrices"):
+        matrices = [np.full((3, 3), i, dtype=np.float32) for i in range(20)]
+        arr = wp.array([memoryview(m) for m in matrices], dtype=wp.mat33f, device=device)
+        test.assertEqual(arr.shape, (20,))
+        assert_np_equal(arr.numpy(), np.stack(matrices))
+
+    with test.subTest(msg="__array__ wrappers of matrices"):
+        matrices = [np.full((3, 3), i, dtype=np.float32) for i in range(20)]
+        arr = wp.array([ArrayWrapper(m) for m in matrices], dtype=wp.mat33f, device=device)
+        test.assertEqual(arr.shape, (20,))
+        assert_np_equal(arr.numpy(), np.stack(matrices))
+
+    with test.subTest(msg="memoryview beside a list of vec3h"):
+        array = np.full((2, 3), 7.0, dtype=np.float16)
+        data = [memoryview(array), [wp.vec3h(1.0, -2.0, 0.25)] * 2]
+        arr = wp.array(data, dtype=wp.vec3h, device=device)
+        test.assertEqual(arr.shape, (2, 2))
+        assert_np_equal(arr.numpy()[0], array)
+        assert_np_equal(arr.numpy()[1], np.array(((1.0, -2.0, 0.25), (1.0, -2.0, 0.25)), dtype=np.float16))
+
+    with test.subTest(msg="__array__ wrapper beside a list of vec3h"):
+        array = np.full((2, 3), 7.0, dtype=np.float16)
+        data = [ArrayWrapper(array), [wp.vec3h(1.0, -2.0, 0.25)] * 2]
+        arr = wp.array(data, dtype=wp.vec3h, device=device)
+        test.assertEqual(arr.shape, (2, 2))
+        assert_np_equal(arr.numpy()[0], array)
+        assert_np_equal(arr.numpy()[1], np.array(((1.0, -2.0, 0.25), (1.0, -2.0, 0.25)), dtype=np.float16))
+
+    with test.subTest(msg="empty list with __array__ before an empty tuple and a list of vec3f"):
+        data = [ArrayLikeList([], np.empty((0, 3), dtype=np.float32)), (), [wp.vec3f(1.0, 2.0, 3.0)]]
+        with test.assertRaisesRegex(RuntimeError, "inhomogeneous"):
+            wp.array(data, dtype=wp.vec3f, device=device)
+
+    with test.subTest(msg="plain list subclass of vec3h"):
+        arr = wp.array(type("PlainList", (list,), {})([wp.vec3h(1.0, -2.0, 0.25)] * 2), dtype=wp.vec3h, device=device)
+        test.assertEqual(arr.shape, (2,))
+        assert_np_equal(arr.numpy(), np.array(((1.0, -2.0, 0.25), (1.0, -2.0, 0.25)), dtype=np.float16))
+
+
+class Point3(NamedTuple):
+    """A named tuple, which NumPy reads item by item like a tuple."""
+
+    x: float
+    y: float
+    z: float
+
+
+class VectorPair(NamedTuple):
+    """A named tuple of two vectors."""
+
+    a: Any
+    b: Any
+
+
+def test_array_from_sequence_subclasses(test, device):
+    """Build arrays from list and tuple subclasses that NumPy reads item by item, like named tuples."""
+
+    a = wp.vec3h(1.0, -2.0, 0.25)
+    b = wp.vec3h(0.25, -2.0, 1.0)
+    expected_a = np.array((1.0, -2.0, 0.25), dtype=np.float16)
+    expected_b = np.array((0.25, -2.0, 1.0), dtype=np.float16)
+
+    with test.subTest(msg="named tuples of floats"):
+        points = [Point3(float(i), 1.0, 2.0) for i in range(20)]
+        arr = wp.array(points, dtype=wp.vec3f, device=device)
+        test.assertEqual(arr.shape, (20,))
+        assert_np_equal(arr.numpy(), np.array([(float(i), 1.0, 2.0) for i in range(20)], dtype=np.float32))
+
+    with test.subTest(msg="named tuples of floats before a vec3h"):
+        arr = wp.array([Point3(1.0, -2.0, 0.25)] * 20 + [b], dtype=wp.vec3h, device=device)
+        test.assertEqual(arr.shape, (21,))
+        assert_np_equal(arr.numpy()[:20], np.stack((expected_a,) * 20))
+        assert_np_equal(arr.numpy()[20], expected_b)
+
+    with test.subTest(msg="named tuples of vec3h"):
+        arr = wp.array([VectorPair(a, b)] * 20, dtype=wp.vec3h, device=device)
+        test.assertEqual(arr.shape, (20, 2))
+        assert_np_equal(arr.numpy(), np.stack((np.stack((expected_a, expected_b)),) * 20))
+
+    with test.subTest(msg="named tuples of floats beside vec3h in lists"):
+        arr = wp.array([[Point3(1.0, -2.0, 0.25), b]] * 10, dtype=wp.vec3h, device=device)
+        test.assertEqual(arr.shape, (10, 2))
+        assert_np_equal(arr.numpy(), np.stack((np.stack((expected_a, expected_b)),) * 10))
+
+    with test.subTest(msg="list subclasses of vec3h in a list"):
+        rows = [type("PlainList", (list,), {})((a, b))] * 10
+        arr = wp.array(rows, dtype=wp.vec3h, device=device)
+        test.assertEqual(arr.shape, (10, 2))
+        assert_np_equal(arr.numpy(), np.stack((np.stack((expected_a, expected_b)),) * 10))
+
+
+class SelfSequence:
+    """A sequence, neither a list nor a tuple, whose only item is itself."""
+
+    def __len__(self):
+        return 1
+
+    def __getitem__(self, index):
+        if index != 0:
+            raise IndexError(index)
+        return self
+
+
+def test_array_from_self_referencing_sequences(test, device):
+    """Reject sequences that contain themselves with NumPy's error, since they nest deeper than any array."""
+
+    message = "setting an array element with a sequence"
+
+    with test.subTest(msg="list"):
+        data = []
+        data.append(data)
+        with test.assertRaisesRegex(RuntimeError, message):
+            wp.array(data, dtype=wp.float32, device=device)
+
+    with test.subTest(msg="list, inferred dtype"):
+        data = []
+        data.append(data)
+        with test.assertRaisesRegex(RuntimeError, message):
+            wp.array(data, device=device)
+
+    with test.subTest(msg="list in a list"):
+        data = [[]]
+        data[0].append(data)
+        with test.assertRaisesRegex(RuntimeError, message):
+            wp.array(data, dtype=wp.float32, device=device)
+
+    with test.subTest(msg="list subclass"):
+        row = type("PlainList", (list,), {})()
+        row.append(row)
+        with test.assertRaisesRegex(RuntimeError, message):
+            wp.array([row], dtype=wp.float32, device=device)
+
+    with test.subTest(msg="custom sequence"):
+        with test.assertRaisesRegex(RuntimeError, message):
+            wp.array([SelfSequence()], dtype=wp.float32, device=device)
+
+    with test.subTest(msg="vec3h beside the list that holds it"):
+        data = [wp.vec3h(1.0, -2.0, 0.25)]
+        data.append(data)
+        with test.assertRaisesRegex(RuntimeError, message):
+            wp.array(data, dtype=wp.vec3h, device=device)
+
+
 @wp.kernel
 def inplace_add_1d(x: wp.array[float], y: wp.array[float]):
     i = wp.tid()
@@ -4125,11 +4618,254 @@ def test_graph_fill_vecmat(test, device):
         _run_tests(indexed_arrays)
 
 
+@wp.struct
+class WideAccessStruct:
+    a: wp.vec3
+    b: float
+
+
+@wp.struct
+class WideAccessStructU64:
+    a: wp.uint64
+    b: wp.uint64
+
+
+WIDE_ACCESS_TYPES = (
+    wp.vec2,
+    wp.vec4,
+    wp.quat,
+    wp.mat44,
+    wp.spatial_vector,
+    wp.vec2d,
+    wp.vec2h,
+    wp.vec4h,
+    wp.vec4ub,
+    wp.vec2ul,
+    wp.vec3,
+    wp.types.vector(10, wp.float16),
+    wp.types.matrix((3, 3), wp.float16),
+    WideAccessStruct,
+    WideAccessStructU64,
+)
+WIDE_ACCESS_SCALARS = {WideAccessStruct: wp.float32, WideAccessStructU64: wp.uint64}
+
+
+@wp.kernel
+def copy_elements(src: wp.array[Any], dst: wp.array[Any]):
+    i = wp.tid()
+    dst[i] = src[i]
+
+
+@wp.kernel
+def copy_elements_loop(src: wp.array[Any], dst: wp.array[Any], count: int):
+    i = wp.tid()
+    for j in range(i * count, wp.min((i + 1) * count, dst.shape[0])):
+        dst[j] = src[j]
+
+
+@wp.kernel
+def copy_elements_2d(src: wp.array2d[Any], dst: wp.array2d[Any]):
+    i, j = wp.tid()
+    dst[i, j] = src[i, j]
+
+
+@wp.kernel
+def copy_elements_indexed(src: wp.indexedarray[Any], dst: wp.indexedarray[Any]):
+    i = wp.tid()
+    dst[i] = src[i]
+
+
+for _dtype in WIDE_ACCESS_TYPES:
+    wp.overload(copy_elements, {"src": wp.array[_dtype], "dst": wp.array[_dtype]})
+    wp.overload(copy_elements_loop, {"src": wp.array[_dtype], "dst": wp.array[_dtype], "count": int})
+    wp.overload(copy_elements_2d, {"src": wp.array2d[_dtype], "dst": wp.array2d[_dtype]})
+    if _dtype not in WIDE_ACCESS_SCALARS:
+        wp.overload(copy_elements_indexed, {"src": wp.indexedarray[_dtype], "dst": wp.indexedarray[_dtype]})
+
+
+def _wide_access_case(dtype, device, nbytes):
+    """Return the element and scalar sizes, source bytes, and source and destination buffers."""
+    size = wp._src.types.type_size_in_bytes(dtype)
+    scalar_type = WIDE_ACCESS_SCALARS.get(dtype) or dtype._wp_scalar_type_
+    scalar_size = wp._src.types.type_size_in_bytes(scalar_type)
+    count = nbytes // scalar_size + 1
+    src_bytes = (np.arange(count) % 251).astype(wp.dtype_to_numpy(scalar_type)).view(np.uint8)[:nbytes]
+    src_buf = wp.array(src_bytes, dtype=wp.uint8, device=device)
+    dst_buf = wp.zeros(nbytes, dtype=wp.uint8, device=device)
+    return size, scalar_size, src_bytes, src_buf, dst_buf
+
+
+def test_array_wide_access(test, device):
+    # Elements are loaded and stored as wide words only where the alignment allows it, so aligned,
+    # misaligned and irregularly strided arrays must all be copied exactly.
+    n = 100
+    count = 4
+    for dtype in WIDE_ACCESS_TYPES:
+        size, scalar_size, *_ = _wide_access_case(dtype, device, 0)
+        layouts = {
+            "aligned": (0, 0, size),
+            "offset": (scalar_size, scalar_size, size),
+            "odd stride": (0, 0, size + scalar_size),
+            "padded stride": (0, 0, size + 16),
+            "aligned to offset": (0, scalar_size, size),
+            "offset to aligned": (scalar_size, 0, size),
+        }
+        for layout, (src_offset, dst_offset, stride) in layouts.items():
+            nbytes = max(src_offset, dst_offset) + n * stride
+            for kernel, dim, extra in ((copy_elements, n, []), (copy_elements_loop, (n + count - 1) // count, [count])):
+                with test.subTest(dtype=dtype.__name__, layout=layout, kernel=kernel.key):
+                    _, _, src_bytes, src_buf, dst_buf = _wide_access_case(dtype, device, nbytes)
+                    src = wp.array(ptr=src_buf.ptr + src_offset, dtype=dtype, shape=n, strides=(stride,), device=device)
+                    dst = wp.array(ptr=dst_buf.ptr + dst_offset, dtype=dtype, shape=n, strides=(stride,), device=device)
+                    wp.launch(kernel, dim=dim, inputs=[src, dst, *extra], device=device)
+
+                    expected = np.zeros(nbytes, dtype=np.uint8)
+                    for i in range(n):
+                        s, d = src_offset + i * stride, dst_offset + i * stride
+                        expected[d : d + size] = src_bytes[s : s + size]
+                    assert_np_equal(dst_buf.numpy(), expected)
+
+
+def test_array_wide_access_2d(test, device):
+    # The row stride decides whether all elements of a 2D array are aligned.
+    rows, cols = 7, 5
+    for dtype in WIDE_ACCESS_TYPES:
+        size, scalar_size, *_ = _wide_access_case(dtype, device, 0)
+        layouts = {
+            "packed": (cols * size, size),
+            "padded rows": (cols * size + scalar_size, size),
+            "aligned padded rows": (cols * size + 16, size),
+            "transposed": (size, rows * size),
+        }
+        for layout, strides in layouts.items():
+            with test.subTest(dtype=dtype.__name__, layout=layout):
+                nbytes = (rows - 1) * strides[0] + (cols - 1) * strides[1] + size
+                _, _, src_bytes, src_buf, dst_buf = _wide_access_case(dtype, device, nbytes)
+                src = wp.array(ptr=src_buf.ptr, dtype=dtype, shape=(rows, cols), strides=strides, device=device)
+                dst = wp.array(ptr=dst_buf.ptr, dtype=dtype, shape=(rows, cols), strides=strides, device=device)
+                wp.launch(copy_elements_2d, dim=(rows, cols), inputs=[src, dst], device=device)
+
+                expected = np.zeros(nbytes, dtype=np.uint8)
+                for i in range(rows):
+                    for j in range(cols):
+                        o = i * strides[0] + j * strides[1]
+                        expected[o : o + size] = src_bytes[o : o + size]
+                assert_np_equal(dst_buf.numpy(), expected)
+
+
+def test_array_wide_access_indexed(test, device):
+    # Indexed arrays take the wide path based on the alignment of the array they index.
+    n = 20
+    indices = np.arange(0, n, 2, dtype=np.int32)[::-1].copy()
+    for dtype in WIDE_ACCESS_TYPES:
+        if dtype in WIDE_ACCESS_SCALARS:
+            continue
+        size, scalar_size, *_ = _wide_access_case(dtype, device, 0)
+        for layout, offset in {"aligned": 0, "offset": scalar_size}.items():
+            with test.subTest(dtype=dtype.__name__, layout=layout):
+                nbytes = offset + n * size
+                _, _, src_bytes, src_buf, dst_buf = _wide_access_case(dtype, device, nbytes)
+                src = wp.array(ptr=src_buf.ptr + offset, dtype=dtype, shape=n, device=device)
+                dst = wp.array(ptr=dst_buf.ptr + offset, dtype=dtype, shape=n, device=device)
+                index_array = wp.array(indices, dtype=int, device=device)
+                wp.launch(
+                    copy_elements_indexed,
+                    dim=len(indices),
+                    inputs=[wp.indexedarray(src, [index_array]), wp.indexedarray(dst, [index_array])],
+                    device=device,
+                )
+
+                expected = np.zeros(nbytes, dtype=np.uint8)
+                for i in indices:
+                    o = offset + i * size
+                    expected[o : o + size] = src_bytes[o : o + size]
+                assert_np_equal(dst_buf.numpy(), expected)
+
+
+@wp.struct
+class WideAccessHolder:
+    src: wp.array[wp.vec4]
+    dst: wp.array[wp.vec4]
+
+
+@wp.kernel
+def copy_elements_per_thread_arrays(holders: wp.array[WideAccessHolder], n: int):
+    i = wp.tid()
+    h = holders[i % holders.shape[0]]
+    j = i // holders.shape[0]
+    if j < n:
+        h.dst[j] = h.src[j]
+
+
+def test_array_wide_access_per_thread_arrays(test, device):
+    # Threads of a warp access different arrays, some aligned and some not.
+    n = 16
+    offsets = (0, 4, 0, 8, 4, 0, 12, 0)
+    holders, cases = [], []
+    for offset in offsets:
+        nbytes = offset + n * 16
+        _, _, src_bytes, src_buf, dst_buf = _wide_access_case(wp.vec4, device, nbytes)
+        holder = WideAccessHolder()
+        holder.src = wp.array(ptr=src_buf.ptr + offset, dtype=wp.vec4, shape=n, device=device)
+        holder.dst = wp.array(ptr=dst_buf.ptr + offset, dtype=wp.vec4, shape=n, device=device)
+        holders.append(holder)
+        cases.append((offset, nbytes, src_bytes, src_buf, dst_buf))
+
+    holder_array = wp.array(holders, dtype=WideAccessHolder, device=device)
+    wp.launch(copy_elements_per_thread_arrays, dim=len(offsets) * n, inputs=[holder_array, n], device=device)
+
+    for offset, nbytes, src_bytes, _, dst_buf in cases:
+        with test.subTest(offset=offset):
+            expected = np.zeros(nbytes, dtype=np.uint8)
+            expected[offset:] = src_bytes[offset:]
+            assert_np_equal(dst_buf.numpy(), expected)
+
+
+@wp.kernel(module="unique")
+def copy_vec4_wide_access_disabled(src: wp.array[wp.vec4], dst: wp.array[wp.vec4]):
+    i = wp.tid()
+    dst[i] = src[i]
+
+
+def test_array_wide_access_disabled(test, device):
+    # Arrays must still be copied exactly with wide accesses disabled. The kernel has its own module so
+    # that rehashing it for the flag leaves other tests' modules unaffected.
+    n = 64
+    module = copy_vec4_wide_access_disabled.module
+    saved = wp.config.enable_wide_array_access
+    wp.config.enable_wide_array_access = False
+    module.mark_modified()
+    try:
+        for offset in (0, 4):
+            with test.subTest(offset=offset):
+                nbytes = offset + n * 16
+                _, _, src_bytes, src_buf, dst_buf = _wide_access_case(wp.vec4, device, nbytes)
+                src = wp.array(ptr=src_buf.ptr + offset, dtype=wp.vec4, shape=n, device=device)
+                dst = wp.array(ptr=dst_buf.ptr + offset, dtype=wp.vec4, shape=n, device=device)
+                wp.launch(copy_vec4_wide_access_disabled, dim=n, inputs=[src, dst], device=device)
+
+                expected = np.zeros(nbytes, dtype=np.uint8)
+                expected[offset:] = src_bytes[offset:]
+                assert_np_equal(dst_buf.numpy(), expected)
+    finally:
+        wp.config.enable_wide_array_access = saved
+        module.mark_modified()
+
+
 devices = get_test_devices()
 cuda_devices = get_cuda_test_devices()
 
 
 class TestArray(unittest.TestCase):
+    def test_array_from_data_pinned(self):
+        """Copy data into a new array in pinned memory."""
+        if not wp.is_cuda_available():
+            self.skipTest("Pinned memory needs CUDA")
+        arr = wp.array([(1.0, 2.0, 3.0), (-4.0, 0.5, 6.0)], dtype=wp.vec3, device="cpu", pinned=True)
+        self.assertTrue(arr.pinned)
+        self.assertEqual(arr.shape, (2,))
+        assert_np_equal(arr.numpy(), np.array(((1.0, 2.0, 3.0), (-4.0, 0.5, 6.0)), dtype=np.float32))
+
     def test_literal_zero_step_slice_in_kernel(self):
         """Verify that literal zero-step array slices fail during code generation.
 
@@ -4312,6 +5048,31 @@ add_function_test(TestArray, "test_casting", test_casting, devices=devices)
 add_function_test(TestArray, "test_array_len", test_array_len, devices=devices)
 add_function_test(TestArray, "test_cuda_interface_conversion", test_cuda_interface_conversion, devices=devices)
 add_function_test(TestArray, "test_array_from_data", test_array_from_data, devices=devices)
+add_function_test(TestArray, "test_array_from_contiguous_data", test_array_from_contiguous_data, devices=devices)
+add_function_test(TestArray, "test_array_from_noncontiguous_data", test_array_from_noncontiguous_data, devices=devices)
+add_function_test(TestArray, "test_array_from_empty_data", test_array_from_empty_data, devices=devices)
+add_function_test(
+    TestArray, "test_array_from_composite_sequences", test_array_from_composite_sequences, devices=devices
+)
+add_function_test(TestArray, "test_array_from_custom_sequences", test_array_from_custom_sequences, devices=devices)
+add_function_test(
+    TestArray,
+    "test_array_from_composite_sequences_in_batches",
+    test_array_from_composite_sequences_in_batches,
+    devices=devices,
+)
+add_function_test(
+    TestArray, "test_array_from_array_like_sequences", test_array_from_array_like_sequences, devices=devices
+)
+add_function_test(
+    TestArray, "test_array_from_sequence_subclasses", test_array_from_sequence_subclasses, devices=devices
+)
+add_function_test(
+    TestArray,
+    "test_array_from_self_referencing_sequences",
+    test_array_from_self_referencing_sequences,
+    devices=devices,
+)
 
 add_function_test(TestArray, "test_array1d_slicing", test_array1d_slicing, devices=devices)
 add_function_test(TestArray, "test_array2d_slicing", test_array2d_slicing, devices=devices)
@@ -4321,6 +5082,13 @@ add_function_test(TestArray, "test_dynamic_array_slice", test_dynamic_array_slic
 add_function_test(TestArray, "test_array_runtime_zero_step", test_array_runtime_zero_step, devices=devices)
 
 add_function_test(TestArray, "test_graph_fill_vecmat", test_graph_fill_vecmat, devices=cuda_devices)
+add_function_test(TestArray, "test_array_wide_access", test_array_wide_access, devices=devices)
+add_function_test(TestArray, "test_array_wide_access_2d", test_array_wide_access_2d, devices=devices)
+add_function_test(TestArray, "test_array_wide_access_indexed", test_array_wide_access_indexed, devices=devices)
+add_function_test(
+    TestArray, "test_array_wide_access_per_thread_arrays", test_array_wide_access_per_thread_arrays, devices=devices
+)
+add_function_test(TestArray, "test_array_wide_access_disabled", test_array_wide_access_disabled, devices=devices)
 
 try:
     import torch

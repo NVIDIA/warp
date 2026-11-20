@@ -3,7 +3,7 @@
 
 import warp as wp
 
-from ..benchmarks_utils import setup_once
+from ..benchmarks_utils import LAUNCHES_PER_SAMPLE, CudaEventTimer, capture_launches, setup_once
 
 wp.set_module_options({"enable_backward": False})
 
@@ -212,8 +212,9 @@ class KernelLaunchParameters:
 class ThreadCoordinateReconstruction:
     """Measure device-side reconstruction of multidimensional thread coordinates."""
 
-    # Each timed call synchronizes, so repeats provide independent samples
-    # without batching additional synchronized launches into each sample.
+    # Each timed call replays a graph of back-to-back launches, and the timer
+    # waits for it, so repeats provide independent samples.
+    timer = CudaEventTimer()
     number = 1
     repeat = 10
     params = ["2d", "4d"]
@@ -231,16 +232,13 @@ class ThreadCoordinateReconstruction:
             kernel = write_tid_4d
             dim = (32, 32, 32, 32)
 
-        self.cmd = wp.launch(kernel, dim=dim, outputs=[self.output], device="cuda:0", record_cmd=True)
-        self.cmd.launch()
-        wp.synchronize_device("cuda:0")
-
-    def teardown(self, rank):
+        cmd = wp.launch(kernel, dim=dim, outputs=[self.output], device="cuda:0", record_cmd=True)
+        self.graph = capture_launches(cmd.launch, LAUNCHES_PER_SAMPLE)
+        wp.capture_launch(self.graph)
         wp.synchronize_device("cuda:0")
 
     def time_cuda(self, rank):
-        self.cmd.launch()
-        wp.synchronize_device("cuda:0")
+        wp.capture_launch(self.graph)
 
 
 class GraphLaunch:

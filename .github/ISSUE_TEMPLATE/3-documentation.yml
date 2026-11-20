@@ -1,0 +1,37 @@
+name: Documentation Request
+description: Report an error or request missing information in the Warp documentation.
+labels: ["docs"]
+type: Documentation
+body:
+  - type: checkboxes
+    id: category
+    attributes:
+      label: Category
+      description: Select all that apply.
+      options:
+        - label: Report an error in the documentation.
+        - label: Request for something to be documented.
+        - label: Suggestion to improve the documentation.
+        - label: Other (please explain).
+  - type: textarea
+    id: documentation-location
+    attributes:
+      label: Affected Documentation
+      description: >-
+        Link the affected pages or source files and state which documentation version
+        you read (release version, stable, or latest). For a missing topic, say where you
+        looked for it.
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: >-
+        Describe the specific error, ambiguity, or missing information. Quote the relevant
+        passage or include a small example when useful. Explain what the documentation
+        should clarify or demonstrate.
+        If you also found incorrect runtime behavior, report it separately as a bug and
+        link that issue here. The documentation should describe supported behavior.
+    validations:
+      required: true

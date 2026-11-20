@@ -427,6 +427,9 @@ enum class ReleaseKind {
 // Returns false if an immediate release failed.
 bool release_or_defer(ReleaseKind kind, void* context, uint64_t handle);
 
+// Release scratch from wp_alloc_device() used exclusively on stream.
+void free_device_on_stream(void* context, void* ptr, void* stream);
+
 #else
 
 typedef int CUdevice;

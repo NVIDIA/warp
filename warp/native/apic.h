@@ -44,6 +44,10 @@ WP_API void wp_apic_destroy_state(APICState* state);
 WP_API void wp_apic_begin_recording(APICState* state, int is_cpu);
 WP_API void wp_apic_end_recording(APICState* state);
 
+// Set the CUDA context a CUDA capture targets, so that device hooks record
+// only ops issued while that context is current.
+WP_API void wp_apic_set_cuda_context(APICState* state, void* context);
+
 // Access the active recording state for HOST (CPU) capture hooks. Returns
 // nullptr when not capturing OR when the active capture targets CUDA, so a
 // host op invoked during a CUDA APIC capture is executed live instead of being
@@ -53,7 +57,11 @@ WP_API APICState* wp_apic_get_recording_state();
 
 // Access the active recording state for DEVICE (CUDA) capture hooks. Mirror of
 // wp_apic_get_recording_state() for the CUDA side: returns nullptr when not
-// capturing OR when the active capture targets CPU. Called from warp.cu.
+// capturing, when the active capture targets CPU, OR when the current CUDA
+// context is not the capture's, so an op on another device runs eagerly
+// instead of recording. Hooks must run under their op's context. Called from
+// the device hooks in warp.cu, sort.cu, reduce.cu, runlength_encode.cu, and
+// sparse.cu.
 WP_API APICState* wp_apic_get_cuda_recording_state();
 
 // =============================================================================
@@ -113,12 +121,16 @@ WP_API void wp_apic_register_kernel(
 
 WP_API void wp_apic_register_binding(APICState* state, const char* name, uint32_t region_id);
 
-WP_API void wp_apic_register_ptr_location(APICState* state, uint32_t region_id, uint64_t offset, uint64_t stride);
+WP_API void
+wp_apic_register_ptr_location(APICState* state, uint32_t region_id, uint64_t offset, uint64_t stride, uint64_t count);
+
+// Test membership in the live mesh registries without dereferencing an unknown ID.
+WP_API bool wp_apic_is_mesh(uint64_t mesh_id);
 
 // Register a mesh for serialization. Looks up the mesh by ID in the global
 // mesh descriptor table, registers its arrays as memory regions with initial
 // data, and stores an APICMeshRecord for the save path. Returns false (with an
-// error string set) if a device-to-host snapshot of a mesh array fails, so the
+// error string set) if the ID is invalid or a mesh array snapshot fails, so the
 // caller can abort the save rather than record a mesh missing its data.
 WP_API bool wp_apic_register_mesh(APICState* state, uint64_t mesh_id);
 
@@ -158,6 +170,16 @@ WP_API void wp_apic_record_conditional(
     APICBranchBody* branch_b  // consumed; may be NULL for OP_WHILE / IF without else
 );
 
+// Return true if a finished capture records capture_if() or capture_while().
+WP_API bool wp_apic_state_has_conditional(const APICState* state);
+
+// Record a finished CPU child capture in the current branch. The caller must
+// retain the child for the parent's lifetime and reject paused captures. A
+// child that records capture_if() or capture_while() is rejected because CUDA
+// child graph nodes cannot contain conditional nodes. Returns false and sets
+// the error string on invalid input.
+WP_API bool wp_apic_record_child_graph(APICState* state, APICState* child);
+
 // Opaque loaded .wrp graph state (CPU or CUDA; see wp_apic_load_graph).
 // Defined in apic_internal.h.
 struct APICGraph;
@@ -172,10 +194,12 @@ WP_API void wp_apic_register_cpu_kernel(
     APICState* state, const char* kernel_key, const char* module_hash, void* forward_fn, void* backward_fn
 );
 
-// Replay CPU operations from a live capture's byte stream
+// Replay CPU operations from a live capture's byte stream. Returns false
+// without replaying anything while a CPU capture is recording.
 WP_API bool wp_apic_cpu_replay_state(APICState* state);
 
-// Replay CPU operations from a loaded graph's byte stream
+// Replay CPU operations from a loaded graph's byte stream. Returns false
+// without replaying anything while a CPU capture is recording.
 WP_API bool wp_apic_cpu_replay_graph(APICGraph* graph);
 
 // =============================================================================

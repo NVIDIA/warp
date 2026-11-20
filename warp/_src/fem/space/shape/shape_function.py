@@ -32,6 +32,9 @@ class ShapeFunction:
     value: Value = Value.Scalar
     """Value type of the shape function."""
 
+    INTERPOLATORY: bool = False
+    """Whether each shape function is one at its own node and zero at the other nodes (Lagrange property)."""
+
     @property
     def _precision_suffix(self) -> str:
         """Suffix for cache key differentiation between fp32 and fp64 shape function variants."""
@@ -115,6 +118,8 @@ class ShapeFunction:
 
 class ConstantShapeFunction(ShapeFunction):
     """Shape function that is constant over the element."""
+
+    INTERPOLATORY = True
 
     def __init__(self, element: Element, scalar_type: type = wp.float32):
         self._element_prototype = element.prototype

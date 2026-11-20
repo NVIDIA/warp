@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import struct
+import sys
 import unittest
 
 import numpy as np
@@ -103,8 +105,61 @@ def test_fp16_grad(test, device):
     assert_np_equal(input.grad.numpy(), np.ones(len(s)) * 2.0)
 
 
+@wp.kernel
+def mat_cast_half(a: wp.array[wp.mat22h], b: wp.array[wp.mat22f], out: wp.array[float]):
+    # Casts in both directions between float16 and float32 matrices.
+    widened = wp.mat22f(a[0])
+    narrowed = wp.mat22h(b[0])
+    out[0] = widened[0, 1] + 2.0 * float(narrowed[1, 0])
+
+
+def test_fp16_mat_cast_grad(test, device):
+    """Differentiate through casts between float16 and float32 matrices."""
+    a = wp.zeros(1, dtype=wp.mat22h, device=device, requires_grad=True)
+    b = wp.zeros(1, dtype=wp.mat22f, device=device, requires_grad=True)
+    out = wp.zeros(1, dtype=float, device=device, requires_grad=True)
+    with wp.Tape() as tape:
+        wp.launch(mat_cast_half, dim=1, inputs=[a, b], outputs=[out], device=device)
+    tape.backward(loss=out)
+    assert_np_equal(a.grad.numpy()[0], np.array([[0.0, 1.0], [0.0, 0.0]]))
+    assert_np_equal(b.grad.numpy()[0], np.array([[0.0, 0.0], [2.0, 0.0]]))
+
+
 class TestFp16(unittest.TestCase):
-    pass
+    @unittest.skipUnless(sys.version_info >= (3, 12), "Python 3.12 is the first to let a type define its buffer")
+    def test_fp16_numpy_reads_composite_values(self):
+        """NumPy reads float16 vectors, matrices, quaternions, and transforms as their values, not their stored bits."""
+        vec = np.asarray(wp.vec3h(1.0, -2.0, 0.25))
+        np.testing.assert_array_equal(vec, np.array((1.0, -2.0, 0.25), dtype=np.float16), strict=True)
+
+        mat = np.asarray(wp.mat22h(1.0, 2.0, -3.0, 0.5))
+        np.testing.assert_array_equal(mat, np.array((1.0, 2.0, -3.0, 0.5), dtype=np.float16), strict=True)
+
+        quat = np.asarray(wp.quath(0.5, -0.5, 0.25, 1.0))
+        np.testing.assert_array_equal(quat, np.array((0.5, -0.5, 0.25, 1.0), dtype=np.float16), strict=True)
+
+        xform = np.asarray(wp.transformh(wp.vec3h(1.0, 2.0, 3.0), wp.quath(0.0, 0.0, 0.0, 1.0)))
+        np.testing.assert_array_equal(
+            xform, np.array((1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 1.0), dtype=np.float16), strict=True
+        )
+
+    @unittest.skipUnless(sys.version_info >= (3, 12), "Python 3.12 is the first to let a type define its buffer")
+    def test_fp16_numpy_reads_mixed_sequence(self):
+        """NumPy reads a float16 vector next to values of another type, where only the vector knows its format."""
+        result = np.asarray([(1.0, 2.0, 3.0), wp.vec3h(4.0, -5.0, 0.25)])
+        np.testing.assert_array_equal(result, np.array(((1.0, 2.0, 3.0), (4.0, -5.0, 0.25))), strict=True)
+
+    @unittest.skipUnless(sys.version_info >= (3, 12), "Python 3.12 is the first to let a type define its buffer")
+    def test_fp16_numpy_view_shares_memory(self):
+        """A NumPy view of a float16 vector shares its memory, as one of a float32 vector does."""
+        value = wp.vec3h(1.0, 2.0, 3.0)
+        view = np.asarray(value)
+        view[1] = -4.0
+        self.assertEqual(value[1], -4.0)
+
+    def test_fp16_composite_bytes(self):
+        """The bytes of a float16 vector are the float16 encodings of its values."""
+        self.assertEqual(bytes(wp.vec3h(1.0, -2.0, 0.25)), struct.pack("=3e", 1.0, -2.0, 0.25))
 
 
 devices = []
@@ -117,6 +172,7 @@ for cuda_device in get_selected_cuda_test_devices():
 add_function_test(TestFp16, "test_fp16_conversion", test_fp16_conversion, devices=devices)
 add_function_test(TestFp16, "test_fp16_grad", test_fp16_grad, devices=devices)
 add_function_test(TestFp16, "test_fp16_kernel_parameter", test_fp16_kernel_parameter, devices=devices)
+add_function_test(TestFp16, "test_fp16_mat_cast_grad", test_fp16_mat_cast_grad, devices=devices)
 
 
 if __name__ == "__main__":

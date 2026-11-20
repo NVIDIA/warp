@@ -920,6 +920,163 @@ def test_hashgrid_large_coordinate_wrapping(test, device):
                 np.testing.assert_array_equal(counts.numpy(), expected)
 
 
+@wp.kernel
+def collect_neighbors_capped(
+    grid: wp.uint64, radius: Any, queries: wp.array[Any], results: wp.array2d[int], counts: wp.array[int]
+):
+    i = wp.tid()
+    query = wp.hash_grid_query(grid, queries[i], radius)
+    index = int(0)
+    count = int(0)
+
+    # Stop at the capacity of results so a traversal that never finishes still returns.
+    while count < results.shape[1]:
+        if not wp.hash_grid_query_next(query, index):
+            break
+        results[i, count] = index
+        count += 1
+
+    counts[i] = count
+
+
+def collect_single_point_neighbors(device, dims, dtype, coord, cell_width, radius, query_coord=None):
+    """Query a grid holding one point and return the indices it yields, capped at 8.
+
+    The query is at the point unless ``query_coord`` is given.
+    """
+    if query_coord is None:
+        query_coord = coord
+
+    vec_type = wp.types.vector(3, dtype)
+    points = wp.array([[coord, coord, coord]], dtype=vec_type, device=device)
+    queries = wp.array([[query_coord, query_coord, query_coord]], dtype=vec_type, device=device)
+    results = wp.full((1, 8), -1, dtype=int, device=device)
+    counts = wp.zeros(1, dtype=int, device=device)
+
+    grid = wp.HashGrid(*dims, device, dtype=dtype)
+    grid.build(points, cell_width)
+    wp.launch(
+        collect_neighbors_capped,
+        dim=1,
+        inputs=[wp.uint64(grid.id), dtype(radius), queries],
+        outputs=[results, counts],
+        device=device,
+    )
+
+    return results.numpy()[0, : counts.numpy()[0]]
+
+
+def test_hashgrid_extreme_coordinates(test, device):
+    """Terminate queries and yield each point once at the edges of the int32 cell range."""
+    cases = (
+        (wp.float32, 1.0e20, 1.0, 1.0),
+        (wp.float32, -1.0e20, 1.0, 1.0),
+        (wp.float32, np.inf, 1.0, 1.0),
+        (wp.float32, -np.inf, 1.0, 1.0),
+        # The first float32 value past the int32 cell range.
+        (wp.float32, 2147483648.0, 1.0, 1.0),
+        (wp.float64, 1.0e300, 1.0, 1.0),
+        (wp.float64, -1.0e300, 1.0, 1.0),
+        # In range, with the query's last cell at INT_MAX.
+        (wp.float64, 2147483647.25, 1.0, 0.1),
+        # A finite float16 coordinate whose scaled value overflows to infinity.
+        (wp.float16, 65504.0, 1.0e-3, 1.0e-3),
+    )
+
+    # In a 1x1x1 grid, every virtual cell the query visits yields the point again, so a traversal
+    # that fails to terminate shows up as a full result buffer, not a hang. A larger grid checks
+    # that building and querying agree on the point's cell.
+    for dims in ((1, 1, 1), (3, 5, 7)):
+        for dtype, coord, cell_width, radius in cases:
+            with test.subTest(dims=dims, dtype=dtype.__name__, coord=coord):
+                neighbors = collect_single_point_neighbors(device, dims, dtype, coord, cell_width, radius)
+                np.testing.assert_array_equal(neighbors, [0])
+
+
+def test_hashgrid_query_span_near_int_limits(test, device):
+    """Find every neighbor when a query's cell span reaches either end of the int32 range."""
+    grid = wp.HashGrid(8, 8, 8, device=device, dtype=wp.float64)
+    counts = wp.zeros(4, dtype=int, device=device)
+
+    # Every query starts within 8 cells of INT_MAX, or reaches below INT_MIN.
+    for start in (2147483643.5, -2147483647.5):
+        for axis in range(3):
+            with test.subTest(start=start, axis=axis):
+                values = np.full((4, 3), 0.5, dtype=np.float64)
+                # These coordinates are exact in float64.
+                values[:, axis] = start + np.arange(4)
+                distances = np.linalg.norm(values[:, None] - values[None, :], axis=-1)
+                expected = np.sum(distances <= 1.0, axis=1)
+
+                points = wp.array(values, dtype=wp.vec3d, device=device)
+                grid.build(points, 1.0)
+                wp.launch(
+                    count_neighbors_f64,
+                    dim=len(values),
+                    inputs=[wp.uint64(grid.id), wp.float64(1.0), points, counts],
+                    device=device,
+                )
+
+                np.testing.assert_array_equal(counts.numpy(), expected)
+
+
+def test_hashgrid_neighbors_across_int_limits(test, device):
+    """Find neighbors on both sides of either end of the int32 cell range."""
+    results = wp.empty((2, 8), dtype=int, device=device)
+    counts = wp.zeros(2, dtype=int, device=device)
+
+    # The first point is in the edge int32 cell; the second is 0.75 away, one cell beyond it.
+    # These coordinates are exact in float64.
+    for inside, outside in ((2147483647.5, 2147483648.25), (-2147483647.5, -2147483648.25)):
+        for axis in range(3):
+            with test.subTest(outside=outside, axis=axis):
+                values = np.full((2, 3), 0.5, dtype=np.float64)
+                values[:, axis] = (inside, outside)
+
+                # Two cells along the axis tell the INT_MIN and INT_MAX cells apart. A single cell
+                # along the others keeps every visited cell occupied, so a traversal that never
+                # finishes keeps yielding points into the capped results instead of spinning.
+                dims = [1, 1, 1]
+                dims[axis] = 2
+                grid = wp.HashGrid(*dims, device=device, dtype=wp.float64)
+                points = wp.array(values, dtype=wp.vec3d, device=device)
+                grid.build(points, 1.0)
+                wp.launch(
+                    collect_neighbors_capped,
+                    dim=len(values),
+                    inputs=[wp.uint64(grid.id), wp.float64(1.0), points],
+                    outputs=[results, counts],
+                    device=device,
+                )
+
+                # Each point yields itself and the other, once each.
+                results_np = results.numpy()
+                for i, count in enumerate(counts.numpy()):
+                    np.testing.assert_array_equal(np.sort(results_np[i, :count]), [0, 1])
+
+
+def test_hashgrid_nan_coordinates(test, device):
+    """Map NaN point and query coordinates to cell 0, and infinities to the edge cells."""
+    # With several cells per axis, a NaN mapped to any other cell misses the point at the origin.
+    # A radius of 0 keeps each query to a single cell.
+    for dtype in (wp.float16, wp.float32, wp.float64):
+        with test.subTest(dtype=dtype.__name__):
+            query_at_nan = collect_single_point_neighbors(device, (3, 5, 7), dtype, 0.0, 1.0, 0.0, query_coord=np.nan)
+            np.testing.assert_array_equal(query_at_nan, [0])
+
+            point_at_nan = collect_single_point_neighbors(device, (3, 5, 7), dtype, np.nan, 1.0, 0.0, query_coord=0.0)
+            np.testing.assert_array_equal(point_at_nan, [0])
+
+            # Infinities are not NaN: their edge cells do not hold the point at the origin.
+            query_at_inf = collect_single_point_neighbors(device, (3, 5, 7), dtype, 0.0, 1.0, 0.0, query_coord=np.inf)
+            np.testing.assert_array_equal(query_at_inf, [])
+
+            query_at_neg_inf = collect_single_point_neighbors(
+                device, (3, 5, 7), dtype, 0.0, 1.0, 0.0, query_coord=-np.inf
+            )
+            np.testing.assert_array_equal(query_at_neg_inf, [])
+
+
 devices = get_test_devices()
 cuda_devices = get_cuda_test_devices()
 
@@ -1183,6 +1340,17 @@ add_function_test(TestHashGrid, "test_hashgrid_edge_cases", test_hashgrid_edge_c
 add_function_test(TestHashGrid, "test_hashgrid_negative_wrapping", test_hashgrid_negative_wrapping, devices=devices)
 add_function_test(
     TestHashGrid, "test_hashgrid_large_coordinate_wrapping", test_hashgrid_large_coordinate_wrapping, devices=devices
+)
+add_function_test(TestHashGrid, "test_hashgrid_extreme_coordinates", test_hashgrid_extreme_coordinates, devices=devices)
+add_function_test(
+    TestHashGrid,
+    "test_hashgrid_neighbors_across_int_limits",
+    test_hashgrid_neighbors_across_int_limits,
+    devices=devices,
+)
+add_function_test(TestHashGrid, "test_hashgrid_nan_coordinates", test_hashgrid_nan_coordinates, devices=devices)
+add_function_test(
+    TestHashGrid, "test_hashgrid_query_span_near_int_limits", test_hashgrid_query_span_near_int_limits, devices=devices
 )
 
 

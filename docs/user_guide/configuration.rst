@@ -39,16 +39,19 @@ Experimental CPU Block Execution
 
 .. versionadded:: 1.18.0
 
-By default, an omitted or non-positive ``block_dim`` selects one logical thread
-per block on CPU and 256 threads per block on CUDA. CPU launches also preserve
-the historical effective ``block_dim`` of ``1`` when a larger value is
-requested. To honor an explicit CPU ``block_dim`` from 2 through 1024, enable
-the experimental cooperative-block path:
+With :attr:`warp.config.enable_cpu_blocks` disabled, CPU launches preserve the
+historical effective ``block_dim`` of ``1``, including when a larger value is
+requested. Enabling the experimental cooperative-block path makes an omitted
+or non-positive ``block_dim`` select 256 logical threads per block, matching
+CUDA, and honors explicit CPU block dimensions from 2 through 1024:
 
 .. code-block:: python
 
     wp.config.enable_cpu_blocks = True
-    wp.launch(kernel, dim=count, block_dim=64, device="cpu")
+    wp.launch(kernel, dim=count, device="cpu")  # Uses block_dim=256.
+
+Pass ``block_dim=1`` explicitly to retain one logical thread per block while
+the setting is enabled. CUDA defaults remain unchanged.
 
 The setting applies to :func:`wp.launch() <warp.launch>` and
 :func:`wp.launch_tiled() <warp.launch_tiled>`. Warp resolves the effective block
@@ -98,7 +101,7 @@ The options for a module can also be queried using :func:`wp.get_module_options(
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
 |``fast_math``                         | Boolean | ``False``   | If ``True``, CUDA kernels will be compiled with the ``--use_fast_math``  |
 |                                      |         |             | compiler option, which enables some fast math operations that are faster |
-|                                      |         |             | but less accurate.                                                       |
+|                                      |         |             | but less accurate. CPU compilation currently ignores this option.        |
 +--------------------------------------+---------+-------------+--------------------------------------------------------------------------+
 |``fuse_fp``                           | Boolean | ``True``    | If ``True``, allow compilers to emit fused floating point operations     |
 |                                      |         |             | such as fused-multiply-add. This may improve numerical accuracy and      |
@@ -145,9 +148,18 @@ module string replaces the global string; include ``-march=native`` when the
 module should detect host CPU features. The global default uses host CPU
 features and sets ``-inline-threshold=9000`` and
 ``-inline-cold-callsite-threshold=3000`` to make LLVM more eager to inline CPU
-helpers. Set the global value to ``None`` before a module is first hashed to
-keep host CPU detection with LLVM's default thresholds. For one module, use
-``"-march=native"``; a module-level ``None`` inherits the global setting.
+helpers, and limits SLP recursion depth to four. On x86-64 it also sets
+``-undef-reg-clearance=4294967295`` to favor clearing unused scalar-conversion
+operands and avoid denormal penalties in unused SIMD lanes. This changes
+code generation without flushing valid subnormal values. Set the global value
+to ``None`` before a module is first hashed to keep host CPU detection with
+LLVM's default optimization settings. For one module,
+use ``"-march=native"``; a module-level ``None`` inherits the global setting.
+Warp enables the loop and SLP vectorizers for CPU modules at effective
+optimization levels 2 and 3. Include ``-fno-vectorize`` or
+``-fno-slp-vectorize`` in a module flag string to disable the corresponding
+pass.
+
 When changing a module's CPU compiler flags, use
 :func:`wp.set_module_options() <warp.set_module_options>` so Warp updates its
 hash. Assigning :attr:`warp.config.cpu_compiler_flags` alone does not

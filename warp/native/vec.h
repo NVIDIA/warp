@@ -1079,9 +1079,32 @@ inline CUDA_CALLABLE void adj_assign_copy(
     assert(ii == SliceLength);
 }
 
+// Sum of squares in range_safe_compute_type, so float16 lengths stay finite and nonzero whenever the
+// length itself is representable.
+template <unsigned Length, typename Type>
+inline CUDA_CALLABLE typename range_safe_compute_type<Type>::type range_safe_length_sq(const vec_t<Length, Type>& a)
+{
+    using Compute = typename range_safe_compute_type<Type>::type;
+    // Start from the first square rather than from zero, which costs an extra add.
+    Compute c = Compute(a[0]);
+    Compute ret = c * c;
+    for (unsigned i = 1; i < Length; ++i) {
+        c = Compute(a[i]);
+        ret += c * c;
+    }
+    return ret;
+}
+
+// Empty vectors, such as the slice v[3:] of a vec3, have a zero sum of squares.
+template <typename Type>
+inline CUDA_CALLABLE typename range_safe_compute_type<Type>::type range_safe_length_sq(const vec_t<0, Type>& a)
+{
+    return typename range_safe_compute_type<Type>::type(0);
+}
+
 template <unsigned Length, typename Type> inline CUDA_CALLABLE Type length(vec_t<Length, Type> a)
 {
-    return sqrt(dot(a, a));
+    return Type(sqrt(range_safe_length_sq(a)));
 }
 
 template <unsigned Length, typename Type> inline CUDA_CALLABLE Type length_sq(vec_t<Length, Type> a)
@@ -1089,42 +1112,17 @@ template <unsigned Length, typename Type> inline CUDA_CALLABLE Type length_sq(ve
     return dot(a, a);
 }
 
-
-template <typename Type> inline CUDA_CALLABLE Type length(vec_t<2, Type> a)
-{
-    return sqrt(a.c[0] * a.c[0] + a.c[1] * a.c[1]);
-}
-
-template <typename Type> inline CUDA_CALLABLE Type length(vec_t<3, Type> a)
-{
-    return sqrt(a.c[0] * a.c[0] + a.c[1] * a.c[1] + a.c[2] * a.c[2]);
-}
-
 template <unsigned Length, typename Type> inline CUDA_CALLABLE vec_t<Length, Type> normalize(vec_t<Length, Type> a)
 {
-    Type l = length(a);
-    if (l > Type(kEps))
-        return div(a, l);
-    else
-        return vec_t<Length, Type>();
-}
-
-template <typename Type> inline CUDA_CALLABLE vec_t<2, Type> normalize(vec_t<2, Type> a)
-{
-    Type l = sqrt(a.c[0] * a.c[0] + a.c[1] * a.c[1]);
-    if (l > Type(kEps))
-        return vec_t<2, Type>(a.c[0] / l, a.c[1] / l);
-    else
-        return vec_t<2, Type>();
-}
-
-template <typename Type> inline CUDA_CALLABLE vec_t<3, Type> normalize(vec_t<3, Type> a)
-{
-    Type l = sqrt(a.c[0] * a.c[0] + a.c[1] * a.c[1] + a.c[2] * a.c[2]);
-    if (l > Type(kEps))
-        return vec_t<3, Type>(a.c[0] / l, a.c[1] / l, a.c[2] / l);
-    else
-        return vec_t<3, Type>();
+    using Compute = typename range_safe_compute_type<Type>::type;
+    Compute l = sqrt(range_safe_length_sq(a));
+    vec_t<Length, Type> ret;
+    if (l > Compute(kEps)) {
+        for (unsigned i = 0; i < Length; ++i) {
+            ret[i] = Type(Compute(a[i]) / l);
+        }
+    }
+    return ret;
 }
 
 
@@ -1738,17 +1736,53 @@ inline CUDA_CALLABLE void adj_length_sq(vec_t<Length, Type> a, vec_t<Length, Typ
 #endif
 }
 
+// The length adj_normalize() divides by. Calling length() lets the compiler reuse the forward pass's value, which keeps
+// the adjoint as fast as before for float32 and float64. float16 rounds that value, which overflows for vectors longer
+// than the float16 maximum, so it recomputes the length in float32.
+template <unsigned Length, typename Type>
+inline CUDA_CALLABLE typename range_safe_compute_type<Type>::type _adj_normalize_length(const vec_t<Length, Type>& a)
+{
+    return length(a);
+}
+
+template <unsigned Length> inline CUDA_CALLABLE float _adj_normalize_length(const vec_t<Length, half>& a)
+{
+    return sqrt(range_safe_length_sq(a));
+}
+
+// The unit vector adj_normalize() projects with.
+template <unsigned Length, typename Type>
+inline CUDA_CALLABLE vec_t<Length, typename range_safe_compute_type<Type>::type> _adj_normalize_unit(
+    const vec_t<Length, Type>& a, const vec_t<Length, Type>& ret, typename range_safe_compute_type<Type>::type invd
+)
+{
+    return vec_t<Length, typename range_safe_compute_type<Type>::type>(ret);
+}
+
+template <unsigned Length>
+inline CUDA_CALLABLE vec_t<Length, float>
+_adj_normalize_unit(const vec_t<Length, half>& a, const vec_t<Length, half>& ret, float invd)
+{
+    return vec_t<Length, float>(a) * invd;
+}
+
 template <unsigned Length, typename Type>
 inline CUDA_CALLABLE void adj_normalize(
     vec_t<Length, Type> a, vec_t<Length, Type>& ret, vec_t<Length, Type>& adj_a, const vec_t<Length, Type>& adj_ret
 )
 {
-    Type d = length(a);
+    using Compute = typename range_safe_compute_type<Type>::type;
+    Compute d = _adj_normalize_length(a);
 
-    if (d > Type(kEps)) {
-        Type invd = Type(1.0f) / d;
+    if (d > Compute(kEps)) {
+        Compute invd = Compute(1.0f) / d;
 
-        adj_a += (adj_ret * invd - ret * (dot(ret, adj_ret)) * invd);
+        // For float16, rebuild the unit vector from the input in float32: the rounded float16 output
+        // is not exactly unit length, and the projection would amplify that error by 1 / d. Other
+        // types use the forward output as before.
+        vec_t<Length, Compute> wide_ret = _adj_normalize_unit(a, ret, invd);
+        vec_t<Length, Compute> wide_adj_ret(adj_ret);
+        adj_a += vec_t<Length, Type>(wide_adj_ret * invd - wide_ret * (dot(wide_ret, wide_adj_ret)) * invd);
 
 #if FP_CHECK
         if (!isfinite(adj_a)) {

@@ -97,7 +97,8 @@ git show <head-ref>:changelog/README.md
 git ls-tree -r --name-only <head-ref> -- changelog
 ```
 
-Exclude `changelog/README.md`. Record every fragment's path, identifier,
+Exclude `changelog/README.md` and the Towncrier template
+`changelog/template.md`. Record every fragment's path, identifier,
 category, optional counter, and full content.
 
 Choose one authoritative current-release view:
@@ -113,7 +114,7 @@ Choose one authoritative current-release view:
   git worktree add --detach "$notes_worktree" <head-ref>
   trap 'git worktree remove --force "$notes_worktree" 2>/dev/null || true' EXIT
   draft_status=0
-  (cd "$notes_worktree" && uvx --from towncrier==25.8.0 towncrier build \
+  (cd "$notes_worktree" && uvx --from towncrier==26.9.0 towncrier build \
     --draft --version <target-version> --date "$(date +%F)") || draft_status=$?
   git worktree remove --force "$notes_worktree"
   trap - EXIT

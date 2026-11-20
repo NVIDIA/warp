@@ -28,6 +28,8 @@ of real factory kernels:
 - ``declare_small``  — a ~20-line sparse mat-vec kernel
 - ``declare_medium`` — a ~35-line bound-projection kernel
 - ``declare_large``  — a ~55-line equality-constraint kernel
+- ``declare_helpers`` — a kernel that makes 14 calls to ``@wp.func`` helpers,
+  each of which the reference scan visits to find function-valued arguments
 
 The functions are valid Warp kernels but are only declared, never launched, so
 the benchmark is device-independent and needs no GPU.
@@ -153,6 +155,50 @@ def large_equality_flex(
     wp.atomic_add(out_torque, b, limited_torque_b)
 
 
+@wp.func
+def soft_clamp(x: float, lo: float, hi: float) -> float:
+    return wp.min(wp.max(x, lo), hi)
+
+
+@wp.func
+def spring_force(stretch: float, stiffness: float, damping: float, rate: float) -> float:
+    return stiffness * stretch + damping * rate
+
+
+@wp.func
+def blend(a: wp.vec3, b: wp.vec3, t: float) -> wp.vec3:
+    return a * (1.0 - t) + b * t
+
+
+@wp.func
+def safe_normalize(v: wp.vec3) -> wp.vec3:
+    n = wp.length(v)
+    if n < 1.0e-9:
+        return wp.vec3(0.0)
+    return v / n
+
+
+def helper_calls(
+    pos: wp.array(dtype=wp.vec3),
+    rest: wp.array(dtype=wp.vec3),
+    vel: wp.array(dtype=wp.vec3),
+    params: wp.array(dtype=wp.vec3),
+    out: wp.array(dtype=wp.vec3),
+):
+    i = wp.tid()
+    p = params[i]
+    d = pos[i] - rest[i]
+    n = safe_normalize(d)
+    stretch = soft_clamp(wp.length(d), 0.0, 1.0)
+    rate = soft_clamp(wp.dot(vel[i], n), -10.0, 10.0)
+    f = spring_force(stretch, p[0], p[1], rate)
+    f = soft_clamp(f, -p[2], p[2])
+    v = blend(vel[i], n * f, 0.5)
+    v = blend(v, safe_normalize(v + d), soft_clamp(p[0], 0.0, 1.0))
+    g = spring_force(soft_clamp(wp.length(v), 0.0, 2.0), p[1], p[2], rate)
+    out[i] = blend(safe_normalize(v), n, soft_clamp(g, 0.0, 1.0)) * f
+
+
 class DeclareUniqueModuleKernel:
     """Time full per-kernel declaration of a unique-module kernel by size.
 
@@ -173,9 +219,10 @@ class DeclareUniqueModuleKernel:
         self._small = small_sparse_mv
         self._medium = medium_bound_project
         self._large = large_equality_flex
+        self._helpers = helper_calls
         # Warm linecache and first-module registration so samples reflect the
         # steady-state per-kernel declaration cost rather than one-time setup.
-        for fn in (self._small, self._medium, self._large):
+        for fn in (self._small, self._medium, self._large, self._helpers):
             wp.kernel(fn, module="unique")
 
     def time_declare_small(self):
@@ -186,3 +233,6 @@ class DeclareUniqueModuleKernel:
 
     def time_declare_large(self):
         wp.kernel(self._large, module="unique")
+
+    def time_declare_helpers(self):
+        wp.kernel(self._helpers, module="unique")

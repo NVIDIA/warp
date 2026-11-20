@@ -31,12 +31,12 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
-          version: "0.13.0"
+          version: "0.13.6"
 
       - name: Set up Python
         run: uv python install
 
       - name: Render changelog draft
         run: >-
-          uvx --from towncrier==25.8.0 towncrier build --draft
+          uvx --from towncrier==26.9.0 towncrier build --draft
           --version Unreleased

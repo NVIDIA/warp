@@ -604,7 +604,7 @@ def test_branch_local_merge_codegen(test: unittest.TestCase, device):
         raise ValueError("unbalanced delimiters")
 
     def top_level_if_blocks(code):
-        # Return (condition, body) for each brace-depth-0 ``if (condition) { body }``.
+        # Return (condition, body) for each brace-depth-0 if/else block.
         blocks = []
         i = depth = 0
         while i < len(code):
@@ -622,6 +622,11 @@ def test_branch_local_merge_codegen(test: unittest.TestCase, device):
                 ob = code.index("{", rp)
                 cb = match(code, ob, "{", "}")
                 blocks.append((code[lp + 1 : rp].strip(), code[ob + 1 : cb]))
+                i = cb + 1
+            elif depth == 0 and code.startswith("else", i):
+                ob = code.index("{", i)
+                cb = match(code, ob, "{", "}")
+                blocks.append(("!" + blocks[-1][0], code[ob + 1 : cb]))
                 i = cb + 1
             else:
                 i += 1
@@ -645,6 +650,78 @@ def test_branch_local_merge_codegen(test: unittest.TestCase, device):
     test.assertEqual(
         assigned(else_body) & referenced(if_body), set(), "else-branch SSA versions leak into the if branch"
     )
+
+
+@wp.kernel(enable_backward=False)
+def scalar_condition_mutated_in_loop_kernel(x: wp.array[float], out: wp.array[float], n: int):
+    i = wp.tid()
+    flag = bool(True)
+    if flag:
+        for _ in range(n):
+            flag = bool(False)
+        result = x[i] + 1.0
+    else:
+        result = x[i] + 1.0
+    out[i] = result
+
+
+def test_scalar_condition_mutated_in_loop(test: unittest.TestCase, device):
+    """Preserve a scalar branch decision when a dynamic loop overwrites its guard.
+
+    Both branches compute the same value, so a merge that selects the untaken branch's uninitialized result
+    can still pass in release mode. The debug suite runs this test in debug mode, where that result is wrong.
+    """
+    x = wp.array([1.0, 2.0, 3.0, 4.0], dtype=float, device=device)
+
+    for n in (0, 1, 2):
+        with test.subTest(n=n):
+            out = wp.zeros(4, dtype=float, device=device)
+            wp.launch(scalar_condition_mutated_in_loop_kernel, dim=4, inputs=[x, out, n], device=device)
+            np.testing.assert_array_equal(out.numpy(), [2.0, 3.0, 4.0, 5.0])
+
+
+@wp.kernel
+def scalar_condition_mutated_in_while_kernel(
+    x: wp.array[float], out: wp.array[float], flags: wp.array[int], initial: int, n: int
+):
+    i = wp.tid()
+    flag = int(initial)
+    j = int(0)
+    if flag:
+        while j < n:
+            flag = int(0)
+            j += 1
+        result = 2.0 * x[i]
+    else:
+        while j < n:
+            flag = int(1)
+            j += 1
+        result = 3.0 * x[i]
+    out[i] = result
+    flags[i] = flag
+
+
+def test_scalar_condition_mutated_in_while_grad(test: unittest.TestCase, device):
+    """Use the original scalar guard for branch values and gradients after either branch mutates it."""
+    for initial in (-2, 0, 1):
+        for n in (0, 1):
+            with test.subTest(initial=initial, n=n):
+                x = wp.array([1.0, 2.0], dtype=float, device=device, requires_grad=True)
+                out = wp.zeros(2, dtype=float, device=device, requires_grad=True)
+                flags = wp.zeros(2, dtype=int, device=device)
+                with wp.Tape() as tape:
+                    wp.launch(
+                        scalar_condition_mutated_in_while_kernel,
+                        dim=2,
+                        inputs=[x, out, flags, initial, n],
+                        device=device,
+                    )
+                scale = 2.0 if initial else 3.0
+                np.testing.assert_array_equal(out.numpy(), [scale, 2.0 * scale])
+                expected_flag = initial if n == 0 else int(not initial)
+                np.testing.assert_array_equal(flags.numpy(), [expected_flag, expected_flag])
+                tape.backward(grads={out: wp.ones(2, dtype=float, device=device)})
+                np.testing.assert_array_equal(x.grad.numpy(), [scale, scale])
 
 
 def test_branch_local_merge_runtime(test: unittest.TestCase, device):
@@ -701,6 +778,15 @@ add_function_test(
 )
 add_function_test(TestConditional, "test_branch_local_merge_codegen", test_branch_local_merge_codegen, devices=devices)
 add_function_test(TestConditional, "test_branch_local_merge_runtime", test_branch_local_merge_runtime, devices=devices)
+add_function_test(
+    TestConditional, "test_scalar_condition_mutated_in_loop", test_scalar_condition_mutated_in_loop, devices=devices
+)
+add_function_test(
+    TestConditional,
+    "test_scalar_condition_mutated_in_while_grad",
+    test_scalar_condition_mutated_in_while_grad,
+    devices=devices,
+)
 
 
 if __name__ == "__main__":

@@ -220,6 +220,8 @@ assessment and exact comment draft before any public write.
 
    - <include only for actionable, issue-related future work; state when it does not block closure>
 
+   <sub>Drafted with the [`warp-closing-issue`](https://github.com/NVIDIA/warp/blob/main/.codex/skills/warp-closing-issue/SKILL.md) skill.</sub>
+
    Confirm whether to post this comment to <#>. If the GitHub state action is
    `close after comment`, also confirm whether to close <#> as completed. Do not ask
    for closure confirmation when the issue is already closed.
@@ -253,6 +255,12 @@ Public sections use level-three headings and one blank line before their content
   or how the requester can verify it.
 - `### Follow-up to consider`: only for actionable work within the original issue;
   say when it does not block closure.
+
+End every public comment with this provenance footer as its final paragraph:
+
+```markdown
+<sub>Drafted with the [`warp-closing-issue`](https://github.com/NVIDIA/warp/blob/main/.codex/skills/warp-closing-issue/SKILL.md) skill.</sub>
+```
 
 Describe local verification naturally, for example, "a reproduction similar to the
 reported issue" or "a targeted reproduction of the reported behavior." Never use
@@ -288,8 +296,8 @@ write failure; never guess a different target.
 - A related finding appears in `Spotted Improvements` or the public draft without an
   explicit request.
 - The public draft claims resolution for progress, exposes local execution details,
-  presents a kernel-only API as Python, uses internal shorthand, or violates the
-  required Markdown shape.
+  presents a kernel-only API as Python, uses internal shorthand, omits the provenance
+  footer, or violates the required Markdown shape.
 - A GitHub write occurs before confirmation or is not read back before state changes.
 
 ## Maintenance

@@ -129,6 +129,8 @@ On CPU, capture hooks append a record and skip the live operation. On CUDA, the 
 
 ``capture_pause()`` / ``capture_resume()`` suspend and restart the same APIC state. CPU pause ends recording because there is no native stream to pause. CUDA pause also pauses the native graph; by default it suspends APIC recording at the same boundary. Operations intentionally performed while paused execute live and do not become replay work. Internal conditional capture can keep APIC recording active while temporarily moving CUDA capture into a child graph.
 
+A CPU graph cannot be launched while a CPU capture is recording. CPU replay runs each operation through the same entry points that the capture hooks intercept, so replaying inside a capture would re-record a partial copy of the graph, with kernel launches dropped and conditions evaluated at capture time. ``capture_launch()`` therefore raises ``RuntimeError`` for live and loaded CPU graphs before replaying anything, which leaves the outer capture usable, and the native ``wp_apic_cpu_replay_state()`` and ``wp_apic_cpu_replay_graph()`` return false in the same situation. CUDA also rejects launching a graph on a capturing stream. A CPU graph launched while the capture is paused, or during a CUDA capture, executes live under the device-scoping rules above.
+
 ``capture_end()`` closes and validates the APIC stream. CUDA closes the native stream capture as well, and APIC recording is ended even if native CUDA graph creation fails. A failed CUDA end raises instead of returning a usable graph. ``ScopedCapture`` always attempts to end an active capture and preserves the original exception from its body.
 
 ### Graph states and ownership
@@ -137,7 +139,7 @@ On CPU, capture hooks append a record and skip the live operation. On CUDA, the 
 
 | Graph kind | Replay representation | Resources owned or retained by ``Graph`` | Caller lifetime obligations |
 | --- | --- | --- | --- |
-| Live CPU | ``APICState`` byte stream | ``APICapture`` and state; tracked base arrays; CPU module executions and function pointers; Warp-owned capture temporaries routed through tracked allocations | External memory wrapped without a Warp-owned deleter must remain valid at the captured address. Owners of captured process-local handles, including ``Mesh``, ``Bvh``, and ``HashGrid`` objects, must remain alive through every replay |
+| Live CPU | ``APICState`` byte stream | ``APICapture`` and state; tracked base arrays; CPU module executions and function pointers; Warp-owned capture temporaries routed through tracked allocations; live CPU ``Graph`` objects passed as control-flow branches | External memory wrapped without a Warp-owned deleter must remain valid at the captured address. Owners of captured process-local handles, including ``Mesh``, ``Bvh``, and ``HashGrid`` objects, must remain alive through every replay |
 | Live CUDA, ``apic=False`` | Driver-captured ``cudaGraph_t`` | Native graph and lazy executable; module executions; CUDA allocations transferred to graph ownership by the capture allocator | Pre-existing arrays and external resources referenced by graph nodes must remain alive |
 | Live CUDA, ``apic=True`` | Native graph for launch, ``APICState`` for save | Everything in a live CUDA graph, plus the APIC state, metadata, and tracked base-array references | Untracked external pointers and non-serializable object resources remain caller-owned |
 | Loaded CPU | ``APICGraph`` byte stream | Fresh host allocation for every region; recreated meshes; loaded LLVM object handles; resolved CPU kernel functions | Keep the ``Graph`` alive while using binding pointers; keep the companion modules available through load |
@@ -232,11 +234,12 @@ The current operation families are summarized below; ``APICOpType`` in ``warp/na
 | Family | Examples | CPU capture/replay | Live CUDA capture | Loaded CUDA reconstruction | Save/load |
 | --- | --- | --- | --- | --- | --- |
 | Kernel dispatch | forward, backward, tiled, reusable launches | Record instead of execute; call resolved CPU function on replay | Driver captures launch and APIC records it when enabled | Resolve module symbol and reissue launch | Yes; requires companion module metadata and binaries |
-| Basic memory | contiguous copy, zero, contiguous fill | Record ``memcpy``, ``memset``, or ``memtile`` instead of executing | Driver captures supported same-device work and APIC records it | Reissue supported memory operation | Supported same-device contiguous forms only |
+| Basic memory | contiguous copy, zero, fill of contiguous, strided, and indexed arrays | Record ``memcpy``, ``memset``, ``memtile``, or an array fill (layout, index regions, inline value) instead of executing | Driver captures supported same-device work and APIC records it | Reissue supported memory operation; array fills read the index arrays at replay | Contiguous same-device copies; fills except negative strides and Fabric arrays. Values holding arrays, non-zero handles, or textures: strided and indexed fills raise, and contiguous fills keep the capturing process's pointers |
 | Array algorithms | reductions, scan, radix/segmented sort, run-length encode | Record a semantic host-helper operation | Execute helper under CUDA stream capture and record semantics | Reissue helper under reconstruction capture | Yes for supported forms |
-| Sparse topology | BSR from triplets and transpose | Record semantic topology operation | Supported CUDA forms run under stream capture; unsupported forms raise | Reissue supported form, including required capacity metadata | Yes, on both backends |
+| Sparse topology | BSR from triplets, transpose, and compression | Record semantic topology operation | Supported CUDA forms run under stream capture; unsupported forms raise | Reissue supported form, including required capacity metadata | Yes, on both backends |
 | Dynamic control flow | ``capture_if``, ``capture_while`` | Interpret nested operation streams | Driver creates conditional graph nodes and APIC stores nested streams | Reconstruct conditional nodes and child graphs | Yes when every nested operation is serializable |
 | In-process spatial updates | BVH refit/rebuild, HashGrid update | Replay against the live process-local object | Not a supported APIC CUDA path | Not reconstructed | No; CPU BVH fails at save, saveable HashGrid capture fails at build, and CUDA has no APIC update record |
+| Graph composition | A captured ``Graph`` as a ``capture_if`` branch or ``capture_while`` body | Record a child-graph reference and replay the child's stream; reject a child that contains conditionals | Driver inserts a child graph node, which cannot contain conditional nodes; ``apic=True`` rejects ``Graph`` branches | Not reconstructed | No; CPU fails at save |
 
 Dedicated records for host helpers are intentional. A scan, sort, sparse topology build, or reduction may enter native code as one semantic call while performing internal allocations and copies that are implementation details. Recording those incidental copies would make the stream depend on scratch layouts and could still omit the semantic work. The dedicated record captures the public operation and lets each replay backend obtain its own scratch space.
 
@@ -259,7 +262,7 @@ CPU ``IF`` interprets the selected branch recursively. CPU ``WHILE`` re-reads th
 
 CUDA live capture uses native CUDA conditional nodes. Loaded CUDA reconstruction recursively replays each embedded APIC stream into the corresponding child-graph capture. This path has the same CUDA Toolkit and driver requirements as live CUDA conditional nodes.
 
-APIC branch bodies must currently be Python callables. Passing an already captured ``Graph`` is supported by parts of the CUDA-only graph API but cannot be represented by APIC yet. Nested callable conditionals are represented as nested streams; validation caps malformed or unreasonable nesting before recursive replay.
+CPU control-flow bodies accept Python callables or finished live CPU ``Graph`` objects. A ``Graph`` branch records an ``APIC_OP_CHILD_GRAPH`` index into the parent ``APICState``'s child table; replay executes the child's stream. The outer ``Graph`` retains its children; requiring finished captures keeps references acyclic. A child that contains ``capture_if`` or ``capture_while`` raises ``NotImplementedError``: CUDA child graph nodes cannot contain conditional nodes, and CPU capture should not compose graphs that CUDA capture cannot, so nesting goes through callables on both backends. Child-graph records only occur inside branch bodies, so a child holds none and replay recurses at most one child level. These records are live-only: ``capture_save()`` and loaded-stream validation reject them. Loaded graphs cannot be branches, and CUDA ``apic=True`` bodies still require callbacks. Validation caps nested conditional streams before recursive replay.
 
 If a branch callback raises, the partially extracted branch body is freed and the parent capture is restored on a best-effort basis before the original exception is propagated. A partial branch must never remain as an ordinary sequence in the parent stream.
 
@@ -323,7 +326,7 @@ For CPU it allocates host regions and initializes their snapshots. Python then l
 
 For CUDA, default binary-only records use the original packaged-binary loader. Source-enabled records use one native resolver that validates and tries each recorded PTX/CUBIN module. If the driver rejects a packaged object, it tries a matching guest-cache entry and can compile validated retained source for the current GPU with NVRTC. Python supplies the installed Warp header directory through ``wp_apic_load_graph_ex()``; standalone C++ callers use the same entry point and resolver. All modules are resolved before device regions are allocated. The native CUDA graph is deliberately lazy. The first request for its graph or executable opens a Warp-managed CUDA capture and reissues the operation stream. Later launches reuse the cached executable.
 
-Meshes are recreated after region allocation. The loader builds a mapping from captured mesh IDs to new process-local IDs and applies it both to launch relocations and to registered handle fields stored inside memory regions.
+Meshes are recreated after region allocation. The loader builds a mapping from captured mesh IDs to new process-local IDs and applies it both to launch relocations and to registered handle fields stored inside memory regions. Each memory relocation specifies a region, byte offset, byte stride, and element count. The loader reads original IDs from the saved snapshot and patches a host copy of each affected region, so overlapping views cannot remap an already-restored ID. Each patched region is copied to its destination once.
 
 #### Device and binary portability
 
@@ -342,7 +345,7 @@ CPU object files are tied to the platform, architecture, compiler ABI, and Warp 
 
 #### ``.wrp`` format
 
-The feature is experimental. The current constants in ``warp/native/apic_types.h`` define writer and reader version 17. The metadata also records the producer Warp version, and the loader requires both versions to match exactly before loading modules or allocating resources. These numbers describe the operation and metadata wire format, not the Python package version.
+The feature is experimental. The current constants in ``warp/native/apic_types.h`` define writer and reader version 20. Version 20 adds records for strided and indexed array fills, version 19 added BSR compression records, and version 18 added explicit element counts to memory handle relocations; graphs saved with earlier formats must be recaptured. The metadata also records the producer Warp version, and the loader requires both versions to match exactly before loading modules or allocating resources. These numbers describe the operation and metadata wire format, not the Python package version.
 
 Contributors must follow these rules:
 
@@ -412,7 +415,7 @@ Earlier iterations of this design made assumptions that no longer describe the i
 
 - Kernel arguments no longer use a special array record plus a 64-byte scalar payload. All arguments use aligned value blobs and relocation tables.
 - Forward-only launch recording has been extended to backward launches with a parallel adjoint binding block.
-- CPU capture covers contiguous fill, reductions, scans, sorts, run-length encoding, sparse topology helpers, BVH updates, HashGrid updates, and dynamic control flow in addition to launches, copies, and memsets.
+- CPU capture covers contiguous, strided, and indexed fills, reductions, scans, sorts, run-length encoding, sparse topology helpers, BVH updates, HashGrid updates, and dynamic control flow in addition to launches, copies, and memsets.
 - Unknown native pointers are auto-registered and grown instead of being silently dropped.
 - CPU replay interprets the operation stream directly; it does not build an intermediate ``wp_cpu_graph_op_t`` graph.
 - CUDA ``.wrp`` loading reconstructs extended helpers and conditional graphs; it is no longer limited to basic launch/memory records.
@@ -426,12 +429,13 @@ These are limitations, not implied future commitments:
 
 - APIC does not record stream-event nodes or texture-array copies.
 - Cross-device CUDA copies, CUDA device-to-host bindings, and non-contiguous or indexed/Fabric copies do not yet have a serializable region model.
-- Non-contiguous and indexed/Fabric fills are unsupported. CUDA also bounds the largest inline fill value supported by its reconstruction path.
+- Fills of negative-stride and Fabric arrays are unsupported, and so are strided and indexed fills of values holding arrays, non-zero handles, or textures, directly or in struct fields, because the inline value is not relocated on load. Contiguous fills of such values are not rejected: their ``memtile`` record keeps the raw bytes, so a loaded graph uses the capturing process's pointers and handles, and can crash in another process. CUDA also bounds the largest inline fill value supported by its reconstruction path.
 - ``wp.fixedarray``, ``wp.fabricarray``, and ``wp.indexedfabricarray`` kernel arguments do not have relocation rules.
 - Mesh is the only object type reconstructed across save/load. Volume, BVH, and HashGrid serialization require typed object registries and reconstruction metadata.
 - Loaded replay does not reject a handle relocation that is absent from ``handle_ptr_remap``. It preserves the captured integer, which may be stale when mesh metadata is missing or the handle belongs to an unsupported object type.
 - BVH refit/rebuild is recordable for live CPU replay but causes ``capture_save()`` to fail. HashGrid update is also live CPU only and is rejected when attempted in a saveable capture. CUDA APIC has no corresponding spatial-update records.
-- APIC control-flow bodies cannot reference already captured ``Graph`` objects; use callbacks.
+- CPU control-flow bodies can reference live CPU ``Graph`` objects only for in-process replay: ``capture_save()`` rejects them and loaded graphs cannot be branches. CUDA ``apic=True`` control-flow bodies cannot reference captured ``Graph`` objects; use callbacks. On both backends, a ``Graph`` branch cannot itself contain conditionals; nest through callbacks.
+- ``capture_launch()`` cannot launch a captured or loaded graph inside another capture of the same device on either backend. Issue the original operations inside the outer capture instead.
 - CUDA source fallback cannot reproduce caller-provided include directories, LLVM-CUDA compilation, or LTO-IR/fatbin link inputs, and it requires generated source that is unchanged since module load and associated with a hashed binary name. ``capture_save(source_fallback=True)`` rejects other modules, including those that use ``strip_hash=True``. Link inputs are detected from the generated source, which assumes a consistent kernel cache. Rejected modules can still be saved with ``source_fallback=False`` and require a compatible binary.
 - The loader validates the section table, metadata, memory records, operation stream, filenames, and, for source-enabled records, artifact digests. ``.wrp`` artifacts still contain executable native or GPU code and must come from a trusted source.
 - One APIC graph cannot span multiple GPUs.

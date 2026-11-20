@@ -22,24 +22,24 @@ Kernels and User Functions
 --------------------------
 
 * Strings cannot be passed into kernels.
-* :func:`wp.atomic_add() <warp._src.lang.atomic_add>` does not support :class:`wp.float16 <float16>` or
-  :class:`wp.bfloat16 <bfloat16>` on GPUs with compute capability below 7.0.
-  On such devices, the function will return ``0.0`` without modifying the target memory.
-* :func:`wp.atomic_add() <warp._src.lang.atomic_add>` does not support :class:`wp.float64 <float64>` when targeting
-  CUDA GPUs with compute capability below 6.0.
-  In this case, the function returns ``0.0`` without modifying the target memory.
+* :func:`wp.atomic_add() <warp._src.lang.atomic_add>` and :func:`wp.atomic_sub() <warp._src.lang.atomic_sub>`
+  do not support :class:`wp.float16 <float16>` or :class:`wp.bfloat16 <bfloat16>`
+  on GPUs with compute capability below 7.0.
+  Kernels compiled for those GPUs skip these updates without raising an error.
+* :func:`wp.atomic_add() <warp._src.lang.atomic_add>` and :func:`wp.atomic_sub() <warp._src.lang.atomic_sub>`
+  do not support :class:`wp.float64 <float64>` on GPUs with compute capability below 6.0.
+  Kernels compiled for those GPUs skip these updates without raising an error.
 * Using ``wp.atomic_add()`` or related functions on the same memory address from
   overlapping CPU and GPU kernels is currently unsupported.
 * :func:`wp.tid() <warp._src.lang.tid>` cannot be called from user functions.
-* Modifying the value of a :class:`wp.constant() <warp.constant>` during runtime will not trigger
+* Modifying the value of a :func:`wp.constant() <warp.constant>` during runtime will not trigger
   recompilation of the affected kernels if the modules have already been loaded
   (e.g. through a :func:`wp.launch() <warp.launch>` or a :func:`wp.load_module() <warp.load_module>`).
-* A :class:`wp.constant() <warp.constant>` used without an explicit type constructor is treated as
+* A :func:`wp.constant() <warp.constant>` used without an explicit type constructor is treated as
   :class:`wp.float32 <float32>` (for Python floats) or :class:`wp.int32 <int32>` (for Python integers).
-  To preserve full 64-bit precision, wrap the constant in an explicit type constructor
-  (e.g., ``wp.float64(wp.PI)`` or ``wp.int64(large_value)``).
-* Python ``IntFlag`` values behave like raw integers in Warp kernels: bitwise negation (``~``)
-  produces the integer negation, not a masked combination of flags as in standard Python ``IntFlag`` behavior.
+  See :ref:`Constants <runtime-constants>` for preserving 64-bit precision.
+* Python ``IntFlag`` values behave like raw integers in Warp kernels: bitwise inversion (``~``)
+  produces the integer bitwise complement, not a masked combination of flags as in standard Python ``IntFlag`` behavior.
 * :ref:`Function parameters <callable-parameters>` in user functions only support direct inline calls with
   user-defined :func:`@wp.func <warp.func>` functions and simple built-in Warp functions such as ``wp.sin``,
   ``wp.cos``, ``wp.sqrt``, ``wp.add``, and ``wp.min``.
@@ -81,7 +81,7 @@ Arrays
   :math:`2^{31}-1`. As a result, one-dimensional Warp arrays cannot represent larger logical data sets; split them
   across multiple dimensions instead. See :ref:`large-array launch indexing <large_launch_indexing>` for the launch
   and indexing pattern.
-* There are currently no data types that support complex numbers.
+* There is currently no dedicated complex scalar type.
 * ``wp.config.launch_array_access_mode = wp.config.LaunchArrayAccessMode.CHECKED``
   only fully verifies cross-device :class:`wp.array <warp.array>` arguments when
   Warp can classify the pointer and prove the relevant access requirements.
@@ -189,10 +189,10 @@ The difference applies both in Warp kernels and when calling ``wp.bit_count()`` 
 Variable Scope
 --------------
 
-When writing Warp kernels, variable scope might behave differently than in standard Python.
+When writing Warp kernels, reading uninitialized variables can behave differently than in standard Python.
 This can sometimes lead to unexpected results.
 
-In standard Python, variables are only accessible within the block where they are defined.
+In standard Python, variables assigned inside an ``if`` block belong to the enclosing function's scope.
 Consider this example:
 
 .. code-block:: python
@@ -214,17 +214,17 @@ However, consider a slightly modified example:
 .. code-block:: python
 
     @wp.func
-    def foo(cond: bool):
+    def foo(cond: bool, x: int):
         if cond:
-            out = 123
+            out = x + 123
 
         print(out) # No error even when `cond` is `False`.
 
 In standard Python, if ``cond`` is ``False``, the call to ``print(out)`` would raise an ``UnboundLocalError`` because
-``out`` is only defined inside the ``if`` block.
+``out`` was never assigned a value.
 
 In Warp, the behavior is different. The call to ``print(out)`` *will not* raise an error, even if ``cond`` is ``False``.
-Warp effectively makes ``out`` accessible outside the ``if`` block.
+Warp does not check whether ``out`` was assigned before it is read.
 However, if ``cond`` is ``False``, ``out`` will be uninitialized, leading to undefined behavior.
 
 .. _limitations-arrays-in-structs:
@@ -249,62 +249,8 @@ Modifying flags on arrays stored in structs may not trigger an update to the und
     a.requires_grad = True
 
 
-In this case the array stored in the struct will not have the `requires_grad=True` value propagated to it,
+In this case, ``s.arr.requires_grad`` is ``True``, but the struct's copied array descriptor still has no gradient pointer,
 which could lead to gradients not being computed during backward kernel launches.
 
-Array fields are also treated as descriptors when Warp combines struct values.
-For example, tile reductions and atomics on struct-valued tiles accumulate scalar, vector, matrix,
-and nested-struct fields field-wise, but do not accumulate the contents of array fields.
-In the example below, :func:`tile_sum <warp.tile_sum>` reduces a tile of structs: the ``weight``
-field is summed across the tile, while the ``values`` array field is carried through as a descriptor
-(the array pointer is copied, its contents are left untouched):
-
-.. testcode::
-
-    TILE_N = 8
-
-
-    @wp.struct
-    class ParticleBatch:
-        weight: wp.float32
-        values: wp.array[wp.float32]
-
-
-    @wp.kernel
-    def combine_batches(batches: wp.array[ParticleBatch], combined: wp.array[ParticleBatch]):
-        # cooperatively reduce a tile of struct elements field-wise
-        t = wp.tile_load(batches, shape=TILE_N, storage="shared")
-        wp.tile_store(combined, wp.tile_sum(t))
-
-
-    # each batch references a *different* payload array
-    payloads = [wp.array(np.full(TILE_N, float(i), dtype=np.float32), dtype=wp.float32) for i in range(TILE_N)]
-
-    batches = []
-    for i in range(TILE_N):
-        b = ParticleBatch()
-        b.weight = float(i)
-        b.values = payloads[i]
-        batches.append(b)
-    batches = wp.array(batches, dtype=ParticleBatch)
-
-    combined = wp.zeros(1, dtype=ParticleBatch)
-    wp.launch_tiled(combine_batches, dim=[1], inputs=[batches], outputs=[combined], block_dim=TILE_N)
-
-    # the weight field is summed field-wise across the tile: 0 + 1 + ... + 7
-    print(f"weight = {combined.numpy()['weight'][0]}")
-
-.. testoutput::
-
-    weight = 28.0
-
-The ``weight`` field is summed field-wise, but the ``values`` array field is *not*. Each tile element
-holds a different array here, and the reduction carries exactly one of those descriptors through
-unchanged rather than reading, merging, or summing the array contents.
-
-**Which descriptor survives is unspecified.** Field-wise combination is built from the generated
-struct ``add(a, b)``, which begins from ``ret = a`` and leaves array fields untouched, so the
-descriptor from the left operand survives each pairwise step. For a full-tile reduction this is
-effectively the first participating element today, but that is an implementation detail callers must
-not rely on. To combine array payloads deterministically, accumulate their contents explicitly in a
-kernel rather than relying on struct-value accumulation.
+Tile reductions and atomics on struct-valued tiles do not accumulate the contents of array fields.
+Which array descriptor survives is unspecified. See :ref:`tile-struct-element-types` for details and an example.
