@@ -30,8 +30,8 @@ def cw_max(a: wp.vec3, b: wp.vec3):
 
 @wp.kernel
 def intersect(
-    mesh_0: wp.uint64,
-    mesh_1: wp.uint64,
+    mesh_0: wp.handle,
+    mesh_1: wp.handle,
     num_faces: int,
     xforms: wp.array[wp.transform],
     result: wp.array[int],
