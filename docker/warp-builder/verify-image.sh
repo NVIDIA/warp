@@ -5,7 +5,7 @@
 
 set -euo pipefail
 
-expected_uv_version="${EXPECTED_UV_VERSION:-0.13.0}"
+expected_uv_version="${EXPECTED_UV_VERSION:-0.13.6}"
 expected_cuda_version="${EXPECTED_CUDA_VERSION:?EXPECTED_CUDA_VERSION must be set}"
 expected_cuda_platform="${EXPECTED_CUDA_PLATFORM:?EXPECTED_CUDA_PLATFORM must be set}"
 expected_python_dir="${UV_PYTHON_INSTALL_DIR:-}"
@@ -47,7 +47,6 @@ if [[ "$actual_uv_version" != "uv ${expected_uv_version} "* ]]; then
 fi
 
 python_requests=(
-    "3.10:3.10.21:gil"
     "3.11:3.11.16:gil"
     "3.12:3.12.14:gil"
     "3.13:3.13.15:gil"

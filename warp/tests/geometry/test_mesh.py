@@ -1,7 +1,9 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
+import gc
 import itertools
 import unittest
+import weakref
 from unittest import mock
 
 import numpy as np
@@ -383,6 +385,294 @@ def test_mesh_refit_graph(test, device):
         wp.synchronize_device(device)
 
 
+@wp.kernel(enable_backward=False)
+def count_aabb_hits_kernel(
+    mesh_id: wp.uint64,
+    lower: wp.vec3,
+    upper: wp.vec3,
+    hits: wp.array[wp.int32],
+    slot: int,
+):
+    query = wp.mesh_query_aabb(mesh_id, lower, upper)
+    face = int(0)
+    while wp.mesh_query_aabb_next(query, face):
+        wp.atomic_add(hits, slot, 1)
+
+
+@wp.kernel(enable_backward=False)
+def eval_velocity_kernel(
+    mesh_id: wp.uint64,
+    out: wp.array[wp.vec3],
+    slot: int,
+):
+    out[slot] = wp.mesh_eval_velocity(mesh_id, 0, 0.25, 0.25)
+
+
+def _triangle_at(x):
+    """Return the points of a unit right triangle in the z=0 plane, offset by ``x`` along the x axis."""
+    return np.array([[x, 0.0, 0.0], [x + 1.0, 0.0, 0.0], [x, 1.0, 0.0]], dtype=np.float32)
+
+
+def _launch_count_aabb_hits(mesh, x, hits, slot, device):
+    """Count the triangles overlapping a box around the triangle placed by ``_triangle_at(x)``."""
+    wp.launch(
+        count_aabb_hits_kernel,
+        dim=1,
+        inputs=[mesh.id, wp.vec3(x - 0.5, -0.5, -0.5), wp.vec3(x + 1.5, 1.5, 0.5), hits, slot],
+        device=device,
+    )
+
+
+def test_mesh_refit_capture_replay(test, device):
+    """Re-run a captured refit on every replay, against the points as they are at replay time."""
+    if device.is_cpu:
+        constructors = ["sah", "median"]
+    else:
+        constructors = ["sah", "median", "lbvh"]
+
+    wp.load_module(device=device)
+
+    for constructor in constructors:
+        for support_winding_number in (False, True):
+            with test.subTest(constructor=constructor, support_winding_number=support_winding_number):
+                points = wp.array(_triangle_at(0.0), dtype=wp.vec3, device=device)
+                src = wp.array(_triangle_at(10.0), dtype=wp.vec3, device=device)
+                indices = wp.array([0, 1, 2], dtype=wp.int32, device=device)
+                hits = wp.zeros(2, dtype=wp.int32, device=device)
+                mesh = wp.Mesh(
+                    points=points,
+                    indices=indices,
+                    support_winding_number=support_winding_number,
+                    bvh_constructor=constructor,
+                )
+
+                with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+                    hits.zero_()
+                    wp.copy(points, src)
+                    mesh.refit()
+                    _launch_count_aabb_hits(mesh, 0.0, hits, 0, device)
+                    _launch_count_aabb_hits(mesh, 10.0, hits, 1, device)
+
+                wp.capture_launch(capture.graph)
+                np.testing.assert_array_equal(hits.numpy(), np.array([0, 1], dtype=np.int32))
+
+                src.assign(_triangle_at(0.0))
+                wp.capture_launch(capture.graph)
+                np.testing.assert_array_equal(hits.numpy(), np.array([1, 0], dtype=np.int32))
+
+
+def test_mesh_points_setter_capture_replay(test, device):
+    """Apply a captured points assignment on every replay, in capture order."""
+    points = wp.array(_triangle_at(0.0), dtype=wp.vec3, device=device)
+    new_points = wp.array(_triangle_at(-50.0), dtype=wp.vec3, device=device)
+    src = wp.array(_triangle_at(10.0), dtype=wp.vec3, device=device)
+    indices = wp.array([0, 1, 2], dtype=wp.int32, device=device)
+    hits = wp.zeros(3, dtype=wp.int32, device=device)
+    read_points = wp.zeros(3, dtype=wp.vec3, device=device)
+    mesh = wp.Mesh(points=points, indices=indices)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+        hits.zero_()
+        _launch_count_aabb_hits(mesh, 0.0, hits, 0, device)
+        wp.copy(new_points, src)
+        mesh.points = new_points
+        _launch_count_aabb_hits(mesh, 10.0, hits, 1, device)
+        _launch_count_aabb_hits(mesh, 20.0, hits, 2, device)
+
+    test.assertIs(mesh.points, new_points)
+
+    # Nothing runs before the first replay: the mesh still reads its original points.
+    wp.launch(read_points_kernel, dim=3, inputs=[mesh.id, read_points], device=device)
+    np.testing.assert_array_equal(read_points.numpy(), _triangle_at(0.0))
+
+    # The query recorded before the assignment sees the original points; the one after sees the copied ones.
+    wp.capture_launch(capture.graph)
+    np.testing.assert_array_equal(hits.numpy(), np.array([1, 1, 0], dtype=np.int32))
+    wp.launch(read_points_kernel, dim=3, inputs=[mesh.id, read_points], device=device)
+    np.testing.assert_array_equal(read_points.numpy(), _triangle_at(10.0))
+
+    # The second replay refits against the replay-time contents of the new points.
+    src.assign(_triangle_at(20.0))
+    wp.capture_launch(capture.graph)
+    np.testing.assert_array_equal(hits.numpy(), np.array([0, 0, 1], dtype=np.int32))
+
+
+def test_mesh_velocities_setter_capture_replay(test, device):
+    """Apply a captured velocities assignment on every replay, in capture order."""
+    points = wp.array(_triangle_at(0.0), dtype=wp.vec3, device=device)
+    indices = wp.array([0, 1, 2], dtype=wp.int32, device=device)
+    velocities = wp.full(3, wp.vec3(1.0, 0.0, 0.0), dtype=wp.vec3, device=device)
+    new_velocities = wp.full(3, wp.vec3(0.0, 2.0, 0.0), dtype=wp.vec3, device=device)
+    src = wp.full(3, wp.vec3(0.0, 0.0, 3.0), dtype=wp.vec3, device=device)
+    out = wp.zeros(2, dtype=wp.vec3, device=device)
+    mesh = wp.Mesh(points=points, indices=indices, velocities=velocities)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+        wp.launch(eval_velocity_kernel, dim=1, inputs=[mesh.id, out, 0], device=device)
+        wp.copy(new_velocities, src)
+        mesh.velocities = new_velocities
+        wp.launch(eval_velocity_kernel, dim=1, inputs=[mesh.id, out, 1], device=device)
+
+    test.assertIs(mesh.velocities, new_velocities)
+
+    # Nothing runs before the first replay: the mesh still reads its original velocities.
+    wp.launch(eval_velocity_kernel, dim=1, inputs=[mesh.id, out, 0], device=device)
+    np.testing.assert_array_equal(out.numpy()[0], np.array([1.0, 0.0, 0.0], dtype=np.float32))
+
+    wp.capture_launch(capture.graph)
+    np.testing.assert_array_equal(out.numpy()[0], np.array([1.0, 0.0, 0.0], dtype=np.float32))
+    np.testing.assert_array_equal(out.numpy()[1], np.array([0.0, 0.0, 3.0], dtype=np.float32))
+
+
+def test_mesh_points_setter_capture_if_replay(test, device):
+    """Apply a points assignment recorded in a conditional branch only on the replays that take the branch.
+
+    The assigned points are a view at a nonzero offset into a larger array, which the replay must resolve.
+    """
+    points = wp.array(_triangle_at(0.0), dtype=wp.vec3, device=device)
+    storage = wp.array(np.concatenate((_triangle_at(-50.0), _triangle_at(10.0))), dtype=wp.vec3, device=device)
+    new_points = storage[3:]
+    indices = wp.array([0, 1, 2], dtype=wp.int32, device=device)
+    condition = wp.zeros(1, dtype=wp.int32, device=device)
+    hits = wp.zeros(1, dtype=wp.int32, device=device)
+    read_points = wp.zeros(3, dtype=wp.vec3, device=device)
+    mesh = wp.Mesh(points=points, indices=indices)
+
+    def assign_points():
+        mesh.points = new_points
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+        hits.zero_()
+        wp.capture_if(condition, on_true=assign_points)
+        wp.launch(read_points_kernel, dim=3, inputs=[mesh.id, read_points], device=device)
+        _launch_count_aabb_hits(mesh, 10.0, hits, 0, device)
+
+    wp.capture_launch(capture.graph)
+    np.testing.assert_array_equal(read_points.numpy(), _triangle_at(0.0))
+    np.testing.assert_array_equal(hits.numpy(), np.array([0], dtype=np.int32))
+
+    condition.fill_(1)
+    wp.capture_launch(capture.graph)
+    np.testing.assert_array_equal(read_points.numpy(), _triangle_at(10.0))
+    np.testing.assert_array_equal(hits.numpy(), np.array([1], dtype=np.int32))
+
+
+@wp.kernel
+def write_points_kernel(mesh_id: wp.uint64, values: wp.array[wp.vec3]):
+    tid = wp.tid()
+    mesh = wp.mesh_get(mesh_id)
+    mesh.points[tid] = values[tid]
+
+
+@wp.kernel
+def write_velocities_kernel(mesh_id: wp.uint64, values: wp.array[wp.vec3]):
+    tid = wp.tid()
+    mesh = wp.mesh_get(mesh_id)
+    mesh.velocities[tid] = values[tid]
+
+
+def test_mesh_points_setter_capture_keeps_retain_grad(test, device):
+    """Replay a captured points assignment with the assigned array's ``retain_grad`` flag.
+
+    The backward pass of a kernel that writes the mesh points clears their gradient unless the flag is set.
+    """
+    indices = wp.array([0, 1, 2], dtype=wp.int32, device=device)
+    kept_mesh = wp.Mesh(points=wp.array(_triangle_at(0.0), dtype=wp.vec3, device=device), indices=indices)
+    cleared_mesh = wp.Mesh(points=wp.array(_triangle_at(0.0), dtype=wp.vec3, device=device), indices=indices)
+    kept_points = wp.array(_triangle_at(10.0), dtype=wp.vec3, device=device, requires_grad=True)
+    kept_points.retain_grad = True
+    cleared_points = wp.array(_triangle_at(10.0), dtype=wp.vec3, device=device, requires_grad=True)
+    kept_values = wp.zeros(3, dtype=wp.vec3, device=device, requires_grad=True)
+    cleared_values = wp.zeros(3, dtype=wp.vec3, device=device, requires_grad=True)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+        kept_mesh.points = kept_points
+        cleared_mesh.points = cleared_points
+    wp.capture_launch(capture.graph)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(write_points_kernel, dim=3, inputs=[kept_mesh.id, kept_values], device=device)
+        wp.launch(write_points_kernel, dim=3, inputs=[cleared_mesh.id, cleared_values], device=device)
+    ones = np.ones((3, 3), dtype=np.float32)
+    tape.backward(
+        grads={
+            kept_points: wp.array(ones, dtype=wp.vec3, device=device),
+            cleared_points: wp.array(ones, dtype=wp.vec3, device=device),
+        }
+    )
+
+    # The adjoints read each gradient through the replayed mesh descriptor...
+    np.testing.assert_array_equal(kept_values.grad.numpy(), ones)
+    np.testing.assert_array_equal(cleared_values.grad.numpy(), ones)
+    # ...and cleared only the one without retain_grad.
+    np.testing.assert_array_equal(kept_points.grad.numpy(), ones)
+    np.testing.assert_array_equal(cleared_points.grad.numpy(), np.zeros((3, 3), dtype=np.float32))
+
+
+def test_mesh_velocities_setter_capture_keeps_retain_grad(test, device):
+    """Replay a captured velocities assignment with the assigned array's ``retain_grad`` flag.
+
+    The backward pass of a kernel that writes the mesh velocities clears their gradient unless the flag is set.
+    """
+    indices = wp.array([0, 1, 2], dtype=wp.int32, device=device)
+    kept_mesh = wp.Mesh(
+        points=wp.array(_triangle_at(0.0), dtype=wp.vec3, device=device),
+        indices=indices,
+        velocities=wp.zeros(3, dtype=wp.vec3, device=device),
+    )
+    cleared_mesh = wp.Mesh(
+        points=wp.array(_triangle_at(0.0), dtype=wp.vec3, device=device),
+        indices=indices,
+        velocities=wp.zeros(3, dtype=wp.vec3, device=device),
+    )
+    kept_velocities = wp.zeros(3, dtype=wp.vec3, device=device, requires_grad=True)
+    kept_velocities.retain_grad = True
+    cleared_velocities = wp.zeros(3, dtype=wp.vec3, device=device, requires_grad=True)
+    kept_values = wp.zeros(3, dtype=wp.vec3, device=device, requires_grad=True)
+    cleared_values = wp.zeros(3, dtype=wp.vec3, device=device, requires_grad=True)
+
+    wp.load_module(device=device)
+    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+        kept_mesh.velocities = kept_velocities
+        cleared_mesh.velocities = cleared_velocities
+    wp.capture_launch(capture.graph)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(write_velocities_kernel, dim=3, inputs=[kept_mesh.id, kept_values], device=device)
+        wp.launch(write_velocities_kernel, dim=3, inputs=[cleared_mesh.id, cleared_values], device=device)
+    ones = np.ones((3, 3), dtype=np.float32)
+    tape.backward(
+        grads={
+            kept_velocities: wp.array(ones, dtype=wp.vec3, device=device),
+            cleared_velocities: wp.array(ones, dtype=wp.vec3, device=device),
+        }
+    )
+
+    # The adjoints read each gradient through the replayed mesh descriptor...
+    np.testing.assert_array_equal(kept_values.grad.numpy(), ones)
+    np.testing.assert_array_equal(cleared_values.grad.numpy(), ones)
+    # ...and cleared only the one without retain_grad.
+    np.testing.assert_array_equal(kept_velocities.grad.numpy(), ones)
+    np.testing.assert_array_equal(cleared_velocities.grad.numpy(), np.zeros((3, 3), dtype=np.float32))
+
+
+def test_mesh_cpu_construction_during_cuda_capture(test, device):
+    """Build a CPU mesh eagerly while a CUDA graph capture is active: the CPU-capture check is device-scoped."""
+    points = wp.array(_triangle_at(0.0), dtype=wp.vec3, device="cpu")
+    indices = wp.array([0, 1, 2], dtype=wp.int32, device="cpu")
+
+    with wp.ScopedCapture(device=device, force_module_load=False):
+        mesh = wp.Mesh(points=points, indices=indices)
+
+    test.assertNotEqual(mesh.id, 0)
+
+
 def test_mesh_exceptions(test, device):
     """Reject mesh points and indices located on different devices."""
     with test.assertRaises(RuntimeError):
@@ -484,6 +774,130 @@ class TestMesh(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "Failed to set mesh points: native refit failure"):
             mesh.points = points_new
 
+    def test_mesh_points_setter_capture_keeps_replaced_points_alive(self):
+        """Keep the points a captured assignment replaces alive while the native mesh can still read them.
+
+        The assignment takes effect only at replay, so until then the mesh keeps reading the replaced points, even if
+        the graph is destroyed without being launched.
+        """
+        device = "cpu"
+        indices = wp.array([0, 1, 2], dtype=wp.int32, device=device)
+        mesh = wp.Mesh(points=wp.array(_triangle_at(0.0), dtype=wp.vec3, device=device), indices=indices)
+        replaced_points = weakref.ref(mesh.points)
+        read_points = wp.zeros(3, dtype=wp.vec3, device=device)
+
+        wp.load_module(device=device)
+        with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+            mesh.points = wp.array(_triangle_at(10.0), dtype=wp.vec3, device=device)
+
+        gc.collect()
+        self.assertIsNotNone(replaced_points())
+
+        del capture
+        gc.collect()
+        self.assertIsNotNone(replaced_points())
+        wp.launch(read_points_kernel, dim=3, inputs=[mesh.id, read_points], device=device)
+        np.testing.assert_array_equal(read_points.numpy(), _triangle_at(0.0))
+
+    def test_mesh_points_setter_capture_keeps_replayed_points_alive(self):
+        """Keep the points a replay assigns alive while the native mesh reads them, even after the graph is destroyed.
+
+        An eager assignment made between capture and replay doesn't stop the replay from repointing the mesh.
+        """
+        device = "cpu"
+        points = wp.array(_triangle_at(0.0), dtype=wp.vec3, device=device)
+        indices = wp.array([0, 1, 2], dtype=wp.int32, device=device)
+        mesh = wp.Mesh(points=points, indices=indices)
+        replayed_points = wp.array(_triangle_at(10.0), dtype=wp.vec3, device=device)
+        replayed_points_ref = weakref.ref(replayed_points)
+        read_points = wp.zeros(3, dtype=wp.vec3, device=device)
+
+        wp.load_module(device=device)
+        with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+            mesh.points = replayed_points
+        del replayed_points
+
+        mesh.points = points
+        wp.capture_launch(capture.graph)
+        del capture
+        gc.collect()
+
+        self.assertIsNotNone(replayed_points_ref())
+        wp.launch(read_points_kernel, dim=3, inputs=[mesh.id, read_points], device=device)
+        np.testing.assert_array_equal(read_points.numpy(), _triangle_at(10.0))
+
+        # An eager assignment repoints the mesh, so nothing can read the replayed points anymore.
+        mesh.points = points
+        gc.collect()
+        self.assertIsNone(replayed_points_ref())
+
+    def test_mesh_points_setter_recapture_releases_unread_points(self):
+        """Release the points of destroyed graphs once the native mesh stops reading them, instead of accumulating them."""
+        device = "cpu"
+        indices = wp.array([0, 1, 2], dtype=wp.int32, device=device)
+        points = wp.array(_triangle_at(0.0), dtype=wp.vec3, device=device)
+        mesh = wp.Mesh(points=points, indices=indices)
+        assigned_points_refs = []
+
+        wp.load_module(device=device)
+        for i in range(4):
+            assigned_points = wp.array(_triangle_at(10.0 * (i + 1)), dtype=wp.vec3, device=device)
+            assigned_points_refs.append(weakref.ref(assigned_points))
+            with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+                mesh.points = assigned_points
+            wp.capture_launch(capture.graph)
+            del assigned_points, capture
+            gc.collect()
+
+        # The last two capture rounds may still be read through the native mesh; the earlier ones may not.
+        self.assertIsNone(assigned_points_refs[0]())
+        self.assertIsNone(assigned_points_refs[1]())
+
+        mesh.points = points
+        gc.collect()
+        self.assertIsNone(assigned_points_refs[2]())
+        self.assertIsNone(assigned_points_refs[3]())
+
+    def test_mesh_velocities_setter_capture_keeps_replaced_velocities_alive(self):
+        """Keep the velocities a captured assignment replaces alive while the native mesh can still read them."""
+        device = "cpu"
+        points = wp.array(_triangle_at(0.0), dtype=wp.vec3, device=device)
+        indices = wp.array([0, 1, 2], dtype=wp.int32, device=device)
+        mesh = wp.Mesh(
+            points=points,
+            indices=indices,
+            velocities=wp.full(3, wp.vec3(1.0, 0.0, 0.0), dtype=wp.vec3, device=device),
+        )
+        replaced_velocities = weakref.ref(mesh.velocities)
+        out = wp.zeros(1, dtype=wp.vec3, device=device)
+
+        wp.load_module(device=device)
+        with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+            mesh.velocities = wp.full(3, wp.vec3(0.0, 2.0, 0.0), dtype=wp.vec3, device=device)
+
+        gc.collect()
+        self.assertIsNotNone(replaced_velocities())
+
+        del capture
+        gc.collect()
+        self.assertIsNotNone(replaced_velocities())
+        wp.launch(eval_velocity_kernel, dim=1, inputs=[mesh.id, out, 0], device=device)
+        np.testing.assert_array_equal(out.numpy()[0], np.array([1.0, 0.0, 0.0], dtype=np.float32))
+
+    def test_mesh_construction_cpu_capture_raises(self):
+        """Reject building a mesh during CPU graph capture, where the build would never re-run on replay."""
+        device = "cpu"
+        points = wp.array(_triangle_at(0.0), dtype=wp.vec3, device=device)
+        indices = wp.array([0, 1, 2], dtype=wp.int32, device=device)
+
+        with self.assertRaisesRegex(NotImplementedError, r"wp\.Mesh\(\) cannot be recorded during CPU graph capture"):
+            with wp.ScopedCapture(device=device, force_module_load=False):
+                wp.Mesh(points=points, indices=indices)
+
+        # The capture ended cleanly, so eager construction works again.
+        mesh = wp.Mesh(points=points, indices=indices)
+        self.assertNotEqual(mesh.id, 0)
+
 
 add_function_test(TestMesh, "test_mesh_read_properties", test_mesh_read_properties, devices=devices)
 add_function_test(TestMesh, "test_mesh_query_point", test_mesh_query_point, devices=devices)
@@ -491,6 +905,49 @@ add_function_test(TestMesh, "test_mesh_query_ray", test_mesh_query_ray, devices=
 add_function_test(TestMesh, "test_grouped_mesh_query_ray", test_grouped_mesh_query_ray, devices=devices)
 add_function_test(TestMesh, "test_mesh_refit", test_mesh_refit, devices=devices)
 add_function_test(TestMesh, "test_mesh_refit_graph", test_mesh_refit_graph, devices=cuda_devices_with_mempool)
+add_function_test(
+    TestMesh,
+    "test_mesh_refit_capture_replay",
+    test_mesh_refit_capture_replay,
+    devices=get_test_devices_with_graph_capture_allocation(),
+)
+# CUDA is excluded until the CUDA setters stop capturing a copy from a stack descriptor (mesh.cu).
+add_function_test(
+    TestMesh,
+    "test_mesh_points_setter_capture_replay",
+    test_mesh_points_setter_capture_replay,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestMesh,
+    "test_mesh_velocities_setter_capture_replay",
+    test_mesh_velocities_setter_capture_replay,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestMesh,
+    "test_mesh_points_setter_capture_if_replay",
+    test_mesh_points_setter_capture_if_replay,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestMesh,
+    "test_mesh_points_setter_capture_keeps_retain_grad",
+    test_mesh_points_setter_capture_keeps_retain_grad,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestMesh,
+    "test_mesh_velocities_setter_capture_keeps_retain_grad",
+    test_mesh_velocities_setter_capture_keeps_retain_grad,
+    devices=[d for d in devices if d.is_cpu],
+)
+add_function_test(
+    TestMesh,
+    "test_mesh_cpu_construction_during_cuda_capture",
+    test_mesh_cpu_construction_during_cuda_capture,
+    devices=cuda_devices_with_mempool,
+)
 add_function_test(TestMesh, "test_mesh_exceptions", test_mesh_exceptions, devices=get_selected_cuda_test_devices())
 
 

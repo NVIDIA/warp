@@ -5,9 +5,9 @@
 # deliberately supplied by the repository at build time instead of being tied to
 # the image lifecycle.
 
-ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.13.0@sha256:cdc6093146eb3ff6a40107b38f008b789e050e77ad87865e381d9917da55a168
+ARG UV_IMAGE=ghcr.io/astral-sh/uv:0.13.6@sha256:af22a52f5eafef3d78e551599d405c02df61919d18028f0cea8eda93bc9986d0
 ARG MANYLINUX_IMAGE=quay.io/pypa/manylinux_2_28_x86_64@sha256:53390351aeb4688114b02c36a23b3e6ce1166ee9b7afc5df1a4f776354fc764c
-ARG PYTHON_VERSIONS="3.10.21 3.11.16 3.12.14 3.13.15 3.14.7 3.14.7t"
+ARG PYTHON_VERSIONS="3.11.16 3.12.14 3.13.15 3.14.7 3.14.7t"
 
 FROM ${UV_IMAGE} AS uv
 FROM ${MANYLINUX_IMAGE} AS python
@@ -26,11 +26,11 @@ RUN uv --version \
 
 FROM python AS final
 
-ARG CUDA_VERSION=13.4.2
+ARG CUDA_VERSION=13.5.0
 ARG MANYLINUX_POLICY=manylinux_2_28
 ARG PYTHON_VERSIONS
 ARG TARGETARCH=x86_64
-ARG UV_VERSION=0.13.0
+ARG UV_VERSION=0.13.6
 
 COPY --from=cuda_toolkit / /opt/cuda/
 

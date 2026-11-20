@@ -147,7 +147,10 @@ def det_buffer_allocation_scope(device, stream_is_capturing):
         # directly: warp.synchronize_stream() refuses to run while any capture
         # is active, but synchronizing a non-capturing stream is legal under
         # the relaxed thread capture mode we hold here.
-        runtime.core.wp_cuda_stream_synchronize(alloc_stream.cuda_stream)
+        if not runtime.core.wp_cuda_stream_synchronize(alloc_stream.cuda_stream):
+            raise RuntimeError(
+                f"Failed to synchronize stream on device {alloc_stream.device}: {runtime.get_error_string()}"
+            )
     finally:
         if runtime.core.wp_cuda_thread_exchange_capture_mode(previous_mode) < 0:
             raise WarpDeterminismError(

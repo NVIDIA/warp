@@ -44,6 +44,8 @@ class SquareShapeFunction(ShapeFunction):
 class SquareBipolynomialShapeFunctions(SquareShapeFunction):
     """Bipolynomial (tensor-product Lagrange) shape functions on quadrilateral elements."""
 
+    INTERPOLATORY = True
+
     def __init__(self, degree: int, family: Polynomial, scalar_type: type = wp.float32):
         self.family = family
         self.scalar_type = scalar_type
@@ -341,6 +343,8 @@ class SquareSerendipityShapeFunctions(SquareShapeFunction):
     Side shape functions are usual Lagrange shape functions times a linear function in the normal direction.
     Corner shape functions are bilinear shape functions times a function of (x^{d-1} + y^{d-1}).
     """
+
+    INTERPOLATORY = True
 
     def __init__(self, degree: int, family: Polynomial, scalar_type: type = wp.float32):
         if not is_closed(family):
@@ -649,6 +653,8 @@ class SquareSerendipityShapeFunctions(SquareShapeFunction):
 
 class SquareNonConformingPolynomialShapeFunctions(ShapeFunction):
     """Non-conforming polynomial shape functions on quadrilateral elements using embedded triangles."""
+
+    INTERPOLATORY = True
 
     # embeds the largest equilateral triangle centered at (0.5, 0.5) into the reference square
     _tri_height = 0.75

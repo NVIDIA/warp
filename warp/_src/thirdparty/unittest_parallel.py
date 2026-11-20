@@ -25,6 +25,7 @@ import warp.tests.unittest_utils
 from warp._src.thirdparty import appdirs
 from warp.tests.unittest_utils import (  # NVIDIA modification
     ParallelJunitTestResult,
+    synchronize_after_test,
     write_junit_results,
 )
 
@@ -159,7 +160,7 @@ def main(argv=None):
     group_parallel.add_argument(
         "--isolate-test-processes",
         action="store_true",
-        help="Run each test suite in a fresh process (requires Python 3.11 or newer).",
+        help="Run each test suite in a fresh process.",
     )
     group_parallel.add_argument(
         "--serial-fallback",
@@ -201,10 +202,13 @@ def main(argv=None):
         "--no-shared-cache", action="store_true", help="Use a separate kernel cache per test process."
     )
     group_warp.add_argument("--warp-debug", action="store_true", help="Set warp.config.mode to 'debug'")
+    group_warp.add_argument(
+        "--warp-llvm-cuda",
+        action="store_true",
+        help="Set warp.config.llvm_cuda to True to compile CUDA kernels with Clang instead of NVRTC",
+    )
     args = parser.parse_args(args=argv)
 
-    if args.isolate_test_processes and sys.version_info < (3, 11):
-        parser.error("--isolate-test-processes requires Python 3.11 or newer")
     if args.isolate_test_processes and args.serial_fallback:
         parser.error("--isolate-test-processes cannot be used with --serial-fallback")
     if args.timeout <= 0:
@@ -413,6 +417,8 @@ def main(argv=None):
 
             if args.warp_debug:
                 wp.config.mode = "debug"
+            if args.warp_llvm_cuda:
+                wp.config.llvm_cuda = True
 
             # Run the tests in serial
             start_time = time.perf_counter()
@@ -494,7 +500,7 @@ def main(argv=None):
         if args.coverage:
             # Combine the coverage files
             cov_options = {}
-            cov_options["config_file"] = True  # Grab configuration from pyproject.toml (must install coverage[toml])
+            cov_options["config_file"] = True  # Read configuration from pyproject.toml.
             cov = coverage.Coverage(**cov_options)
             cov.combine(data_paths=[os.path.join(temp_dir, x) for x in os.listdir(temp_dir)])
 
@@ -536,7 +542,7 @@ def _coverage(args, temp_dir):
             "data_file": coverage_file.name,
             # NVIDIA Modification removed unneeded options
         }
-        cov_options["config_file"] = True  # Grab configuration from pyproject.toml (must install coverage[toml])
+        cov_options["config_file"] = True  # Read configuration from pyproject.toml.
         cov = coverage.Coverage(**cov_options)
         try:
             # Start measuring code coverage
@@ -689,6 +695,9 @@ class ParallelTextTestResult(unittest.TextTestResult):
         super(unittest.TextTestResult, self).startTest(test)
 
     def stopTest(self, test):
+        # NVIDIA modification: addSuccess() already reported CUDA errors from passing tests.
+        # For any other outcome, keep it and only note the error so later failures can name this test.
+        synchronize_after_test(test, test_failed=True)
         super().stopTest(test)
         # Force garbage collection of CPU-side allocations to reduce peak
         # host RSS in parallel test runs.
@@ -704,6 +713,13 @@ class ParallelTextTestResult(unittest.TextTestResult):
         self.stream.flush()
 
     def addSuccess(self, test):
+        # NVIDIA modification: runs after tearDown() and cleanups, so a CUDA error from work
+        # the test left outstanding fails the test that caused it
+        try:
+            synchronize_after_test(test)
+        except Exception:
+            self.addError(test, sys.exc_info())
+            return
         super(unittest.TextTestResult, self).addSuccess(test)
         self._add_helper(test, ".", "ok")
 
@@ -749,6 +765,8 @@ def initialize_test_process(lock, shared_index, args, temp_dir):
 
         if args.warp_debug:
             wp.config.mode = "debug"
+        if args.warp_llvm_cuda:
+            wp.config.llvm_cuda = True
 
         warp_cache_base_path = _get_warp_cache_base_path()
 

@@ -72,6 +72,8 @@ class TriangleShapeFunction(ShapeFunction):
 class TrianglePolynomialShapeFunctions(TriangleShapeFunction):
     """Polynomial Lagrange shape functions on triangular elements."""
 
+    INTERPOLATORY = True
+
     def __init__(self, degree: int, scalar_type: type = wp.float32):
         self.scalar_type = scalar_type
         self.CoordsType = cached_coords_type(scalar_type)
@@ -378,6 +380,8 @@ class TrianglePolynomialShapeFunctions(TriangleShapeFunction):
 
 class TriangleNonConformingPolynomialShapeFunctions(ShapeFunction):
     """Non-conforming polynomial shape functions on triangular elements."""
+
+    INTERPOLATORY = True
 
     def __init__(self, degree: int, scalar_type: type = wp.float32):
         self.scalar_type = scalar_type

@@ -23,6 +23,7 @@ API
    deterministic
    deterministic_debug
    deterministic_max_records
+   enable_array_function_overrides
    enable_backward
    enable_cpu_blocks
    enable_graph_capture_module_load_by_default
@@ -32,6 +33,7 @@ API
    enable_mempools_at_init
    enable_tiles_in_stack_memory
    enable_vector_component_overwrites
+   enable_wide_array_access
    kernel_cache_dir
    launch_array_access_mode
    legacy_cpu_linker

@@ -380,7 +380,7 @@ def test_conditional_graph_solve(test, device, dtype):
             solver(raw, b, x, M=pre, tol=tolerance, maxiter=100)
             with wp.ScopedCapture(force_module_load=False) as capture:
                 pre.update()
-                solver(raw, b, x, M=pre, tol=tolerance, maxiter=100, check_every=0, use_cuda_graph=True)
+                solver(raw, b, x, M=pre, tol=tolerance, maxiter=100, check_every=0, use_graph=True)
             for multiplier in (2.0, 0.5):
                 raw.values.assign(values * multiplier)
                 x.zero_()
@@ -723,7 +723,7 @@ def test_deferred_conditional_graph_solve(test, device, dtype):
             pre = FSAI(raw, reuse_pattern=True, defer_pattern=True)
             with wp.ScopedCapture(force_module_load=False) as capture:
                 pre.update()
-                solver(raw, b, x, M=pre, tol=tolerance, maxiter=100, check_every=0, use_cuda_graph=True)
+                solver(raw, b, x, M=pre, tol=tolerance, maxiter=100, check_every=0, use_graph=True)
             values = warm_matrix.values.numpy().copy()
             for multiplier in (2.0, 0.5):
                 raw.values.assign(values * multiplier)

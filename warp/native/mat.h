@@ -4606,7 +4606,7 @@ inline CUDA_CALLABLE void adj_mat_t(
 {
     for (unsigned i = 0; i < Rows; ++i) {
         for (unsigned j = 0; j < Cols; ++j) {
-            adj_other.data[i][j] += adj_ret.data[i][j];
+            adj_other.data[i][j] += static_cast<OtherType>(adj_ret.data[i][j]);
         }
     }
 }

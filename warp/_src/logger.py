@@ -175,7 +175,8 @@ def log_warning(message: str, category=None, stacklevel=1, once=False) -> None:
     Args:
         message: Warning text.
         category: Warning category (e.g., ``DeprecationWarning``).
-        stacklevel: Stack frames to skip for location reporting.
+        stacklevel: Stack frames to skip for location reporting, excluding Warp
+            function forwarding frames.
         once: If ``True``, suppress subsequent calls with the same
             ``(category, message)`` pair regardless of call site.
     """
@@ -189,6 +190,20 @@ def log_warning(message: str, category=None, stacklevel=1, once=False) -> None:
     dedup = once or category is DeprecationWarning
     if dedup and (category, message) in _warnings_seen:
         return
+
+    # Forwarding decorators must not change the caller selected by stacklevel.
+    # Resolve this only when emitting a warning, keeping ordinary calls cheap.
+    frame = sys._getframe(1)
+    try:
+        remaining = stacklevel
+        while frame is not None and remaining > 0:
+            if frame.f_globals.get("__name__") == "warp._src.function_dispatch":
+                stacklevel += 1
+            else:
+                remaining -= 1
+            frame = frame.f_back
+    finally:
+        del frame
 
     # +2: skip the logger adapter and log_warning() so warning locations point
     # at the caller. Custom logger adapters can pass this directly to

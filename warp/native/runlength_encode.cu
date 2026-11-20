@@ -29,7 +29,7 @@ void runlength_encode_device(int n, const T* values, T* run_values, int* run_len
         )
     );
 
-    wp_free_device(WP_CURRENT_CONTEXT, temp_buffer);
+    free_device_on_stream(WP_CURRENT_CONTEXT, temp_buffer, stream);
 }
 
 // Record-and-execute a run-length-encode under CUDA APIC capture: record params

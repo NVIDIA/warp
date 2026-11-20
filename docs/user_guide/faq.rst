@@ -183,11 +183,12 @@ Installation and Compatibility
 Which operating systems, Python versions, and GPUs does Warp support?
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Warp requires Python 3.10 or newer and supports Windows and Linux on x86-64,
+Warp requires Python 3.11 or newer and supports Windows and Linux on x86-64,
 Linux on ARM64, and Apple Silicon macOS. PyPI and nightly wheels for Linux and
 Windows use CUDA Toolkit 13.4. They require an NVIDIA R580-series or newer driver
 and a Turing (``sm_75``) or newer GPU for CUDA acceleration. Warp can still run
 on the CPU without a compatible GPU or driver; macOS uses the CPU backend.
+Windows on Arm support is experimental; see :ref:`windows-on-arm`.
 
 Python, operating-system, GPU-architecture, and driver requirements may change
 between releases. Check :doc:`compatibility` for the current requirements.
@@ -342,8 +343,10 @@ different performance and concurrency characteristics.
 
 Tile kernels need additional care on the CPU backend because its effective
 ``block_dim`` is one by default. The experimental
-:attr:`warp.config.enable_cpu_blocks` option honors explicit CPU block dimensions
-through 1024 with cooperative fibers on one host thread. Consult
+:attr:`warp.config.enable_cpu_blocks` option changes the CPU default to 256 and
+honors explicit CPU block dimensions through 1024 with cooperative fibers on one
+host thread. Pass ``block_dim=1`` explicitly to retain a single logical thread
+per block while the option is enabled. Consult
 :ref:`CPU Tile Semantics <cpu_tile_semantics>` when the same tile kernel must run
 on both backends. Other device differences are covered in :ref:`devices`.
 

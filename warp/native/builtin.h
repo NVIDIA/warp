@@ -35,6 +35,18 @@
 #define WP_FORCEINLINE inline __attribute__((always_inline))
 #endif
 
+// Compiles a non-template function only in modules that call it.
+//
+// Every module includes the native headers, so a plain inline function that
+// calls large templates makes every module instantiate them, used or not. An
+// unnamed, defaulted template parameter turns the function into a template,
+// which defers that work until a call needs it. Call sites don't change.
+//
+// Apply it up to the kernel-facing entry points: a non-template caller would
+// instantiate the function anyway. Removing it doesn't change behavior, but
+// slows down the compilation of every module.
+#define WP_COMPILE_IF_USED template <typename = void>
+
 // Tile block dimension used while building the warp core library
 #ifndef WP_TILE_BLOCK_DIM
 #define WP_TILE_BLOCK_DIM 256
@@ -855,6 +867,8 @@ inline CUDA_CALLABLE T sign(T x) { return x < T(0) ? -1 : 1; } \
 inline CUDA_CALLABLE T step(T x) { return x < T(0) ? T(1) : T(0); }\
 inline CUDA_CALLABLE T nonzero(T x) { return x == T(0) ? T(0) : T(1); }\
 inline CUDA_CALLABLE T clamp(T x, T a, T b) { return _wp_native_fmin(_wp_native_fmax(a, x), b); }\
+inline CUDA_CALLABLE T value(T x) { return x; }\
+inline CUDA_CALLABLE void adj_value(T x, T& adj_x, T adj_ret) { adj_x += adj_ret; }\
 inline CUDA_CALLABLE void adj_abs(T x, T& adj_x, T adj_ret) \
 {\
     if (x < T(0))\
@@ -1691,6 +1705,18 @@ inline CUDA_CALLABLE bfloat16 erfcinv(bfloat16 a)
 }
 #endif  // WP_NO_BFLOAT16
 
+// Type for intermediates such as squares and sums of squares. Squaring float16 values overflows above
+// about 256 and underflows below about 2^-12 even when the final result is representable, so float16
+// computes these in float32 and rounds the result back. Other types, including bfloat16, whose range
+// matches float32, compute in their own type.
+template <typename T> struct range_safe_compute_type {
+    using type = T;
+};
+
+template <> struct range_safe_compute_type<float16> {
+    using type = float32;
+};
+
 #define DECLARE_ADJOINTS(T)\
 inline CUDA_CALLABLE void adj_log(T a, T& adj_a, T adj_ret)\
 {\
@@ -1788,22 +1814,27 @@ inline CUDA_CALLABLE void adj_tan(T x, T& adj_x, T adj_ret)\
 }\
 inline CUDA_CALLABLE void adj_atan(T x, T& adj_x, T adj_ret)\
 {\
-    adj_x += adj_ret /(x*x + T(1));\
+    using Compute = range_safe_compute_type<T>::type;\
+    Compute wx = Compute(x);\
+    adj_x += T(Compute(adj_ret) / (wx*wx + Compute(1)));\
 }\
 inline CUDA_CALLABLE void adj_atan2(T y, T x, T& adj_y, T& adj_x, T adj_ret)\
 {\
-    T d = x*x + y*y;\
-    DO_IF_FPCHECK(adj_x -= y/d*adj_ret;\
-    adj_y += x/d*adj_ret;\
-    if (!isfinite(adj_x) || !isfinite(adj_y) || d == T(0))\
+    /* Half squared magnitudes can overflow or underflow even when the partials are representable. */ \
+    using Compute = range_safe_compute_type<T>::type;\
+    Compute wx = Compute(x), wy = Compute(y);\
+    Compute d = wx*wx + wy*wy;\
+    DO_IF_FPCHECK(adj_x -= T(wy/d*Compute(adj_ret));\
+    adj_y += T(wx/d*Compute(adj_ret));\
+    if (!isfinite(adj_x) || !isfinite(adj_y) || d == Compute(0))\
     {\
         printf("%s:%d - adj_atan2(%f, %f, %f, %f, %f)\n", __FILE__, __LINE__, float(y), float(x), float(adj_y), float(adj_x), float(adj_ret));\
         assert(0);\
     })\
-    DO_IF_NO_FPCHECK(if (d > T(0))\
+    DO_IF_NO_FPCHECK(if (d > Compute(0))\
     {\
-        adj_x -= (y/d)*adj_ret;\
-        adj_y += (x/d)*adj_ret;\
+        adj_x -= T((wy/d)*Compute(adj_ret));\
+        adj_y += T((wx/d)*Compute(adj_ret));\
     })\
 }\
 inline CUDA_CALLABLE void adj_sin(T x, T& adj_x, T adj_ret)\
@@ -2527,8 +2558,14 @@ template <> inline CUDA_CALLABLE float atomic_cas(float* address, float compare,
     auto result = atomicCAS(reinterpret_cast<unsigned int*>(address), compare_bits, val_bits);
     return __uint_as_float(result);
 #else
+    // Compare bit patterns like CUDA does, so that -0.0 doesn't match 0.0
+    // and a NaN matches a NaN with the same bits.
     float old = *address;
-    if (old == compare) {
+    unsigned int old_bits;
+    unsigned int compare_bits;
+    memcpy(&old_bits, &old, sizeof(old_bits));
+    memcpy(&compare_bits, &compare, sizeof(compare_bits));
+    if (old_bits == compare_bits) {
         *address = val;
     }
     return old;
@@ -2543,8 +2580,14 @@ template <> inline CUDA_CALLABLE double atomic_cas(double* address, double compa
     auto result = atomicCAS(reinterpret_cast<unsigned long long int*>(address), compare_bits, val_bits);
     return __longlong_as_double(static_cast<long long int>(result));
 #else
+    // Compare bit patterns like CUDA does, so that -0.0 doesn't match 0.0
+    // and a NaN matches a NaN with the same bits.
     double old = *address;
-    if (old == compare) {
+    unsigned long long int old_bits;
+    unsigned long long int compare_bits;
+    memcpy(&old_bits, &old, sizeof(old_bits));
+    memcpy(&compare_bits, &compare, sizeof(compare_bits));
+    if (old_bits == compare_bits) {
         *address = val;
     }
     return old;
@@ -2914,6 +2957,8 @@ inline CUDA_CALLABLE void expect_near(const vec3& actual, const vec3& expected, 
 #include "tile_matmul.h"
 #include "tile_solve.h"
 #include "tile_cholesky.h"
+#include "tile_lu.h"
+#include "tile_ldlt.h"
 #include "tile_reduce.h"
 #include "tile_scan.h"
 #include "tile_radix_sort.h"

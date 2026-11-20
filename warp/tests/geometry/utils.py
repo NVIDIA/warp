@@ -15,6 +15,40 @@ import math
 import numpy as np
 
 
+def unit_cube(center: tuple[float, float, float] = (0.0, 0.0, 0.0), side: float = 1.0):
+    """Return a closed, outward-oriented axis-aligned cube (8 vertices, 12 triangles)."""
+    h = 0.5 * side
+    c = np.asarray(center, dtype=np.float64)
+    points = (
+        np.array(
+            [
+                [-h, -h, -h],
+                [+h, -h, -h],
+                [+h, +h, -h],
+                [-h, +h, -h],
+                [-h, -h, +h],
+                [+h, -h, +h],
+                [+h, +h, +h],
+                [-h, +h, +h],
+            ],
+            dtype=np.float64,
+        )
+        + c
+    ).astype(np.float32)
+    indices = np.array(
+        [
+            0, 3, 2,  0, 2, 1,  # -z
+            4, 5, 6,  4, 6, 7,  # +z
+            0, 1, 5,  0, 5, 4,  # -y
+            1, 2, 6,  1, 6, 5,  # +x
+            2, 3, 7,  2, 7, 6,  # +y
+            3, 0, 4,  3, 4, 7,  # -x
+        ],
+        dtype=np.int32,
+    )  # fmt: skip
+    return points, indices
+
+
 def _icosahedron() -> tuple[np.ndarray, np.ndarray]:
     t = (1.0 + math.sqrt(5.0)) / 2.0
     points = np.array(

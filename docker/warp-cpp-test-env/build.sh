@@ -5,7 +5,7 @@
 set -e
 
 # Default values
-CUDA_VERSION="13.4.2"
+CUDA_VERSION="13.5.0"
 UBUNTU_VERSION="24.04"
 REGISTRY=""
 PUSH=false
@@ -23,7 +23,7 @@ Usage: $0 [OPTIONS]
 Build and optionally push Warp C++ Test Environment Docker image.
 
 OPTIONS:
-    -c, --cuda VERSION       CUDA version (default: 13.4.2)
+    -c, --cuda VERSION       CUDA version (default: 13.5.0)
     -u, --ubuntu VERSION     Ubuntu version (default: 24.04)
     -r, --registry URL       Docker registry URL (e.g., registry.example.com)
     -p, --push               Push image to registry after building

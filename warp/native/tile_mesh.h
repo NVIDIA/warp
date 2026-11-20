@@ -45,6 +45,8 @@ struct mesh_query_aabb_thread_block_t {
     int* last_valid_shared_mem;  // [1]
     static const int result_buffer_capacity = WP_TILE_BLOCK_DIM * 5;
     static const int stack_capacity = 64 * BVH_QUERY_STACK_SIZE;
+    // Headroom for single-node steps near a full stack, which grow it by at most the tree depth
+    static const int stack_reserve = 2 * BVH_QUERY_STACK_SIZE;
 
     // inputs
     wp::vec3 input_lower;
@@ -107,6 +109,7 @@ mesh_query_aabb_thread_block(uint64_t id, const vec3& lower, const vec3& upper)
     return query;
 }
 
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline mesh_query_aabb_thread_block_t
 mesh_query_aabb_thread_block_impl(uint64_t id, const vec3& lower, const vec3& upper)
 {
@@ -162,7 +165,7 @@ CUDA_CALLABLE inline int mesh_get_node_index_at_depth(
     return node_index;
 }
 
-// block_size should be a power of 2. 2^num_expansion_steps should be less than or equal to block_size.
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline bool mesh_query_aabb_next_thread_block_impl(mesh_query_aabb_thread_block_t& query, int& index)
 {
     int block_size = blockDim.x;
@@ -182,44 +185,38 @@ CUDA_CALLABLE inline bool mesh_query_aabb_next_thread_block_impl(mesh_query_aabb
         return true;
     }
 
-    int num_expansion_steps = 0;
-    int pow_2 = 1;
-    while (pow_2 < block_size) {
-        pow_2 *= 2;
-        num_expansion_steps += 1;
-    }
-
     Mesh mesh = query.mesh;
     BVH bvh = mesh.bvh;
     int* stack = query.stack_shared_mem;
     int* count = query.count_shared_mem;
-    __shared__ bool direct_mode_shared[1];
 
     index = -1;
 
     // Navigate through the bvh, find the first overlapping leaf node.
     while (count[0] > 0 && query.result_counter_shared_mem[0] < block_size) {
-        __syncthreads();
-        if (lane_id == 0) {
-            if (count[0] < block_size) {
-                count[0] -= 1;
-                direct_mode_shared[0] = false;
-            } else {
-                count[0] -= block_size;
-                direct_mode_shared[0] = true;
-            }
-        }
+        // Limit the nodes taken in this step so that their children fit on the stack
+        const int snapshot = count[0];
+        const int stack_room
+            = mesh_query_aabb_thread_block_t::stack_capacity - mesh_query_aabb_thread_block_t::stack_reserve - snapshot;
+        const int budget = max(1, min(block_size, stack_room / 2));
+        const bool direct_mode = snapshot >= block_size;
+        const int stack_count = direct_mode ? snapshot - budget : snapshot - 1;
 
+        // Wait until every thread has read the counter
         __syncthreads();
-        int stack_count = count[0];
+        if (lane_id == 0)
+            count[0] = stack_count;
 
-        int node_index;
-        if (direct_mode_shared[0])
-            node_index = stack[stack_count + lane_id];
-        else {
+        int node_index = -1;
+        if (direct_mode) {
+            if (lane_id < budget)
+                node_index = stack[stack_count + lane_id];
+        } else {
+            const int num_expansion_steps = 31 - __clz(budget);
+
             __syncthreads();
             node_index = mesh_get_node_index_at_depth(query, stack[stack_count], lane_id, num_expansion_steps);
-            if (node_index < 0) {
+            if (node_index < 0 && lane_id < budget) {
                 // Check if there is something on the stack that could be taken instead
                 int id = atomicAdd(&count[0], -1) - 1;
                 if (id >= 0) {
@@ -306,6 +303,7 @@ CUDA_CALLABLE inline bool mesh_query_aabb_next_thread_block_impl(mesh_query_aabb
 #else
 
 // CPU version: mesh_query_aabb_thread_block_t is aliased to mesh_query_aabb_t, so just use regular mesh query
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline mesh_query_aabb_thread_block_t
 mesh_query_aabb_thread_block_impl(uint64_t id, const vec3& lower, const vec3& upper)
 {
@@ -314,6 +312,7 @@ mesh_query_aabb_thread_block_impl(uint64_t id, const vec3& lower, const vec3& up
 }
 
 // CPU version: single-threaded, just calls regular mesh_query_aabb_next
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline bool mesh_query_aabb_next_thread_block_impl(mesh_query_aabb_thread_block_t& query, int& index)
 {
     // On CPU, mesh_query_aabb_thread_block_t is just mesh_query_aabb_t, so call regular mesh_query_aabb_next
@@ -336,6 +335,7 @@ template <int Length> CUDA_CALLABLE inline auto tile_mesh_query_aabb_next_impl(m
 }
 
 // Wrapper that works for any block size
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline auto tile_mesh_query_aabb_next(mesh_query_aabb_thread_block_t& query)
 {
     return tile_mesh_query_aabb_next_impl<WP_TILE_BLOCK_DIM>(query);
@@ -351,6 +351,7 @@ CUDA_CALLABLE inline bool tile_query_valid(const mesh_query_aabb_thread_block_t&
 }
 
 // New tile-based alias for the query function
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline mesh_query_aabb_thread_block_t
 tile_mesh_query_aabb(uint64_t id, const vec3& lower, const vec3& upper)
 {
@@ -381,6 +382,7 @@ template <int Length> inline auto tile_mesh_query_aabb_next_impl(mesh_query_aabb
     return result;
 }
 
+WP_COMPILE_IF_USED
 inline auto tile_mesh_query_aabb_next(mesh_query_aabb_thread_block_t& query)
 {
     return tile_mesh_query_aabb_next_impl<WP_TILE_BLOCK_DIM>(query);
@@ -389,6 +391,7 @@ inline auto tile_mesh_query_aabb_next(mesh_query_aabb_thread_block_t& query)
 inline bool tile_query_valid(const mesh_query_aabb_thread_block_t& query) { return query.last_query_valid; }
 
 // CPU version: tile_mesh_query_aabb just creates a regular query
+WP_COMPILE_IF_USED
 inline mesh_query_aabb_thread_block_t tile_mesh_query_aabb(uint64_t id, const vec3& lower, const vec3& upper)
 {
     // On CPU, this is just mesh_query_aabb since mesh_query_aabb_thread_block_t = mesh_query_aabb_t

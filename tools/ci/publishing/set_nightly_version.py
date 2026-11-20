@@ -83,7 +83,9 @@ def write_new_version_to_config(config_file_path: str, new_version: str, dry_run
             print(f"Dry run: Would update version in {config_file_path} to {new_version}")
             return True
             
-        with open(config_file_path, 'w') as file:
+        # Always write LF: build jobs on every platform save config.py as an artifact,
+        # and the copies must be byte-identical.
+        with open(config_file_path, 'w', newline='\n') as file:
             file.write(updated_content)
             
         print(f"Successfully updated version in {config_file_path} to {new_version}")

@@ -15,6 +15,8 @@ import tempfile
 import unittest
 from typing import Any
 
+import numpy as np
+
 import warp as wp
 import warp.tests.unittest_utils
 from warp._src.utils import check_p2p
@@ -293,6 +295,64 @@ add_fem_example_test(
         "headless": True,
         "nlopt_required": True,
     },
+)
+add_fem_example_test(
+    TestFemExamples,
+    name="fem.example_periodic_homogenization",
+    devices=cuda_devices,
+    test_options={"mesh": "adaptive", "resolution": 16, "headless": True},
+)
+
+
+def test_periodic_homogenization_laminate(test, device):
+    """The effective conductivity of a laminate is exact for layers aligned with the mesh."""
+    from warp.examples.fem.example_periodic_homogenization import (  # noqa: PLC0415
+        Example,
+        laminate_effective_conductivity,
+    )
+
+    with wp.ScopedDevice(device):
+        for mesh, degree, resolution in (("grid", 2, 8), ("tri", 1, 8), ("adaptive", 1, 16)):
+            example = Example(
+                quiet=True, mesh=mesh, material="laminate", degree=degree, resolution=resolution, contrast=10.0
+            )
+            example.step()
+            dimension = example.effective_conductivity.shape[0]
+            np.testing.assert_allclose(
+                example.effective_conductivity,
+                laminate_effective_conductivity(dimension, layer_fraction=0.5, contrast=10.0),
+                rtol=1.0e-4,
+                atol=1.0e-4,
+                err_msg=f"Laminate on {mesh}",
+            )
+
+
+def test_periodic_homogenization_fitted(test, device):
+    """On a mesh fitted to the inclusion, quadratic elements match Rayleigh's multipole formula."""
+    from warp.examples.fem.example_periodic_homogenization import (  # noqa: PLC0415
+        Example,
+        rayleigh_effective_conductivity,
+    )
+
+    with wp.ScopedDevice(device):
+        example = Example(quiet=True, mesh="fitted", degree=2, resolution=16, contrast=10.0, radius=0.25)
+        example.step()
+        reference = rayleigh_effective_conductivity(radius=0.25, contrast=10.0)
+        np.testing.assert_allclose(np.diag(example.effective_conductivity), reference, rtol=1.0e-4)
+        test.assertLess(abs(example.effective_conductivity[0, 1]), 1.0e-5)
+
+
+add_function_test(
+    TestFemExamples,
+    "test_fem.example_periodic_homogenization_laminate",
+    test_periodic_homogenization_laminate,
+    devices=cuda_devices,
+)
+add_function_test(
+    TestFemExamples,
+    "test_fem.example_periodic_homogenization_fitted",
+    test_periodic_homogenization_fitted,
+    devices=cuda_devices,
 )
 add_fem_example_test(
     TestFemExamples,

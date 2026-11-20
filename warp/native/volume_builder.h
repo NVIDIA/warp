@@ -416,17 +416,15 @@ void allocate_rebuildable_grid_from_tiles(
     uint32_t* status
 );
 
+// Allocate a host grid sized for `capacities` with an empty topology. Rebuild it to set its topology. Its reserved
+// node storage stays uninitialized until a rebuild adds nodes.
 template <typename BuildT>
-void allocate_rebuildable_grid_from_tiles_host(
+void allocate_empty_rebuildable_grid_host(
     nanovdb::Grid<nanovdb::NanoTree<BuildT>>*& out_grid,
     size_t& out_grid_size,
-    const void* points,
-    size_t num_points,
-    bool points_in_world_space,
-    const int32_t* point_mask,
+    bool active_voxel_grid,
     const VolumeRebuildCapacities& capacities,
-    const BuildGridParams<BuildT>& params,
-    uint32_t* status
+    const BuildGridParams<BuildT>& params
 );
 
 template <typename BuildT>
@@ -456,18 +454,6 @@ void rebuild_grid_from_tiles_host(
 );
 
 void allocate_rebuildable_grid_from_active_voxels(
-    nanovdb::Grid<nanovdb::NanoTree<nanovdb::ValueOnIndex>>*& out_grid,
-    size_t& out_grid_size,
-    const void* points,
-    size_t num_points,
-    bool points_in_world_space,
-    const int32_t* point_mask,
-    const VolumeRebuildCapacities& capacities,
-    const BuildGridParams<nanovdb::ValueOnIndex>& params,
-    uint32_t* status
-);
-
-void allocate_rebuildable_grid_from_active_voxels_host(
     nanovdb::Grid<nanovdb::NanoTree<nanovdb::ValueOnIndex>>*& out_grid,
     size_t& out_grid_size,
     const void* points,

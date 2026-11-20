@@ -186,7 +186,7 @@ def solve_incompressibility(
             M=preconditioner(schur, "diag"),
             tol=1.0e-6,
             check_every=0,
-            use_cuda_graph=True,
+            use_graph=True,
             maxiter=1000,
         )
     else:

@@ -1344,6 +1344,36 @@ __device_forceinline__ int atomicMin(int* const address, const int val) { return
 
 __device_forceinline__ int atomicMax(int* const address, const int val) { return __iAtomicMax(address, val); }
 
+__device_forceinline__ unsigned int atomicMin(unsigned int* const address, const unsigned int val)
+{
+    return __uAtomicMin(address, val);
+}
+
+__device_forceinline__ unsigned int atomicMax(unsigned int* const address, const unsigned int val)
+{
+    return __uAtomicMax(address, val);
+}
+
+__device_forceinline__ long long atomicMin(long long* const address, const long long val)
+{
+    return __illAtomicMin(address, val);
+}
+
+__device_forceinline__ long long atomicMax(long long* const address, const long long val)
+{
+    return __illAtomicMax(address, val);
+}
+
+__device_forceinline__ unsigned long long atomicMin(unsigned long long* const address, const unsigned long long val)
+{
+    return __ullAtomicMin(address, val);
+}
+
+__device_forceinline__ unsigned long long atomicMax(unsigned long long* const address, const unsigned long long val)
+{
+    return __ullAtomicMax(address, val);
+}
+
 // Warp-synchronous intrinsics (using PTX inline assembly for _sync variants)
 __device_forceinline__ void __syncwarp(unsigned int mask = 0xFFFFFFFF)
 {

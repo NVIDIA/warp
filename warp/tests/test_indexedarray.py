@@ -1245,6 +1245,56 @@ def test_indexedarray_fill_struct(test, device):
     assert_np_equal(a4.numpy(), np.zeros(a4.shape, dtype=nptype))
 
 
+@wp.struct
+class IndexedStructDtypeInner:
+    c: wp.int32
+
+
+@wp.struct
+class IndexedStructDtype:
+    a: wp.vec3
+    b: wp.float32
+    inner: IndexedStructDtypeInner
+
+
+# Keep IndexedStructDtype out of other kernels so they can't emit its definition and hide a missing one.
+@wp.kernel
+def kernel_indexedarray_struct_dtype_copy(
+    src: wp.indexedarray[IndexedStructDtype], dst: wp.indexedarray[IndexedStructDtype]
+):
+    i = wp.tid()
+    dst[i] = src[i]
+
+
+def test_indexedarray_struct_dtype(test, device):
+    """Verify a kernel compiles and copies struct elements when the struct appears only as an indexed array dtype."""
+    src_np = np.zeros(4, dtype=IndexedStructDtype.numpy_dtype())
+    for k in range(4):
+        src_np[k]["a"] = (k + 1.0, k + 2.0, k + 3.0)
+        src_np[k]["b"] = 10.0 * (k + 1)
+        src_np[k]["inner"]["c"] = 100 + k
+
+    src = wp.array(src_np, dtype=IndexedStructDtype, device=device)
+    dst = wp.zeros(4, dtype=IndexedStructDtype, device=device)
+    indices = wp.array([3, 1], dtype=int, device=device)
+
+    wp.launch(
+        kernel_indexedarray_struct_dtype_copy,
+        dim=2,
+        inputs=[wp.indexedarray1d(src, [indices]), wp.indexedarray1d(dst, [indices])],
+        device=device,
+    )
+
+    expected = np.zeros(4, dtype=IndexedStructDtype.numpy_dtype())
+    expected[1] = src_np[1]
+    expected[3] = src_np[3]
+
+    result = dst.numpy()
+    assert_np_equal(result["a"], expected["a"])
+    assert_np_equal(result["b"], expected["b"])
+    assert_np_equal(result["inner"]["c"], expected["inner"]["c"])
+
+
 devices = get_test_devices()
 
 
@@ -1266,6 +1316,7 @@ add_function_test(TestIndexedArray, "test_indexedarray_fill_scalar", test_indexe
 add_function_test(TestIndexedArray, "test_indexedarray_fill_vector", test_indexedarray_fill_vector, devices=devices)
 add_function_test(TestIndexedArray, "test_indexedarray_fill_matrix", test_indexedarray_fill_matrix, devices=devices)
 add_function_test(TestIndexedArray, "test_indexedarray_fill_struct", test_indexedarray_fill_struct, devices=devices)
+add_function_test(TestIndexedArray, "test_indexedarray_struct_dtype", test_indexedarray_struct_dtype, devices=devices)
 add_function_test(TestIndexedArray, "test_indexedarray_in_struct", test_indexedarray_in_struct, devices=devices)
 add_function_test(
     TestIndexedArray, "test_indexedarray_in_nested_struct", test_indexedarray_in_nested_struct, devices=devices

@@ -48,6 +48,99 @@ def test_zeros():
     wp.expect_eq(s[1, 1], 5)
 
 
+@wp.kernel
+def test_zeros_in_loop_kernel(count: int, out: wp.array2d[float]):
+    # A runtime trip count keeps the loop rolled, so each iteration reassigns the same arrays.
+    for i in range(count):
+        a1 = wp.zeros(shape=4, dtype=int)
+        a2 = wp.zeros(shape=(2, 3), dtype=float)
+        a3 = wp.zeros(shape=(2, 1, 3), dtype=wp.vec3)
+        a4 = wp.zeros(shape=(1, 2, 1, 3), dtype=wp.mat22)
+        out[i, 0] = float(a1[3])
+        out[i, 1] = a2[1, 2]
+        out[i, 2] = wp.length_sq(a3[1, 0, 2])
+        out[i, 3] = wp.ddot(a4[0, 1, 0, 2], a4[0, 1, 0, 2])
+        out[i, 4] = float(a1.shape[0] + a2.shape[1] + a3.shape[2] + a4.shape[3])
+        a1[3] = i + 1
+        a2[1, 2] = float(i + 1)
+        a3[1, 0, 2] = wp.vec3(float(i + 1))
+        a4[0, 1, 0, 2] = wp.mat22(float(i + 1))
+
+
+def test_zeros_in_loop(test, device):
+    out = wp.full((3, 5), -1.0, dtype=float, device=device)
+    wp.launch(test_zeros_in_loop_kernel, dim=1, inputs=[3, out], device=device)
+    expected = np.zeros((3, 5), dtype=np.float32)
+    expected[:, 4] = 4 + 3 + 3 + 3
+    np.testing.assert_array_equal(out.numpy(), expected)
+
+
+@wp.kernel
+def test_zeros_grad_kernel(count: int, x: wp.array[float], y: wp.array[float]):
+    a = wp.zeros(shape=2, dtype=float)
+    a[0] = x[0] * x[0]
+    y[0] = a[0]
+    for _i in range(count):
+        b = wp.zeros(shape=2, dtype=float)
+        b[1] = x[0] * x[0]
+        y[0] += b[1]
+
+
+@wp.kernel
+def test_empty():
+    arr = wp.empty(shape=(2, 3), dtype=int)
+    wp.expect_eq(arr.shape[0], 2)
+    wp.expect_eq(arr.shape[1], 3)
+    wp.expect_eq(arr.shape[2], 0)
+
+    for i in range(arr.shape[0]):
+        for j in range(arr.shape[1]):
+            arr[i][j] = i * arr.shape[1] + j
+
+    wp.expect_eq(arr[0][0], 0)
+    wp.expect_eq(arr[0][1], 1)
+    wp.expect_eq(arr[0][2], 2)
+    wp.expect_eq(arr[1][0], 3)
+    wp.expect_eq(arr[1][1], 4)
+    wp.expect_eq(arr[1][2], 5)
+
+
+@wp.kernel
+def test_empty_int_shape():
+    arr = wp.empty(shape=4, dtype=float)
+    wp.expect_eq(arr.shape[0], 4)
+    wp.expect_eq(arr.shape[1], 0)
+
+    for i in range(arr.shape[0]):
+        arr[i] = float(i) + 0.5
+
+    wp.expect_eq(arr[0], 0.5)
+    wp.expect_eq(arr[1], 1.5)
+    wp.expect_eq(arr[2], 2.5)
+    wp.expect_eq(arr[3], 3.5)
+
+
+@wp.kernel
+def test_empty_vec_dtype():
+    arr = wp.empty(shape=(2,), dtype=wp.vec3)
+    arr[0] = wp.vec3(1.0, 2.0, 3.0)
+    arr[1] = wp.vec3(4.0, 5.0, 6.0)
+    wp.expect_eq(arr[0], wp.vec3(1.0, 2.0, 3.0))
+    wp.expect_eq(arr[1], wp.vec3(4.0, 5.0, 6.0))
+
+
+@wp.kernel
+def test_empty_in_loop_overwrite(count: int):
+    for i in range(count):
+        arr = wp.empty(shape=(3,), dtype=int)
+        arr[0] = i
+        arr[1] = i * 2
+        arr[2] = i * 3
+        wp.expect_eq(arr[0], i)
+        wp.expect_eq(arr[1], i * 2)
+        wp.expect_eq(arr[2], i * 3)
+
+
 @wp.func
 def test_func_arg_func(arr: wp.array2d[int]):
     for i in range(arr.shape[0]):
@@ -68,6 +161,48 @@ def test_func_arg():
     wp.expect_eq(arr[1][2], 5)
 
 
+# Fixed-size array parameters are passed by value, but their copy still refers to
+# the caller's storage, so writes in the callee reach the caller.
+@wp.func
+def test_func_arg_any_func(arr: Any):
+    for i in range(arr.shape[0]):
+        for j in range(arr.shape[1]):
+            arr[i, j] = i * arr.shape[1] + j + 10
+
+
+@wp.kernel
+def test_func_arg_any():
+    arr = wp.zeros(shape=(2, 3), dtype=int)
+    test_func_arg_any_func(arr)
+
+    wp.expect_eq(arr[0, 0], 10)
+    wp.expect_eq(arr[0, 1], 11)
+    wp.expect_eq(arr[0, 2], 12)
+    wp.expect_eq(arr[1, 0], 13)
+    wp.expect_eq(arr[1, 1], 14)
+    wp.expect_eq(arr[1, 2], 15)
+
+
+@wp.func
+def test_func_arg_fixedarray_func(arr: wp.fixedarray(shape=(2, 3), dtype=int)):
+    for i in range(arr.shape[0]):
+        for j in range(arr.shape[1]):
+            arr[i, j] = i * arr.shape[1] + j + 20
+
+
+@wp.kernel
+def test_func_arg_fixedarray():
+    arr = wp.zeros(shape=(2, 3), dtype=int)
+    test_func_arg_fixedarray_func(arr)
+
+    wp.expect_eq(arr[0, 0], 20)
+    wp.expect_eq(arr[0, 1], 21)
+    wp.expect_eq(arr[0, 2], 22)
+    wp.expect_eq(arr[1, 0], 23)
+    wp.expect_eq(arr[1, 1], 24)
+    wp.expect_eq(arr[1, 2], 25)
+
+
 @wp.func
 def test_func_return_func():
     arr = wp.zeros(shape=2, dtype=int)
@@ -83,6 +218,23 @@ def test_func_return():
 
     wp.expect_eq(arr[0], 0)
     wp.expect_eq(arr[1], 1)
+
+
+@wp.func
+def test_func_return_empty_func():
+    arr = wp.empty(shape=2, dtype=int)
+    for i in range(arr.shape[0]):
+        arr[i] = i + 1
+
+    return arr
+
+
+@wp.kernel
+def test_func_return_empty():
+    arr = test_func_return_empty_func()
+
+    wp.expect_eq(arr[0], 1)
+    wp.expect_eq(arr[1], 2)
 
 
 @wp.func
@@ -131,15 +283,26 @@ def test_error_invalid_func_return_annotation(test, device):
 
 def test_error_runtime_shape(test, device):
     @wp.kernel(module="unique")
-    def kernel():
+    def zeros_kernel():
         tid = wp.tid()
         wp.zeros(shape=(tid,), dtype=int)
 
     with test.assertRaisesRegex(
         RuntimeError,
-        r"the `shape` argument must be specified as a constant when zero-initializing an array$",
+        r"the `shape` argument must be specified as a constant when creating a fixed-size array$",
     ):
-        wp.launch(kernel, 1, device=device)
+        wp.launch(zeros_kernel, 1, device=device)
+
+    @wp.kernel(module="unique")
+    def empty_kernel():
+        tid = wp.tid()
+        wp.empty(shape=(tid,), dtype=int)
+
+    with test.assertRaisesRegex(
+        RuntimeError,
+        r"the `shape` argument must be specified as a constant when creating a fixed-size array$",
+    ):
+        wp.launch(empty_kernel, 1, device=device)
 
 
 @wp.kernel
@@ -212,6 +375,34 @@ def test_func_struct():
 
 
 @wp.kernel
+def test_zeros_reinit_in_loop_struct(count: int):
+    for i in range(count):
+        arr = wp.zeros(shape=(2,), dtype=test_func_struct_MyStruct)
+        wp.expect_eq(arr[0].offset, 0)
+        wp.expect_eq(arr[0].dist, 0.0)
+        wp.expect_eq(arr[1].offset, 0)
+        wp.expect_eq(arr[1].dist, 0.0)
+
+        arr[0].offset = i + 1
+        arr[0].dist = float(i + 1)
+        arr[1].offset = i + 1
+        arr[1].dist = float(i + 1)
+
+
+@wp.kernel
+def test_empty_struct_dtype():
+    arr = wp.empty(shape=(2,), dtype=test_func_struct_MyStruct)
+    arr[0].offset = 1
+    arr[0].dist = 0.5
+    arr[1].offset = 2
+    arr[1].dist = 1.5
+    wp.expect_eq(arr[0].offset, 1)
+    wp.expect_eq(arr[0].dist, 0.5)
+    wp.expect_eq(arr[1].offset, 2)
+    wp.expect_eq(arr[1].dist, 1.5)
+
+
+@wp.kernel
 def test_fixedarray_ptr_reinterpret(output: wp.array[wp.vec2]):
     # Allocate a fixedarray inside the kernel
     m_b = wp.zeros(shape=(24,), dtype=wp.float32)
@@ -281,12 +472,46 @@ def test_fixedarray_array_polymorphism():
 
 
 class TestFixedArray(unittest.TestCase):
-    pass
+    # CPU only: on CUDA, atomic adds to the stack-allocated adjoint trap.
+    def test_zeros_grad(self):
+        x = wp.array([3.0], dtype=float, device="cpu", requires_grad=True)
+        y = wp.zeros(1, dtype=float, device="cpu", requires_grad=True)
+        with wp.Tape() as tape:
+            wp.launch(test_zeros_grad_kernel, dim=1, inputs=[2, x, y], device="cpu")
+        tape.backward(loss=y)
+        np.testing.assert_allclose(y.numpy(), [27.0])
+        np.testing.assert_allclose(x.grad.numpy(), [18.0])
 
 
 add_kernel_test(TestFixedArray, kernel=test_zeros, name="test_zeros", dim=1, devices=devices)
+add_function_test(TestFixedArray, "test_zeros_in_loop", test_zeros_in_loop, devices=devices)
+add_kernel_test(
+    TestFixedArray,
+    kernel=test_zeros_reinit_in_loop_struct,
+    name="test_zeros_reinit_in_loop_struct",
+    dim=1,
+    inputs=[3],
+    devices=devices,
+)
+add_kernel_test(TestFixedArray, kernel=test_empty, name="test_empty", dim=1, devices=devices)
+add_kernel_test(TestFixedArray, kernel=test_empty_int_shape, name="test_empty_int_shape", dim=1, devices=devices)
+add_kernel_test(TestFixedArray, kernel=test_empty_vec_dtype, name="test_empty_vec_dtype", dim=1, devices=devices)
+add_kernel_test(TestFixedArray, kernel=test_empty_struct_dtype, name="test_empty_struct_dtype", dim=1, devices=devices)
+add_kernel_test(
+    TestFixedArray,
+    kernel=test_empty_in_loop_overwrite,
+    name="test_empty_in_loop_overwrite",
+    dim=1,
+    inputs=[3],
+    devices=devices,
+)
 add_kernel_test(TestFixedArray, kernel=test_func_arg, name="test_func_arg", dim=1, devices=devices)
+add_kernel_test(TestFixedArray, kernel=test_func_arg_any, name="test_func_arg_any", dim=1, devices=devices)
+add_kernel_test(
+    TestFixedArray, kernel=test_func_arg_fixedarray, name="test_func_arg_fixedarray", dim=1, devices=devices
+)
 add_kernel_test(TestFixedArray, kernel=test_func_return, name="test_func_return", dim=1, devices=devices)
+add_kernel_test(TestFixedArray, kernel=test_func_return_empty, name="test_func_return_empty", dim=1, devices=devices)
 add_kernel_test(
     TestFixedArray, kernel=test_func_return_annotation, name="test_func_return_annotation", dim=1, devices=devices
 )

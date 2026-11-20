@@ -533,7 +533,10 @@ def test_launch_device_block_dim_failure(test, device):
 
     Protects users from continuing after native stderr with kernel outputs left unchanged.
     """
-    with test.assertRaisesRegex(RuntimeError, r"Error launching kernel: .*noop_kernel.*Warp CUDA error"):
+    with (
+        suppress_native_error_output(),
+        test.assertRaisesRegex(RuntimeError, r"Error launching kernel: .*noop_kernel.*Warp CUDA error"),
+    ):
         wp.launch(noop_kernel, dim=1, block_dim=2048, device=device)
 
 
@@ -544,7 +547,10 @@ def test_launch_bounds_block_dim_failure(test, device):
     """
     x = wp.ones(1, dtype=float, device=device)
 
-    with test.assertRaisesRegex(RuntimeError, r"Error launching kernel: .*kernel_single_bound.*Warp CUDA error"):
+    with (
+        suppress_native_error_output(),
+        test.assertRaisesRegex(RuntimeError, r"Error launching kernel: .*kernel_single_bound.*Warp CUDA error"),
+    ):
         wp.launch(kernel_single_bound, dim=1, inputs=[x], block_dim=512, device=device)
 
 
@@ -556,7 +562,10 @@ def test_launch_cmd_block_dim_failure(test, device):
     x = wp.ones(1, dtype=float, device=device)
     cmd = wp.launch(kernel_single_bound, dim=1, inputs=[x], block_dim=512, device=device, record_cmd=True)
 
-    with test.assertRaisesRegex(RuntimeError, r"Error launching kernel: .*kernel_single_bound.*Warp CUDA error"):
+    with (
+        suppress_native_error_output(),
+        test.assertRaisesRegex(RuntimeError, r"Error launching kernel: .*kernel_single_bound.*Warp CUDA error"),
+    ):
         cmd.launch()
 
 
@@ -569,7 +578,10 @@ def test_launch_adjoint_block_dim_failure(test, device):
     output_arr = wp.empty_like(input_arr)
     output_arr.grad.fill_(1.0)
 
-    with test.assertRaisesRegex(RuntimeError, r"Error launching kernel: .*bounded_square_kernel.*Warp CUDA error"):
+    with (
+        suppress_native_error_output(),
+        test.assertRaisesRegex(RuntimeError, r"Error launching kernel: .*bounded_square_kernel.*Warp CUDA error"),
+    ):
         wp.launch(
             bounded_square_kernel,
             dim=input_arr.size,

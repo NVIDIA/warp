@@ -32,7 +32,7 @@ The CPU row loop in `mat_t::outer()` has a targeted Clang pragma disabling loop 
 
 Task and dispatch wrappers are force-inlined so LLVM sees the task loop early without repeatedly optimizing separate wrappers. The default CPU helper inlining thresholds are 9000 for ordinary calls and 3000 for cold call sites. The higher ordinary threshold restores inlining of helpers with multiple call sites in specialized kernels, including the XPBD contact helper.
 
-SLP vectorization is addressed in a separate change.
+The separate [CPU SLP vectorization design](cpu-slp-vectorization.md) documents the SLP pass and its tuning.
 
 ## Tests and benchmarks
 
