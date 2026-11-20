@@ -346,6 +346,11 @@ add_example_test(
     devices=test_devices,
     test_options={"headless": True, "num_points": 16, "steps": 8},
 )
+add_example_test(
+    TestOptimExamples,
+    name="optim.example_quat_shape_align",
+    devices=test_devices,
+)
 
 
 class TestTileExamples(unittest.TestCase):
