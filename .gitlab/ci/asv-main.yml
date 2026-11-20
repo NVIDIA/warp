@@ -1,0 +1,76 @@
+# SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+# ==============================================================================
+# ASV Main-Branch Benchmarking Child Pipeline
+#
+# Runs Warp's airspeed velocity (ASV) benchmark suite on main, comparing it
+# with its previous state on the same GTL performance machine. Job templates
+# live in asv-common.yml.
+#
+# Structure:
+#   - `linux-x86_64 cu13 asv build` (stage: build): compiles wheels for the
+#     baseline and the current commit, as in asv-mr.yml.
+#   - `linux-x86_64 cu13 asv {l40,rtxpro6000}` (stage: test): run for each
+#     push to main that touches benchmarked paths, against the main tip
+#     before the push (`asv main benchmarks` in /.gitlab-ci.yml).
+#   - `linux-x86_64 cu13 asv b200` (stage: test): runs from the daily
+#     schedule, against main as of 24 hours earlier (`asv nightly benchmarks`
+#     in /.gitlab-ci.yml). B200 bookings are too slow, and the pool too
+#     small, to book one for every push, so on pushes it is a manual job.
+#   - Each job runs the whole suite in one booking. Apart from a B200 job
+#     started by hand, no job is allowed to fail, so a regression, or a pool
+#     that stays busy until the job times out, fails the main pipeline and
+#     sends the usual failure emails.
+# ==============================================================================
+
+include:
+  - /.gitlab/ci/common.yml
+  - /.gitlab/ci/asv-common.yml
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "parent_pipeline"
+
+stages:
+  - build
+  - test
+
+linux-x86_64 cu13 asv build:
+  extends: .linux-x86_64-cu13-asv-build
+
+# Retry only on runner system failures. The default policy would also retry
+# a job that timed out waiting for a busy pool, up to 24h in all.
+.linux-x86_64-cu13-asv-main:
+  retry:
+    max: 1
+    when: runner_system_failure
+  variables:
+    ASV_BENCH_FILTER: '.*'
+
+linux-x86_64 cu13 asv l40:
+  extends: [.linux-x86_64-cu13-asv-bench-l40, .linux-x86_64-cu13-asv-main]
+  variables:
+    ASV_MACHINE_NAME: asv-bench-l40
+  rules:
+    - if: $ASV_COMPARE_MODE == "push"
+
+linux-x86_64 cu13 asv rtxpro6000:
+  extends: [.linux-x86_64-cu13-asv-bench-rtxpro6000, .linux-x86_64-cu13-asv-main]
+  variables:
+    ASV_MACHINE_NAME: asv-bench-rtxpro6000
+  rules:
+    - if: $ASV_COMPARE_MODE == "push"
+
+# Runs automatically from the daily schedule. On pushes it is a play button,
+# for checking a specific commit on B200 without waiting for the nightly run;
+# like the MR pipeline's B200 job, it doesn't fail the pipeline then.
+linux-x86_64 cu13 asv b200:
+  extends: [.linux-x86_64-cu13-asv-bench-b200, .linux-x86_64-cu13-asv-main]
+  variables:
+    ASV_MACHINE_NAME: asv-bench-b200
+  rules:
+    - if: $ASV_COMPARE_MODE == "nightly"
+    - if: $ASV_COMPARE_MODE == "push"
+      when: manual
+      allow_failure: true

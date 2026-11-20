@@ -11,7 +11,6 @@ Submodules
 
 These modules are automatically available when you ``import warp``.
 
-- :mod:`warp.build_experimental`
 - :mod:`warp.config`
 - :mod:`warp.types`
 - :mod:`warp.utils`
@@ -22,6 +21,7 @@ Additional Submodules
 These modules must be explicitly imported (e.g., ``import warp.autograd``).
 
 - :mod:`warp.autograd`
+- :mod:`warp.experimental`
 - :mod:`warp.fem`
 - :mod:`warp.geometry`
 - :mod:`warp.optim`
@@ -259,6 +259,7 @@ Runtime
 
    clear_kernel_cache
    clear_lto_cache
+   get_cpu_kernel_cache_key
    init
    is_cpu_available
    is_cubql_available
@@ -317,6 +318,8 @@ Automatic Differentiation
    :toctree: _generated
 
    Tape
+   JetSpace
+   JetSpace2
 
 Device Management
 -----------------
@@ -336,6 +339,7 @@ Device Management
    get_cuda_toolkit_version
    get_device
    get_devices
+   get_libmathdx_version
    get_preferred_device
    is_device_available
    map_cuda_device

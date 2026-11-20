@@ -3,6 +3,8 @@
 
 #include "warp.h"
 
+#include "apic.h"
+#include "apic_internal.h"
 #include "cuda_util.h"
 #include "volume_builder.h"
 #include "volume_impl.h"
@@ -881,8 +883,58 @@ const char* wp_volume_get_blind_data_info(
     return nullptr;
 }
 
+// Record a host volume update or query into the active APIC byte stream (CPU
+// graph capture); returns true if it was recorded (and therefore should NOT
+// execute eagerly). CPU capture is record-only, so executing it now would read
+// capture-time data and never re-run on replay. Same rationale as the BVH
+// update hooks in bvh.cpp.
+static bool apic_capture_volume_rebuild_host(
+    APICVolumeRebuildKind kind,
+    uint64_t id,
+    const void* points,
+    int num_points,
+    const int32_t* point_mask,
+    const float transform[9],
+    const float translation[3],
+    bool points_in_world_space,
+    const void* value_ptr,
+    uint32_t value_size,
+    const char* value_type,
+    const uint32_t* status
+)
+{
+    APICState* state = wp_apic_get_recording_state();
+    if (!state)
+        return false;
+    apic_record_volume_rebuild(
+        state, kind, id, points, num_points, point_mask, transform, translation, points_in_world_space, value_ptr,
+        value_size, value_type, status
+    );
+    return true;
+}
+
+static bool apic_capture_volume_get_coords_host(APICOpType op_type, uint64_t id, const void* buf)
+{
+    APICState* state = wp_apic_get_recording_state();
+    if (!state)
+        return false;
+
+    // The query writes at most the volume's tile or voxel count, which a
+    // recorded rebuild cannot change: rebuildable volumes report their fixed
+    // capacity.
+    uint32_t tile_count;
+    uint64_t voxel_count;
+    wp_volume_get_tile_and_voxel_count(id, tile_count, voxel_count);
+    const uint64_t count = op_type == APIC_OP_VOLUME_GET_TILES ? uint64_t(tile_count) : voxel_count;
+    apic_record_volume_get_coords(state, op_type, id, buf, count * sizeof(pnanovdb_coord_t));
+    return true;
+}
+
 void wp_volume_get_tiles_host(uint64_t id, void* buf)
 {
+    if (apic_capture_volume_get_coords_host(APIC_OP_VOLUME_GET_TILES, id, buf))
+        return;
+
     const VolumeDesc* volume;
     if (volume_get_descriptor(id, volume)) {
         uint32_t leaf_count;
@@ -903,6 +955,9 @@ void wp_volume_get_tiles_host(uint64_t id, void* buf)
 
 void wp_volume_get_voxels_host(uint64_t id, void* buf)
 {
+    if (apic_capture_volume_get_coords_host(APIC_OP_VOLUME_GET_VOXELS, id, buf))
+        return;
+
     const VolumeDesc* volume;
     if (volume_get_descriptor(id, volume)) {
         uint32_t leaf_count;
@@ -950,6 +1005,17 @@ void wp_volume_destroy_host(uint64_t id)
     }
 }
 
+// Rebuildable host allocation builds an empty grid, then rebuilds it from the points, which records the rebuild under
+// CPU graph capture. Like an exact allocation, it fails without points.
+static bool volume_check_rebuildable_point_count(int num_points, uint32_t* status)
+{
+    if (num_points > 0)
+        return true;
+
+    volume_set_host_status(status, WP_VOLUME_REBUILD_INVALID_INPUT);
+    return false;
+}
+
 uint64_t wp_volume_from_tiles_host(
     void* points,
     int num_points,
@@ -982,11 +1048,18 @@ uint64_t wp_volume_from_tiles_host(
         nanovdb::Grid<nanovdb::NanoTree<type>>* grid;                                                                  \
         if (rebuildable)                                                                                               \
         {                                                                                                              \
-            allocate_rebuildable_grid_from_tiles_host(                                                                 \
-                grid, gridSize, points, num_points, points_in_world_space, point_mask, capacities, params, status       \
-            );                                                                                                         \
+            if (!volume_check_rebuildable_point_count(num_points, status))                                             \
+                return 0;                                                                                              \
+            allocate_empty_rebuildable_grid_host(grid, gridSize, false, capacities, params);                           \
             uint64_t id = wp_volume_create_host(grid, gridSize, false, true);                                          \
-            volume_mark_rebuildable(id, capacities);                                                                   \
+            if (id)                                                                                                    \
+            {                                                                                                          \
+                volume_mark_rebuildable(id, capacities);                                                               \
+                wp_volume_rebuild_from_tiles_host(                                                                     \
+                    id, points, num_points, point_mask, transform, translation, points_in_world_space, value_ptr,      \
+                    value_size, value_type, status                                                                     \
+                );                                                                                                     \
+            }                                                                                                          \
             return id;                                                                                                 \
         }                                                                                                              \
         allocate_grid_from_tiles_host(grid, gridSize, points, num_points, points_in_world_space, point_mask, params);   \
@@ -1021,12 +1094,16 @@ uint64_t wp_volume_index_from_tiles_host(
     if (rebuildable) {
         const VolumeRebuildCapacities capacities
             = volume_tile_rebuild_capacities(max_tiles, max_lower_nodes, max_upper_nodes);
-        allocate_rebuildable_grid_from_tiles_host(
-            grid, gridSize, points, num_points, points_in_world_space, point_mask, capacities, params, status
-        );
-
+        if (!volume_check_rebuildable_point_count(num_points, status))
+            return 0;
+        allocate_empty_rebuildable_grid_host(grid, gridSize, false, capacities, params);
         uint64_t id = wp_volume_create_host(grid, gridSize, false, true);
-        volume_mark_rebuildable(id, capacities);
+        if (id) {
+            volume_mark_rebuildable(id, capacities);
+            wp_volume_index_rebuild_from_tiles_host(
+                id, points, num_points, point_mask, transform, translation, points_in_world_space, status
+            );
+        }
         return id;
     }
 
@@ -1057,12 +1134,16 @@ uint64_t wp_volume_from_active_voxels_host(
     if (rebuildable) {
         const VolumeRebuildCapacities capacities
             = volume_voxel_rebuild_capacities(max_active_voxels, max_leaf_nodes, max_lower_nodes, max_upper_nodes);
-        allocate_rebuildable_grid_from_active_voxels_host(
-            grid, gridSize, points, num_points, points_in_world_space, point_mask, capacities, params, status
-        );
-
+        if (!volume_check_rebuildable_point_count(num_points, status))
+            return 0;
+        allocate_empty_rebuildable_grid_host(grid, gridSize, true, capacities, params);
         uint64_t id = wp_volume_create_host(grid, gridSize, false, true);
-        volume_mark_rebuildable(id, capacities);
+        if (id) {
+            volume_mark_rebuildable(id, capacities);
+            wp_volume_rebuild_from_active_voxels_host(
+                id, points, num_points, point_mask, transform, translation, points_in_world_space, status
+            );
+        }
         return id;
     }
 
@@ -1086,6 +1167,12 @@ void wp_volume_rebuild_from_tiles_host(
     uint32_t* status
 )
 {
+    if (apic_capture_volume_rebuild_host(
+            APIC_VOLUME_REBUILD_TILES, id, points, num_points, point_mask, transform, translation,
+            points_in_world_space, value_ptr, value_size, value_type, status
+        ))
+        return;
+
     const VolumeDesc* volume;
     if (!volume_get_descriptor(id, volume) || !volume->rebuildable) {
         volume_set_host_status(status, WP_VOLUME_REBUILD_INVALID_INPUT);
@@ -1125,6 +1212,12 @@ void wp_volume_index_rebuild_from_tiles_host(
     uint32_t* status
 )
 {
+    if (apic_capture_volume_rebuild_host(
+            APIC_VOLUME_REBUILD_INDEX_TILES, id, points, num_points, point_mask, transform, translation,
+            points_in_world_space, nullptr, 0, nullptr, status
+        ))
+        return;
+
     const VolumeDesc* volume;
     if (!volume_get_descriptor(id, volume) || !volume->rebuildable) {
         volume_set_host_status(status, WP_VOLUME_REBUILD_INVALID_INPUT);
@@ -1150,6 +1243,12 @@ void wp_volume_rebuild_from_active_voxels_host(
     uint32_t* status
 )
 {
+    if (apic_capture_volume_rebuild_host(
+            APIC_VOLUME_REBUILD_ACTIVE_VOXELS, id, points, num_points, point_mask, transform, translation,
+            points_in_world_space, nullptr, 0, nullptr, status
+        ))
+        return;
+
     const VolumeDesc* volume;
     if (!volume_get_descriptor(id, volume) || !volume->rebuildable) {
         volume_set_host_status(status, WP_VOLUME_REBUILD_INVALID_INPUT);

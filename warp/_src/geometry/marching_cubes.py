@@ -8,6 +8,7 @@ from typing import Final
 import warp as wp
 from warp._src.geometry.iso_surface import IsoSurfaceBase, resolve_domain_bounds, validate_field
 from warp._src.logger import log_warning
+from warp._src.utils import _DeprecatedArgumentDefault
 
 # =============================================================================
 # Marching Cubes Lookup Tables (module-level for kernel access via wp.static())
@@ -487,16 +488,6 @@ def _get_mc_edge_offset_table(device) -> wp.array:
     if device not in _mc_edge_offset_cache:
         _mc_edge_offset_cache[device] = wp.array(_MC_EDGE_OFFSETS, dtype=wp.int32, device=device)
     return _mc_edge_offset_cache[device]
-
-
-class _DeprecatedArgumentDefault:
-    """Represent an old public default while detecting whether it was supplied."""
-
-    def __init__(self, value):
-        self.value = value
-
-    def __repr__(self):
-        return repr(self.value)
 
 
 _DEFAULT_NONE = _DeprecatedArgumentDefault(None)

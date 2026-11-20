@@ -355,7 +355,7 @@ def bsr_cg(
         check_every=0 if capturable else check_every,
         M=M,
         callback=callback,
-        use_cuda_graph=use_cuda_graph,
+        use_graph=use_cuda_graph,
     )
 
     if use_cuda_graph:

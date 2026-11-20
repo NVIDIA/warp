@@ -8,6 +8,12 @@ import numpy as np
 import warp as wp
 import warp.sparse as wps
 
+from ..benchmarks_utils import setup_once
+
+# Each sample averages `number` calls to smooth out launch and synchronization
+# jitter, and `repeat` samples in each of asv's two default rounds give its
+# statistical test enough samples from two processes per commit.
+
 
 def _require_row_capacity_support():
     probe = wps.bsr_zeros(0, 0, float)
@@ -17,6 +23,19 @@ def _require_row_capacity_support():
         raise NotImplementedError("bsr_compress is not available")
     if "topology" not in inspect.signature(wps.bsr_axpy).parameters:
         raise NotImplementedError("Sparse topology policies are not available")
+
+
+def _setup_device():
+    wp.init()
+    _require_row_capacity_support()
+    device = wp.get_device("cuda:0")
+    # With the default release threshold of zero, the memory pool returns freed
+    # blocks to the driver at every synchronization, so each timed call would
+    # also time the driver mapping memory for the operation's temporaries,
+    # which depends on the pool's state. Keep freed blocks in the pool.
+    if device.is_mempool_supported:
+        wp.set_mempool_release_threshold(device, 1.0)
+    return device
 
 
 def _make_row_capacity_matrix(
@@ -81,14 +100,12 @@ def _make_duplicate_candidate_matrix(nrow: int, ncol: int, capacity_per_row: int
 class BsrMvGappedRows:
     """Test matrix-vector multiplication on a matrix with row-local slack capacity."""
 
-    rounds = 1
-    repeat = 2
+    repeat = 10
     number = 20
 
+    @setup_once
     def setup(self):
-        wp.init()
-        _require_row_capacity_support()
-        self.device = wp.get_device("cuda:0")
+        self.device = _setup_device()
 
         with wp.ScopedDevice(self.device):
             self._mat = _make_row_capacity_matrix(
@@ -112,48 +129,40 @@ class BsrMvGappedRows:
 class BsrCompressGappedRows:
     """Test compact export from row-local candidate storage with duplicate columns."""
 
-    rounds = 1
-    repeat = 2
+    repeat = 10
     number = 5
-    pool_size = 64
 
     def setup(self):
-        wp.init()
-        _require_row_capacity_support()
-        self.device = wp.get_device("cuda:0")
+        # bsr_compress() rewrites its input, so each timed call needs a fresh
+        # copy. asv_runner runs setup before every timed call; only the copy
+        # repeats, and the template is built once per process.
+        if not hasattr(self, "_src_template"):
+            self.device = _setup_device()
+            with wp.ScopedDevice(self.device):
+                self._src_template = _make_duplicate_candidate_matrix(
+                    32768, 32768, capacity_per_row=8, device=self.device
+                )
+                wps.bsr_compress(wps.bsr_copy(self._src_template, topology="padded"))
 
         with wp.ScopedDevice(self.device):
-            self._src_template = _make_duplicate_candidate_matrix(32768, 32768, capacity_per_row=8, device=self.device)
-            self._src_index = 0
-            self._src_pool = [wps.bsr_copy(self._src_template, topology="padded") for _ in range(self.pool_size)]
-            self._run_impl()
+            self._src = wps.bsr_copy(self._src_template, topology="padded")
 
         wp.synchronize_device(self.device)
 
-    def _run_impl(self):
-        if self._src_index == len(self._src_pool):
-            self._src_pool.append(wps.bsr_copy(self._src_template, topology="padded"))
-
-        src = self._src_pool[self._src_index]
-        self._src_index += 1
-        wps.bsr_compress(src)
-
     def time_cuda(self):
-        self._run_impl()
+        wps.bsr_compress(self._src)
         wp.synchronize_device(self.device)
 
 
 class BsrSetFromTripletsPaddedRows:
     """Test padded triplet construction from row-local duplicate candidates."""
 
-    rounds = 1
-    repeat = 2
+    repeat = 10
     number = 5
 
+    @setup_once
     def setup(self):
-        wp.init()
-        _require_row_capacity_support()
-        self.device = wp.get_device("cuda:0")
+        self.device = _setup_device()
 
         nrow = 32768
         ncol = 32768
@@ -180,14 +189,12 @@ class BsrSetFromTripletsPaddedRows:
 class BsrAxpyPaddedRows:
     """Test padded topology insertion into existing row capacity."""
 
-    rounds = 1
-    repeat = 2
+    repeat = 10
     number = 5
 
+    @setup_once
     def setup(self):
-        wp.init()
-        _require_row_capacity_support()
-        self.device = wp.get_device("cuda:0")
+        self.device = _setup_device()
 
         with wp.ScopedDevice(self.device):
             self._x = _make_row_capacity_matrix(32768, 32768, active_per_row=4, capacity_per_row=4, device=self.device)
@@ -207,14 +214,12 @@ class BsrAxpyPaddedRows:
 class BsrSetFromTripletsPaddedWideRows:
     """Test padded triplet construction with wider row-local duplicate candidates."""
 
-    rounds = 1
-    repeat = 2
+    repeat = 10
     number = 3
 
+    @setup_once
     def setup(self):
-        wp.init()
-        _require_row_capacity_support()
-        self.device = wp.get_device("cuda:0")
+        self.device = _setup_device()
 
         nrow = 32768
         ncol = 32768
@@ -241,16 +246,22 @@ class BsrSetFromTripletsPaddedWideRows:
 
 
 class BsrAxpyPaddedMergeWideRows:
-    """Test padded row-local merge into existing row capacity."""
+    """Test padded row-local merge into existing row capacity.
 
-    rounds = 1
-    repeat = 2
+    ``y`` starts with 16 active columns per row and ``x`` holds 16 columns
+    shifted by 8, so the warm-up call in setup adds 8 new columns to most
+    rows. Every timed call then merges ``x`` into rows that already contain
+    all of its columns: it measures merging and updating values on an
+    unchanged topology, not inserting new entries. The values keep growing
+    because ``beta`` is 1, which does not change the work.
+    """
+
+    repeat = 10
     number = 5
 
+    @setup_once
     def setup(self):
-        wp.init()
-        _require_row_capacity_support()
-        self.device = wp.get_device("cuda:0")
+        self.device = _setup_device()
 
         with wp.ScopedDevice(self.device):
             self._x = _make_row_capacity_matrix(
@@ -275,14 +286,12 @@ class BsrAxpyPaddedMergeWideRows:
 class BsrSetTransposePaddedWideRows:
     """Test padded transpose into wider row-local capacity."""
 
-    rounds = 1
-    repeat = 2
+    repeat = 10
     number = 3
 
+    @setup_once
     def setup(self):
-        wp.init()
-        _require_row_capacity_support()
-        self.device = wp.get_device("cuda:0")
+        self.device = _setup_device()
 
         with wp.ScopedDevice(self.device):
             self._src = _make_row_capacity_matrix(
@@ -306,14 +315,12 @@ class BsrSetTransposePaddedWideRows:
 class BsrMMPaddedWideRows:
     """Test padded matrix multiplication into wider row-local capacity."""
 
-    rounds = 1
-    repeat = 2
+    repeat = 10
     number = 3
 
+    @setup_once
     def setup(self):
-        wp.init()
-        _require_row_capacity_support()
-        self.device = wp.get_device("cuda:0")
+        self.device = _setup_device()
 
         with wp.ScopedDevice(self.device):
             self._x = _make_row_capacity_matrix(32768, 32768, active_per_row=8, capacity_per_row=8, device=self.device)

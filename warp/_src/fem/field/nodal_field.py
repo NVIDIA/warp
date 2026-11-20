@@ -430,13 +430,11 @@ class NodalFieldBase(DiscreteField):
     def _make_at_node(self):
         @cache.dynamic_func(suffix=self.name)
         def at_node(args: self.ElementEvalArg, s: self.SampleType, node_index_in_elt: int):
-            node_coords = self.space.basis.node_coords_in_element(
+            element_index, node_coords, _owner_slot = self.space.basis.node_sample(
                 args.elt_arg, args.eval_arg.topo_arg, args.eval_arg.basis_arg, s.element_index, node_index_in_elt
             )
             # Test and trial functions are only defined at the original sample, not at this field's nodes
-            return self.SampleType(
-                s.element_index, node_coords, s.qp_index, s.qp_weight, NULL_DOF_INDEX, NULL_DOF_INDEX
-            )
+            return self.SampleType(element_index, node_coords, s.qp_index, s.qp_weight, NULL_DOF_INDEX, NULL_DOF_INDEX)
 
         return at_node
 

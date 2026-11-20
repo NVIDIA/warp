@@ -7,7 +7,7 @@ from typing import Any, NamedTuple
 import numpy as np
 
 import warp as wp
-from warp.tests.unittest_utils import add_function_test, assert_np_equal, get_test_devices
+from warp.tests.unittest_utils import add_function_test, assert_np_equal, get_test_devices, run_test_in_subprocess
 
 TAIT_BRYAN_SEQUENCES = (
     (0, 1, 2),
@@ -64,6 +64,219 @@ def test_scalar_math(test, device):
 
 
 @wp.kernel
+def atan2_grad_kernel(x: wp.array[Any], y: wp.array[Any], out: wp.array[Any]):
+    i = wp.tid()
+    out[i] = wp.atan2(y[i], x[i])
+
+
+for _dtype in (wp.float16, wp.float32, wp.float64):
+    wp.overload(atan2_grad_kernel, [wp.array[_dtype], wp.array[_dtype], wp.array[_dtype]])
+
+
+def test_atan2_grad(test, device):
+    # Include all quadrants and squared magnitudes outside the half exponent range.
+    x_values = [1, 128, 256, 512, -512, 512, -512, 512, 2**-14, 2**-14]
+    y_values = [1, 128, 256, 512, 512, -512, -512, 256, 2**-14, 2**-13]
+    seeds = np.array([1, 2, -0.5, 1.5, 1, -2, 0.5, 1, 1, -0.5])
+    for dtype, angle_rtol in ((wp.float16, 2e-3), (wp.float32, 1e-6), (wp.float64, 1e-14)):
+        for initial in (0.0, 0.25):
+            with test.subTest(dtype=dtype, initial=initial):
+                x = wp.array(x_values, dtype=dtype, device=device, requires_grad=True)
+                y = wp.array(y_values, dtype=dtype, device=device, requires_grad=True)
+                out = wp.empty(len(x_values), dtype=dtype, device=device, requires_grad=True)
+                with wp.Tape() as tape:
+                    wp.launch(atan2_grad_kernel, dim=len(x_values), inputs=[x, y], outputs=[out], device=device)
+                x.grad.fill_(initial)
+                y.grad.fill_(initial)
+                tape.backward(grads={out: wp.array(seeds, dtype=dtype, device=device)})
+
+                # Evaluate the reference before rounding contributions to gradient storage.
+                x_ref = np.array(x_values, dtype=np.float64)
+                y_ref = np.array(y_values, dtype=np.float64)
+                denominator = x_ref**2 + y_ref**2
+                storage = x.numpy().dtype
+                dx = (-y_ref / denominator * seeds).astype(storage)
+                dy = (x_ref / denominator * seeds).astype(storage)
+                # A relative tolerance on the total can mask a representable increment.
+                np.testing.assert_array_equal(x.grad.numpy(), (dx + initial).astype(storage))
+                np.testing.assert_array_equal(y.grad.numpy(), (dy + initial).astype(storage))
+                np.testing.assert_allclose(out.numpy(), np.arctan2(y_ref, x_ref), rtol=angle_rtol, atol=0)
+
+
+@wp.kernel
+def atan_grad_kernel(x: wp.array[Any], out: wp.array[Any]):
+    i = wp.tid()
+    out[i] = wp.atan(x[i])
+
+
+for _dtype in (wp.float16, wp.float32, wp.float64):
+    wp.overload(atan_grad_kernel, [wp.array[_dtype], wp.array[_dtype]])
+
+
+def test_atan_grad(test, device):
+    """Keep wp.atan() gradients representable where squaring the input leaves the float16 range."""
+    x_values = [1, 128, 256, -512, 1000, 2**-14]
+    seeds = np.array([1, 2, -0.5, 1.5, 1, -2])
+    for dtype in (wp.float16, wp.float32, wp.float64):
+        with test.subTest(dtype=dtype):
+            x = wp.array(x_values, dtype=dtype, device=device, requires_grad=True)
+            out = wp.empty(len(x_values), dtype=dtype, device=device, requires_grad=True)
+            with wp.Tape() as tape:
+                wp.launch(atan_grad_kernel, dim=len(x_values), inputs=[x], outputs=[out], device=device)
+            tape.backward(grads={out: wp.array(seeds, dtype=dtype, device=device)})
+
+            x_ref = np.array(x_values, dtype=np.float64)
+            expected = (seeds / (1.0 + x_ref**2)).astype(x.numpy().dtype)
+            np.testing.assert_allclose(x.grad.numpy(), expected, rtol=1e-6, atol=0)
+
+
+@wp.kernel
+def half_norms_kernel(
+    v: wp.array[wp.vec3h],
+    q: wp.array[wp.quath],
+    lengths: wp.array[wp.float16],
+    units: wp.array[wp.vec3h],
+    quat_lengths: wp.array[wp.float16],
+    quat_units: wp.array[wp.quath],
+):
+    i = wp.tid()
+    lengths[i] = wp.length(v[i])
+    units[i] = wp.normalize(v[i])
+    quat_lengths[i] = wp.length(q[i])
+    quat_units[i] = wp.normalize(q[i])
+
+
+def test_half_norms_outside_squared_range(test, device):
+    """Compute float16 lengths, unit vectors, and their gradients where squaring a component overflows or underflows."""
+    # Components of 300 square past the float16 maximum, and components of 2e-4 square below its smallest subnormal.
+    values = np.array([[300.0, 400.0, 0.0, 0.0], [2.0e-4, 0.0, 0.0, 0.0], [3.0e-4, -4.0e-4, 0.0, 0.0]])
+    values = values.astype(np.float16).astype(np.float64)
+    n = len(values)
+
+    v = wp.array(values[:, :3], dtype=wp.vec3h, device=device, requires_grad=True)
+    q = wp.array(values, dtype=wp.quath, device=device, requires_grad=True)
+    lengths = wp.zeros(n, dtype=wp.float16, device=device, requires_grad=True)
+    units = wp.zeros(n, dtype=wp.vec3h, device=device, requires_grad=True)
+    quat_lengths = wp.zeros(n, dtype=wp.float16, device=device, requires_grad=True)
+    quat_units = wp.zeros(n, dtype=wp.quath, device=device, requires_grad=True)
+    with wp.Tape() as tape:
+        wp.launch(
+            half_norms_kernel,
+            dim=n,
+            inputs=[v, q],
+            outputs=[lengths, units, quat_lengths, quat_units],
+            device=device,
+        )
+
+    norm = np.linalg.norm(values, axis=1)
+    unit = values / norm[:, None]
+    # float16 rounds each result once more after the float32 computation.
+    np.testing.assert_allclose(lengths.numpy(), norm, rtol=1e-3)
+    np.testing.assert_allclose(quat_lengths.numpy(), norm, rtol=1e-3)
+    np.testing.assert_allclose(units.numpy(), unit[:, :3], rtol=1e-3, atol=1e-3)
+    np.testing.assert_allclose(quat_units.numpy(), unit, rtol=1e-3, atol=1e-3)
+
+    # The gradient of a length is the unit vector.
+    tape.backward(grads={lengths: wp.ones(n, dtype=wp.float16, device=device)})
+    np.testing.assert_allclose(v.grad.numpy(), unit[:, :3], rtol=1e-3, atol=1e-3)
+    tape.zero()
+    tape.backward(grads={quat_lengths: wp.ones(n, dtype=wp.float16, device=device)})
+    np.testing.assert_allclose(q.grad.numpy(), unit, rtol=1e-3, atol=1e-3)
+
+    # The gradient of a unit vector along a direction e is (e - u (u . e)) / length.
+    seed = np.zeros((n, 4))
+    seed[:, 1] = 1.0
+    expected = (seed - unit * unit[:, 1:2]) / norm[:, None]
+    tape.zero()
+    tape.backward(grads={units: wp.array(seed[:, :3], dtype=wp.vec3h, device=device)})
+    np.testing.assert_allclose(v.grad.numpy(), expected[:, :3], rtol=2e-3, atol=1e-6)
+    tape.zero()
+    tape.backward(grads={quat_units: wp.array(seed, dtype=wp.quath, device=device)})
+    np.testing.assert_allclose(q.grad.numpy(), expected, rtol=2e-3, atol=1e-6)
+
+
+@wp.kernel
+def half_norm_limits_kernel(
+    v: wp.array[wp.vec3h], q: wp.array[wp.quath], units: wp.array[wp.vec3h], lengths: wp.array[wp.float16]
+):
+    units[0] = wp.normalize(v[0])
+    lengths[0] = wp.length(q[0])
+
+
+def test_half_norm_gradients_at_range_limits(test, device):
+    """Keep float16 normalize() gradients for vectors longer than the float16 maximum, and quaternion length() gradients for tiny lengths."""
+    v = wp.array([[60000.0, 60000.0, 0.0]], dtype=wp.vec3h, device=device, requires_grad=True)
+    q = wp.array([[2.0**-16, 0.0, 0.0, 0.0]], dtype=wp.quath, device=device, requires_grad=True)
+    units = wp.zeros(1, dtype=wp.vec3h, device=device, requires_grad=True)
+    lengths = wp.zeros(1, dtype=wp.float16, device=device, requires_grad=True)
+    with wp.Tape() as tape:
+        wp.launch(half_norm_limits_kernel, dim=1, inputs=[v, q], outputs=[units, lengths], device=device)
+    tape.backward(
+        grads={
+            units: wp.array([[1.0, 0.0, 0.0]], dtype=wp.vec3h, device=device),
+            lengths: wp.ones(1, dtype=wp.float16, device=device),
+        }
+    )
+
+    # The gradient of the first component of the unit vector is (e_0 - u_0 u) / length, a float16 subnormal here.
+    values = np.array([60000.0, 60000.0, 0.0])
+    length = np.linalg.norm(values)
+    unit = values / length
+    expected = (np.eye(3)[0] - unit[0] * unit) / length
+    np.testing.assert_allclose(v.grad.numpy()[0], expected, rtol=2e-2, atol=1e-7)
+    # The gradient of a quaternion's length is its unit quaternion.
+    np.testing.assert_allclose(q.grad.numpy()[0], [1.0, 0.0, 0.0, 0.0], rtol=1e-3)
+
+
+@wp.kernel
+def half_normalize_kernel(v: wp.array[wp.vec3h], units: wp.array[wp.vec3h]):
+    units[0] = wp.normalize(v[0])
+
+
+def test_half_normalize_gradient_of_parallel_seed(test, device):
+    """Return a zero float16 normalize() gradient for an adjoint seed parallel to the input."""
+    # The rounded float16 unit vector is not exactly unit length; the projection must not use it.
+    v = wp.array([[2.0**-10, 2.0**-10, 0.0]], dtype=wp.vec3h, device=device, requires_grad=True)
+    units = wp.zeros(1, dtype=wp.vec3h, device=device, requires_grad=True)
+    with wp.Tape() as tape:
+        wp.launch(half_normalize_kernel, dim=1, inputs=[v], outputs=[units], device=device)
+    tape.backward(grads={units: wp.array([[1.0, 1.0, 0.0]], dtype=wp.vec3h, device=device)})
+    np.testing.assert_allclose(v.grad.numpy()[0], np.zeros(3), atol=1e-3)
+
+
+@wp.kernel(module="unique", module_options={"mode": "debug"})
+def empty_slice_norms_kernel(
+    v: wp.array[wp.vec3], h: wp.array[wp.vec3h], lengths: wp.array[float], sizes: wp.array[int]
+):
+    # Debug mode checks vector indices, so reading past the end of an empty slice fails.
+    lengths[0] = wp.length(v[0][3:]) + wp.length(v[0])
+    lengths[1] = float(wp.length(h[0][3:])) + float(wp.length(h[0]))
+    sizes[0] = len(wp.normalize(v[0][3:]))
+    sizes[1] = len(wp.normalize(h[0][3:]))
+
+
+def test_norms_of_empty_slices(test, device):
+    """Return zero lengths and empty unit vectors for empty vector slices, and propagate their gradients."""
+    # A debug-mode CUDA kernel can corrupt release kernels compiled later in the same process.
+    if wp.get_device(device).is_cuda and run_test_in_subprocess(test):
+        return
+
+    v = wp.array([[3.0, 4.0, 0.0]], dtype=wp.vec3, device=device, requires_grad=True)
+    h = wp.array([[3.0, 4.0, 0.0]], dtype=wp.vec3h, device=device, requires_grad=True)
+    lengths = wp.zeros(2, dtype=float, device=device, requires_grad=True)
+    sizes = wp.zeros(2, dtype=int, device=device)
+    with wp.Tape() as tape:
+        wp.launch(empty_slice_norms_kernel, dim=1, inputs=[v, h], outputs=[lengths, sizes], device=device)
+    tape.backward(grads={lengths: wp.ones(2, dtype=float, device=device)})
+
+    # The empty slices add nothing, so the results are those of the full vectors.
+    np.testing.assert_allclose(lengths.numpy(), [5.0, 5.0], rtol=1e-6)
+    np.testing.assert_array_equal(sizes.numpy(), [0, 0])
+    np.testing.assert_allclose(v.grad.numpy()[0], [0.6, 0.8, 0.0], rtol=1e-6)
+    np.testing.assert_allclose(h.grad.numpy()[0], [0.6, 0.8, 0.0], rtol=1e-3)
+
+
+@wp.kernel
 def erf_kernel(x: wp.array[Any], out: wp.array[Any]):
     i = wp.tid()
 
@@ -94,6 +307,151 @@ def test_erf_math(test, device):
 
         assert_np_equal(out.numpy(), out_true, tol=tol)
         assert_np_equal(adj_x_true, x.grad.numpy(), tol=tol)
+
+
+@wp.kernel
+def erfcinv_kernel(x: wp.array[Any], out: wp.array[Any]):
+    """Compute ``wp.erfcinv()`` of each element of ``x``."""
+    i = wp.tid()
+    out[i] = wp.erfcinv(x[i])
+
+
+# Declare the overloads up front: adding one on first launch changes the module hash and recompiles the module.
+wp.overload(erfcinv_kernel, [wp.array[wp.float32], wp.array[wp.float32]])
+wp.overload(erfcinv_kernel, [wp.array[wp.float64], wp.array[wp.float64]])
+
+
+def eval_scalar_kernel(kernel, x, dtype, device):
+    """Launch ``kernel`` on a single ``x`` of type ``dtype`` and return its output as a Python float."""
+    x_arr = wp.array([x], dtype=dtype, device=device)
+    out = wp.empty(1, dtype=dtype, device=device)
+    wp.launch(kernel, dim=1, inputs=[x_arr], outputs=[out], device=device)
+    return float(out.numpy()[0])
+
+
+def test_erfcinv_extreme_args(test, device):
+    """Verify ``wp.erfcinv()`` values, special cases, and gradient for extreme arguments."""
+    # Expected values are erfinv(1 - x) evaluated with mpmath at 400 digits.
+    for dtype, rtol in ((wp.float32, 1e-6), (wp.float64, 1e-14)):
+        with test.subTest(dtype=dtype):
+            np.testing.assert_allclose(
+                eval_scalar_kernel(erfcinv_kernel, 2.0**-70, dtype, device), 6.7840095508807463302, rtol=rtol
+            )
+            # Smallest float32 subnormal.
+            np.testing.assert_allclose(
+                eval_scalar_kernel(erfcinv_kernel, 2.0**-149, dtype, device), 10.019834265884623368, rtol=rtol
+            )
+
+            test.assertEqual(eval_scalar_kernel(erfcinv_kernel, 0.0, dtype, device), np.inf)
+            test.assertEqual(eval_scalar_kernel(erfcinv_kernel, 2.0, dtype, device), -np.inf)
+            test.assertEqual(eval_scalar_kernel(erfcinv_kernel, 1.0, dtype, device), 0.0)
+            test.assertFalse(np.signbit(eval_scalar_kernel(erfcinv_kernel, 1.0, dtype, device)))
+
+            test.assertTrue(np.isnan(eval_scalar_kernel(erfcinv_kernel, -0.5, dtype, device)))
+            test.assertTrue(np.isnan(eval_scalar_kernel(erfcinv_kernel, 2.5, dtype, device)))
+            test.assertTrue(np.isnan(eval_scalar_kernel(erfcinv_kernel, np.nan, dtype, device)))
+
+    # Check float64 accuracy for small and boundary arguments.
+    np.testing.assert_allclose(
+        eval_scalar_kernel(erfcinv_kernel, 2.0**-34 * (1.0 + 2.0**-20), wp.float64, device),
+        4.6303255742992010406,
+        rtol=1e-14,
+    )
+    # Smallest normal.
+    np.testing.assert_allclose(
+        eval_scalar_kernel(erfcinv_kernel, 2.0**-1022, wp.float64, device), 26.543258454250981382, rtol=1e-14
+    )
+    # Smallest subnormal, where x / 2 underflows to zero.
+    np.testing.assert_allclose(
+        eval_scalar_kernel(erfcinv_kernel, 2.0**-1074, wp.float64, device), 27.213293210812948815, rtol=1e-14
+    )
+    np.testing.assert_allclose(
+        eval_scalar_kernel(erfcinv_kernel, 2.0 - 2.0**-40, wp.float64, device), -5.0512540852493899671, rtol=1e-14
+    )
+
+    # d/dx erfcinv(x) = -sqrt(pi)/2 * exp(erfcinv(x)^2)
+    x = wp.array([2.0**-70], dtype=wp.float64, requires_grad=True, device=device)
+    out = wp.empty(1, dtype=wp.float64, requires_grad=True, device=device)
+    with wp.Tape() as tape:
+        wp.launch(erfcinv_kernel, dim=1, inputs=[x], outputs=[out], device=device)
+    tape.backward(grads={out: wp.ones(1, dtype=wp.float64, device=device)})
+    np.testing.assert_allclose(x.grad.numpy()[0], -8.6096750946883536401e19, rtol=1e-12)
+
+
+@wp.kernel
+def erfinv_kernel(x: wp.array[Any], out: wp.array[Any]):
+    """Compute ``wp.erfinv()`` of each element of ``x``."""
+    i = wp.tid()
+    out[i] = wp.erfinv(x[i])
+
+
+# Declare the overloads up front: adding one on first launch changes the module hash and recompiles the module.
+wp.overload(erfinv_kernel, [wp.array[wp.float32], wp.array[wp.float32]])
+wp.overload(erfinv_kernel, [wp.array[wp.float64], wp.array[wp.float64]])
+
+
+def test_erfinv_extreme_args(test, device):
+    """Verify ``wp.erfinv()`` values, special cases, and gradient for extreme arguments."""
+    # Expected values are erfinv(z) evaluated with mpmath at 400 digits.
+    for dtype, rtol in ((wp.float32, 1e-6), (wp.float64, 1e-14)):
+        with test.subTest(dtype=dtype):
+            np.testing.assert_allclose(
+                eval_scalar_kernel(erfinv_kernel, 2.0**-70, dtype, device), 7.5066340460236673721e-22, rtol=rtol
+            )
+            np.testing.assert_allclose(
+                eval_scalar_kernel(erfinv_kernel, -(2.0**-70), dtype, device), -7.5066340460236673721e-22, rtol=rtol
+            )
+
+            test.assertEqual(eval_scalar_kernel(erfinv_kernel, -0.0, dtype, device), 0.0)
+            test.assertTrue(np.signbit(eval_scalar_kernel(erfinv_kernel, -0.0, dtype, device)))
+            test.assertEqual(eval_scalar_kernel(erfinv_kernel, 1.0, dtype, device), np.inf)
+            test.assertEqual(eval_scalar_kernel(erfinv_kernel, -1.0, dtype, device), -np.inf)
+
+            test.assertTrue(np.isnan(eval_scalar_kernel(erfinv_kernel, 1.5, dtype, device)))
+            test.assertTrue(np.isnan(eval_scalar_kernel(erfinv_kernel, np.nan, dtype, device)))
+
+    # Check float64 accuracy for small and boundary arguments.
+    np.testing.assert_allclose(
+        eval_scalar_kernel(erfinv_kernel, 2.0**-34 * (1.0 + 2.0**-20), wp.float64, device),
+        5.1585245564615780349e-11,
+        rtol=1e-14,
+    )
+    # Smallest subnormal; erfinv(z) = 4.3785e-324 rounds back to it.
+    test.assertEqual(eval_scalar_kernel(erfinv_kernel, 2.0**-1074, wp.float64, device), 2.0**-1074)
+    np.testing.assert_allclose(
+        eval_scalar_kernel(erfinv_kernel, 1.0 - 3.0 * 2.0**-53, wp.float64, device), 5.7704918535533328705, rtol=1e-14
+    )
+    np.testing.assert_allclose(
+        eval_scalar_kernel(erfinv_kernel, -(1.0 - 3.0 * 2.0**-53), wp.float64, device),
+        -5.7704918535533328705,
+        rtol=1e-14,
+    )
+
+    # d/dz erfinv(z) = sqrt(pi)/2 * exp(erfinv(z)^2)
+    x = wp.array([2.0**-70], dtype=wp.float64, requires_grad=True, device=device)
+    out = wp.empty(1, dtype=wp.float64, requires_grad=True, device=device)
+    with wp.Tape() as tape:
+        wp.launch(erfinv_kernel, dim=1, inputs=[x], outputs=[out], device=device)
+    tape.backward(grads={out: wp.ones(1, dtype=wp.float64, device=device)})
+    np.testing.assert_allclose(x.grad.numpy()[0], 0.88622692545275801365, rtol=1e-14)
+
+
+@wp.kernel
+def erfc_erfcinv_kernel(x: wp.array[wp.float64], out: wp.array[wp.float64]):
+    """Compute ``wp.erfc(wp.erfcinv(x))`` for each element of ``x``."""
+    i = wp.tid()
+    out[i] = wp.erfc(wp.erfcinv(x[i]))
+
+
+def test_erfcinv_erfc_roundtrip(test, device):
+    """Verify that ``wp.erfc()`` inverts ``wp.erfcinv()`` from tiny arguments up to nearly 2."""
+    x_np = np.concatenate((np.geomspace(1e-300, 1.0, 200), np.linspace(1.0, 2.0 - 1e-12, 50)))
+    x = wp.array(x_np, dtype=wp.float64, device=device)
+    out = wp.empty_like(x)
+    wp.launch(erfc_erfcinv_kernel, dim=len(x_np), inputs=[x], outputs=[out], device=device)
+
+    # erfc() amplifies a relative error in erfcinv(x) by about 2 * erfcinv(x)^2, at most ~1400 here.
+    np.testing.assert_allclose(out.numpy(), x_np, rtol=1e-12)
 
 
 @wp.kernel
@@ -400,6 +758,18 @@ class TestMath(unittest.TestCase):
         np.testing.assert_allclose(out_f32.numpy(), expected)
         np.testing.assert_allclose(out_f64.numpy(), expected)
 
+    def test_erfcinv_extreme_args_python_scope(self):
+        """Verify ``wp.erfcinv()`` accuracy for a tiny argument at Python scope."""
+        # Expected values are erfinv(1 - x) evaluated with mpmath at 400 digits.
+        np.testing.assert_allclose(wp.erfcinv(2.0**-70), 6.7840095508807463302, rtol=1e-6)
+        np.testing.assert_allclose(float(wp.erfcinv(wp.float64(2.0**-70))), 6.7840095508807463302, rtol=1e-14)
+
+    def test_erfinv_extreme_args_python_scope(self):
+        """Verify ``wp.erfinv()`` accuracy for a tiny argument at Python scope."""
+        # Expected values are erfinv(z) evaluated with mpmath at 400 digits.
+        np.testing.assert_allclose(wp.erfinv(2.0**-70), 7.5066340460236673721e-22, rtol=1e-6)
+        np.testing.assert_allclose(float(wp.erfinv(wp.float64(2.0**-70))), 7.5066340460236673721e-22, rtol=1e-14)
+
     def test_vec_type(self):
         vec5 = wp.types.vector(length=5, dtype=float)
         v = vec5()
@@ -463,7 +833,25 @@ class TestMath(unittest.TestCase):
 
 
 add_function_test(TestMath, "test_scalar_math", test_scalar_math, devices=devices)
+add_function_test(TestMath, "test_atan2_grad", test_atan2_grad, devices=devices)
+add_function_test(TestMath, "test_atan_grad", test_atan_grad, devices=devices)
+add_function_test(
+    TestMath, "test_half_norms_outside_squared_range", test_half_norms_outside_squared_range, devices=devices
+)
+add_function_test(
+    TestMath, "test_half_norm_gradients_at_range_limits", test_half_norm_gradients_at_range_limits, devices=devices
+)
+add_function_test(TestMath, "test_norms_of_empty_slices", test_norms_of_empty_slices, devices=devices)
+add_function_test(
+    TestMath,
+    "test_half_normalize_gradient_of_parallel_seed",
+    test_half_normalize_gradient_of_parallel_seed,
+    devices=devices,
+)
 add_function_test(TestMath, "test_erf_math", test_erf_math, devices=devices)
+add_function_test(TestMath, "test_erfcinv_extreme_args", test_erfcinv_extreme_args, devices=devices)
+add_function_test(TestMath, "test_erfcinv_erfc_roundtrip", test_erfcinv_erfc_roundtrip, devices=devices)
+add_function_test(TestMath, "test_erfinv_extreme_args", test_erfinv_extreme_args, devices=devices)
 add_function_test(TestMath, "test_vec_norm", test_vec_norm, devices=devices)
 add_function_test(TestMath, "test_smooth_normalize", test_smooth_normalize, devices=devices)
 add_function_test(TestMath, "test_quat_helpers", quat_helpers, devices=devices)

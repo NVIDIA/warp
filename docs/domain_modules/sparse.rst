@@ -138,20 +138,12 @@ Do not assume that the current value of ``A.nnz`` is exact. Before exporting a c
 
 .. note::
 
-    The :meth:`BsrMatrix.nnz_sync` method starts a synchronous transfer of
-    ``offsets[nrow]`` from the device offsets array to the host and updates the
+    The :meth:`BsrMatrix.nnz_sync` method copies ``offsets[nrow]`` from the
+    device offsets array to the host, waits for the copy to finish, and updates the
     nnz upper bound. For compact matrices, this is the active stored block count.
     For padded matrices, this is the total row-capacity storage size, not
     necessarily the active block count. Warp reuses the transfer resources
     allocated by previous calls on the same matrix.
-
-.. deprecated:: 1.10
-
-    :meth:`BsrMatrix.copy_nnz_async` starts an asynchronous transfer but will be
-    removed in a future release. The pending transfer can be unsafe when matrix
-    topology updates use multiple streams or when it is captured and replayed in
-    a CUDA graph, potentially producing a stale host-side count. Prefer
-    :meth:`BsrMatrix.nnz_sync` when the exact host-side count is required.
 
 .. note::
 
@@ -440,6 +432,78 @@ For more control about memory allocations, you may use the underlying lower-leve
         alpha,             # Scale factor
     )
 
+Differentiating Matrix Operations
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Matrix-vector and matrix-matrix products recorded on a :class:`warp.Tape` propagate gradients in the backward
+pass. Gradients with respect to a matrix are accumulated into the ``grad`` array of its ``values``, at the
+stored blocks only, since the sparsity pattern itself is not differentiable:
+
+.. code-block:: python
+
+    A.values.requires_grad = True
+    x = wp.array(x_np, dtype=float, requires_grad=True)
+
+    with wp.Tape() as tape:
+        y = bsr_mv(A, x)              # y = A @ x
+        C = bsr_mm(A, B)              # C = A @ B
+        ...                           # compute a scalar loss from y and C
+
+    tape.backward(loss)
+    # x.grad, A.values.grad and B.values.grad (if B.values.requires_grad) now hold the gradients
+
+Gradients also flow to the input ``y`` of :func:`bsr_mv` and the input ``z`` of :func:`bsr_mm` when ``beta``
+is nonzero. Differentiating a :func:`bsr_mm` product whose output aliases one of its operands, such as
+``A @= B``, raises a :class:`NotImplementedError`.
+
+Recorded products read their matrix operands by reference, like any other kernel input on the tape, so do
+not modify a matrix in place before :meth:`Tape.backward() <warp.Tape.backward>`. This includes rebuilding its
+topology with functions such as :func:`bsr_set_from_triplets` or :func:`bsr_assign`.
+:attr:`warp.config.verify_autograd_array_access` reports overwritten values arrays. The one exception is
+:func:`bsr_mm` itself. While a tape is recording, a product that rebuilds the topology of ``z`` first moves
+``z`` to new ``offsets``, ``columns`` and ``row_counts`` arrays, so code that holds on to those arrays
+across the call sees new objects.
+
+Batches of Vectors
+~~~~~~~~~~~~~~~~~~
+
+:func:`bsr_mv` also multiplies one matrix with many vectors at once. Store the vectors as the
+rows of a contiguous 2D array, for example of shape ``(count, A.shape[1])``, and the result has
+one row per vector:
+
+.. code-block:: python
+
+    import warp as wp
+    from warp.sparse import bsr_mv
+
+    X = wp.ones((8, A.shape[1]), dtype=A.scalar_type)
+    Y = wp.zeros((8, A.shape[0]), dtype=A.scalar_type)
+    bsr_mv(A, X, Y)  # Y[r] = A @ X[r] for every row r
+    bsr_mv(A, X, Y, algorithm="columns")  # pin a strategy
+
+Reading each matrix row once for several vectors is often, but not always, faster than separate
+products. The ``algorithm`` argument selects the kernel strategy: ``"auto"`` (the default) chooses
+one, and ``"loop"``, ``"rows"`` and ``"columns"`` pin one, which helps when the best choice for a
+workload is known. Pass ``work_buffer`` to reuse scratch storage across calls, for example inside
+a captured graph.
+
+``"auto"`` uses ``"loop"`` for a single vector, for ``transpose``, for products recorded on a tape
+with operands that require gradients (the other strategies are forward-only and raise in that
+case), and on CUDA for block shapes other than 1x1 and 3x3, which were not benchmarked. Otherwise
+it picks ``"rows"`` on the CPU and for CSR matrices on CUDA, and for 3x3 BSR matrices on CUDA
+``"rows"`` up to four vectors and ``"columns"`` beyond. :func:`bsr_mv` decides on every call and
+never synchronizes, so it works inside captured graphs but cannot see how many entries each row
+actually stores; the stored count of a compact matrix is only an upper bound on the host. Short
+rows favor ``"rows"``, but CSR matrices with long or irregular rows (more than about 16 entries)
+are often several times faster with ``"columns"`` pinned for four or more vectors.
+
+Prepared operators such as :class:`warp.optim.linear.MultiRHSOperator` and
+:class:`warp.optim.linear.KrylovSolve` decide once at construction, where they may read
+back :meth:`BsrMatrix.mean_row_count_sync`. On CUDA, CSR matrices with more than 16
+blocks per row then use ``"columns"`` from four vectors. The choice stays fixed, including
+for smaller capacities from ``with_nrhs``. The rule was fitted to finite-element and
+irregular matrices and may change between releases.
+
 
 Kernel-level utilities
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -477,3 +541,71 @@ While primarily intended for sparse matrices, these solvers also work with dense
 Custom operators can be implemented using the :class:`warp.optim.linear.LinearOperator` interface.
 
 For a complete listing of all sparse matrix functions and their signatures, see the :doc:`../api_reference/warp_sparse` API reference.
+
+
+.. currentmodule:: warp.optim.linear
+
+Prepared Krylov solves
+----------------------
+
+:class:`KrylovSolve` allocates its workspace once and then solves many
+right-hand sides (RHSs) against the same system with :func:`cg`, :func:`cr`,
+:func:`bicgstab` or :func:`gmres`. It suits solves nested inside another
+algorithm and CUDA graph replay::
+
+    import warp as wp
+    from warp.optim.linear import KrylovSolve
+
+    action = KrylovSolve(A, nrhs=24, method="cg",
+                         working_dtype=wp.float32, tol=0.01, maxiter=25)
+    action.solve(rhs, out)
+    # action.converged, action.absolute_residual, ... stay on device.
+
+The functional solvers keep every algorithmic option; a prepared solve adds what
+a reusable object needs:
+
+* ``solve(rhs, out, x0=None)`` takes contiguous ``(nrhs, n)`` arrays, or
+  ``(n,)`` when ``nrhs == 1``, in the system's scalar dtype and device. A solve
+  starts from zero unless ``x0`` gives an initial guess; ``solve(rhs, out, out)``
+  warm starts from the previous solution. Exact in-place aliasing is
+  supported; partially overlapping views are rejected before any output is
+  written.
+* Acceptance compares the residual with ``max(tol * ||b||, atol)``, as in the
+  functional solvers, except that ``atol`` defaults to ``0.0`` instead of
+  ``tol``. The solvers raise ``atol`` to a safety floor of 1e-18 for a float32
+  working dtype and 1e-36 for float64, so ``atol=0.0`` means a relative
+  tolerance only, apart from a zero RHS, and the reported ``tolerance``
+  includes the floor.
+* Several RHSs iterate together as independent systems sharing one operator, so
+  each reports the batch's scheduled iteration count. This is not a coupled
+  block method. Sparse matrices apply all RHSs with the batched
+  :func:`warp.sparse.bsr_mv`; ``algorithm`` pins its kernel strategy.
+* ``update()`` makes in-place value changes to a sparse matrix visible, copying
+  them into the ``working_dtype`` matrix when that differs. ``solve()`` does
+  this on every call.
+* ``with_nrhs(k)`` prepares a smaller capacity that shares the workspace. The
+  two must not run concurrently.
+* The device arrays ``iterations``, ``absolute_residual``,
+  ``relative_residual``, ``tolerance`` and ``converged`` describe each RHS of
+  the latest call. ``stats`` (total iterations, maximum iterations, failed
+  RHSs, solved RHSs) and ``residual_maxima`` accumulate until
+  ``reset_stats()``, which leaves the latest per-RHS diagnostics untouched.
+  Nonfinite norms fail acceptance. ``solve()`` also returns the device arrays
+  ``(iterations, residual_sq, tolerance_sq)``; ``diagnostics=False`` skips the
+  per-RHS bookkeeping for short, frequent solves.
+* ``residual`` selects the residual that is reported and used for acceptance:
+  ``"recurrence"`` reports the solver's own estimate at no extra cost, and
+  ``"fresh"`` recomputes ``||A x - b||`` with the
+  source system and precision, which validates mixed-precision or truncated
+  solves at the cost of one batched product per call.
+
+``M`` is a fixed linear preconditioner, either a single-system operator or a
+prepared operator with independent RHS partitions, such as a
+:class:`MultiRHSOperator` or an FSAI application prepared for several RHSs. When
+the preconditioner is partitioned, pass a matching ``M=`` to ``with_nrhs``.
+
+Construct and warm up actions outside CUDA graph capture. Prepared replay
+performs no host convergence checks or work-array allocations. Eager calls
+from different CUDA streams are ordered automatically, but captured graphs
+that share one workspace must not execute concurrently. Reverse-mode
+derivatives through prepared solves are not supplied.

@@ -95,18 +95,23 @@ CUDA_CALLABLE inline range_t iter_reverse(const range_t& r)
     // generates a reverse range, equivalent to reversed(range())
     range_t rev;
 
-    if (r.step == 0) {
-        // degenerate case where step == 0, return empty range
+    rev.step = -r.step;
+
+    if (r.step == 0 || (r.step > 0 && r.start >= r.end) || (r.step < 0 && r.start <= r.end)) {
+        // empty range (including the degenerate step == 0 case), return empty range;
+        // the truncating division below would otherwise yield one spurious iteration
         rev.start = r.start;
         rev.end = r.start;
-    } else if (r.step > 0) {
-        rev.start = r.start + int((r.end - r.start - 1) / r.step) * r.step;
     } else {
-        rev.start = r.start + int((r.end - r.start + 1) / r.step) * r.step;
-    }
+        // non-empty range: (r.end - r.start -/+ 1) / r.step >= 0, so truncation equals floor
+        if (r.step > 0) {
+            rev.start = r.start + int((r.end - r.start - 1) / r.step) * r.step;
+        } else {
+            rev.start = r.start + int((r.end - r.start + 1) / r.step) * r.step;
+        }
 
-    rev.end = r.start - r.step;
-    rev.step = -r.step;
+        rev.end = r.start - r.step;
+    }
 
     rev.i = rev.start;
 

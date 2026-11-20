@@ -333,6 +333,39 @@ def test_module_load_resolution(test, device):
     assert_np_equal(res.numpy(), np.full((10,), 2, dtype=np.int32))
 
 
+def test_ptx_artifact_has_no_nul(test, device):
+    """Test that a PTX artifact has no NUL bytes and still loads.
+
+    NVRTC counts the PTX string's NUL terminator in its output size, but the
+    file must not contain it. The CUDA driver still needs a NUL-terminated
+    image, so loading and launching the module checks that Warp's loader adds
+    the terminator back.
+    """
+
+    a = wp.ones(10, dtype=wp.int32, device=device)
+    b = wp.ones(10, dtype=wp.int32, device=device)
+    res = wp.zeros((10,), dtype=wp.int32, device=device)
+
+    reload_module(warp.tests.aot.aux_test_hash_reload)
+    with tempfile.TemporaryDirectory() as module_dir:
+        (ptx_path,) = wp.compile_aot_module(
+            warp.tests.aot.aux_test_hash_reload, device, module_dir=module_dir, use_ptx=True
+        )
+        test.assertEqual(ptx_path.suffix, ".ptx")
+        test.assertEqual(ptx_path.read_bytes().count(0), 0, f"{ptx_path.name} contains NUL bytes")
+
+        wp.load_aot_module(warp.tests.aot.aux_test_hash_reload, device, module_dir=module_dir, use_ptx=True)
+
+    wp.launch(
+        warp.tests.aot.aux_test_hash_reload.add_kernel,
+        dim=a.shape,
+        inputs=[a, b],
+        outputs=[res],
+        device=device,
+    )
+    assert_np_equal(res.numpy(), np.full((10,), 2, dtype=np.int32))
+
+
 class TestModuleAOT(unittest.TestCase):
     def test_module_compile_deviceless_ptx(self):
         """Test that a module can be compiled to PTX with an explicit arch and no device.
@@ -900,6 +933,9 @@ add_function_test(
     devices=devices,
 )
 add_function_test(TestModuleAOT, "test_module_load_resolution", test_module_load_resolution, devices=devices)
+add_function_test(
+    TestModuleAOT, "test_ptx_artifact_has_no_nul", test_ptx_artifact_has_no_nul, devices=get_cuda_test_devices()
+)
 add_function_test(TestModuleAOT, "test_generic_kernel_no_overloads", test_generic_kernel_no_overloads, devices=devices)
 add_function_test(
     TestModuleAOT,

@@ -3,7 +3,9 @@
 
 from __future__ import annotations
 
+import contextlib
 import cProfile
+import ctypes
 import gc
 import hashlib
 import operator
@@ -22,11 +24,22 @@ import warp._src.context as context
 import warp._src.types
 from warp._src import logger as _logger_module
 from warp._src.context import Allocator, CaptureMode, DeviceLike, _validate_allocator, timing_result_t
+from warp._src.function_dispatch import warp_function
 from warp._src.logger import Logger, LoggerBasic, _validate_logger, get_logger, log_debug, set_logger
 from warp._src.types import Array, DType, type_repr, types_equal
 
 # Cache for wp.map(): (func_name, input_descriptors, output_type_descriptor) -> (out_dtypes, kernel)
 map_cache: dict[tuple, tuple] = {}
+
+
+class _DeprecatedArgumentDefault:
+    """Represent an old public default while detecting whether it was supplied."""
+
+    def __init__(self, value):
+        self.value = value
+
+    def __repr__(self):
+        return repr(self.value)
 
 
 # expand a 7-vec to a tuple of arrays
@@ -37,7 +50,24 @@ def transform_expand(t):
 
 @wp.func
 def quat_between_vectors(a: wp.vec3, b: wp.vec3) -> wp.quat:
-    """Compute the quaternion that rotates vector ``a`` to vector ``b``."""
+    """Return the rotation quaternion that rotates the direction of ``a`` onto the direction of ``b``.
+
+    Currently, opposite directions are not handled. This condition is not
+    checked, and such inputs can produce an incorrect rotation.
+
+    For opposite directions, use :func:`warp.quat_from_axis_angle` instead,
+    with any unit axis perpendicular to ``a`` and an angle of ``pi`` radians.
+    The resulting 180-degree rotation maps ``normalize(a)`` onto
+    ``normalize(b)``.
+
+    Args:
+        a: Source direction, of any nonzero length.
+        b: Target direction, of any nonzero length.
+
+    Returns:
+        wp.quat: Shortest-arc unit rotation quaternion ``q`` such that ``quat_rotate(q, normalize(a))``
+        equals ``normalize(b)``.
+    """
     a = wp.normalize(a)
     b = wp.normalize(b)
     c = wp.cross(a, b)
@@ -46,7 +76,100 @@ def quat_between_vectors(a: wp.vec3, b: wp.vec3) -> wp.quat:
     return wp.normalize(q)
 
 
-def array_scan(in_array: wp.array, out_array: wp.array, inclusive: bool = True) -> None:
+_NO_SCOPE = contextlib.nullcontext()
+
+
+def _cuda_device_scope(device) -> contextlib.AbstractContextManager:
+    """Make a CUDA ``device``'s context current for a native call; do nothing for the CPU.
+
+    The native CUDA helpers run on the current context's stream and allocate there,
+    so a call on another device's arrays must make that device's context current first.
+    """
+    return device.context_guard if device.is_cuda else _NO_SCOPE
+
+
+def _array_scan_scalar_type(dtype: type) -> type:
+    """Return the scalar type that :func:`array_scan` scans for ``dtype``, or raise if unsupported."""
+    if wp._src.types.type_is_scalar(dtype) or wp._src.types.type_is_vector(dtype):
+        scalar_type = wp._src.types.type_to_warp(wp._src.types.type_scalar_type(dtype))
+        if scalar_type in (wp.int32, wp.int64, wp.float32, wp.float64):
+            return scalar_type
+    raise RuntimeError(f"Unsupported data type: {type_repr(dtype)}")
+
+
+def array_scan_temp_storage_size(count: int, dtype: type, device: DeviceLike = None) -> int:
+    """Return the temporary storage size in bytes that :func:`array_scan` needs.
+
+    Use this to allocate a buffer for the ``temp_storage`` argument of
+    :func:`array_scan` ahead of time, for example before a graph capture.
+
+    The size depends on ``count``, the scalar type of ``dtype``, and the
+    device. It does not depend on the vector length of ``dtype``, on whether
+    the scan is inclusive or exclusive, or on the array strides, so one buffer
+    can serve all of these. A buffer sized for ``count`` elements is also large
+    enough for any scan of at most ``count`` elements with the same scalar type
+    on the same device. CPU scans need no temporary storage, so the size is
+    ``0`` on CPU devices.
+
+    Args:
+        count: Number of array elements to scan.
+        dtype: Data type of the arrays to scan. Must be a scalar or vector type
+          with scalar type ``int32``, ``int64``, ``float32``, or ``float64``.
+        device: The device the scan runs on. If ``None``, the default device is used.
+
+    Returns:
+        The number of bytes of temporary storage required.
+
+    Raises:
+        RuntimeError: If ``dtype`` is unsupported or if the size query fails.
+        ValueError: If ``count`` is negative or exceeds the 32-bit element limit.
+
+    Example:
+        .. code-block:: python
+
+            n = 4096
+            temp = wp.empty(
+                wp.utils.array_scan_temp_storage_size(n, wp.int32, device="cuda:0"),
+                dtype=wp.uint8,
+                device="cuda:0",
+            )
+            src = wp.ones(n, dtype=wp.int32, device="cuda:0")
+            dst = wp.empty_like(src)
+
+            with wp.ScopedCapture(device="cuda:0") as capture:
+                wp.utils.array_scan(src, dst, inclusive=False, temp_storage=temp)
+    """
+    count = operator.index(count)
+    if count < 0 or count > 2**31 - 1:
+        raise ValueError(f"count must be in the range [0, 2**31 - 1], got {count}")
+
+    scalar_type = _array_scan_scalar_type(dtype)
+
+    device = wp.get_device(device)
+    if not device.is_cuda or count == 0:
+        return 0
+
+    from warp._src.context import runtime  # noqa: PLC0415
+
+    if scalar_type == wp.int32:
+        native_func = runtime.core.wp_array_scan_int_device_temp_storage_size
+    elif scalar_type == wp.int64:
+        native_func = runtime.core.wp_array_scan_int64_device_temp_storage_size
+    elif scalar_type == wp.float32:
+        native_func = runtime.core.wp_array_scan_float_device_temp_storage_size
+    else:
+        native_func = runtime.core.wp_array_scan_double_device_temp_storage_size
+
+    size = ctypes.c_size_t(0)
+    if not native_func(device.context, count, ctypes.byref(size)):
+        raise RuntimeError(runtime.get_error_string())
+    return size.value
+
+
+@warp_function
+def array_scan(
+    in_array: wp.array, out_array: wp.array, inclusive: bool = True, temp_storage: wp.array | None = None
+) -> None:
     """Perform a scan (prefix sum) operation on an array.
 
     This function computes the inclusive or exclusive scan of the input array and stores the result in the output array.
@@ -59,15 +182,39 @@ def array_scan(in_array: wp.array, out_array: wp.array, inclusive: bool = True) 
     negatively-strided arrays raise :exc:`NotImplementedError`; run those scans
     outside the captured region.
 
+    On CUDA devices, the scan allocates temporary storage and frees it before
+    returning unless ``temp_storage`` is given. A caller-provided buffer is
+    only accessed by work enqueued on the current stream of
+    ``in_array.device``, in stream order. Scans that run one after another on
+    the same stream may share one buffer, but scans that can run concurrently,
+    such as scans on different streams, need separate buffers. A CUDA graph
+    that captures the scan refers to the buffer's address, so keep the buffer
+    alive and do not reallocate it for as long as the graph may be launched.
+    A graph saved with :func:`wp.capture_save() <warp.capture_save>` does not
+    store the buffer; :func:`wp.capture_load() <warp.capture_load>` gives the
+    loaded graph its own scan storage, including for scans in conditional
+    bodies.
+
     Args:
         in_array: Input array to scan. Must be a scalar or vector type with scalar type ``int32``, ``int64``,
           ``float32``, or ``float64``.
         out_array: Output array to store scan results. Must match input array type and size.
         inclusive: If ``True``, performs an inclusive scan (includes current element in sum).
           If ``False``, performs an exclusive scan (excludes current element).
+        temp_storage: Optional caller-provided temporary storage for CUDA scans.
+          If ``None``, the scan allocates its temporary storage and frees it
+          before returning. Otherwise, this must be a contiguous array on the
+          same device as ``in_array`` holding at least
+          :func:`array_scan_temp_storage_size` bytes; its data type does not
+          matter and its contents are overwritten. The scan then neither
+          allocates nor frees memory, which makes it usable in
+          :func:`wp.capture_if() <warp.capture_if>` and
+          :func:`wp.capture_while() <warp.capture_while>` bodies and in CUDA
+          graph captures that Warp did not start. CPU scans do not use it.
 
     Raises:
-        RuntimeError: If array storage devices don't match, if storage size is insufficient, or if data types are unsupported.
+        RuntimeError: If array storage devices don't match, if storage size is insufficient, if data types
+          are unsupported, or if ``temp_storage`` is invalid or too small.
         NotImplementedError: If called with a non-empty, negatively-strided
           array during CPU graph capture or CUDA graph capture with
           ``apic=True``.
@@ -84,6 +231,16 @@ def array_scan(in_array: wp.array, out_array: wp.array, inclusive: bool = True) 
             f"In and out array data types do not match ({type_repr(in_array.dtype)} vs {type_repr(out_array.dtype)})"
         )
 
+    if temp_storage is not None:
+        if not isinstance(temp_storage, Array):
+            raise RuntimeError(f"temp_storage must be a Warp array, got {type(temp_storage).__name__}")
+        if temp_storage.device != in_array.device:
+            raise RuntimeError(
+                f"temp_storage device does not match the array device ({temp_storage.device} vs {in_array.device})"
+            )
+        if not temp_storage.is_contiguous:
+            raise RuntimeError("temp_storage must be contiguous")
+
     if in_array.size == 0:
         return
 
@@ -93,10 +250,7 @@ def array_scan(in_array: wp.array, out_array: wp.array, inclusive: bool = True) 
     if not out_array.is_contiguous and out_array.ndim != 1:
         raise RuntimeError("Output array must be contiguous or one-dimensional")
 
-    if not (wp._src.types.type_is_scalar(in_array.dtype) or wp._src.types.type_is_vector(in_array.dtype)):
-        raise RuntimeError(f"Unsupported data type: {type_repr(in_array.dtype)}")
-
-    scalar_type = wp._src.types.type_scalar_type(in_array.dtype)
+    scalar_type = _array_scan_scalar_type(in_array.dtype)
     type_length = wp._src.types.type_size(in_array.dtype)
     dtype_size = wp._src.types.type_size_in_bytes(in_array.dtype)
     in_stride = in_array.strides[0] if in_array.ndim == 1 and not in_array.is_contiguous else dtype_size
@@ -139,13 +293,41 @@ def array_scan(in_array: wp.array, out_array: wp.array, inclusive: bool = True) 
         else:
             raise RuntimeError(f"Unsupported data type: {type_repr(in_array.dtype)}")
 
-    status = native_func(in_array.ptr, out_array.ptr, in_array.size, in_stride, out_stride, type_length, inclusive)
+    if in_array.device.is_cpu:
+        native_func(in_array.ptr, out_array.ptr, in_array.size, in_stride, out_stride, type_length, inclusive)
+        return
+
+    temp_ptr = 0
+    temp_bytes = 0
+    if temp_storage is not None:
+        temp_bytes = temp_storage.size * wp._src.types.type_size_in_bytes(temp_storage.dtype)
+        if temp_bytes == 0:
+            # A null pointer would make the native scan allocate instead.
+            required = array_scan_temp_storage_size(in_array.size, in_array.dtype, in_array.device)
+            raise RuntimeError(
+                f"Warp error: array_scan() temporary storage is too small: {required} bytes required, 0 bytes provided"
+            )
+        temp_ptr = temp_storage.ptr
+
+    with _cuda_device_scope(in_array.device):
+        status = native_func(
+            in_array.ptr,
+            out_array.ptr,
+            in_array.size,
+            in_stride,
+            out_stride,
+            type_length,
+            inclusive,
+            temp_ptr,
+            temp_bytes,
+        )
 
     # Only the CUDA implementations return a status.
     if in_array.device.is_cuda and not status:
         raise RuntimeError(runtime.get_error_string())
 
 
+@warp_function
 def radix_sort_pairs(
     keys: wp.array, values: wp.array, count: int, begin_bit: int = 0, end_bit: int | None = None
 ) -> None:
@@ -242,23 +424,26 @@ def radix_sort_pairs(
             )
     elif keys.device.is_cuda:
         if keys.dtype == wp.int32:
-            runtime.core.wp_radix_sort_pairs_int_device(keys.ptr, values.ptr, count, begin_bit, end_bit, value_size)
+            native_func = runtime.core.wp_radix_sort_pairs_int_device
         elif keys.dtype == wp.uint32:
-            runtime.core.wp_radix_sort_pairs_uint_device(keys.ptr, values.ptr, count, begin_bit, end_bit, value_size)
+            native_func = runtime.core.wp_radix_sort_pairs_uint_device
         elif keys.dtype == wp.float32:
-            runtime.core.wp_radix_sort_pairs_float_device(keys.ptr, values.ptr, count, begin_bit, end_bit, value_size)
+            native_func = runtime.core.wp_radix_sort_pairs_float_device
         elif keys.dtype == wp.float64:
-            runtime.core.wp_radix_sort_pairs_double_device(keys.ptr, values.ptr, count, begin_bit, end_bit, value_size)
+            native_func = runtime.core.wp_radix_sort_pairs_double_device
         elif keys.dtype == wp.int64:
-            runtime.core.wp_radix_sort_pairs_int64_device(keys.ptr, values.ptr, count, begin_bit, end_bit, value_size)
+            native_func = runtime.core.wp_radix_sort_pairs_int64_device
         elif keys.dtype == wp.uint64:
-            runtime.core.wp_radix_sort_pairs_uint64_device(keys.ptr, values.ptr, count, begin_bit, end_bit, value_size)
+            native_func = runtime.core.wp_radix_sort_pairs_uint64_device
         else:
             raise RuntimeError(
                 f"Unsupported keys and values data types: {type_repr(keys.dtype)}, {type_repr(values.dtype)}"
             )
+        with keys.device.context_guard:
+            native_func(keys.ptr, values.ptr, count, begin_bit, end_bit, value_size)
 
 
+@warp_function
 def segmented_sort_pairs(
     keys: wp.array[wp.int32] | wp.array[wp.float32],
     values: wp.array[wp.int32],
@@ -436,27 +621,23 @@ def segmented_sort_pairs(
             raise ValueError(runtime.get_error_string())
     elif keys.device.is_cuda:
         if keys.dtype == wp.int32 and values.dtype == wp.int32:
-            runtime.core.wp_segmented_sort_pairs_int_device(
-                keys.ptr,
-                values.ptr,
-                count,
-                segment_start_indices_ptr,
-                segment_end_indices_ptr,
-                num_segments,
-            )
+            native_func = runtime.core.wp_segmented_sort_pairs_int_device
         elif keys.dtype == wp.float32 and values.dtype == wp.int32:
-            runtime.core.wp_segmented_sort_pairs_float_device(
-                keys.ptr,
-                values.ptr,
-                count,
-                segment_start_indices_ptr,
-                segment_end_indices_ptr,
-                num_segments,
-            )
+            native_func = runtime.core.wp_segmented_sort_pairs_float_device
         else:
             raise RuntimeError(f"Unsupported data type: {type_repr(keys.dtype)}")
+        with keys.device.context_guard:
+            native_func(
+                keys.ptr,
+                values.ptr,
+                count,
+                segment_start_indices_ptr,
+                segment_end_indices_ptr,
+                num_segments,
+            )
 
 
+@warp_function
 def runlength_encode(
     values: wp.array,
     run_values: wp.array,
@@ -555,9 +736,10 @@ def runlength_encode(
             raise RuntimeError(f"Unsupported data type: {type_repr(values.dtype)}")
     elif values.device.is_cuda:
         if values.dtype == wp.int32:
-            runtime.core.wp_runlength_encode_int_device(
-                values.ptr, run_values.ptr, run_lengths.ptr, run_count.ptr, value_count
-            )
+            with values.device.context_guard:
+                runtime.core.wp_runlength_encode_int_device(
+                    values.ptr, run_values.ptr, run_lengths.ptr, run_count.ptr, value_count
+                )
         else:
             raise RuntimeError(f"Unsupported data type: {type_repr(values.dtype)}")
 
@@ -615,6 +797,18 @@ def _validate_apic_array_reduction_layout(operation, inputs, out, axis, output_s
         raise RuntimeError(f"APIC capture requires {operation}() participating strides to be scalar-aligned")
 
 
+def _array_is_compact(values):
+    """Return whether the logical elements occupy dense, non-overlapping storage."""
+    expected_stride = wp._src.types.type_size_in_bytes(values.dtype)
+    for stride, size in sorted(zip(values.strides, values.shape, strict=True)):
+        if size > 1:
+            if stride != expected_stride:
+                return False
+            expected_stride *= size
+    return True
+
+
+@warp_function
 def array_sum(
     values: wp.array, out: wp.array | None = None, value_count: int | None = None, axis: int | None = None
 ) -> wp.array | float:
@@ -622,19 +816,24 @@ def array_sum(
 
     This function computes the sum of array elements, optionally along a specified axis.
     The operation can be performed on the entire array or along a specific dimension.
+    Partial whole-array reductions process elements in logical row-major order.
+    Full reductions of compact arrays may use physical storage order.
 
     During CPU graph capture, or CUDA graph capture with ``apic=True``,
     non-empty calls require an explicit ``out`` array so replay can store the
     current result. Existing whole-array, explicit-count, composite-dtype, and
-    positive-stride axis reductions are recorded. Negative strides raise
-    ``NotImplementedError`` during API Capture (APIC) recording. Counts and
+    positive-stride axis reductions are recorded. Non-empty whole-array reductions
+    that require a contiguous copy are unsupported during API Capture (APIC)
+    recording; make inputs contiguous before capture or specify an axis for
+    strided reductions. Negative strides raise ``NotImplementedError`` during APIC recording. Counts and
     reduction strides must fit signed 32-bit integers, and participating
     addresses and strides must be aligned to the scalar type.
 
     Args:
         values: Input array to sum. Its scalar type must be ``float32`` or ``float64``.
         out: Output array to store results. If ``None``, a new array is created.
-        value_count: Number of elements to process. If ``None``, processes entire array.
+        value_count: Number of elements to process. Must not exceed the input size, or the selected axis length when
+            ``axis`` is specified. If ``None``, processes the entire reduction.
         axis: Axis along which to compute sum. Negative values count from the last dimension. If ``None``, computes
             sum of all elements.
 
@@ -644,20 +843,21 @@ def array_sum(
 
     Raises:
         IndexError: If ``axis`` is outside the valid range for ``values``.
-        RuntimeError: If output array storage device or data type is incompatible with input array, or if an
-            APIC-recorded call uses an unsupported count or memory layout.
+        RuntimeError: If ``value_count`` exceeds the reduction size, output array storage device or data type is
+            incompatible with input array, or an APIC-recorded call uses an unsupported count or memory layout.
         NotImplementedError: If a non-empty call during APIC recording omits
             ``out``. Also raised if any input or output array has a negative
-            stride during APIC recording, including for a zero-count call.
+            stride during APIC recording, including for a zero-count call, or a
+            non-empty whole-array reduction requires a contiguous copy during APIC recording.
     """
     if axis is not None:
         axis = _normalize_array_reduction_axis("array_sum", axis, values.ndim)
 
+    max_count = values.size if axis is None else values.shape[axis]
     if value_count is None:
-        if axis is None:
-            value_count = values.size
-        else:
-            value_count = values.shape[axis]
+        value_count = max_count
+    elif value_count > max_count:
+        raise RuntimeError(f"array_sum() value_count must not exceed {max_count}, got {value_count}")
 
     if axis is None:
         output_shape = (1,)
@@ -669,6 +869,9 @@ def array_sum(
     has_reduction_work = value_count > 0 and all(dim > 0 for dim in output_shape)
     type_size = wp._src.types.type_size(values.dtype)
     scalar_type = wp._src.types.type_scalar_type(values.dtype)
+    requires_copy = (
+        axis is None and not values.is_contiguous and (value_count != values.size or not _array_is_compact(values))
+    )
 
     apic_capture = context._get_apic_capture_for_device(values.device)
     if apic_capture is not None:
@@ -684,6 +887,11 @@ def array_sum(
             out is not None and any(stride < 0 for stride in out.strides)
         ):
             raise NotImplementedError("APIC capture does not support array_sum() with negative strides")
+        if has_reduction_work and requires_copy:
+            raise NotImplementedError(
+                "APIC capture does not support array_sum() with non-contiguous inputs "
+                "requiring a copy when axis is None"
+            )
 
     if apic_capture is not None and value_count == 0 and out is None and axis is None:
         return _array_reduce_host_zero(values.dtype)
@@ -731,29 +939,34 @@ def array_sum(
             raise RuntimeError(f"Unsupported data type: {type_repr(values.dtype)}")
 
     if axis is None:
+        if requires_copy:
+            values = values.contiguous()
         stride = wp._src.types.type_size_in_bytes(values.dtype)
-        native_func(values.ptr, out.ptr, value_count, stride, type_size)
+        with _cuda_device_scope(values.device):
+            native_func(values.ptr, out.ptr, value_count, stride, type_size)
 
         if host_return:
             return out.numpy()[0]
         return out
 
     stride = values.strides[axis]
-    for idx in np.ndindex(output_shape):
-        out_offset = sum(i * s for i, s in zip(idx, out.strides, strict=True))
-        val_offset = sum(i * s for i, s in zip(idx, values.strides, strict=True))
+    with _cuda_device_scope(values.device):
+        for idx in np.ndindex(output_shape):
+            out_offset = sum(i * s for i, s in zip(idx, out.strides, strict=True))
+            val_offset = sum(i * s for i, s in zip(idx, values.strides, strict=True))
 
-        native_func(
-            values.ptr + val_offset,
-            out.ptr + out_offset,
-            value_count,
-            stride,
-            type_size,
-        )
+            native_func(
+                values.ptr + val_offset,
+                out.ptr + out_offset,
+                value_count,
+                stride,
+                type_size,
+            )
 
     return out
 
 
+@warp_function
 def array_inner(
     a: wp.array, b: wp.array, out: wp.array | None = None, count: int | None = None, axis: int | None = None
 ) -> wp.array | float:
@@ -761,12 +974,16 @@ def array_inner(
 
     This function computes the dot product between two arrays with the same shape, optionally along a specified axis.
     When ``axis`` is ``None``, it computes a single inner product over the flattened arrays.
+    Partial reductions and inputs with different layouts use logical row-major order.
+    Full reductions of inputs with the same compact layout may use physical storage order.
 
     During CPU graph capture, or CUDA graph capture with ``apic=True``,
     non-empty calls require an explicit ``out`` array so replay can store the
     current result. Existing whole-array, explicit-count, composite-dtype, and
-    positive-stride axis reductions are recorded. Negative strides raise
-    ``NotImplementedError`` during API Capture (APIC) recording. Counts and
+    positive-stride axis reductions are recorded. Non-empty whole-array reductions
+    that require contiguous copies are unsupported during API Capture (APIC)
+    recording; make inputs contiguous before capture or specify an axis for
+    strided reductions. Negative strides raise ``NotImplementedError`` during APIC recording. Counts and
     reduction strides must fit signed 32-bit integers, and participating
     addresses and strides must be aligned to the scalar type.
 
@@ -774,7 +991,8 @@ def array_inner(
         a: First input array.
         b: Second input array. Must have the same shape and data type as ``a``.
         out: Output array to store results. If ``None``, a new array is created.
-        count: Number of elements to process. If ``None``, processes entire arrays.
+        count: Number of elements to process. Must not exceed the input size, or the selected axis length when
+            ``axis`` is specified. If ``None``, processes the entire reduction.
         axis: Axis along which to compute inner product. Negative values count from the last dimension. If ``None``,
             computes a single inner product over the flattened arrays.
 
@@ -785,11 +1003,12 @@ def array_inner(
     Raises:
         ValueError: If ``a`` and ``b`` have different shapes.
         IndexError: If ``axis`` is outside the valid range for ``a``.
-        RuntimeError: If array storage devices or data types are incompatible, or if an APIC-recorded call uses an
-            unsupported count or memory layout.
+        RuntimeError: If ``count`` exceeds the reduction size, array storage devices or data types are incompatible,
+            or an APIC-recorded call uses an unsupported count or memory layout.
         NotImplementedError: If a non-empty call during APIC recording omits
             ``out``. Also raised if any input or output array has a negative
-            stride during APIC recording, including for a zero-count call.
+            stride during APIC recording, including for a zero-count call, or a
+            non-empty whole-array reduction requires a contiguous copy during APIC recording.
     """
     if a.shape != b.shape:
         raise ValueError(f"array_inner() arguments must have the same shape, got {a.shape} and {b.shape}")
@@ -803,11 +1022,11 @@ def array_inner(
     if axis is not None:
         axis = _normalize_array_reduction_axis("array_inner", axis, a.ndim)
 
+    max_count = a.size if axis is None else a.shape[axis]
     if count is None:
-        if axis is None:
-            count = a.size
-        else:
-            count = a.shape[axis]
+        count = max_count
+    elif count > max_count:
+        raise RuntimeError(f"array_inner() count must not exceed {max_count}, got {count}")
 
     if axis is None:
         output_shape = (1,)
@@ -819,6 +1038,17 @@ def array_inner(
     has_reduction_work = count > 0 and all(dim > 0 for dim in output_shape)
     type_size = wp._src.types.type_size(a.dtype)
     scalar_type = wp._src.types.type_scalar_type(a.dtype)
+    requires_copy = False
+    if axis is None and (not a.is_contiguous or not b.is_contiguous):
+        # A shared compact layout pairs the same logical elements in physical order.
+        requires_copy = (
+            count != a.size
+            or not _array_is_compact(a)
+            or any(
+                size > 1 and stride_a != stride_b
+                for size, stride_a, stride_b in zip(a.shape, a.strides, b.strides, strict=True)
+            )
+        )
 
     apic_capture = context._get_apic_capture_for_device(a.device)
     if apic_capture is not None:
@@ -834,6 +1064,11 @@ def array_inner(
         has_negative_stride = has_negative_stride or (out is not None and any(stride < 0 for stride in out.strides))
         if has_negative_stride:
             raise NotImplementedError("APIC capture does not support array_inner() with negative strides")
+        if has_reduction_work and requires_copy:
+            raise NotImplementedError(
+                "APIC capture does not support array_inner() with non-contiguous inputs "
+                "requiring a copy when axis is None"
+            )
 
     # Users can provide a device output array for storing the inner-product result.
     # For convenience, if no output array is provided, the result is returned on the host.
@@ -879,9 +1114,13 @@ def array_inner(
             raise RuntimeError(f"Unsupported data type: {type_repr(a.dtype)}")
 
     if axis is None:
+        if requires_copy:
+            a = a.contiguous()
+            b = b.contiguous()
         stride_a = wp._src.types.type_size_in_bytes(a.dtype)
         stride_b = wp._src.types.type_size_in_bytes(b.dtype)
-        native_func(a.ptr, b.ptr, out.ptr, count, stride_a, stride_b, type_size)
+        with _cuda_device_scope(a.device):
+            native_func(a.ptr, b.ptr, out.ptr, count, stride_a, stride_b, type_size)
 
         if host_return:
             return out.numpy()[0]
@@ -890,20 +1129,21 @@ def array_inner(
     stride_a = a.strides[axis]
     stride_b = b.strides[axis]
 
-    for idx in np.ndindex(output_shape):
-        out_offset = sum(i * s for i, s in zip(idx, out.strides, strict=True))
-        a_offset = sum(i * s for i, s in zip(idx, a.strides, strict=True))
-        b_offset = sum(i * s for i, s in zip(idx, b.strides, strict=True))
+    with _cuda_device_scope(a.device):
+        for idx in np.ndindex(output_shape):
+            out_offset = sum(i * s for i, s in zip(idx, out.strides, strict=True))
+            a_offset = sum(i * s for i, s in zip(idx, a.strides, strict=True))
+            b_offset = sum(i * s for i, s in zip(idx, b.strides, strict=True))
 
-        native_func(
-            a.ptr + a_offset,
-            b.ptr + b_offset,
-            out.ptr + out_offset,
-            count,
-            stride_a,
-            stride_b,
-            type_size,
-        )
+            native_func(
+                a.ptr + a_offset,
+                b.ptr + b_offset,
+                out.ptr + out_offset,
+                count,
+                stride_a,
+                stride_b,
+                type_size,
+            )
 
     return out
 
@@ -917,6 +1157,41 @@ def _array_cast_kernel(
     dest[i] = dest.dtype(src[i])
 
 
+@wp.kernel
+def _array_cast_kernel_2d(
+    dest: Any,
+    src: Any,
+):
+    i, j = wp.tid()
+    dest[i, j] = dest.dtype(src[i, j])
+
+
+@wp.kernel
+def _array_cast_kernel_3d(
+    dest: Any,
+    src: Any,
+):
+    i, j, k = wp.tid()
+    dest[i, j, k] = dest.dtype(src[i, j, k])
+
+
+@wp.kernel
+def _array_cast_kernel_4d(
+    dest: Any,
+    src: Any,
+):
+    i, j, k, l = wp.tid()
+    dest[i, j, k, l] = dest.dtype(src[i, j, k, l])
+
+
+_array_cast_kernels = {
+    1: _array_cast_kernel,
+    2: _array_cast_kernel_2d,
+    3: _array_cast_kernel_3d,
+    4: _array_cast_kernel_4d,
+}
+
+
 def array_cast(in_array: warp.array, out_array: warp.array, count: int | None = None):
     """Cast elements from one array to another array with a different data type.
 
@@ -928,11 +1203,13 @@ def array_cast(in_array: warp.array, out_array: warp.array, count: int | None = 
         in_array: Input array to cast from.
         out_array: Output array to cast to. Must have the same device as in_array.
         count: Number of elements to process. If ``None``, processes entire array.
-          or multi-dimensional arrays, partial casting is not supported.
+          For multi-dimensional arrays, partial casting is not supported.
 
     Raises:
-        RuntimeError: If arrays have different devices or if attempting partial casting
-                     on multi-dimensional arrays.
+        RuntimeError: If arrays have different devices, if attempting partial casting
+                     on multi-dimensional arrays, if multi-dimensional arrays have different
+                     shapes, or if ``count`` exceeds the size of either array when the data
+                     types differ.
 
     Note:
         If the input and output arrays have the same data type, this function will
@@ -989,8 +1266,17 @@ def array_cast(in_array: warp.array, out_array: warp.array, count: int | None = 
     if in_array.dtype == out_array.dtype:
         # Same data type, can simply copy
         wp.copy(dest=out_array, src=in_array, count=count)
-    else:
-        wp.launch(kernel=_array_cast_kernel, dim=dim, inputs=[out_array, in_array], device=out_array.device)
+        return
+
+    if in_array.ndim > 1 and in_array.shape != out_array.shape:
+        raise RuntimeError(f"Array shapes do not match ({in_array.shape} vs {out_array.shape})")
+
+    if count > in_array.size or count > out_array.size:
+        raise RuntimeError(
+            f"Cast count ({count}) exceeds the input size ({in_array.size}) or output size ({out_array.size})"
+        )
+
+    wp.launch(kernel=_array_cast_kernels[in_array.ndim], dim=dim, inputs=[out_array, in_array], device=out_array.device)
 
 
 def create_warp_function(func: Callable) -> tuple[wp.Function, warp._src.context.Module]:
@@ -1161,7 +1447,8 @@ def map(
         *inputs: The input arrays or values to pass to the function.
         out: Optional output array(s) to store the result(s). If None, the output array(s) will be created automatically.
         return_kernel: If True, only return the generated kernel without performing the mapping operation.
-        block_dim: The requested number of threads per block. Defaults to 1 on CPU and 256 on CUDA.
+        block_dim: The requested number of threads per block. Defaults to 256 on CUDA. On CPU, defaults to
+            256 when :attr:`warp.config.enable_cpu_blocks` is ``True`` and to 1 otherwise.
         device: The device on which to run the kernel.
 
     Returns:
@@ -1173,6 +1460,7 @@ def map(
 
     from .codegen import Adjoint, Struct, StructInstance  # noqa: PLC0415
     from .types import (  # noqa: PLC0415
+        concrete_array_type,
         is_array,
         type_is_matrix,
         type_is_quaternion,
@@ -1258,9 +1546,10 @@ def map(
             arg_types[arg_name] = inputs[i].dtype
             if device is None:
                 device = inputs[i].device
-            # For cache key: capture array type, dtype, ndim, and broadcast mask
+            # Use the native family so parent arrays and metadata subclasses share generated kernels.
             broadcast_mask = tuple(d == 1 for d in inputs[i].shape)
-            input_descriptors.append((True, type(inputs[i]).__name__, inputs[i].dtype, inputs[i].ndim, broadcast_mask))
+            family = wp.array if type(inputs[i]) is wp.array else concrete_array_type(inputs[i])
+            input_descriptors.append((True, family, inputs[i].dtype, inputs[i].ndim, broadcast_mask))
         else:
             # we pass the input value directly to the function
             warp_type = get_warp_type(inputs[i])
@@ -1268,11 +1557,13 @@ def map(
             input_descriptors.append((False, warp_type))
 
     # Build output type descriptors for cache key
-    # Only differentiate when output is not a regular array (e.g., indexedarray)
+    # Only differentiate when output is not in the regular array family (e.g., indexedarray)
     # since out=None creates regular arrays and should share cache with explicit array outputs
     def get_output_type_descriptor(o):
-        type_name = type(o).__name__
-        return type_name if type_name != "array" else None
+        if type(o) is wp.array:
+            return None
+        family = concrete_array_type(o)
+        return family if family is not wp.array else None
 
     if out is None:
         output_type_descriptor = None  # Will use default 'array' type
@@ -1380,10 +1671,8 @@ def map(
         for arg_name, inp in zip(arg_names, inputs, strict=True):
             if is_array(inp):
                 arr_name = f"{arg_name}_array"
-                array_type_name = type(inp).__name__
-                kernel_args.append(
-                    f"{arr_name}: wp.{array_type_name}(dtype={type_to_code(inp.dtype)}, ndim={inp.ndim})"
-                )
+                array_type_name = concrete_array_type(inp).__name__
+                kernel_args.append(f"{arr_name}: wp.{array_type_name}[{type_to_code(inp.dtype)}, {inp.ndim}]")
                 shape = inp.shape
                 indices = []
                 for i in range(1, len(shape) + 1):
@@ -1396,7 +1685,7 @@ def map(
             else:
                 kernel_args.append(f"{arg_name}: {type_to_code(type(inp))}")
         for i, o in enumerate(outputs):
-            kernel_args.append(f"__out_{i}: wp.{type(o).__name__}(dtype={type_to_code(o.dtype)}, ndim={o.ndim})")
+            kernel_args.append(f"__out_{i}: wp.{concrete_array_type(o).__name__}[{type_to_code(o.dtype)}, {o.ndim}]")
         code = code.format(
             func_name=func_name,
             kernel_args=", ".join(kernel_args),
@@ -1728,8 +2017,6 @@ class ScopedTimer:
             ScopedTimer._thread_local.indent = -1
 
     def __enter__(self):
-        if not self.skip_tape and warp._src.context.runtime is not None and warp._src.context.runtime.tape is not None:
-            warp._src.context.runtime.tape.record_scope_begin(self.name)
         if self.active:
             if self.synchronize:
                 wp.synchronize()
@@ -1756,14 +2043,25 @@ class ScopedTimer:
 
             self.start = time.perf_counter_ns()
 
+        # Begin the tape scope last; __exit__ does not run if entry fails, so it could not end the scope
+        if not self.skip_tape and warp._src.context.runtime is not None and warp._src.context.runtime.tape is not None:
+            warp._src.context.runtime.tape.record_scope_begin(self.name)
+
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         if not self.skip_tape and warp._src.context.runtime is not None and warp._src.context.runtime.tape is not None:
             warp._src.context.runtime.tape.record_scope_end()
         if self.active:
+            # Finish the scope before reporting a CUDA error, and never replace an
+            # exception raised inside the scope.
+            sync_error = None
+
             if self.synchronize:
-                wp.synchronize()
+                try:
+                    wp.synchronize()
+                except Exception as error:
+                    sync_error = error
 
             self.elapsed = (time.perf_counter_ns() - self.start) / 1000000.0
 
@@ -1776,11 +2074,13 @@ class ScopedTimer:
                 self.cp.disable()
                 self.cp.print_stats(sort="tottime")
 
+            self.timing_results = []
             if self.cuda_filter:
                 # end CUDA activity collection, synchronizing if needed
-                self.timing_results = timing_end(synchronize=not self.synchronize)
-            else:
-                self.timing_results = []
+                try:
+                    self.timing_results = timing_end(synchronize=not self.synchronize)
+                except Exception as error:
+                    sync_error = error
 
             if self.dict is not None:
                 self.dict[self.name].append(self.elapsed)
@@ -1803,6 +2103,9 @@ class ScopedTimer:
                     logger.info(f"{indent}{self.name} took {self.elapsed:.2f} ms")
 
                 ScopedTimer._thread_local.indent -= 1
+
+            if sync_error is not None and exc_type is None:
+                raise sync_error
 
 
 class ScopedCudaProfiler:
@@ -2197,10 +2500,19 @@ def timing_end(synchronize: bool = True) -> list[TimingResult]:
 
     Returns:
         A list of :class:`TimingResult` objects for all recorded activities.
+
+    Raises:
+        RuntimeError: If ``synchronize`` is ``True`` and CUDA reports an error from
+            outstanding work. Timing ends and its results are discarded.
     """
 
     if synchronize:
-        warp.synchronize()
+        try:
+            warp.synchronize()
+        except Exception:
+            # end timing so that it does not keep recording later activities
+            warp._src.context.runtime.core.wp_cuda_timing_end(None, 0)
+            raise
 
     # get result count
     count = warp._src.context.runtime.core.wp_cuda_timing_get_result_count()

@@ -287,6 +287,15 @@ For further details on mapping arbitrary functions to Warp arrays, see :func:`wa
 
 Please see the :ref:`Arrays Reference <Arrays>` for more details.
 
+Array Subclasses
+^^^^^^^^^^^^^^^^
+
+Initialized subclasses of Warp arrays can attach Python metadata and be passed
+wherever their native parent family is accepted. Use the built-in array family
+in kernel and function annotations, such as ``wp.array[float]``. See
+:ref:`Array subclass compatibility <array-subclasses>` for the supported
+families, input contract, and limitations.
+
 User Functions
 --------------
 
@@ -537,6 +546,14 @@ use vector types like :class:`wp.vec3() <warp.vec3>`. For larger collections, us
 
     # valid: fixed-size array (stack-allocated, supports array indexing and slicing)
     my_data = wp.zeros(shape=16, dtype=float)
+
+:func:`wp.empty() <warp._src.lang.empty>` creates a fixed-size array like :func:`wp.zeros() <warp._src.lang.zeros>`,
+but leaves its data uninitialized. Use it to skip the zero-fill when every element is written before being read.
+
+.. warning::
+
+    Use ``wp.empty()`` with caution: reading an element before it is written is undefined behavior, and can give
+    different results between runs and devices.
 
 
 Limitations and Unsupported Features

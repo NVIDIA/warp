@@ -55,12 +55,13 @@ print(positions.numpy())
 
 ## Installing
 
-Warp requires Python 3.10 or newer. We publish `warp-lang` wheels on PyPI for Windows (x86-64), Linux (x86-64 and AArch64), and macOS (Apple Silicon). The Windows x86-64 and Linux wheels support CPU execution and CUDA acceleration. The macOS wheels support CPU execution but not Metal acceleration.
+Warp requires Python 3.11 or newer. We publish `warp-lang` wheels on PyPI for Windows (x86-64 and experimental Arm64), Linux (x86-64 and AArch64), and macOS (Apple Silicon). The Windows and Linux wheels support CPU execution and CUDA acceleration. The macOS wheels support CPU execution but not Metal acceleration.
 
 PyPI and nightly wheels for Linux and Windows use CUDA Toolkit 13.4. They require an NVIDIA R580-series or newer driver and a Turing (`sm_75`) or newer GPU for CUDA acceleration. For CUDA 12 environments, download a `+cu12` wheel from [GitHub Releases](https://github.com/NVIDIA/warp/releases) or build Warp from source with CUDA 12.
 
-Windows on Arm supports experimental CUDA source builds with CUDA Toolkit 13.4 or newer; see the
-[Windows on Arm build instructions](https://github.com/NVIDIA/warp/blob/main/docs/user_guide/installation.rst#windows-arm64-builds).
+Starting with Warp 1.19.0, PyPI releases and release candidates include experimental Windows on Arm wheels.
+Install with `pip install warp-lang` from an Arm64 Python environment; see the
+[Windows on Arm installation notes](https://nvidia.github.io/warp/stable/user_guide/installation.html#windows-on-arm).
 
 The easiest way to install Warp is from [PyPI](https://pypi.org/project/warp-lang/):
 
@@ -94,10 +95,6 @@ Before running examples, install the optional example dependencies using:
 ```text
 pip install warp-lang[examples]
 ```
-
-On Linux aarch64 systems (e.g., NVIDIA DGX Spark), the `[examples]` extra automatically installs
-[`usd-exchange`](https://pypi.org/project/usd-exchange/) instead of `usd-core` as a drop-in replacement,
-since `usd-core` wheels are not available for that platform.
 
 Examples can be run from the command-line as follows:
 
@@ -242,6 +239,14 @@ python -m warp.examples.browse
             <td align="center">particle repulsion</td>
             <td align="center">navier-stokes perturbation</td>
         </tr>
+        <tr>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_implicit_projection.py"><img src="./docs/img/examples/optim_implicit_projection.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_quat_shape_align.py"><img src="./docs/img/examples/optim_quat_shape_align.png"></a></td>
+        </tr>
+        <tr>
+            <td align="center">implicit projection</td>
+            <td align="center">quaternion shape alignment</td>
+        </tr>
     </tbody>
 </table>
 
@@ -280,9 +285,13 @@ Please see the following resources for additional background on Warp:
 
 See the [FAQ](https://nvidia.github.io/warp/stable/user_guide/faq.html) for common questions.
 
-Problems, questions, and feature requests can be opened on [GitHub Issues](https://github.com/NVIDIA/warp/issues).
+Report bugs, request features, and suggest documentation improvements through
+[GitHub Issues](https://github.com/NVIDIA/warp/issues).
 
-For inquiries not suited for GitHub Issues, please email <warp-python@nvidia.com>.
+Ask usage questions and discuss early ideas in
+[GitHub Discussions](https://github.com/NVIDIA/warp/discussions).
+
+For inquiries not suited for public discussion, please email <warp-python@nvidia.com>.
 
 ## Contributing
 

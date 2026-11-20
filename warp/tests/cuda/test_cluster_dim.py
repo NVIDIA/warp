@@ -375,10 +375,9 @@ def test_max_cluster_dim_unsupported_returns_one(test, device):
 
 
 def test_get_cuda_max_cluster_dim_preserves_module_block_dim(test, device):
-    """Verify ``get_cuda_max_cluster_dim`` restores ``module.options["block_dim"]`` after probing.
+    """Verify ``get_cuda_max_cluster_dim`` leaves ``module.options["block_dim"]`` unchanged.
 
-    The query loads the module at a probe ``block_dim``, which mutates ``module.options["block_dim"]`` as a side
-    effect. It must restore the prior value so later launches that rely on the default are unaffected.
+    Probing at a non-default ``block_dim`` loads a separate module variant and must not retarget the module default.
     """
 
     @wp.kernel(module="unique")

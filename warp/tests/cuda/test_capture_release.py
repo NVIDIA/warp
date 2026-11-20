@@ -109,6 +109,9 @@ def test_loaded_graph_del_during_capture(test, device):
 
 def test_invalid_free_during_capture_reports_error(test, device):
     """A deferred stream-ordered free of an invalid pointer must report an error when the capture ends."""
+    if sys.platform == "win32":
+        test.skipTest("Skipping test on Windows due to unreliable stderr capture")
+
     core = wp._src.context.runtime.core
     # with unified addressing, a host address is never a device allocation
     host_buffer = ctypes.create_string_buffer(1024)

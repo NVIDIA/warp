@@ -46,24 +46,24 @@ variables:
   UV_PYTHON_PREFERENCE: only-managed
   
   # Standard container images (pinned with SHA256 for supply chain security)
-  UV_TRIXIE_IMAGE: "ghcr.io/astral-sh/uv:0.13.0-trixie@sha256:a59268be16ac86fb4db0cd64abdd7f3e6beb7013eec071642eeee6c6fdacbecc"
-  UV_TRIXIE_SLIM_IMAGE: "ghcr.io/astral-sh/uv:0.13.0-trixie-slim@sha256:a83c72867064d791e84878aae09e248b05c54102ce838ed74c4405a54ff7706b"
-  UV_TRIXIE_SLIM_ARM_IMAGE: "ghcr.io/astral-sh/uv:0.13.0-trixie-slim@sha256:5949e98db1588f58522f056858e414d5282a8abf72033406da7d840346525fa1"
+  UV_TRIXIE_IMAGE: "ghcr.io/astral-sh/uv:0.13.6-trixie@sha256:fd8c2adad7c04e42196aff87c230058efdad5e4fcc02d5ee194d1215285c0f53"
+  UV_TRIXIE_SLIM_IMAGE: "ghcr.io/astral-sh/uv:0.13.6-trixie-slim@sha256:69c55acfdadd2eb7990a38e8aadaf9cfd6dc7671d8973a345448868718046ef4"
+  UV_TRIXIE_SLIM_ARM_IMAGE: "ghcr.io/astral-sh/uv:0.13.6-trixie-slim@sha256:5a40d6e9bd4271bcbd38d3e9c3101cfca630334d5ec5ec94496553946db18c5f"
   MINIFORGE_IMAGE: "condaforge/miniforge3:25.11.0-0@sha256:d2fadb08950045962fd1cfb1eeb6224442027f03095862e725f4c1c7b17a3caf"
   # Warp builder images are pinned per architecture for supply chain security.
-  WARP_BUILDER_IMAGE_CU12_X86_64: "${CI_REGISTRY_IMAGE}/warp-builder:manylinux_2_28-cuda12.9.2-uv0.13.0-x86_64@sha256:307f7df167be451ae0d11ee2f0cbe6fe64760e56401f0f1ff79e60d1bc554fc4"
-  WARP_BUILDER_IMAGE_CU12_AARCH64: "${CI_REGISTRY_IMAGE}/warp-builder:manylinux_2_34-cuda12.9.2-uv0.13.0-aarch64@sha256:a8d4283b40dc10483ec5924cfb7562606eb678c0a715de13677b9e9a820f99ea"
-  WARP_BUILDER_IMAGE_CU13_X86_64: "${CI_REGISTRY_IMAGE}/warp-builder:manylinux_2_28-cuda13.4.2-uv0.13.0-x86_64@sha256:2ca3e21378e007f5b723e662028767f260e8c0b5801f634e6ec833ee050247cf"
-  WARP_BUILDER_IMAGE_CU13_AARCH64: "${CI_REGISTRY_IMAGE}/warp-builder:manylinux_2_34-cuda13.4.2-uv0.13.0-aarch64@sha256:5b80bad3d36d87206707c6ff11f364dd6fbfa2a58326a6690a13100c52e9f196"
+  WARP_BUILDER_IMAGE_CU12_X86_64: "${CI_REGISTRY_IMAGE}/warp-builder:manylinux_2_28-cuda12.9.2-uv0.13.6-x86_64@sha256:d2966c9e898d00b30b2514ecca1d6ef3533d7485e45ed9bafd946849930a5a2d"
+  WARP_BUILDER_IMAGE_CU12_AARCH64: "${CI_REGISTRY_IMAGE}/warp-builder:manylinux_2_34-cuda12.9.2-uv0.13.6-aarch64@sha256:97978756b55901c6794c29652c48d672b1164bface4aba87b428bc847cdd0982"
+  WARP_BUILDER_IMAGE_CU13_X86_64: "${CI_REGISTRY_IMAGE}/warp-builder:manylinux_2_28-cuda13.4.2-uv0.13.6-x86_64@sha256:a04d0592e2e8c4dc30e15295e7b01bfd7beda42343025881dd09bdbb0bb92b1d"
+  WARP_BUILDER_IMAGE_CU13_AARCH64: "${CI_REGISTRY_IMAGE}/warp-builder:manylinux_2_34-cuda13.4.2-uv0.13.6-aarch64@sha256:d4806e01bae87b50dd180f4357272fb8edace1ab77cb15b9013f4cce1925cd5e"
   
   UV_PYTHON:
     value: "3.12"
     options:
+      - "3.15"
       - "3.14"
       - "3.13"
       - "3.12"
       - "3.11"
-      - "3.10"
     description: "The default UV Python version used in the main testing jobs."
 
   # NVCARPS skill validation and signing
@@ -258,7 +258,7 @@ validate fragments:
         - changelog/**/*
         - pyproject.toml
   script:
-    - uvx --from towncrier==25.8.0 towncrier build --draft --version Unreleased
+    - uvx --from towncrier==26.9.0 towncrier build --draft --version Unreleased
 
 type-check stubs:
   stage: quality
@@ -286,6 +286,7 @@ doctest:
   before_script:
     - df -h
     - !reference [.snippets, move-linux-x86_64-binaries]
+    - !reference [.snippets, fetch-intersphinx-fallback]
   script:
     - uv run --extra docs build_docs.py --doctest --doctest-jobs 4 --no-html --warnings-as-errors
 
@@ -429,7 +430,7 @@ cppcheck:
 #
 # Comprehensive test suite across multiple platforms (Linux x86_64/aarch64,
 # Windows, specialized hardware like Orin/Thor/Blackwell), Python versions
-# (3.10-3.15), and optional integrations (MuJoCo, JAX, PyTorch). Some jobs
+# (3.11-3.15), and optional integrations (MuJoCo, JAX, PyTorch). Some jobs
 # compute code coverage, others focus on compatibility and performance (ASV).
 # ==============================================================================
 
@@ -457,6 +458,7 @@ linux-aarch64 cu12 test:
     - .test_common_with_coverage
   before_script:
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-aarch64-binaries]
   script:
     - uv run --extra dev --with "jax[cuda12]>=0.5" --with rmm-cu12 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
@@ -469,6 +471,7 @@ linux-aarch64 cu13 test:
     - .test_common_with_coverage
   before_script:
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-aarch64-binaries]
   script:
     - uv run --extra dev --with "jax[cuda13]>=0.5" --with rmm-cu13 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
@@ -478,7 +481,7 @@ linux-aarch64 cu12 test orin:
   image: $UV_TRIXIE_SLIM_ARM_IMAGE
   # Keep the test runner's --timeout below the job timeout so the runner can
   # still write a partial JUnit report before GitLab kills the job.
-  timeout: 1h 30m
+  timeout: 2h
   extends:
     - .save_test_report_artifact
   rules:
@@ -492,11 +495,12 @@ linux-aarch64 cu12 test orin:
   before_script:
     - !reference [.snippets, section-start-install-deps]
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-aarch64-binaries]
     - uv sync --extra dev --no-install-package psutil
     - !reference [.snippets, section-end-install-deps]
   script:
-    - uv run --with rmm-cu12 -m warp.tests --maxjobs 4 --timeout 5100 --junit-report-xml rspec.xml -s autodetect --failfast
+    - uv run --with rmm-cu12 -m warp.tests --maxjobs 4 --timeout 6900 --junit-report-xml rspec.xml -s autodetect --failfast
   tags:
     - gpu/orin
 
@@ -509,6 +513,7 @@ linux-aarch64 cu13 test thor:
   before_script:
     - !reference [.snippets, section-start-install-deps]
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-aarch64-binaries]
     - uv sync --extra dev
     - !reference [.snippets, section-end-install-deps]
@@ -526,6 +531,7 @@ linux-aarch64 cu12 test dgx spark:
   before_script:
     - !reference [.snippets, section-start-install-deps]
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-aarch64-binaries]
     - uv sync --extra dev
     - !reference [.snippets, section-end-install-deps]
@@ -545,6 +551,7 @@ linux-aarch64 cu13 test dgx spark:
   before_script:
     - !reference [.snippets, section-start-install-deps]
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-aarch64-binaries]
     - uv sync --extra dev
     - !reference [.snippets, section-end-install-deps]
@@ -565,6 +572,7 @@ linux-x86_64 cu12 test:
     - .test_common_with_coverage
   before_script:
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-x86_64-binaries]
     # HACK: disable P2P tests due to misbehaving agents
     - export WARP_DISABLE_P2P_TESTS=1
@@ -581,6 +589,7 @@ linux-x86_64 cu13 test:
     - .test_common_with_coverage
   before_script:
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-x86_64-binaries]
     # HACK: disable P2P tests due to misbehaving agents
     - export WARP_DISABLE_P2P_TESTS=1
@@ -593,16 +602,13 @@ linux-x86_64 cu13 blackwell test:
   image: $UV_TRIXIE_SLIM_IMAGE
   extends:
     - .test_common_with_coverage
+    - .blackwell_warp_tags
   before_script:
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-x86_64-binaries]
   script:
     - uv run --extra dev --extra torch-cu13 --with "jax[cuda13]>=0.5" --with rmm-cu13 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
-  tags:
-    - arch/x86_64
-    - gpu/B40
-    - os/linux
-    - platform/horde
 
 linux-x86_64 cu13 free-threaded test:
   stage: test
@@ -618,6 +624,7 @@ linux-x86_64 cu13 free-threaded test:
   before_script:
     - !reference [.snippets, section-start-install-deps]
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - apt-get update && apt-get install build-essential --no-install-recommends -y
     - uv python install 3.14t
     - !reference [.snippets, move-linux-x86_64-binaries]
@@ -646,6 +653,7 @@ linux-x86_64 python 3.15 test:
   before_script:
     - !reference [.snippets, section-start-install-deps]
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - apt-get update && apt-get install build-essential --no-install-recommends -y
     - uv python install 3.15
     - !reference [.snippets, move-linux-x86_64-binaries]
@@ -669,9 +677,31 @@ linux-x86_64 cu13 debug-mode test:
     - .basic_test_changes_rules
   before_script:
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-x86_64-binaries]
   script:
     - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml --suite debug --warp-debug --isolate-test-processes --failfast
+
+# Compile CUDA kernels with Clang instead of NVRTC. NVRTC treats native functions
+# without CUDA_CALLABLE as device functions, so only Clang-based toolchains
+# reject them.
+linux-x86_64 cu13 llvm-cuda test:
+  stage: test
+  needs: [linux-x86_64 cu13 build]
+  image: $UV_TRIXIE_SLIM_IMAGE
+  variables:
+    IPP_RUNNER_EXECUTION_DURATION: "2700"
+  extends:
+    - .ipp_lnx_x86_64_gpu
+    - .save_test_report_artifact
+    - .basic_test_changes_rules
+  before_script:
+    - df -h
+    - !reference [.snippets, print-cpu-info]
+    - !reference [.snippets, move-linux-x86_64-binaries]
+  script:
+    - uv run --extra dev python -c "import warp as wp; wp.print_diagnostics(); assert wp.get_cuda_devices(), 'No CUDA device visible to Warp'"
+    - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml --suite llvm-cuda --warp-llvm-cuda --failfast
 
 # Note that for throughput reasons this runs on a single-GPU runner
 windows-x86_64 cu12 test:
@@ -770,6 +800,7 @@ linux-x86_64 cu13 warp-init test:
     - .basic_test_changes_rules
   before_script:
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-x86_64-binaries]
   script:
     # Keep exactly one test per class: class-level isolation must give every test
@@ -810,9 +841,19 @@ linux-x86_64 cu13 mujoco-warp test:
     # Python environment
     - uv venv
     - uv pip install -e .
-    - uv pip install mujoco
     - uv pip install "git+https://github.com/google-deepmind/mujoco_warp@main"
     - uv pip install pytest pytest-xdist "jax[cuda13]"
+    - |
+      uv run --no-sync python - <<'PY'
+      from importlib import metadata
+      import json
+
+      print(f"mujoco-core: {metadata.version('mujoco-core')}")
+      distribution = metadata.distribution("mujoco-warp")
+      origin = json.loads(distribution.read_text("direct_url.json"))
+      commit = origin["vcs_info"]["commit_id"]
+      print(f"MuJoCo Warp commit: {commit}")
+      PY
     - source .venv/bin/activate
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
@@ -838,9 +879,19 @@ linux-x86_64 cu13 mujoco-warp serial test:
     # Python environment
     - uv venv
     - uv pip install -e .
-    - uv pip install mujoco
     - uv pip install "git+https://github.com/google-deepmind/mujoco_warp@main"
     - uv pip install pytest
+    - |
+      uv run --no-sync python - <<'PY'
+      from importlib import metadata
+      import json
+
+      print(f"mujoco-core: {metadata.version('mujoco-core')}")
+      distribution = metadata.distribution("mujoco-warp")
+      origin = json.loads(distribution.read_text("direct_url.json"))
+      commit = origin["vcs_info"]["commit_id"]
+      print(f"MuJoCo Warp commit: {commit}")
+      PY
     - source .venv/bin/activate
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
@@ -884,12 +935,13 @@ linux-x86_64 cu13 python-matrix test:
     - .basic_test_changes_rules
   parallel:
     matrix:
-      - UV_PYTHON: "3.10"
+      - UV_PYTHON: "3.11"
       - UV_PYTHON: "3.13"
       - UV_PYTHON: "3.14"
   before_script:
     - !reference [.snippets, section-start-install-deps]
     - df -h
+    - !reference [.snippets, print-cpu-info]
     # Python 3.14 requires a C compiler for some dependencies
     - if [ "$UV_PYTHON" = "3.14" ]; then apt-get update && apt-get install build-essential --no-install-recommends -y; fi
     - !reference [.snippets, move-linux-x86_64-binaries]
@@ -900,7 +952,7 @@ linux-x86_64 cu13 python-matrix test:
 # Ensure cpp examples compile and run
 linux-x86_64 cu13 cpp-examples test:
   stage: test
-  image: ${CI_REGISTRY_IMAGE}/warp-cpp-test-env:cuda13.4.2-ubuntu24.04-4d47b4236db8@sha256:466a150a2694ed5fba6dbfb01773eb5a44cfb0440f8d103face04c8a3dae8986
+  image: ${CI_REGISTRY_IMAGE}/warp-cpp-test-env:cuda13.4.2-ubuntu24.04-e3d68d7bf4f0@sha256:ed661d6f792416356d28f2e0650f774046e9c58f87732cb1865cfd961adf9807
   needs: [linux-x86_64 cu13 build]
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
@@ -909,6 +961,7 @@ linux-x86_64 cu13 cpp-examples test:
     - .basic_test_changes_rules
   before_script:
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-x86_64-binaries]
     - ls -lh warp/bin/*.so  # Verify binaries exist
   script:
@@ -961,48 +1014,80 @@ clang compilation:
     - .basic_test_changes_rules
     - .trigger_common
 
-# Run the airspeed velocity (ASV) benchmark suite. Auto-triggers on MR
-# pipelines whose diff touches any path that could affect a benchmark
-# result; the child pipeline itself further gates the heavy tile suite
-# on tile-relevant paths. `needs: []` so the trigger fires at pipeline
-# start and the child's build job is not blocked behind the parent's
-# test stage.
+# Paths that could affect an airspeed velocity (ASV) benchmark result.
+.asv-benchmark-paths:
+  changes:
+    - .gitlab-ci.yml
+    - .gitlab/ci/asv*.yml
+    - asv/**/*
+    - asv.conf.json
+    - warp/*.py
+    - warp/*.pyi
+    - warp/py.typed
+    - warp/_src/**/*
+    - warp/examples/assets/**/*
+    - warp/examples/fem/utils.py
+    - warp/fem/**/*
+    - warp/jax_experimental/**/*
+    - warp/native/**/*
+    - warp/optim/**/*
+    - warp/render/**/*
+    - pyproject.toml
+    - setup.py
+    - deps/*
+    - build_lib.py
+    - build_llvm.py
+
+# Run the ASV benchmark suite. Auto-triggers on MR pipelines whose diff
+# touches any path that could affect a benchmark result; the child pipeline
+# itself further gates the heavy tile suite on tile-relevant paths.
+# `needs: []` so the trigger fires at pipeline start and the child's build
+# job is not blocked behind the parent's test stage.
 asv benchmarks:
   stage: child pipelines
   trigger:
-    include: /.gitlab/ci/asv.yml
+    include: /.gitlab/ci/asv-mr.yml
   needs: []
   extends:
     - .trigger_common
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
-      changes:
-        - .gitlab-ci.yml
-        - .gitlab/ci/asv.yml
-        - asv/**/*
-        - asv.conf.json
-        - warp/*.py
-        - warp/*.pyi
-        - warp/py.typed
-        - warp/_src/**/*
-        - warp/examples/assets/**/*
-        - warp/examples/fem/utils.py
-        - warp/fem/**/*
-        - warp/jax_experimental/**/*
-        - warp/native/**/*
-        - warp/optim/**/*
-        - warp/render/**/*
-        - pyproject.toml
-        - setup.py
-        - deps/*
-        - build_lib.py
-        - build_llvm.py
+      changes: !reference [.asv-benchmark-paths, changes]
     # Manual fallback: any MR whose diff doesn't match the path filter
     # above can still opt in to bench via a play button (e.g. tooling
     # changes that affect codegen but live outside warp/**).
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
       when: manual
       allow_failure: true
+
+# Benchmark each push to main that touches the same paths against the main
+# tip before the push, on the L40 and RTX PRO 6000 pools.
+asv main benchmarks:
+  stage: child pipelines
+  trigger:
+    include: /.gitlab/ci/asv-main.yml
+  needs: []
+  extends:
+    - .trigger_common
+  variables:
+    ASV_COMPARE_MODE: push
+    ASV_PUSH_BEFORE_SHA: $CI_COMMIT_BEFORE_SHA
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes: !reference [.asv-benchmark-paths, changes]
+
+# Benchmark the last day of main on the B200 pool from the daily schedule.
+asv nightly benchmarks:
+  stage: child pipelines
+  trigger:
+    include: /.gitlab/ci/asv-main.yml
+  needs: []
+  extends:
+    - .trigger_common
+  variables:
+    ASV_COMPARE_MODE: nightly
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 # ==============================================================================
 # Packaging Jobs
@@ -1040,6 +1125,7 @@ create pypi wheels:
     # Move binaries into platform-specific folders. Already done in the build jobs for Linux.
     - !reference [.snippets, move-windows-binaries-to-platform-dir]
     - !reference [.snippets, move-macos-binaries-to-platform-dir]
+    - !reference [.snippets, check-wheel-version-files]
   script:
     - uv build --wheel -C--build-option=-Pwindows-x86_64
     - uv build --wheel -C--build-option=-Plinux-x86_64
@@ -1075,6 +1161,7 @@ create cu12 pypi wheels:
   before_script:
     # Move binaries into platform-specific folders. Already done for Linux.
     - !reference [.snippets, move-windows-binaries-to-platform-dir]
+    - !reference [.snippets, check-wheel-version-files]
   script:
     - printf '%s+cu12\n' "$(head -n1 VERSION.md | tr -d '\n\r')" > VERSION.md
     - uv build --wheel --out-dir dist-cu12 -C--build-option=-Pwindows-x86_64
@@ -1106,6 +1193,7 @@ create dev wheels:
     # Move binaries into platform-specific folders. Already done in the build jobs for Linux.
     - !reference [.snippets, move-windows-binaries-to-platform-dir]
     - !reference [.snippets, move-macos-binaries-to-platform-dir]
+    - !reference [.snippets, check-wheel-version-files]
   script:
     # Version files (VERSION.md, config.py, version.h) are already updated from build artifacts
     - uv build --wheel -C--build-option=-Pwindows-x86_64
@@ -1191,6 +1279,7 @@ publish wheels to github release:
     - !reference [.snippets, section-start-install-deps]
     - df -h
     - !reference [.snippets, move-linux-x86_64-binaries]
+    - !reference [.snippets, fetch-intersphinx-fallback]
     - !reference [.snippets, section-end-install-deps]
   script:
     - uv run --extra docs build_docs.py --warnings-as-errors
@@ -1214,6 +1303,44 @@ merge request docs:
     url: https://$CI_PROJECT_ROOT_NAMESPACE.$CI_PAGES_DOMAIN/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/public/index.html
   after_script:
     - echo "View the website at https://$CI_PROJECT_ROOT_NAMESPACE.$CI_PAGES_DOMAIN/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/public/index.html"
+
+# Refresh the cached intersphinx inventories that the docs jobs fall back to
+# (fetch-intersphinx-fallback in .gitlab/ci/common.yml). A failure here also
+# flags an upstream inventory URL that moved or broke, which the fallback
+# would otherwise hide in MR pipelines. The list must match
+# _intersphinx_mapping in docs/conf.py.
+refresh intersphinx inventories:
+  stage: deploy
+  image: $UV_TRIXIE_IMAGE
+  needs: []
+  variables:
+    IPP_RUNNER_EXECUTION_DURATION: "900"
+  extends:
+    - .ipp_lnx_x86_64_cpu_micro
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - when: manual
+      allow_failure: true
+  script:
+    - |
+      set -e
+      registry="$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/intersphinx-inventories/latest"
+      while read -r name url; do
+        curl --fail --silent --show-error --location --retry 3 --max-time 60 --output "$name.inv" "$url/objects.inv"
+        head -c 64 "$name.inv" | grep -q "^# Sphinx inventory version 2" || { echo "$url/objects.inv is not a Sphinx inventory"; exit 1; }
+        # Upload only changed inventories; every upload adds a file to the package.
+        if curl --fail --silent --location --header "JOB-TOKEN: $CI_JOB_TOKEN" --output "$name.old" "$registry/$name.inv" && cmp -s "$name.inv" "$name.old"; then
+          echo "$name: unchanged"
+        else
+          curl --fail --silent --show-error --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file "$name.inv" "$registry/$name.inv" > /dev/null
+          echo "$name: uploaded"
+        fi
+      done <<'EOF'
+      jax https://docs.jax.dev/en/latest
+      numpy https://numpy.org/doc/stable
+      python https://docs.python.org/3
+      pytorch https://docs.pytorch.org/docs/stable
+      EOF
 
 # Merge requests: Ensure that docs reference files generated by Sphinx have been
 # manually added to the MR if they are changed
