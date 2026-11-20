@@ -197,6 +197,16 @@ float_cmp_types = (float, float_base, np.floating)
 
 
 class int_base(scalar_base):
+    def __bool__(self) -> builtins.bool:
+        return int(self) != 0
+
+    def __float__(self) -> float:
+        return float(int(self))
+
+    def __int__(self) -> int:
+        # Wrap to the type's bit width so Python-scope values match what kernels see.
+        return self._type_(int(self.value)).value
+
     def __index__(self) -> int:
         return int(self._type_(self.value).value)
 
@@ -209,7 +219,7 @@ class int_base(scalar_base):
     def __eq__(self, x):
         try:
             if isinstance(x, float_cmp_types):
-                return float(self) == float(x)
+                return int(self) == float(x)
             return int(self) == int(x)
         except (TypeError, ValueError):
             return NotImplemented
@@ -217,7 +227,7 @@ class int_base(scalar_base):
     def __ne__(self, x):
         try:
             if isinstance(x, float_cmp_types):
-                return float(self) != float(x)
+                return int(self) != float(x)
             return int(self) != int(x)
         except (TypeError, ValueError):
             return NotImplemented
@@ -225,7 +235,7 @@ class int_base(scalar_base):
     def __ge__(self, x):
         try:
             if isinstance(x, float_cmp_types):
-                return float(self) >= float(x)
+                return int(self) >= float(x)
             return int(self) >= int(x)
         except (TypeError, ValueError):
             return NotImplemented
@@ -233,7 +243,7 @@ class int_base(scalar_base):
     def __gt__(self, x):
         try:
             if isinstance(x, float_cmp_types):
-                return float(self) > float(x)
+                return int(self) > float(x)
             return int(self) > int(x)
         except (TypeError, ValueError):
             return NotImplemented
@@ -241,7 +251,7 @@ class int_base(scalar_base):
     def __le__(self, x):
         try:
             if isinstance(x, float_cmp_types):
-                return float(self) <= float(x)
+                return int(self) <= float(x)
             return int(self) <= int(x)
         except (TypeError, ValueError):
             return NotImplemented
@@ -249,7 +259,7 @@ class int_base(scalar_base):
     def __lt__(self, x):
         try:
             if isinstance(x, float_cmp_types):
-                return float(self) < float(x)
+                return int(self) < float(x)
             return int(self) < int(x)
         except (TypeError, ValueError):
             return NotImplemented

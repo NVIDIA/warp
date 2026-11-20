@@ -972,6 +972,35 @@ class TestTypes(unittest.TestCase):
                 self.assertNotEqual(one, float("inf"))
                 self.assertLess(one, float("inf"))
 
+    def test_int_out_of_range_wraps(self):
+        # Out-of-range values wrap to the type's bit width, as they do when passed to a kernel.
+        a = wp.int8(200)
+        b = wp.int8(-56)
+        self.assertEqual(str(a), "-56")
+        self.assertEqual(int(a), -56)
+        self.assertEqual(float(a), -56.0)
+        self.assertEqual(a, b)
+        self.assertEqual(a, -56)
+        self.assertNotEqual(a, 200)
+        self.assertLess(a, 0)
+        self.assertEqual(hash(a), hash(b))
+        self.assertEqual(len({a, b}), 1)
+
+        zero = wp.uint8(256)
+        self.assertEqual(zero, 0)
+        self.assertFalse(zero)
+        self.assertEqual(float(zero), 0.0)
+
+        self.assertEqual(wp.uint32(-1), 2**32 - 1)
+        self.assertNotEqual(wp.uint32(-1), -1)
+        self.assertEqual(abs(wp.int16(2**16 - 5)), wp.int16(5))
+
+        # Comparisons with floats use the exact wrapped integer, not a rounded float.
+        big = wp.uint64(-1)
+        self.assertNotEqual(big, float(2**64))
+        self.assertLess(big, float(2**64))
+        self.assertEqual(big, 2**64 - 1)
+
     def test_float_overflow_comparison(self):
         huge = 2**1024
         for float_type in wp._src.types.float_types:
