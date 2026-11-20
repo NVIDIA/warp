@@ -83,8 +83,9 @@ class TestFunctionDispatchInterop(unittest.TestCase):
     def import_torch(self):
         try:
             import torch  # noqa: PLC0415
-        except ImportError:
-            self.skipTest("PyTorch is not installed")
+        except Exception as error:
+            # A broken install can raise OSError instead, e.g. when a torch DLL fails to load.
+            self.skipTest(f"PyTorch could not be imported: {error}")
         return torch
 
     def test_dlpack_delegation_consumes_once_and_retains_storage(self):
