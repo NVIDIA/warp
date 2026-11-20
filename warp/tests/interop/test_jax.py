@@ -728,6 +728,11 @@ def double_func(
     wp.launch(scale_kernel, dim=a.shape, inputs=[a, 2.0], outputs=[b])
 
 
+def diagonal_func(output: wp.array[wp.mat33]):
+    """Populate diagonal ``mat33`` entries without input arrays."""
+    wp.launch(diagonal_kernel, dim=output.shape[0], outputs=[output])
+
+
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_add(test, device):
     """Call an FFI kernel with two inputs and one output."""
@@ -1369,6 +1374,193 @@ def test_ffi_jax_callable_graph_cache(test, device):
 
     finally:
         wp.config.enable_graph_capture_module_load_by_default = old_force_module_load
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
+def test_ffi_jax_callable_staged_allocation_changes(test, device):
+    """Replay staged FFI graphs across CUDA allocation types, slices, edge counts, and GPUs."""
+    if not device.is_mempool_supported:
+        test.skipTest("CUDA memory pools are unavailable")
+
+    import jax.dlpack  # noqa: PLC0415
+
+    jax = _import_jax()
+    jnp = _import_jax_numpy()
+    jax_device = wp.device_to_jax(device)
+
+    allocator_scopes = [
+        ("ordinary", lambda: wp.ScopedMempool(device, False)),
+        ("mempool", lambda: wp.ScopedMempool(device, True)),
+    ]
+    if device.is_managed_memory_supported and device.is_concurrent_managed_access_supported:
+        managed_allocator = wp.CudaManagedAllocator()
+        allocator_scopes.append(("managed", lambda: wp.ScopedAllocator(device, managed_allocator)))
+
+    multi_gpu_devices = [
+        d for d in jax_cuda_candidate_devices if d.is_mempool_supported and _jax_device_error(d.alias) is None
+    ]
+
+    capture_count = 0
+
+    def counted_double(a: wp.array[float], b: wp.array[float]):
+        nonlocal capture_count
+        capture_count += 1
+        double_func(a, b)
+
+    for graph_mode in (wp.JaxCallableGraphMode.WARP_STAGED, wp.JaxCallableGraphMode.WARP_STAGED_EX):
+        with test.subTest(graph_mode=graph_mode):
+            # (a) Alternating ordinary, stream-ordered pooled, and managed allocations
+            capture_count = 0
+            callback = wp.jax_callable(counted_double, graph_mode=graph_mode)
+            run = jax.jit(lambda value, callback=callback: callback(value)[0])
+            retained = []
+            in_ptrs = []
+            out_ptrs = []
+            for index in range(len(allocator_scopes) + 2):
+                _, scope_factory = allocator_scopes[index % len(allocator_scopes)]
+                expected = np.arange(8, dtype=np.float32) + index
+                with scope_factory():
+                    wp_val = wp.array(expected, device=device)
+                jax_val = jax.dlpack.from_dlpack(wp_val, copy=False)
+                test.assertEqual(jax_val.unsafe_buffer_pointer(), wp_val.ptr)
+                result = run(jax_val)
+                retained.extend((wp_val, jax_val, result))
+                in_ptrs.append(wp_val.ptr)
+                out_ptrs.append(result.unsafe_buffer_pointer())
+                assert_np_equal(np.asarray(result), expected * 2.0)
+            test.assertEqual(len(set(in_ptrs)), len(in_ptrs))
+            test.assertEqual(len(set(out_ptrs)), len(out_ptrs))
+            test.assertEqual(capture_count, 1)
+
+            # (b) Input-output (`in_out_argnames`) copy-node updates across allocation types and XLA donation
+            in_out_cb = wp.jax_callable(in_out_func, num_outputs=2, in_out_argnames=["b"], graph_mode=graph_mode)
+            run_in_out = jax.jit(lambda a, b, in_out_cb=in_out_cb: in_out_cb(a, b))
+            out_b_ptrs = []
+            out_c_ptrs = []
+            for index in range(len(allocator_scopes) + 2):
+                _, scope_a = allocator_scopes[index % len(allocator_scopes)]
+                _, scope_b = allocator_scopes[(index + 1) % len(allocator_scopes)]
+                expected_a = np.arange(12, dtype=np.float32) + index
+                expected_b = np.arange(12, dtype=np.float32) * 3.0 + index
+                with scope_a():
+                    wp_a = wp.array(expected_a, device=device)
+                with scope_b():
+                    wp_b = wp.array(expected_b, device=device)
+                jax_a = jax.dlpack.from_dlpack(wp_a, copy=False)
+                jax_b = jax.dlpack.from_dlpack(wp_b, copy=False)
+                test.assertEqual(jax_a.unsafe_buffer_pointer(), wp_a.ptr)
+                test.assertEqual(jax_b.unsafe_buffer_pointer(), wp_b.ptr)
+                out_b, out_c = run_in_out(jax_a, jax_b)
+                retained.extend((wp_a, wp_b, jax_a, jax_b, out_b, out_c))
+                out_b_ptrs.append(out_b.unsafe_buffer_pointer())
+                out_c_ptrs.append(out_c.unsafe_buffer_pointer())
+                assert_np_equal(np.asarray(out_b), expected_b + expected_a)
+                assert_np_equal(np.asarray(out_c), expected_a * 2.0)
+            test.assertEqual(len(set(out_b_ptrs)), len(out_b_ptrs))
+            test.assertEqual(len(set(out_c_ptrs)), len(out_c_ptrs))
+
+            run_in_out_donated = jax.jit(lambda a, b, in_out_cb=in_out_cb: in_out_cb(a, b), donate_argnums=(1,))
+            donated_b_ptrs = []
+            donated_c_ptrs = []
+            for step in range(3):
+                expected_a = np.arange(12, dtype=np.float32) + step * 2.0
+                expected_b = np.arange(12, dtype=np.float32) * 5.0 + step
+                donated_a = jax.device_put(expected_a, jax_device)
+                donated_b = jax.device_put(expected_b, jax_device)
+                donated_b_ptr = donated_b.unsafe_buffer_pointer()
+                out_b, out_c = run_in_out_donated(donated_a, donated_b)
+                retained.extend((donated_a, out_b, out_c))
+                test.assertEqual(out_b.unsafe_buffer_pointer(), donated_b_ptr)
+                donated_b_ptrs.append(out_b.unsafe_buffer_pointer())
+                donated_c_ptrs.append(out_c.unsafe_buffer_pointer())
+                assert_np_equal(np.asarray(out_b), expected_b + expected_a)
+                assert_np_equal(np.asarray(out_c), expected_a * 2.0)
+            test.assertEqual(len(set(donated_b_ptrs)), len(donated_b_ptrs))
+            test.assertEqual(len(set(donated_c_ptrs)), len(donated_c_ptrs))
+
+            # (c) Interior sliced Warp arrays (64B and 16B zero-copy DLPack, plus 4B in-jit slice) across allocators
+            run_sliced = jax.jit(lambda value, callback=callback: callback(value)[0])
+            run_inner_slice = jax.jit(lambda full, callback=callback: callback(full[1:9])[0])
+            slice_out_ptrs = []
+            for index in range(len(allocator_scopes) + 1):
+                _, scope_factory = allocator_scopes[index % len(allocator_scopes)]
+                full_values = np.arange(24, dtype=np.float32) + index * 5.0
+                with scope_factory():
+                    base = wp.array(full_values, device=device)
+                test.assertEqual(base.ptr % 64, 0)
+
+                for sliced, byte_offset, expected_slice in (
+                    (base[16:24], 64, full_values[16:24]),
+                    (base[4:12], 16, full_values[4:12]),
+                ):
+                    test.assertEqual(sliced.ptr, base.ptr + byte_offset)
+                    jax_sliced = jax.dlpack.from_dlpack(sliced, copy=False)
+                    test.assertEqual(jax_sliced.unsafe_buffer_pointer(), sliced.ptr)
+                    out_sliced = run_sliced(jax_sliced)
+                    retained.extend((sliced, jax_sliced, out_sliced))
+                    slice_out_ptrs.append(out_sliced.unsafe_buffer_pointer())
+                    assert_np_equal(np.asarray(out_sliced), expected_slice * 2.0)
+
+                jax_base = jax.dlpack.from_dlpack(base, copy=False)
+                test.assertEqual(jax_base.unsafe_buffer_pointer(), base.ptr)
+                out_inner = run_inner_slice(jax_base)
+                retained.extend((base, jax_base, out_inner))
+                slice_out_ptrs.append(out_inner.unsafe_buffer_pointer())
+                assert_np_equal(np.asarray(out_inner), full_values[1:9] * 2.0)
+            test.assertEqual(len(set(slice_out_ptrs)), len(slice_out_ptrs))
+
+            # (d) 0-input (output-only) and 0-size (`shape=(0,)`) staged calls
+            zero_input_cb = wp.jax_callable(diagonal_func, output_dims=4, graph_mode=graph_mode)
+            run_zero_input = jax.jit(lambda zero_input_cb=zero_input_cb: zero_input_cb()[0])
+            expected_diag = np.array(
+                [np.diag([float(i + 1), float(i + 1) * 2.0, float(i + 1) * 3.0]) for i in range(4)],
+                dtype=np.float32,
+            )
+            diag_out_ptrs = []
+            with jax.default_device(jax_device):
+                for _ in range(3):
+                    diag_out = run_zero_input()
+                    retained.append(diag_out)
+                    diag_out_ptrs.append(diag_out.unsafe_buffer_pointer())
+                    assert_np_equal(np.asarray(diag_out), expected_diag)
+                test.assertEqual(len(set(diag_out_ptrs)), len(diag_out_ptrs))
+
+                empty_cb = wp.jax_callable(counted_double, graph_mode=graph_mode, has_side_effect=True)
+                run_empty = jax.jit(empty_cb)
+                empty_input = jnp.empty((0,), dtype=jnp.float32)
+                capture_count = 0
+                core = wp._src.context.runtime.core
+                with mock.patch.object(core, "wp_cuda_graph_launch", wraps=core.wp_cuda_graph_launch) as launch:
+                    for expected_launches in range(1, 4):
+                        (empty_out,) = run_empty(empty_input)
+                        jax.block_until_ready(empty_out)
+                        test.assertEqual(empty_out.shape, (0,))
+                        test.assertEqual(empty_out.dtype, np.float32)
+                        test.assertEqual(capture_count, 1)
+                        test.assertEqual(launch.call_count, expected_launches)
+
+            # (e) Multi-GPU staged replay across >= 2 validated CUDA devices
+            if len(multi_gpu_devices) >= 2 and device == multi_gpu_devices[0]:
+                dev0, dev1 = multi_gpu_devices[0], multi_gpu_devices[1]
+                multi_gpu_cb = wp.jax_callable(double_func, graph_mode=graph_mode)
+                run_multi_gpu = jax.jit(lambda value, multi_gpu_cb=multi_gpu_cb: multi_gpu_cb(value)[0])
+                multi_out_ptrs = {dev0.ordinal: [], dev1.ordinal: []}
+                multi_schedule = ((dev0, False), (dev1, True), (dev0, True), (dev1, False))
+                for step, (target_wp_device, use_mempool) in enumerate(multi_schedule):
+                    expected = np.arange(8, dtype=np.float32) + step * 10.0
+                    with wp.ScopedMempool(target_wp_device, use_mempool):
+                        wp_val = wp.array(expected, device=target_wp_device)
+                    jax_val = jax.dlpack.from_dlpack(wp_val, copy=False)
+                    test.assertEqual(jax_val.unsafe_buffer_pointer(), wp_val.ptr)
+                    result = run_multi_gpu(jax_val)
+                    retained.extend((wp_val, jax_val, result))
+                    multi_out_ptrs[target_wp_device.ordinal].append(result.unsafe_buffer_pointer())
+                    assert_np_equal(np.asarray(result), expected * 2.0)
+                test.assertEqual(len(set(multi_out_ptrs[dev0.ordinal])), 2)
+                test.assertEqual(len(set(multi_out_ptrs[dev1.ordinal])), 2)
+                wp.synchronize_device(dev1)
+
+            wp.synchronize_device(device)
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
@@ -3435,6 +3627,7 @@ else:
     if jax_cuda_candidate_devices and jax.__version_info__ >= (0, 5, 0):
         cuda_only_jax_tests = (
             test_ffi_jax_callable_graph_cache,
+            test_ffi_jax_callable_staged_allocation_changes,
             test_ffi_jax_callable_graph_replay_skips_module_load,
             test_ffi_jax_cuda_requires_cuda_support,
             test_ffi_callback,
