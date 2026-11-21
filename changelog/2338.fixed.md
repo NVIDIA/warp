@@ -1,0 +1,1 @@
+Fix kernels that capture an integer constant outside the 32-bit range, or a floating-point constant that differs from another only beyond single precision, silently reusing a kernel compiled for a different value, including across processes through the kernel cache.
