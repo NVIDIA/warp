@@ -286,6 +286,40 @@ class TestOperators(unittest.TestCase):
                 self.assertIs(wp.unot(dtype(1)), False)
                 self.assertIs(wp.unot(dtype(top_bit)), False)
 
+    def test_int_division_by_zero_python_scope(self):
+        """Raise ZeroDivisionError instead of crashing on integer division by zero at the Python scope."""
+        for dtype in wp._src.types.int_types:
+            with self.subTest(dtype=dtype.__name__):
+                with self.assertRaises(ZeroDivisionError):
+                    wp.div(dtype(1), dtype(0))
+                with self.assertRaises(ZeroDivisionError):
+                    wp.floordiv(dtype(1), dtype(0))
+                with self.assertRaises(ZeroDivisionError):
+                    wp.mod(dtype(1), dtype(0))
+
+                self.assertEqual(wp.div(dtype(7), dtype(2)), 3)
+                self.assertEqual(wp.mod(dtype(7), dtype(2)), 1)
+
+        with self.assertRaises(ZeroDivisionError):
+            wp.div(1, 0)
+        with self.assertRaises(ZeroDivisionError):
+            wp.int32(1) / wp.int32(0)
+        with self.assertRaises(ZeroDivisionError):
+            wp.int32(1) % wp.int32(0)
+        with self.assertRaises(ZeroDivisionError):
+            wp.vec3i(1, 2, 3) / wp.int32(0)
+        with self.assertRaises(ZeroDivisionError):
+            wp.mod(wp.vec3i(1, 2, 3), wp.vec3i(1, 0, 3))
+        with self.assertRaises(ZeroDivisionError):
+            wp.cw_div(wp.vec3i(1, 2, 3), wp.vec3i(1, 0, 1))
+
+        self.assertEqual(wp.vec3i(2, 4, 6) / wp.int32(2), wp.vec3i(1, 2, 3))
+        self.assertEqual(wp.mod(wp.vec3i(5, 6, 7), wp.vec3i(2, 4, 3)), wp.vec3i(1, 2, 1))
+        self.assertEqual(wp.cw_div(wp.vec3i(4, 6, 9), wp.vec3i(2, 3, 3)), wp.vec3i(2, 2, 3))
+
+        # Floating-point division by zero keeps following IEEE 754.
+        self.assertEqual(wp.div(wp.float32(1.0), wp.float32(0.0)), float("inf"))
+
 
 add_kernel_test(TestOperators, test_operators_scalar_float, dim=1, devices=devices)
 add_kernel_test(TestOperators, test_operators_scalar_int, dim=1, devices=devices)

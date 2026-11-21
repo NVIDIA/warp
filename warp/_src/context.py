@@ -927,6 +927,9 @@ class BuiltinCallDesc(NamedTuple):
     # descriptor is created. The indices let us apply defaults to signatures
     # that use different parameter names.
     overload_defaults_by_index: tuple[tuple[int, Any], ...] = ()
+    # Whether the second argument is an integer divisor that must be checked for zero
+    # before calling the C function, since an integer division by zero traps on the host.
+    check_int_divisor: bool = False
 
 
 def _get_builtin_call_args(
@@ -951,6 +954,10 @@ def _get_builtin_call_args(
     bound_args = inspect.BoundArguments(binding_signature, supplied_arguments)
     warp._src.codegen.apply_defaults(bound_args, default_args)
     return tuple(bound_args.arguments.values())
+
+
+# Built-ins whose second argument is a divisor.
+_INT_DIVISION_BUILTINS = frozenset(("cw_div", "div", "floordiv", "mod"))
 
 
 @functools.cache
@@ -1053,12 +1060,17 @@ def get_builtin_call_desc(
         (index, func.defaults[name]) for index, name in enumerate(func.signature.parameters) if name in func.defaults
     )
 
+    check_int_divisor = func.key in _INT_DIVISION_BUILTINS and warp._src.types.type_is_int(
+        warp._src.types.type_scalar_type(arg_types[1])
+    )
+
     return BuiltinCallDesc(
         c_func,
         arg_types,
         param_kinds,
         value_type,
         overload_defaults_by_index=overload_defaults_by_index,
+        check_int_divisor=check_int_divisor,
     )
 
 
@@ -1101,6 +1113,15 @@ def call_builtin_from_desc(
         ret_addr = tuple(ctypes.c_void_p(ctypes.addressof(x)) for x in ret)
 
         c_params.extend(ret_addr)
+
+    if builtin_desc.check_int_divisor:
+        divisor = params[1]
+        if builtin_desc.param_kinds[1] == BuiltinParamKind.BUILTIN:
+            has_zero = not np.ctypeslib.as_array(divisor).all()
+        else:
+            has_zero = c_params[1].value == 0
+        if has_zero:
+            raise ZeroDivisionError("integer division or modulo by zero")
 
     # Call the built-in function from Warp's dll.
     builtin_desc.c_func(*c_params)
