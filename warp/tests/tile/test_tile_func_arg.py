@@ -3,6 +3,7 @@
 
 """Tests for passing tiles of various storage types to @wp.func."""
 
+import functools
 import unittest
 
 import numpy as np
@@ -60,6 +61,12 @@ def inplace_add_func(
 def modify_tile_no_return(t: wp.tile[float, TILE_M, TILE_N]):
     """Write into a tile in place without returning it. Used for both register and shared tiles."""
     t += wp.tile_ones(dtype=float, shape=(TILE_M, TILE_N), storage="register") * 5.0
+
+
+@wp.func
+def read_elements_func(t: wp.tile[float, TILE_M, TILE_N]):
+    """Combine two elements of a tile passed to a helper."""
+    return t[1, 2] * 2.0 + t[3, 0]
 
 
 # ---- Forward tests ----
@@ -441,11 +448,312 @@ def test_native_func_inplace_modify_tile(test, device):
     test.assertAlmostEqual(result[0, 1], 5.0)  # unchanged
 
 
+def test_tile_func_return_composition(test, device, kind, backward):
+    """Read elements of returned tiles across different helper compositions."""
+
+    @wp.func
+    def return_tile(t: wp.tile[float, TILE_M, TILE_N], early: bool):
+        if wp.static(kind == "nested"):
+            return pass_through_tile(t)
+        elif wp.static(kind == "local"):
+            read_elements_func(t)
+            return t
+        elif wp.static(kind == "conditional"):
+            if early:
+                return t
+            read_elements_func(t)
+            return t
+        elif wp.static(kind == "allocated"):
+            return t * 2.0
+        else:
+            return t
+
+    @wp.func
+    def load_tile(x: wp.array2d[float]):
+        return wp.tile_load(x, shape=(TILE_M, TILE_N), storage="register")
+
+    @wp.kernel(module="unique", enable_backward=backward)
+    def compute(x: wp.array2d[float], out: wp.array[float], early: bool):
+        _, lane = wp.tid()
+        t = wp.tile_load(x, shape=(TILE_M, TILE_N), storage="register")
+        if wp.static(kind == "view"):
+            t = wp.tile_transpose(t)
+        elif wp.static(kind == "broadcast"):
+            t = wp.tile_broadcast(t[0:1, :], shape=(TILE_M, TILE_N))
+        if wp.static(kind == "load"):
+            u = load_tile(x)
+        else:
+            u = return_tile(t, early)
+        s = read_elements_func(u)
+        if lane == 0:
+            out[0] = s
+
+    x_np = np.arange(TILE_M * TILE_N, dtype=np.float32).reshape(TILE_M, TILE_N)
+    scale = 2.0 if kind == "allocated" else 1.0
+    for early in (False, True) if kind == "conditional" else (False,):
+        with test.subTest(early=early):
+            x = wp.array(x_np, device=device, requires_grad=backward)
+            out = wp.zeros(1, device=device, requires_grad=backward)
+            with wp.Tape() as tape:
+                wp.launch_tiled(compute, dim=1, inputs=[x, out, early], block_dim=BLOCK_DIM, device=device)
+            expected_value = {"view": 21.0, "broadcast": 4.0}.get(kind, 24.0 * scale)
+            np.testing.assert_allclose(out.numpy(), [expected_value])
+            if backward:
+                tape.backward(loss=out)
+                expected = np.zeros_like(x_np)
+                expected[1, 2] = 2.0 * scale
+                expected[3, 0] = scale
+                if kind == "view":
+                    expected = expected.T
+                elif kind == "broadcast":
+                    expected = np.zeros_like(x_np)
+                    expected[0, 2] = 2.0
+                    expected[0, 0] = 1.0
+                np.testing.assert_allclose(x.grad.numpy(), expected)
+
+
+def test_tile_func_multiple_return_composition(test, device, backward):
+    """Read one returned tile while preserving other results and repeated calls."""
+
+    @wp.func
+    def pair(t: wp.tile[float, TILE_M, TILE_N]):
+        return t, t, 3.0
+
+    @wp.kernel(module="unique", enable_backward=backward)
+    def compute(x: wp.array2d[float], out: wp.array[float], saved: wp.array2d[float]):
+        _, lane = wp.tid()
+        t = wp.tile_load(x, shape=(TILE_M, TILE_N), storage="register")
+        before = pass_through_tile(t)
+        u, v, factor = pair(t)
+        s = read_elements_func(u)
+        after = pass_through_tile(t)
+        wp.tile_store(saved, before + v + after)
+        if lane == 0:
+            out[0] = factor * s
+
+    x_np = np.arange(TILE_M * TILE_N, dtype=np.float32).reshape(TILE_M, TILE_N)
+    x = wp.array(x_np, device=device, requires_grad=backward)
+    out = wp.zeros(1, device=device, requires_grad=backward)
+    saved = wp.zeros_like(x)
+    with wp.Tape() as tape:
+        wp.launch_tiled(compute, dim=1, inputs=[x, out, saved], block_dim=BLOCK_DIM, device=device)
+    np.testing.assert_allclose(out.numpy(), [72.0])
+    np.testing.assert_allclose(saved.numpy(), 3.0 * x_np)
+    if backward:
+        tape.backward(grads={out: wp.ones_like(out), saved: wp.ones_like(saved)})
+        expected = np.full_like(x_np, 3.0)
+        expected[1, 2] += 6.0
+        expected[3, 0] += 3.0
+        np.testing.assert_allclose(x.grad.numpy(), expected)
+
+
+def test_tile_func_borrowed_parameter_return(test, device):
+    """Preserve factory annotations that explicitly return a borrowed shared view."""
+    # Factory-style compatibility: storage and ownership are not subscript parameters.
+    view_type = wp.tile(dtype=float, shape=(TILE_M, TILE_N), storage="shared", owner=False)
+
+    @wp.func
+    def return_view(t: view_type):
+        return t
+
+    @wp.kernel(module="unique", enable_backward=False)
+    def compute(out: wp.array2d[float]):
+        t = wp.tile_zeros(shape=(TILE_M, TILE_N), dtype=float, storage="shared")
+        u = return_view(t)
+        u[0, 0] = 123.0
+        wp.tile_store(out, t)
+
+    out = wp.empty((TILE_M, TILE_N), device=device)
+    wp.launch_tiled(compute, dim=1, outputs=[out], block_dim=BLOCK_DIM, device=device)
+    expected = np.zeros((TILE_M, TILE_N), dtype=np.float32)
+    expected[0, 0] = 123.0
+    np.testing.assert_array_equal(out.numpy(), expected)
+
+
+def test_register_tile_func_where_grad(test, device):
+    """Preserve selection gradients when one operand is also passed to a helper."""
+
+    @wp.kernel(module="unique")
+    def compute(a: wp.array2d[float], b: wp.array2d[float], out: wp.array2d[float], choose_a: bool):
+        x = wp.tile_load(a, shape=(TILE_M, TILE_N), storage="register")
+        y = wp.tile_load(b, shape=(TILE_M, TILE_N), storage="register")
+        selected = wp.where(choose_a, x, y)
+        # Read one operand through a helper before storing the selection.
+        read_elements_func(x)
+        wp.tile_store(out, selected)
+
+    rng = np.random.default_rng(42)
+    a_np = rng.standard_normal((TILE_M, TILE_N)).astype(np.float32)
+    b_np = rng.standard_normal((TILE_M, TILE_N)).astype(np.float32)
+    seed = rng.standard_normal((TILE_M, TILE_N)).astype(np.float32)
+    for choose_a in (False, True):
+        with test.subTest(choose_a=choose_a):
+            a = wp.array(a_np, device=device, requires_grad=True)
+            b = wp.array(b_np, device=device, requires_grad=True)
+            out = wp.zeros_like(a)
+            with wp.Tape() as tape:
+                wp.launch_tiled(compute, dim=[1], inputs=[a, b, out, choose_a], block_dim=BLOCK_DIM, device=device)
+            np.testing.assert_allclose(out.numpy(), a_np if choose_a else b_np)
+            tape.backward(grads={out: wp.array(seed, device=device)})
+            np.testing.assert_allclose(a.grad.numpy(), seed if choose_a else np.zeros_like(seed))
+            np.testing.assert_allclose(b.grad.numpy(), np.zeros_like(seed) if choose_a else seed)
+
+
+def test_tile_func_thread_conversions(test, device):
+    """Preserve thread/tile conversion gradients across an unused helper read."""
+
+    def make_kernel(block_dim, from_threads, read):
+        @wp.func
+        def read_first(t: wp.tile[float, block_dim]):
+            return t[0]
+
+        @wp.kernel(module="unique")
+        def compute(x: wp.array[float], out: wp.array[float]):
+            lane = wp.tid()
+            if wp.static(from_threads):
+                value = x[lane]
+                t = wp.tile(value)
+            else:
+                t = wp.tile_load(x, shape=block_dim, storage="register")
+            if wp.static(read):
+                read_first(t)
+            if wp.static(from_threads):
+                wp.tile_store(out, t)
+            else:
+                out[lane] = wp.untile(t)
+
+        return compute
+
+    for block_dim in (32, 128):
+        for from_threads in (False, True):
+            for read in (False, True):
+                with test.subTest(block_dim=block_dim, from_threads=from_threads, read=read):
+                    compute = make_kernel(block_dim, from_threads, read)
+                    rng = np.random.default_rng(814)
+                    values = rng.standard_normal(block_dim).astype(np.float32)
+                    seeds = rng.standard_normal(block_dim).astype(np.float32)
+                    x = wp.array(values, device=device, requires_grad=True)
+                    out = wp.zeros_like(x)
+                    with wp.Tape() as tape:
+                        wp.launch(compute, dim=block_dim, inputs=[x], outputs=[out], block_dim=block_dim, device=device)
+                    tape.backward(grads={out: wp.array(seeds, device=device)})
+                    np.testing.assert_array_equal(out.numpy(), values)
+                    np.testing.assert_array_equal(x.grad.numpy(), seeds)
+
+
+def test_register_tile_func_large_read(test, device, backward):
+    """Read a register tile too large to stage entirely in CUDA shared memory."""
+
+    @wp.func
+    def read_element(t: wp.tile[float, 32768]):
+        return t[1234]
+
+    @wp.kernel(module="unique", enable_backward=backward)
+    def compute(x: wp.array[float], out: wp.array[float]):
+        _, lane = wp.tid()
+        t = wp.tile_load(x, shape=32768, storage="register")
+        value = read_element(t)
+        if lane == 0:
+            out[0] = value
+
+    x = wp.array(np.arange(32768, dtype=np.float32), device=device, requires_grad=backward)
+    out = wp.zeros(1, device=device, requires_grad=backward)
+    with wp.Tape() as tape:
+        wp.launch_tiled(compute, dim=1, inputs=[x], outputs=[out], block_dim=128, device=device)
+    np.testing.assert_array_equal(out.numpy(), [1234.0])
+    if backward:
+        tape.backward(grads={out: wp.full_like(out, 3.0)})
+        expected = np.zeros(32768, dtype=np.float32)
+        expected[1234] = 3.0
+        np.testing.assert_array_equal(x.grad.numpy(), expected)
+
+
+def test_register_tile_func_matrix_read(test, device, all_lanes):
+    """Keep matrix-valued register reads within CUDA shared-memory limits."""
+
+    @wp.func
+    def read(t: wp.tile[wp.mat44d, 1]):
+        return t[0]
+
+    @wp.kernel(module="unique")
+    def compute(x: wp.array[wp.mat44d], out: wp.array[wp.mat44d]):
+        _, lane = wp.tid()
+        t = wp.tile_load(x, shape=1, storage="register")
+        value = read(t)
+        if wp.static(all_lanes) or lane == 0:
+            out[lane] = value
+
+    # Enough lanes that one matrix per lane exceeds the 48 KB static shared-memory
+    # limit, without exceeding the register file for the backward kernel.
+    block_dim = 384
+    lanes = block_dim if all_lanes else 1
+    rng = np.random.default_rng(764)
+    values = rng.standard_normal((1, 4, 4))
+    seeds = rng.standard_normal((lanes, 4, 4))
+    x = wp.array(values, dtype=wp.mat44d, device=device, requires_grad=True)
+    out = wp.zeros(lanes, dtype=wp.mat44d, device=device, requires_grad=True)
+    with wp.Tape() as tape:
+        wp.launch_tiled(compute, dim=1, inputs=[x], outputs=[out], block_dim=block_dim, device=device)
+    tape.backward(grads={out: wp.array(seeds, dtype=wp.mat44d, device=device)})
+    np.testing.assert_array_equal(out.numpy(), np.broadcast_to(values, seeds.shape))
+    np.testing.assert_allclose(x.grad.numpy(), seeds.sum(axis=0, keepdims=True), rtol=1e-12, atol=1e-12)
+
+
 devices = get_test_devices()
 
 
 class TestTileFuncArg(unittest.TestCase):
     pass
+
+
+for kind in ("identity", "nested", "local", "conditional", "allocated", "load", "view", "broadcast"):
+    add_function_test(
+        TestTileFuncArg,
+        f"test_tile_func_return_composition_{kind}_forward",
+        functools.partial(test_tile_func_return_composition, kind=kind, backward=False),
+        devices=devices,
+    )
+add_function_test(
+    TestTileFuncArg,
+    "test_tile_func_multiple_return_composition_forward",
+    functools.partial(test_tile_func_multiple_return_composition, backward=False),
+    devices=devices,
+)
+add_function_test(
+    TestTileFuncArg,
+    "test_tile_func_borrowed_parameter_return",
+    test_tile_func_borrowed_parameter_return,
+    devices=devices,
+)
+add_function_test(
+    TestTileFuncArg, "test_register_tile_func_where_grad", test_register_tile_func_where_grad, devices=devices
+)
+add_function_test(
+    TestTileFuncArg,
+    "test_tile_func_thread_conversions",
+    test_tile_func_thread_conversions,
+    devices=get_cuda_test_devices(),
+)
+add_function_test(
+    TestTileFuncArg,
+    "test_tile_func_thread_conversions_cpu_blocks",
+    test_tile_func_thread_conversions,
+    devices=get_cpu_test_devices(),
+    enable_cpu_blocks=True,
+)
+add_function_test(
+    TestTileFuncArg,
+    "test_register_tile_func_large_read_forward",
+    functools.partial(test_register_tile_func_large_read, backward=False),
+    devices=get_cuda_test_devices(),
+)
+
+add_function_test(
+    TestTileFuncArg,
+    "test_register_tile_func_matrix_read_owner",
+    functools.partial(test_register_tile_func_matrix_read, all_lanes=False),
+    devices=get_cuda_test_devices(),
+)
 
 
 add_function_test(TestTileFuncArg, "test_shared_tile_func_arg", test_shared_tile_func_arg, devices=devices)

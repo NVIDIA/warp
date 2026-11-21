@@ -261,11 +261,89 @@ def test_tile_ifft(test, device, wp_dtype, kernel, data_shape, block_dim=TILE_DI
     assert_np_equal(actual_grad_c, expected_grad_c, tol=1.0e-4)
 
 
+def test_tile_fft_func_composition(test, device, inverse, mode, mathdx, wp_dtype=wp.vec2f, backward=True):
+    """Preserve FFT values and gradients when a helper reads the register tile."""
+
+    @wp.func
+    def read_element(t: wp.tile[wp_dtype, 2, 64]):
+        return t[0, 1]
+
+    @wp.kernel(module="unique", enable_backward=backward, module_options={"enable_mathdx_fft": mathdx})
+    def compute(x: wp.array2d[wp_dtype], y: wp.array2d[wp_dtype], sample: wp.array[wp_dtype]):
+        _, lane = wp.tid()
+        t = wp.tile_load(x, shape=(2, 64), storage="register")
+
+        if wp.static(mode == "before"):
+            value = read_element(t)
+            if lane == 0:
+                sample[0] = value
+
+        if wp.static(inverse):
+            wp.tile_ifft(t)
+        else:
+            wp.tile_fft(t)
+
+        if wp.static(mode != "before"):
+            value = read_element(t)
+            if lane == 0:
+                sample[0] = value
+
+        wp.tile_store(y, t)
+
+    np_dtype = np.float32 if wp_dtype == wp.vec2f else np.float64
+    complex_dtype = np.complex64 if wp_dtype == wp.vec2f else np.complex128
+    shape = (2, 64)
+    rng = np.random.default_rng(42)
+    data = rng.standard_normal((*shape, 2)).astype(np_dtype)
+    x = wp.array(data, dtype=wp_dtype, device=device, requires_grad=backward)
+    y = wp.zeros_like(x)
+    sample = wp.zeros(1, dtype=wp_dtype, device=device, requires_grad=backward)
+
+    values = data.view(complex_dtype).reshape(shape)
+    transform_input = values
+    expected = np.fft.ifft(transform_input, axis=-1) * 64 if inverse else np.fft.fft(transform_input, axis=-1)
+    expected_sample = transform_input[0, 1] if mode == "before" else expected[0, 1]
+    expected_output = expected
+    tol = 3.0e-5 if wp_dtype == wp.vec2f else 1.0e-12
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(compute, dim=[1], inputs=[x], outputs=[y, sample], block_dim=32, device=device)
+    np.testing.assert_allclose(y.numpy().view(complex_dtype).reshape(shape), expected_output, rtol=tol, atol=tol)
+    np.testing.assert_allclose(sample.numpy().view(complex_dtype).ravel(), [expected_sample], rtol=tol, atol=tol)
+
+    if backward:
+        seed = rng.standard_normal((*shape, 2)).astype(np_dtype)
+        sample_seed = np.array([[0.3, -0.7]], dtype=np_dtype)
+        tape.backward(
+            grads={
+                y: wp.array(seed, dtype=wp_dtype, device=device),
+                sample: wp.array(sample_seed, dtype=wp_dtype, device=device),
+            }
+        )
+        adj_output = seed.view(complex_dtype).reshape(shape).copy()
+        adj_transform = adj_output
+        if mode != "before":
+            adj_transform[0, 1] += sample_seed.view(complex_dtype).item()
+        expected_grad = np.fft.fft(adj_transform, axis=-1) if inverse else np.fft.ifft(adj_transform, axis=-1) * 64
+        if mode == "before":
+            expected_grad[0, 1] += sample_seed.view(complex_dtype).item()
+        np.testing.assert_allclose(x.grad.numpy().view(complex_dtype).reshape(shape), expected_grad, rtol=tol, atol=tol)
+
+
 test_devices = get_test_devices()
 
 
 class TestTileFFT(unittest.TestCase):
     pass
+
+
+add_function_test(
+    TestTileFFT,
+    "test_tile_fft_after_func_forward_only",
+    functools.partial(test_tile_fft_func_composition, inverse=False, mode="after", mathdx=True, backward=False),
+    devices=get_cuda_test_devices(),
+    check_output=False,
+)
 
 
 # check_output=False so we can enable libmathdx's logging without failing the tests
