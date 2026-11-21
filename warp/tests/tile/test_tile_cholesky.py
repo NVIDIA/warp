@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import functools
 import tempfile
 import unittest
 from typing import Any
@@ -903,6 +904,46 @@ def new_int32_shared_tile():
     return wp.tile_empty(shape=(3,), dtype=wp.int32, storage="shared")
 
 
+def test_tile_cholesky_func_register_tile(test, device, dtype, upper, mathdx):
+    """Factor a register argument while preserving caller values and accumulating gradients."""
+
+    @wp.func
+    def factor(a: wp.tile[dtype, 8, 8]):
+        if wp.static(upper):
+            return wp.tile_cholesky(a, fill_mode="upper")
+        else:
+            return wp.tile_cholesky(a, fill_mode="lower")
+
+    @wp.kernel(module="unique", module_options={"enable_mathdx_solver": mathdx})
+    def compute(x: wp.array2d[dtype], out: wp.array2d[dtype], saved: wp.array2d[dtype]):
+        t = wp.tile_load(x, shape=(8, 8), storage="register")
+        wp.tile_store(out, factor(t))
+        wp.tile_store(saved, t)
+
+    np_dtype = np.float64 if dtype == wp.float64 else np.float32
+    rng = np.random.default_rng(753)
+    m = rng.standard_normal((8, 8)).astype(np_dtype)
+    values = m @ m.T + np_dtype(8) * np.eye(8, dtype=np_dtype)
+    factor_np = np.linalg.cholesky(values)
+    if upper:
+        factor_np = factor_np.T
+    seed = rng.standard_normal((8, 8)).astype(np_dtype)
+    saved_seed = rng.standard_normal((8, 8)).astype(np_dtype)
+    x = wp.array(values, dtype=dtype, device=device, requires_grad=True)
+    out = wp.zeros_like(x)
+    saved = wp.zeros_like(x)
+    with wp.Tape() as tape:
+        wp.launch_tiled(compute, dim=1, inputs=[x], outputs=[out, saved], block_dim=64, device=device)
+    tape.backward(
+        grads={out: wp.array(seed, dtype=dtype, device=device), saved: wp.array(saved_seed, dtype=dtype, device=device)}
+    )
+    oracle = cholesky_adjoint_numpy_upper if upper else cholesky_adjoint_numpy_lower
+    tol = 2e-5 if dtype == wp.float32 else 1e-10
+    np.testing.assert_allclose(out.numpy(), factor_np, rtol=tol, atol=tol)
+    np.testing.assert_allclose(saved.numpy(), values)
+    np.testing.assert_allclose(x.grad.numpy(), oracle(factor_np, seed) + saved_seed, rtol=tol, atol=tol)
+
+
 all_devices = get_test_devices()
 cuda_devices = get_cuda_test_devices()
 
@@ -1093,6 +1134,25 @@ for name, func in cpu_block_tests:
         check_output=False,
         enable_cpu_blocks=True,
     )
+
+
+for dtype in (wp.float32, wp.float64):
+    for upper in (False, True):
+        for mathdx in (False, True):
+            name = f"test_tile_cholesky_func_register_tile_{dtype.__name__}_{'upper' if upper else 'lower'}_{'mathdx' if mathdx else 'scalar'}"
+            func = functools.partial(test_tile_cholesky_func_register_tile, dtype=dtype, upper=upper, mathdx=mathdx)
+            add_function_test(
+                TestTileCholesky, name, func, devices=cuda_devices if mathdx else all_devices, check_output=False
+            )
+            if not mathdx:
+                add_function_test(
+                    TestTileCholesky,
+                    name + "_cpu_blocks",
+                    func,
+                    devices=get_cpu_test_devices(),
+                    enable_cpu_blocks=True,
+                    check_output=False,
+                )
 
 
 if __name__ == "__main__":

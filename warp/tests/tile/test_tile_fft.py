@@ -264,6 +264,9 @@ def test_tile_ifft(test, device, wp_dtype, kernel, data_shape, block_dim=TILE_DI
 def test_tile_fft_func_composition(test, device, inverse, mode, mathdx, wp_dtype=wp.vec2f, backward=True):
     """Preserve FFT values and gradients when a helper reads the register tile."""
 
+    if mathdx and not wp._src.context.runtime.core.wp_is_mathdx_enabled():
+        test.skipTest("Warp was not built with MathDx support")
+
     @wp.func
     def read_element(t: wp.tile[wp_dtype, 2, 64]):
         return t[0, 1]
@@ -612,6 +615,25 @@ for name, func in cpu_block_fft_tests:
         check_output=False,
         enable_cpu_blocks=True,
     )
+
+
+for inverse in (False, True):
+    for mathdx in (False, True):
+        for mode in ("before", "after"):
+            name = f"test_tile_{'ifft' if inverse else 'fft'}_func_{mode}_{'mathdx' if mathdx else 'scalar'}"
+            func = functools.partial(test_tile_fft_func_composition, inverse=inverse, mode=mode, mathdx=mathdx)
+            # MathDx is only used on CUDA; elsewhere the option selects the same scalar path
+            devices = get_cuda_test_devices() if mathdx else test_devices
+            add_function_test(TestTileFFT, name, func, devices=devices, check_output=False)
+            if not mathdx:
+                add_function_test(
+                    TestTileFFT,
+                    name + "_cpu_blocks",
+                    func,
+                    devices=get_cpu_test_devices(),
+                    enable_cpu_blocks=True,
+                    check_output=False,
+                )
 
 
 if __name__ == "__main__":

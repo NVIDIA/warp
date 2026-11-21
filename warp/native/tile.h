@@ -937,6 +937,46 @@ struct tile_empty_t { };
 // forward declaration (needed for converting constructor in tile_register_t)
 template <typename T, typename L, bool Owner> struct tile_shared_t;
 
+#if defined(__CUDA_ARCH__)
+// defined in tile_reduce.h
+template <typename T, typename Op> inline CUDA_CALLABLE T warp_reduce(T val, Op f, wp_tile_lane_mask_bits_t mask);
+
+// Replaces value with its sum over the warp lanes in mask. The sum is valid in
+// the lowest lane.
+template <typename T> inline CUDA_CALLABLE void tile_adj_warp_sum(T& value, wp_tile_lane_mask_bits_t mask)
+{
+    value = warp_reduce(
+        value,
+        [](T a, const T& b) {
+            a += b;
+            return a;
+        },
+        mask
+    );
+}
+
+// Vectors and matrices are summed one element at a time, so that a single
+// scalar is shuffled and added at once instead of a second copy of the value.
+template <unsigned Length, typename T>
+inline CUDA_CALLABLE void tile_adj_warp_sum(vec_t<Length, T>& value, wp_tile_lane_mask_bits_t mask)
+{
+    WP_PRAGMA_UNROLL
+    for (unsigned i = 0; i < Length; ++i)
+        tile_adj_warp_sum(value.c[i], mask);
+}
+
+template <unsigned Rows, unsigned Cols, typename T>
+inline CUDA_CALLABLE void tile_adj_warp_sum(mat_t<Rows, Cols, T>& value, wp_tile_lane_mask_bits_t mask)
+{
+    WP_PRAGMA_UNROLL
+    for (unsigned i = 0; i < Rows; ++i) {
+        WP_PRAGMA_UNROLL
+        for (unsigned j = 0; j < Cols; ++j)
+            tile_adj_warp_sum(value.data[i][j], mask);
+    }
+}
+#endif
+
 // represents a tile stored in registers across a block
 template <typename T, typename L> struct tile_register_t {
     using Type = T;
@@ -1029,7 +1069,9 @@ template <typename T, typename L> struct tile_register_t {
         const int reg = Layout::register_from_linear(linear);
 
 #if defined(__CUDA_ARCH__)
-        __shared__ Type scratch;
+        // raw storage: CUDA cannot run the constructor of a __shared__ variable
+        __shared__ alignas(Type) char scratch_storage[sizeof(Type)];
+        Type& scratch = *reinterpret_cast<Type*>(scratch_storage);
 
         // ensure any previously scheduled threads have finished reading from scratch
         WP_TILE_SYNC();
@@ -1067,7 +1109,8 @@ template <typename T, typename L> struct tile_register_t {
     }
 
 
-    // backward version of scalar extract
+    // The owning thread accumulates the contributions of every thread in the
+    // block. As in extract(), all threads must pass the same coordinate.
     template <typename Coord> inline CUDA_CALLABLE void adj_extract(const Coord& c, Type adj_ret)
     {
         // map from logical coords (i, j) -> (thread, reg)
@@ -1075,9 +1118,67 @@ template <typename T, typename L> struct tile_register_t {
         const int thread = Layout::thread_from_linear(linear);
         const int reg = Layout::register_from_linear(linear);
 
-        if (WP_TILE_THREAD_IDX == thread) {
-            data[reg] += adj_ret;
+#if defined(__CUDA_ARCH__)
+        constexpr int warp_count = (WP_TILE_BLOCK_DIM + WP_TILE_WARP_SIZE - 1) / WP_TILE_WARP_SIZE;
+
+        // one partial sum per warp, in raw storage as in extract()
+        __shared__ alignas(Type) char partials_storage[warp_count * sizeof(Type)];
+        Type* partials = reinterpret_cast<Type*>(partials_storage);
+
+        const int warp = WP_TILE_THREAD_IDX / WP_TILE_WARP_SIZE;
+
+        // Only the last warp can be partial, and only if the block is not a
+        // whole number of warps. The mask is a compile-time constant otherwise,
+        // and for single-warp blocks.
+        wp_tile_lane_mask_bits_t mask = WP_TILE_LANE_MASK_ALL;
+        if constexpr (WP_TILE_BLOCK_DIM % WP_TILE_WARP_SIZE != 0) {
+            if (warp_count == 1 || warp == warp_count - 1)
+                mask = WP_TILE_LANE_MASK_BELOW(WP_TILE_BLOCK_DIM % WP_TILE_WARP_SIZE);
         }
+
+        // Shuffles sum within a warp without shared memory or barriers. The
+        // sum is valid in the first lane of the warp.
+        tile_adj_warp_sum(adj_ret, mask);
+
+        if (WP_TILE_THREAD_IDX % WP_TILE_WARP_SIZE == 0)
+            partials[warp] = adj_ret;
+
+        WP_TILE_SYNC();
+
+        if (WP_TILE_THREAD_IDX == thread) {
+            // kept as a loop so that one partial at a time passes through registers
+            WP_PRAGMA_NO_UNROLL
+            for (int i = 0; i < warp_count; ++i)
+                data[reg] += partials[i];
+        }
+
+        // ensure the owner has finished reading before the partials are reused
+        WP_TILE_SYNC();
+#else
+        if constexpr (WP_TILE_BLOCK_DIM == 1) {
+            data[linear] += adj_ret;
+        } else {
+            wp_block_shared<Type> sum_holder;
+            Type& sum = *sum_holder;
+
+            if (WP_TILE_THREAD_IDX == 0)
+                sum = Type {};
+
+            WP_TILE_SYNC();
+
+            // fibers run one at a time between barriers, so a plain add suffices
+            sum += adj_ret;
+
+            WP_TILE_SYNC();
+
+            if (WP_TILE_THREAD_IDX == thread)
+                data[reg] += sum;
+
+            // ensure the owner has finished reading before any fiber releases
+            // and reuses the block-shared allocation
+            WP_TILE_SYNC();
+        }
+#endif
     }
 
     inline CUDA_CALLABLE void print_from_shared(T* smem) const;

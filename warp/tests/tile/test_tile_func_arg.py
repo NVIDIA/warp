@@ -699,6 +699,76 @@ def test_register_tile_func_matrix_read(test, device, all_lanes):
     np.testing.assert_allclose(x.grad.numpy(), seeds.sum(axis=0, keepdims=True), rtol=1e-12, atol=1e-12)
 
 
+def test_register_tile_func_element_read_grad(test, device, dtype, block_dim):
+    """Accumulate repeated element-read gradients from all lanes into register owners."""
+
+    @wp.func
+    def read(t: wp.tile[dtype, 8, 8], index: int):
+        return t[index // 8, index % 8]
+
+    @wp.kernel(module="unique")
+    def compute(x: wp.array2d[dtype], a: wp.array[dtype], b: wp.array[dtype]):
+        _, lane = wp.tid()
+        t = wp.tile_load(x, shape=(8, 8), storage="register")
+        index = 6
+        a[lane] = read(t, index)
+        b[lane] = read(t, (index + 17) % 64)
+
+    component_shape = {wp.float32: (), wp.float64: (), wp.vec3: (3,), wp.mat22: (2, 2), wp.mat33d: (3, 3)}[dtype]
+    np_dtype = np.float64 if dtype in (wp.float64, wp.mat33d) else np.float32
+    rng = np.random.default_rng(578)
+    values = rng.standard_normal((8, 8, *component_shape)).astype(np_dtype)
+    lanes = block_dim if device.is_cuda or wp.config.enable_cpu_blocks else 1
+    seeds_a = rng.standard_normal((lanes, *component_shape)).astype(np_dtype)
+    seeds_b = rng.standard_normal((lanes, *component_shape)).astype(np_dtype)
+    x = wp.array(values, dtype=dtype, device=device, requires_grad=True)
+    a = wp.zeros(lanes, dtype=dtype, device=device, requires_grad=True)
+    b = wp.zeros_like(a)
+    with wp.Tape() as tape:
+        wp.launch_tiled(compute, dim=1, inputs=[x], outputs=[a, b], block_dim=block_dim, device=device)
+    tape.backward(
+        grads={a: wp.array(seeds_a, dtype=dtype, device=device), b: wp.array(seeds_b, dtype=dtype, device=device)}
+    )
+    indices = np.full(lanes, 6)
+    flat = values.reshape(64, *component_shape)
+    np.testing.assert_allclose(a.numpy(), flat[indices])
+    np.testing.assert_allclose(b.numpy(), flat[(indices + 17) % 64])
+    expected = np.zeros_like(flat)
+    np.add.at(expected, indices, seeds_a)
+    np.add.at(expected, (indices + 17) % 64, seeds_b)
+    np.testing.assert_allclose(x.grad.numpy().reshape(expected.shape), expected, rtol=2e-5, atol=2e-5)
+
+
+def test_register_tile_func_element_read(test, device):
+    """Read elements of a register tile in a user function and check the gradient."""
+
+    @wp.kernel(module="unique")
+    def compute(x: wp.array2d[float], out: wp.array1d[float]):
+        _, lane = wp.tid()
+        t = wp.tile_load(x, shape=(TILE_M, TILE_N), storage="register")
+        s = read_elements_func(t)
+        # Every thread holds the result; store it from one thread so that only one passes a gradient back
+        if lane == 0:
+            out[0] = s
+
+    rng = np.random.default_rng(42)
+    x_np = rng.standard_normal((TILE_M, TILE_N)).astype(np.float32)
+
+    x = wp.array(x_np, requires_grad=True, device=device)
+    out = wp.zeros(1, dtype=float, requires_grad=True, device=device)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(compute, dim=[1], inputs=[x], outputs=[out], block_dim=BLOCK_DIM, device=device)
+
+    np.testing.assert_allclose(out.numpy(), [x_np[1, 2] * 2.0 + x_np[3, 0]], rtol=1e-6)
+
+    tape.backward(loss=out)
+    expected_grad = np.zeros_like(x_np)
+    expected_grad[1, 2] = 2.0
+    expected_grad[3, 0] = 1.0
+    np.testing.assert_allclose(x.grad.numpy(), expected_grad)
+
+
 devices = get_test_devices()
 
 
@@ -747,7 +817,6 @@ add_function_test(
     functools.partial(test_register_tile_func_large_read, backward=False),
     devices=get_cuda_test_devices(),
 )
-
 add_function_test(
     TestTileFuncArg,
     "test_register_tile_func_matrix_read_owner",
@@ -783,6 +852,54 @@ add_function_test(
     "test_native_func_inplace_modify_tile",
     test_native_func_inplace_modify_tile,
     devices=get_cuda_test_devices(),
+)
+
+
+for dtype in (wp.float32, wp.float64, wp.vec3, wp.mat22, wp.mat33d):
+    # one partial warp, a partial last warp, and whole warps
+    for block_dim in (24, 40, 128):
+        name = f"test_register_tile_func_element_read_grad_{dtype.__name__}_{block_dim}"
+        func = functools.partial(test_register_tile_func_element_read_grad, dtype=dtype, block_dim=block_dim)
+        add_function_test(TestTileFuncArg, name, func, devices=devices)
+        add_function_test(
+            TestTileFuncArg, name + "_cpu_blocks", func, devices=get_cpu_test_devices(), enable_cpu_blocks=True
+        )
+
+add_function_test(
+    TestTileFuncArg,
+    "test_register_tile_func_matrix_read_all_lanes",
+    functools.partial(test_register_tile_func_matrix_read, all_lanes=True),
+    devices=get_cuda_test_devices(),
+)
+
+add_function_test(
+    TestTileFuncArg, "test_register_tile_func_element_read", test_register_tile_func_element_read, devices=devices
+)
+add_function_test(
+    TestTileFuncArg,
+    "test_register_tile_func_element_read_cpu_blocks",
+    test_register_tile_func_element_read,
+    devices=get_cpu_test_devices(),
+    enable_cpu_blocks=True,
+)
+add_function_test(
+    TestTileFuncArg,
+    "test_register_tile_func_large_read_grad",
+    functools.partial(test_register_tile_func_large_read, backward=True),
+    devices=get_cuda_test_devices(),
+)
+for kind in ("identity", "nested", "local", "conditional", "allocated", "load", "view", "broadcast"):
+    add_function_test(
+        TestTileFuncArg,
+        f"test_tile_func_return_composition_{kind}_grad",
+        functools.partial(test_tile_func_return_composition, kind=kind, backward=True),
+        devices=devices,
+    )
+add_function_test(
+    TestTileFuncArg,
+    "test_tile_func_multiple_return_composition_grad",
+    functools.partial(test_tile_func_multiple_return_composition, backward=True),
+    devices=devices,
 )
 
 
