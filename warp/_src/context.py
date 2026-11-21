@@ -1320,7 +1320,9 @@ class Kernel:
     Kernels can be launched on CPU or GPU devices using :func:`warp.launch`.
     """
 
-    def __init__(self, func, key=None, module=None, options=None, code_transformers=None, source=None):
+    def __init__(
+        self, func, key=None, module=None, options=None, code_transformers=None, source=None, static_args=None
+    ):
         self.func = func
 
         if module is None:
@@ -1342,7 +1344,28 @@ class Kernel:
         if code_transformers is None:
             code_transformers = []
 
-        self.adj = warp._src.codegen.Adjoint(func, transformers=code_transformers, source=source)
+        if static_args is None:
+            static_args = {}
+        parameters = inspect.signature(func).parameters
+        unknown = static_args.keys() - parameters.keys()
+        if unknown:
+            raise ValueError(f"Kernel has no arguments {sorted(unknown)} passed as static arguments")
+        # TODO: should we check integer overflow if the user is passing an int for wp.int32?
+        #    Is this already happening with non-static arguments? If so, we avoid fixing it here for static args
+        # TODO: Any structs, vec3 passed from the user can mutate while being captured
+        #   We should therefore recreate the static args dict with owned objects
+        # TODO: should we allow an integer to be passed where a float is required? No error but wrong precision in kernel.
+        #   This happens even outside kernels so I'd say no check
+
+        # Cache the static args to avoid them being modified before compilation
+        scalar_types = warp._src.types.scalar_and_bool_types
+        owned_static_args = {
+            name: type(v)(v.value) if type(v) in scalar_types else type(v)(v) for name, v in static_args.items()
+        }
+
+        self.adj = warp._src.codegen.Adjoint(
+            func, transformers=code_transformers, source=source, static_args=owned_static_args
+        )
         self.return_annotation = self.adj.arg_types.pop("return", None)
         if self.return_annotation is types.NoneType:
             self.return_annotation = None
@@ -1439,7 +1462,12 @@ class Kernel:
 
         # instantiate this kernel with the given argument types
         ovl = shallowcopy(self)
-        ovl.adj = warp._src.codegen.Adjoint(self.func, overload_annotations, source=self.adj.source)
+        ovl.adj = warp._src.codegen.Adjoint(
+            self.func,
+            overload_annotations,
+            source=self.adj.source,
+            static_args=self.adj.static_args,
+        )
         ovl.is_generic = False
         ovl.overloads = {}
         ovl.sig = sig
@@ -1982,6 +2010,7 @@ def kernel(
     module_options: dict[str, Any] | None = None,
     entry_point_abi: Literal["warp", "external_constant_params"] | None = None,
     grid_stride: bool | None = None,
+    static_args: Mapping[str, Any] | None = None,
 ):
     """
     Decorator to register a Warp kernel from a Python function.
@@ -2102,6 +2131,10 @@ def kernel(
             capped: launching it with ``max_blocks > 0`` raises. ``None``
             defers to the ``"default_grid_stride"`` module option, then
             :data:`warp.config.default_grid_stride`.
+        static_args: Optional mapping from parameter names to compile-time
+            Python scalar or Warp value instances. Static parameters become
+            compile-time constants and are omitted from the launch arguments.
+            Each distinct value produces a separate compiled specialization.
 
     Returns:
         The registered kernel.
@@ -2193,6 +2226,7 @@ def kernel(
             key=key,
             module=m,
             options=kernel_options,
+            static_args=static_args,
         )
 
         # Handle unique module case: one module per kernel with hash-based naming.
@@ -3407,6 +3441,11 @@ class ModuleHasher:
                 ch.update(arg_type.hash)
             elif warp._src.types.is_array(arg_type) and isinstance(arg_type.dtype, warp._src.codegen.Struct):
                 ch.update(arg_type.dtype.hash)
+
+        # static kernel arguments
+        for name, value in adj.static_args.items():
+            ch.update(bytes(f"static:{name}:{warp._src.types.get_type_code(type(value))}", "utf-8"))
+            ch.update(self.get_constant_bytes(value))
 
         # NOTE: get_references() only captures closure variables that resolve to Warp
         # Function, Struct, or value types (scalars, vectors, matrices, etc.). Non-Warp Python objects (lists,

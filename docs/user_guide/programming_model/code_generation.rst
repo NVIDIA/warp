@@ -649,7 +649,24 @@ In the generated CUDA code, we can see that the optimized code does not branch f
 Dynamic Kernel Creation
 -----------------------
 
-It is often desirable to dynamically customize kernels with different constants, types, or functions.  We can achieve this through runtime kernel specialization using Python closures.
+It is often desirable to dynamically customize kernels with different constants, types, or functions.  We can achieve this through static kernel arguments or runtime kernel specialization using Python closures.
+
+Static Kernel Arguments
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Both :func:`warp.kernel` and :class:`warp.Kernel` accept ``static_args`` to bind compile-time Python scalar or Warp value parameters without wrapping the kernel in a closure factory. Specialized parameters become compile-time constants (usable in ``wp.static()`` expressions, static branches, and unrolled loops) and are omitted from the launch arguments. Each distinct static value produces a separate compiled specialization.
+
+.. code:: python
+
+    def scale(a: wp.array[float], factor: float):
+        a[wp.tid()] *= factor
+
+    scale_half = wp.kernel(scale, module="unique", static_args={"factor": 0.5})
+    scale_two = wp.kernel(scale, module="unique", static_args={"factor": 2.0})
+
+    a = wp.ones(5, dtype=float)
+    wp.launch(scale_half, dim=a.shape, inputs=[a])
+    wp.launch(scale_two, dim=a.shape, inputs=[a])
 
 Kernel Closures
 ~~~~~~~~~~~~~~~
