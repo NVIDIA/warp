@@ -567,6 +567,9 @@ linux-x86_64 cu12 test:
   image: $UV_TRIXIE_IMAGE
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
+    # .ipp_lnx_x86_64_gpu_2x does not pick a GPU product. Some A40 runners return
+    # zeros from the second GPU in the multi-GPU JAX tests.
+    IPP_RUNNER_GPU_TYPE: "NVIDIA-L40S"
   extends:
     - .ipp_lnx_x86_64_gpu_2x
     - .test_common_with_coverage
@@ -574,8 +577,6 @@ linux-x86_64 cu12 test:
     - df -h
     - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-x86_64-binaries]
-    # HACK: disable P2P tests due to misbehaving agents
-    - export WARP_DISABLE_P2P_TESTS=1
   script:
     - uv run --extra dev --extra torch-cu12 --with "jax[cuda12]>=0.5" --with rmm-cu12 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
@@ -584,6 +585,9 @@ linux-x86_64 cu13 test:
   image: $UV_TRIXIE_IMAGE
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
+    # .ipp_lnx_x86_64_gpu_2x does not pick a GPU product. Some A40 runners return
+    # zeros from the second GPU in the multi-GPU JAX tests.
+    IPP_RUNNER_GPU_TYPE: "NVIDIA-L40S"
   extends:
     - .ipp_lnx_x86_64_gpu_2x
     - .test_common_with_coverage
@@ -591,8 +595,6 @@ linux-x86_64 cu13 test:
     - df -h
     - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-x86_64-binaries]
-    # HACK: disable P2P tests due to misbehaving agents
-    - export WARP_DISABLE_P2P_TESTS=1
   script:
     - uv run --extra dev --extra torch-cu13 --with "jax[cuda13]>=0.5" --with rmm-cu13 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
