@@ -136,6 +136,39 @@ def test_bool_vec_assign_copy(test, device):
     wp.synchronize_device(device)
 
 
+@wp.struct
+class VecFieldStruct:
+    v: wp.vec3
+
+
+def test_struct_vec_field_assign_copy(test, device):
+    @wp.kernel(module="unique")
+    def struct_vec_field_overwrite(x: wp.array[float], y: wp.array[wp.vec3]):
+        tid = wp.tid()
+
+        s = VecFieldStruct()
+        s.v[0] = x[tid]
+        s.v[0] = s.v[0] * x[tid]
+        s.v.y = 2.0 * x[tid]
+        s.v[2] = x[tid]
+        s.v[2] *= x[tid]
+
+        y[tid] = s.v
+
+    x = wp.full(1, 3.0, dtype=float, device=device, requires_grad=True)
+    y = wp.zeros(1, dtype=wp.vec3, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(struct_vec_field_overwrite, dim=1, inputs=[x, y], device=device)
+
+    y.grad = wp.ones_like(y, requires_grad=False)
+    tape.backward()
+
+    assert_np_equal(y.numpy(), np.array([[9.0, 6.0, 9.0]], dtype=float))
+    assert_np_equal(x.grad.numpy(), np.array([14.0], dtype=float))
+
+
 devices = get_test_devices()
 
 
@@ -148,6 +181,9 @@ add_function_test(TestVecAssignCopy, "test_vec_assign_copy", test_vec_assign_cop
 add_function_test(TestVecAssignCopy, "test_bool_vec_assign_copy", test_bool_vec_assign_copy, devices=devices)
 add_function_test(
     TestVecAssignCopy, "test_vec_slicing_assign_backward", test_vec_slicing_assign_backward, devices=devices
+)
+add_function_test(
+    TestVecAssignCopy, "test_struct_vec_field_assign_copy", test_struct_vec_field_assign_copy, devices=devices
 )
 
 
