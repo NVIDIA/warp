@@ -1098,6 +1098,15 @@ class TestHashGrid(unittest.TestCase):
         instance = wp.HashGrid.__new__(wp.HashGrid)
         instance.__del__()
 
+    def test_hashgrid_initializes_warp(self):
+        """Create a hash grid before any other Warp call initializes the runtime."""
+        result = run_python_subprocess(
+            "import warp as wp; grid = wp.HashGrid(4, 4, 4, device='cpu'); print(grid.id != 0)",
+            hide_gpu=True,
+        )
+        self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+        self.assertIn("True", result.stdout)
+
     def test_hashgrid_query_public_type_surface(self):
         query_h = wp._src.types.hash_grid_query_type(wp.float16)
         query_f = wp._src.types.hash_grid_query_type(wp.float32)
