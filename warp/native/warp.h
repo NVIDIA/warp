@@ -831,12 +831,15 @@ WP_API bool wp_cuda_graph_insert_child_graph(void* context, void* stream, void* 
 WP_API bool wp_cuda_graph_check_conditional_body(void* body_graph);
 
 WP_API void* wp_cuda_graph_insert_memcpy(void* context, void* stream, void* dst, void* src, size_t size, int kind);
+WP_API bool wp_cuda_graph_update_memcpy(void* graph_exec, void* node, void* dst, void* src, size_t size, int kind);
+
+// For both batch calls, explicit CUDA copy kinds select memcpy nodes. Pass nullptr for kinds at
+// insertion and update to use copy kernels when all buffers belong to the capture device.
 WP_API bool wp_cuda_graph_insert_memcpy_batch(
     void* context, void* stream, void** dsts, void** srcs, size_t* sizes, int* kinds, int count, void** nodes_ret
 );
-WP_API bool wp_cuda_graph_update_memcpy(void* graph_exec, void* node, void* dst, void* src, size_t size, int kind);
 WP_API bool wp_cuda_graph_update_memcpy_batch(
-    void* graph_exec, void** nodes, void** dsts, void** srcs, size_t* sizes, int* kinds, int count
+    void* context, void* graph_exec, void** nodes, void** dsts, void** srcs, size_t* sizes, int* kinds, int count
 );
 
 WP_API void* wp_cuda_graph_insert_alloc_node(void* context, size_t size);

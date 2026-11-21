@@ -29,6 +29,7 @@ from warp.tests.unittest_utils import (
     get_test_devices,
     get_test_devices_with_cuda_graph_module_load,
     get_test_devices_with_graph_capture_allocation_and_cuda_graph_module_load,
+    suppress_native_error_output,
 )
 
 
@@ -82,6 +83,47 @@ graph_module_load_devices = get_test_devices_with_cuda_graph_module_load("all")
 
 
 class TestGraph(unittest.TestCase):
+    @unittest.skipUnless(check_p2p(), "Peer-to-peer transfers are unavailable")
+    def test_cuda_graph_memcpy_batch_peer_copy(self):
+        pair = get_cuda_device_pair_with_peer_access_support(get_test_devices())
+        if pair is None:
+            self.skipTest("Requires two CUDA devices with peer access support")
+        src_device, dst_device = pair
+        core = wp._src.context.runtime.core
+        values = np.arange(2048, dtype=np.float32)
+        with (
+            wp.ScopedMempool(src_device, False),
+            wp.ScopedMempool(dst_device, False),
+            wp.ScopedPeerAccess(src_device, dst_device, False),
+        ):
+            sources = [wp.array(data, device=src_device) for data in (values, -values)]
+            destinations = [wp.zeros(values.size, dtype=wp.float32, device=dst_device) for _ in sources]
+            wp.synchronize_device(src_device)
+
+            src = (ctypes.c_void_p * 1)(sources[0].ptr)
+            dst = (ctypes.c_void_p * 1)(destinations[0].ptr)
+            size = (ctypes.c_size_t * 1)(values.nbytes)
+            kind = (ctypes.c_int * 1)(wp._src.context.CudaMemcpyKind.D2D)
+            nodes = (ctypes.c_void_p * 1)()
+            stream = wp.get_stream(dst_device)
+            with wp.ScopedCapture(stream=stream) as capture:
+                self.assertTrue(
+                    core.wp_cuda_graph_insert_memcpy_batch(
+                        dst_device.context, stream.cuda_stream, dst, src, size, kind, 1, nodes
+                    )
+                )
+            wp.capture_launch(capture.graph, stream)
+            np.testing.assert_array_equal(destinations[0].numpy(), values)
+
+            src[0], dst[0] = sources[1].ptr, destinations[1].ptr
+            self.assertTrue(
+                core.wp_cuda_graph_update_memcpy_batch(
+                    dst_device.context, capture.graph.graph_exec, nodes, dst, src, size, kind, 1
+                )
+            )
+            wp.capture_launch(capture.graph, stream)
+            np.testing.assert_array_equal(destinations[1].numpy(), -values)
+
     def test_cuda_graph_memory_bindings(self):
         core = wp._src.context.runtime.core
 
@@ -1555,8 +1597,148 @@ add_function_test(
     devices=devices_with_graph_capture_allocation_and_cuda_graph_module_load,
 )
 
+
+def test_cuda_graph_memcpy_batch_allocation_changes(test, device):
+    """Update graph copies across allocation types, alignments, and byte tails."""
+    core = wp._src.context.runtime.core
+    ctx = device.context
+    copy_sizes = (32, 35, 4099, 65553)
+    alignment_offsets = ((0, 0), (8, 0), (4, 12), (1, 3))
+    count = len(copy_sizes)
+    sources = (ctypes.c_void_p * count)()
+    destinations = (ctypes.c_void_p * count)()
+    sizes = (ctypes.c_size_t * count)(*copy_sizes)
+    nodes = (ctypes.c_void_p * count)()
+    retained = []
+    stream = wp.Stream(device)
+    cuda_stream = stream.cuda_stream
+
+    allocator_scopes = [
+        lambda: wp.ScopedMempool(device, False),
+        lambda: wp.ScopedMempool(device, True),
+    ]
+    if device.is_managed_memory_supported and device.is_concurrent_managed_access_supported:
+        managed_allocator = wp.CudaManagedAllocator()
+        allocator_scopes.append(lambda: wp.ScopedAllocator(device, managed_allocator))
+
+    num_iterations = max(len(alignment_offsets) + 1, len(allocator_scopes) + 1)
+
+    with wp.ScopedStream(stream):
+        test.assertTrue(core.wp_memcpy_batch(ctx, None, None, None, 0, cuda_stream))
+
+        for iteration in range(num_iterations):
+            outputs = []
+            expected_outputs = []
+            src_scope = allocator_scopes[iteration % len(allocator_scopes)]
+            dst_scope = allocator_scopes[(iteration + 1) % len(allocator_scopes)]
+
+            for index, size in enumerate(copy_sizes):
+                source_offset, destination_offset = alignment_offsets[(index + iteration) % len(alignment_offsets)]
+                values = (np.arange(size + source_offset, dtype=np.uint32) + iteration * 17 + index).astype(np.uint8)
+                with src_scope():
+                    source = wp.array(values, device=device)
+                with dst_scope():
+                    destination = wp.full(size + destination_offset + 16, 251, dtype=wp.uint8, device=device)
+                retained.extend((source, destination))
+                sources[index] = source.ptr + source_offset
+                destinations[index] = destination.ptr + destination_offset
+                outputs.append(destination)
+                expected = np.full(size + destination_offset + 16, 251, dtype=wp.uint8)
+                expected[destination_offset : destination_offset + size] = values[source_offset:]
+                expected_outputs.append(expected)
+
+            if iteration == 0:
+                with wp.ScopedCapture(stream=stream) as capture:
+                    with suppress_native_error_output():
+                        inserted = core.wp_cuda_graph_insert_memcpy_batch(
+                            ctx,
+                            cuda_stream,
+                            None,
+                            None,
+                            None,
+                            None,
+                            -1,
+                            None,
+                        )
+                    test.assertFalse(inserted)
+                    test.assertIn("Invalid negative memcpy count", wp._src.context.runtime.get_error_string())
+
+                    inserted = core.wp_cuda_graph_insert_memcpy_batch(
+                        ctx,
+                        cuda_stream,
+                        None,
+                        None,
+                        None,
+                        None,
+                        0,
+                        None,
+                    )
+                    test.assertTrue(inserted)
+
+                    inserted = core.wp_cuda_graph_insert_memcpy_batch(
+                        ctx,
+                        cuda_stream,
+                        destinations,
+                        sources,
+                        sizes,
+                        None,
+                        count,
+                        nodes,
+                    )
+                    test.assertTrue(inserted)
+            else:
+                graph_exec = capture.graph.graph_exec
+                with suppress_native_error_output():
+                    updated = core.wp_cuda_graph_update_memcpy_batch(
+                        ctx,
+                        graph_exec,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        -1,
+                    )
+                test.assertFalse(updated)
+                test.assertIn("Invalid negative memcpy count", wp._src.context.runtime.get_error_string())
+
+                updated = core.wp_cuda_graph_update_memcpy_batch(
+                    ctx,
+                    graph_exec,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    0,
+                )
+                test.assertTrue(updated)
+
+                updated = core.wp_cuda_graph_update_memcpy_batch(
+                    ctx,
+                    graph_exec,
+                    nodes,
+                    destinations,
+                    sources,
+                    sizes,
+                    None,
+                    count,
+                )
+                test.assertTrue(updated)
+            wp.capture_launch(capture.graph, stream=stream)
+            for output, expected in zip(outputs, expected_outputs, strict=True):
+                assert_np_equal(output.numpy(), expected)
+
+
 # CUDA-only tests
 cuda_devices = get_selected_cuda_test_devices_with_mempool()
+
+add_function_test(
+    TestGraph,
+    "test_cuda_graph_memcpy_batch_allocation_changes",
+    test_cuda_graph_memcpy_batch_allocation_changes,
+    devices=cuda_devices,
+)
 
 add_function_test(
     TestGraph,

@@ -8565,6 +8565,7 @@ class Runtime:
                 ctypes.c_void_p,
                 ctypes.c_void_p,
                 ctypes.c_void_p,
+                ctypes.c_void_p,
                 ctypes.c_int,
             ]
             self.core.wp_cuda_graph_update_memcpy_batch.restype = ctypes.c_bool
