@@ -633,38 +633,3 @@ _dtype_from_ffi = {
 
 def dtype_from_ffi(ffi_dtype):
     return _dtype_from_ffi.get(ffi_dtype)
-
-
-def jax_dtype_from_ffi(ffi_dtype):
-    return _get_xla_data_type_to_constructor().get(ffi_dtype)
-
-
-# Execution context (stream, stage)
-class ExecutionContext:
-    stage: XLA_FFI_ExecutionStage
-    stream: int
-
-    def __init__(self, callframe: XLA_FFI_CallFrame):
-        self.stage = XLA_FFI_ExecutionStage(callframe.stage)
-        self.stream = get_stream_from_callframe(callframe)
-
-
-class FfiBuffer:
-    dtype: str
-    data: int
-    shape: tuple[int]
-
-    def __init__(self, xla_buffer):
-        # TODO check if valid
-        self.dtype = _jnp_dtype_for_xla(xla_buffer.dtype)
-        self.shape = tuple(xla_buffer.dims[i] for i in range(xla_buffer.rank))
-        self.data = xla_buffer.data
-
-    @property
-    def __cuda_array_interface__(self):
-        return {
-            "shape": self.shape,
-            "typestr": self.dtype.char,
-            "data": (self.data, False),
-            "version": 2,
-        }

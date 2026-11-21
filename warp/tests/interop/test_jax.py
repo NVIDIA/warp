@@ -18,8 +18,6 @@ from unittest import mock
 import numpy as np
 
 import warp as wp
-from warp._src.jax import get_jax_device
-from warp._src.jax.ffi import register_ffi_callback
 from warp.tests.unittest_utils import *
 
 # Prevent JAX from preallocating GPU memory before any module-level version checks import it.
@@ -1787,64 +1785,6 @@ def test_ffi_jax_callable_shard_map_graph_modes(test, device):
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
-def test_ffi_callback(test, device):
-    # in-out arguments
-    jp = _import_jax_numpy()
-
-    # the Python function to call
-    def warp_func(inputs, outputs, attrs, ctx):
-        # input arrays
-        a = inputs[0]
-        b = inputs[1]
-
-        # scalar attributes
-        s = attrs["scale"]
-
-        # output arrays
-        c = outputs[0]
-        d = outputs[1]
-
-        device = wp.device_from_jax(get_jax_device())
-        stream = wp.Stream(device, cuda_stream=ctx.stream)
-
-        with wp.ScopedStream(stream):
-            # launch with arrays of scalars
-            wp.launch(scale_kernel, dim=a.shape, inputs=[a, s], outputs=[c])
-
-            # launch with arrays of vec2
-            # NOTE: the input shapes are from JAX arrays, we need to strip the inner dimension for vec2 arrays
-            wp.launch(scale_vec_kernel, dim=b.shape[0], inputs=[b, s], outputs=[d])
-
-    # register callback; an FFI target name can be registered only once per process,
-    # and the variants for different devices may share a process
-    callback_name = f"warp_func_{device.ordinal}"
-    register_ffi_callback(callback_name, warp_func)
-
-    n = ARRAY_SIZE
-
-    with jax.default_device(wp.device_to_jax(device)):
-        # inputs
-        a = jp.arange(n, dtype=jp.float32)
-        b = jp.arange(n, dtype=jp.float32).reshape((n // 2, 2))  # array of wp.vec2
-        s = 2.0
-
-        # set up call
-        out_types = [
-            jax.ShapeDtypeStruct(a.shape, jp.float32),
-            jax.ShapeDtypeStruct(b.shape, jp.float32),  # array of wp.vec2
-        ]
-        call = jax.ffi.ffi_call(callback_name, out_types)
-
-        # call it
-        c, d = call(a, b, scale=s)
-
-    jax.block_until_ready([c, d])
-
-    assert_np_equal(c, 2 * np.arange(ARRAY_SIZE, dtype=np.float32))
-    assert_np_equal(d, 2 * np.arange(ARRAY_SIZE, dtype=np.float32).reshape((ARRAY_SIZE // 2, 2)))
-
-
-@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_autodiff_simple(test, device):
     jax = _import_jax()
     jp = _import_jax_numpy()
@@ -3403,7 +3343,6 @@ else:
             test_ffi_jax_callable_graph_cache,
             test_ffi_jax_callable_graph_replay_skips_module_load,
             test_ffi_jax_cuda_requires_cuda_support,
-            test_ffi_callback,
         )
         for test_func in cuda_only_jax_tests:
             add_function_test(
