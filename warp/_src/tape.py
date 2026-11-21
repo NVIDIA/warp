@@ -9,6 +9,28 @@ import warp as wp
 from warp._src.logger import log_warning
 
 
+def _may_carry_gradients(value) -> bool:
+    """Return whether a recorded launch argument can carry gradients through the tape.
+
+    Only arrays and structs receive adjoints during the backward pass. Arrays of integers or
+    booleans never hold gradients. Any other array, and any struct, counts as differentiable.
+    """
+    if wp._src.types.is_struct(value):
+        return True
+
+    if wp._src.types.is_array(value):
+        scalar_type = wp._src.types.type_scalar_type(value.dtype)
+        return not (wp._src.types.type_is_int(scalar_type) or scalar_type in (wp.bool, bool))
+
+    return False
+
+
+def _launch_may_carry_gradients(launch) -> bool:
+    """Return whether skipping the adjoint of a recorded kernel launch could lose gradients."""
+    inputs, outputs = launch[3], launch[4]
+    return any(_may_carry_gradients(a) for a in (*inputs, *outputs))
+
+
 class Tape:
     """
     Record kernel launches within a Tape scope to enable automatic differentiation.
@@ -127,11 +149,12 @@ class Tape:
                 # kernel option takes precedence over module option
                 enable_backward = launch[0].options.get("enable_backward")
                 if enable_backward is False:
-                    msg = f"Running the tape backwards may produce incorrect gradients because recorded kernel {launch[0].key} is configured with the option 'enable_backward=False'."
-                    log_warning(msg)
+                    if _launch_may_carry_gradients(launch):
+                        msg = f"Running the tape backwards may produce incorrect gradients because recorded kernel {launch[0].key} is configured with the option 'enable_backward=False'."
+                        log_warning(msg)
                 elif enable_backward is None:
                     enable_backward = launch[0].module.options.get("enable_backward")
-                    if enable_backward is False:
+                    if enable_backward is False and _launch_may_carry_gradients(launch):
                         msg = f"Running the tape backwards may produce incorrect gradients because recorded kernel {launch[0].key} is defined in a module with the option 'enable_backward=False' set."
                         log_warning(msg)
 
