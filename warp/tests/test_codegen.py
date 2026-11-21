@@ -2524,7 +2524,7 @@ class TestCodeGen(unittest.TestCase):
 
     def test_kernel_name_preserves_warp_kernel_abi(self):
         @wp.kernel(module="unique", name="custom_kernel")
-        def named_kernel(values: wp.array(dtype=float), scale: float):
+        def named_kernel(values: wp.array[float], scale: float):
             tid = wp.tid()
             values[tid] = values[tid] * scale
 

@@ -100,7 +100,7 @@ def shift_indices_kernel(indices: wp.array[wp.int32], shift: wp.int32, modulus: 
 
 
 @wp.kernel
-def bvh_query_aabb_hits(bvh: wp.uint64, lower: wp.vec3, upper: wp.vec3, hits: wp.array(dtype=wp.int32)):
+def bvh_query_aabb_hits(bvh: wp.uint64, lower: wp.vec3, upper: wp.vec3, hits: wp.array[wp.int32]):
     # Marks hits[i] = 1 for every BVH primitive whose bounds overlap [lower, upper].
     query = wp.bvh_query_aabb(bvh, lower, upper)
     index = int(0)
