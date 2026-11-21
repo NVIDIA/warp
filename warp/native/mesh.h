@@ -1999,6 +1999,24 @@ CUDA_CALLABLE inline float mesh_query_inside_ray_tracing(uint64_t id, const vec3
 CUDA_CALLABLE inline float
 mesh_query_inside_parity(uint64_t id, const vec3& p, const vec3 base_dir, int n_sample, float perturbation_scale)
 {
+    // A closed solid is contained in its current BVH bounds. Avoid spurious
+    // odd ray counts for points that are definitely outside.
+    // Preserve boundary queries and the non-positive sample-count behavior.
+    if (n_sample > 0) {
+        const Mesh mesh = mesh_get(id);
+        if (mesh.num_tris > 0 && mesh.bvh.root != nullptr) {
+            const int root = *mesh.bvh.root;
+            if (root >= 0) {
+                const BVHPackedNodeHalf lower = bvh_load_node(mesh.bvh.node_lowers, root);
+                const BVHPackedNodeHalf upper = bvh_load_node(mesh.bvh.node_uppers, root);
+                if (p[0] < lower.x || p[0] > upper.x || p[1] < lower.y || p[1] > upper.y || p[2] < lower.z
+                    || p[2] > upper.z) {
+                    return 1.0f;
+                }
+            }
+        }
+    }
+
     int vote = 0;
 
     // deterministic
