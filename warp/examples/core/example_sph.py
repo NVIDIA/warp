@@ -49,11 +49,8 @@ def density_kernel(xyz: wp.vec3, smoothing_length: float):
 def diff_pressure_kernel(
     xyz: wp.vec3, pressure: float, neighbor_pressure: float, neighbor_rho: float, smoothing_length: float
 ):
-    # calculate distance
     distance = wp.sqrt(wp.dot(xyz, xyz))
-
     if distance < smoothing_length:
-        # calculate terms of kernel
         term_1 = -xyz / distance
         term_2 = (neighbor_pressure + pressure) / (2.0 * neighbor_rho)
         term_3 = square(smoothing_length - distance)
@@ -64,10 +61,7 @@ def diff_pressure_kernel(
 
 @wp.func
 def diff_viscous_kernel(xyz: wp.vec3, v: wp.vec3, neighbor_v: wp.vec3, neighbor_rho: float, smoothing_length: float):
-    # calculate distance
     distance = wp.sqrt(wp.dot(xyz, xyz))
-
-    # calculate terms of kernel
     if distance < smoothing_length:
         term_1 = (neighbor_v - v) / neighbor_rho
         term_2 = smoothing_length - distance
@@ -110,7 +104,7 @@ def compute_density(
     particle_rho[i] = density_normalization * rho
 
 
-@wp.kernel
+@wp.kernel(launch_bounds=(256, 4))
 def get_acceleration(
     grid: wp.uint64,
     particle_x: wp.array[wp.vec3],
@@ -125,48 +119,83 @@ def get_acceleration(
     smoothing_length: float,
 ):
     tid = wp.tid()
-
-    # order threads by cell
     i = wp.hash_grid_point_id(grid, tid)
-
-    # get local particle variables
     x = particle_x[i]
-    v = particle_v[i]
-    rho = particle_rho[i]
-    pressure = isotropic_exp * (rho - base_density)
-
-    # store forces
     pressure_force = wp.vec3()
     viscous_force = wp.vec3()
-
-    # particle contact
+    smoothing_squared = square(smoothing_length)
+    neighbor_indices = wp.vector(length=16, dtype=wp.int32)
     neighbors = wp.hash_grid_query(grid, x, smoothing_length)
-
-    # loop through neighbors to compute acceleration
-    for index in neighbors:
-        if index != i:
-            # get neighbor velocity
-            neighbor_v = particle_v[index]
-
-            # get neighbor density and pressures
-            neighbor_rho = particle_rho[index]
-            neighbor_pressure = isotropic_exp * (neighbor_rho - base_density)
-
-            # compute relative position
-            relative_position = particle_x[index] - x
-
-            # calculate pressure force
-            pressure_force += diff_pressure_kernel(
-                relative_position, pressure, neighbor_pressure, neighbor_rho, smoothing_length
-            )
-
-            # compute kernel derivative
-            viscous_force += diff_viscous_kernel(relative_position, v, neighbor_v, neighbor_rho, smoothing_length)
-
-    # sum all forces
+    next_index = int(0)
+    has_neighbor = wp.hash_grid_query_next(neighbors, next_index)
+    while has_neighbor:
+        buffered_count = int(0)
+        while has_neighbor:
+            index0 = next_index + int(0)
+            index1 = int(0)
+            index2 = int(0)
+            index3 = int(0)
+            valid1 = wp.hash_grid_query_next(neighbors, index1)
+            valid2 = bool(False)
+            valid3 = bool(False)
+            has_neighbor = bool(False)
+            if valid1:
+                valid2 = wp.hash_grid_query_next(neighbors, index2)
+                if valid2:
+                    valid3 = wp.hash_grid_query_next(neighbors, index3)
+                    if valid3:
+                        has_neighbor = wp.hash_grid_query_next(neighbors, next_index)
+            relative0 = particle_x[index0] - x
+            relative1 = wp.vec3()
+            relative2 = wp.vec3()
+            relative3 = wp.vec3()
+            if valid1:
+                relative1 = particle_x[index1] - x
+            if valid2:
+                relative2 = particle_x[index2] - x
+            if valid3:
+                relative3 = particle_x[index3] - x
+            distance_squared0 = wp.dot(relative0, relative0)
+            eligible0 = int(index0 != i) & int(distance_squared0 <= smoothing_squared)
+            if eligible0 != 0:
+                neighbor_indices[buffered_count] = index0
+                buffered_count += 1
+            if valid1:
+                distance_squared1 = wp.dot(relative1, relative1)
+                eligible1 = int(index1 != i) & int(distance_squared1 <= smoothing_squared)
+                if eligible1 != 0:
+                    neighbor_indices[buffered_count] = index1
+                    buffered_count += 1
+            if valid2:
+                distance_squared2 = wp.dot(relative2, relative2)
+                eligible2 = int(index2 != i) & int(distance_squared2 <= smoothing_squared)
+                if eligible2 != 0:
+                    neighbor_indices[buffered_count] = index2
+                    buffered_count += 1
+            if valid3:
+                distance_squared3 = wp.dot(relative3, relative3)
+                eligible3 = int(index3 != i) & int(distance_squared3 <= smoothing_squared)
+                if eligible3 != 0:
+                    neighbor_indices[buffered_count] = index3
+                    buffered_count += 1
+            if buffered_count > 12:
+                break
+        if buffered_count > 0:
+            v = particle_v[i]
+            local_rho = particle_rho[i]
+            pressure = isotropic_exp * (local_rho - base_density)
+            for slot in range(buffered_count):
+                neighbor_index = neighbor_indices[slot]
+                buffered_position = particle_x[neighbor_index] - x
+                neighbor_v = particle_v[neighbor_index]
+                neighbor_rho = particle_rho[neighbor_index]
+                neighbor_pressure = isotropic_exp * (neighbor_rho - base_density)
+                pressure_force += diff_pressure_kernel(
+                    buffered_position, pressure, neighbor_pressure, neighbor_rho, smoothing_length
+                )
+                viscous_force += diff_viscous_kernel(buffered_position, v, neighbor_v, neighbor_rho, smoothing_length)
+    rho = particle_rho[i]
     force = pressure_normalization * pressure_force + viscous_normalization * viscous_force
-
-    # add external potential
     particle_a[i] = force / rho + wp.vec3(0.0, gravity, 0.0)
 
 
