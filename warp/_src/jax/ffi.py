@@ -41,7 +41,6 @@ from .xla_ffi import *
 _FFI_KERNEL_REGISTRY: dict[tuple, FfiKernel] = {}
 _FFI_DIFF_KERNEL_REGISTRY: dict[tuple, Callable] = {}
 _FFI_CALLABLE_REGISTRY: dict[tuple, FfiCallable] = {}
-_FFI_CALLBACK_REGISTRY: dict[str, ctypes.CFUNCTYPE] = {}
 _FFI_REGISTRY_LOCK = threading.Lock()
 
 # Lock when XLA invokes callbacks from multiple threads.
@@ -1924,85 +1923,6 @@ def clear_jax_callable_graph_cache(callable: FfiCallable | None = None):
         with _FFI_REGISTRY_LOCK:
             for callable in _FFI_CALLABLE_REGISTRY.values():
                 callable.captures.clear()
-
-
-###############################################################################
-#
-# Generic FFI callbacks for Python functions of the form
-# func(inputs, outputs, attrs, ctx)
-#
-###############################################################################
-
-
-def register_ffi_callback(name: str, func: Callable, graph_compatible: bool = True) -> None:
-    """Create a JAX callback from a Python function.
-
-    The Python function must have the form ``func(inputs, outputs, attrs, ctx)``.
-
-    NOTE: This is an experimental feature under development.
-
-    Args:
-        name: A unique FFI callback name.
-        func: The Python function to call.
-        graph_compatible: Whether the function can be called during CUDA graph capture.
-    """
-
-    check_jax_version()
-    jax = _get_jax()
-
-    # TODO check that the name is not already registered
-
-    def ffi_callback(call_frame):
-        try:
-            extension = call_frame.contents.extension_start
-            # On the first call, XLA runtime will query the API version and traits
-            # metadata using the |extension| field. Let us respond to that query
-            # if the metadata extension is present.
-            if extension:
-                # Try to set the version metadata.
-                if extension.contents.type == XLA_FFI_Extension_Type.Metadata:
-                    metadata_ext = ctypes.cast(extension, ctypes.POINTER(XLA_FFI_Metadata_Extension))
-                    metadata_ext.contents.metadata.contents.api_version.major_version = 0
-                    metadata_ext.contents.metadata.contents.api_version.minor_version = 1
-                    if graph_compatible:
-                        # Turn on CUDA graphs for this handler.
-                        metadata_ext.contents.metadata.contents.traits = (
-                            XLA_FFI_Handler_TraitsBits.COMMAND_BUFFER_COMPATIBLE
-                        )
-                    return None
-
-            # Lock is required to prevent race conditions when callback is invoked
-            # from multiple threads, like with pmap.
-            with _FFI_CALLBACK_LOCK:
-                attrs = decode_attrs(call_frame.contents.attrs)
-
-                input_count = call_frame.contents.args.size
-                inputs = ctypes.cast(call_frame.contents.args.args, ctypes.POINTER(ctypes.POINTER(XLA_FFI_Buffer)))
-                inputs = [FfiBuffer(inputs[i].contents) for i in range(input_count)]
-
-                output_count = call_frame.contents.rets.size
-                outputs = ctypes.cast(call_frame.contents.rets.rets, ctypes.POINTER(ctypes.POINTER(XLA_FFI_Buffer)))
-                outputs = [FfiBuffer(outputs[i].contents) for i in range(output_count)]
-
-                ctx = ExecutionContext(call_frame.contents)
-
-                func(inputs, outputs, attrs, ctx)
-
-        except Exception as e:
-            print(traceback.format_exc())
-            return create_ffi_error(
-                call_frame.contents.api, XLA_FFI_Error_Code.UNKNOWN, f"FFI callback error: {type(e).__name__}: {e}"
-            )
-
-        return None
-
-    FFI_CCALLFUNC = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.POINTER(XLA_FFI_CallFrame))
-    callback_func = FFI_CCALLFUNC(ffi_callback)
-    with _FFI_REGISTRY_LOCK:
-        _FFI_CALLBACK_REGISTRY[name] = callback_func
-    ffi_ccall_address = ctypes.cast(callback_func, ctypes.c_void_p)
-    ffi_capsule = jax.ffi.pycapsule(ffi_ccall_address.value)
-    jax.ffi.register_ffi_target(name, ffi_capsule, platform="CUDA")
 
 
 ###############################################################################
