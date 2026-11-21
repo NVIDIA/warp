@@ -388,6 +388,7 @@ Utility
    expect_near
    len
    lerp
+   linear_tid
    print
    printf
    select

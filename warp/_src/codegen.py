@@ -414,48 +414,6 @@ def is_valid_cpp_identifier(value: str) -> bool:
     return _IDENTIFIER_RE.fullmatch(value) is not None
 
 
-def _is_tid_call(
-    node,
-    adj=None,
-    local_variables=frozenset(),
-    tid_aliases=frozenset(),
-    callable_arg_values=None,
-) -> bool:
-    """Return whether ``node`` semantically calls ``wp.tid()``.
-
-    Args:
-        node: AST node to inspect.
-        adj: Adjoint whose scope is used to resolve the call. If omitted, only
-            direct ``wp.tid()`` and ``warp.tid()`` syntax is recognized.
-        local_variables: Names assigned in the function scope.
-        tid_aliases: Local names known to reference ``wp.tid()``.
-        callable_arg_values: Specialized function targets keyed by callable
-            parameter name.
-    """
-    if not isinstance(node, ast.Call):
-        return False
-
-    if adj is None:
-        if not isinstance(node.func, ast.Attribute) or node.func.attr != "tid":
-            return False
-
-        receiver = node.func.value
-        return isinstance(receiver, ast.Name) and receiver.id in ("wp", "warp")
-
-    if isinstance(node.func, ast.Attribute) and isinstance(node.func.value, ast.Name):
-        receiver = adj.resolve_external_reference(node.func.value.id)
-        if receiver is warp:
-            func = warp._src.context.builtin_functions.get(node.func.attr)
-        else:
-            func = getattr(receiver, node.func.attr, None)
-    elif isinstance(node.func, ast.Name) and node.func.id in local_variables:
-        return node.func.id in tid_aliases
-    else:
-        func = resolve_reference_call_func(adj, node, callable_arg_values)
-
-    return func is warp._src.context.builtin_functions["tid"]
-
-
 def is_external_constant_params_arg(arg) -> bool:
     """Return True if ``arg`` can be bound from the constant params symbol."""
     return isinstance(arg.type, Struct)
@@ -481,17 +439,6 @@ def iter_ast_nodes_of_types(root: ast.AST, *types: type):
                         todo.append(child)
             elif isinstance(value, ast.AST):
                 todo.append(value)
-
-
-def _uses_tid_call(adj) -> bool:
-    """Return whether ``adj`` calls ``wp.tid()`` directly or through an alias."""
-    local_variables = adj.syntax().assigned_name_ids
-    tid_aliases = resolve_reference_tid_aliases(adj, local_variables)
-    callable_arg_values = getattr(adj, "callable_arg_values", None) or {}
-    return any(
-        _is_tid_call(node, adj, local_variables, tid_aliases, callable_arg_values)
-        for node in iter_ast_nodes_of_types(adj.tree, ast.Call)
-    )
 
 
 def _is_texture_type(var_type: type) -> bool:
@@ -2526,6 +2473,8 @@ class Adjoint:
         # Exact launch metadata derived from calls reached by this build.
         adj.uses_tid = False
         adj.uses_scalar_tid = False
+        # CUDA external entry points lack a Warp launch index, so validation rejects reachable linear_tid() calls.
+        adj.uses_linear_tid = False
 
         # wp.ref[T] callees lacking a manual adjoint; rejected post-build, once used_by_backward_kernel is final
         adj.unvalidated_ref_calls = []
@@ -3201,6 +3150,12 @@ class Adjoint:
             if return_resolved:
                 return output, func, bound_args
             return output
+
+        if func is warp._src.context.builtin_functions["linear_tid"]:
+            adj.uses_linear_tid = True
+            output = adj.add_var(int64)
+            adj.add_forward(f"{output.emit()} = static_cast<wp::int64>(_idx);")
+            return return_value(output)
 
         # Constant precision preservation: when calling a 64-bit scalar type
         # constructor with a single compile-time constant argument, emit
@@ -4794,14 +4749,17 @@ class Adjoint:
         return adj.eval(node.value)
 
     def check_tid_in_func_error(adj, func):
-        if adj.is_user_function and func is warp._src.context.builtin_functions["tid"]:
-            lineno = adj.lineno + adj.fun_lineno
-            line = adj.source_lines[adj.lineno]
-            raise WarpCodegenError(
-                "tid() may only be called from a Warp kernel, not a Warp function. "
-                "Instead, obtain the indices from a @wp.kernel and pass them as "
-                f"arguments to the function {adj.fun_name}, {adj.filename}:{lineno}:\n{line}\n"
-            )
+        if not adj.is_user_function:
+            return
+        for name in ("tid", "linear_tid"):
+            if func is warp._src.context.builtin_functions[name]:
+                lineno = adj.lineno + adj.fun_lineno
+                line = adj.source_lines[adj.lineno]
+                raise WarpCodegenError(
+                    f"{name}() may only be called from a Warp kernel, not a Warp function. "
+                    "Instead, obtain the indices from a @wp.kernel and pass them as "
+                    f"arguments to the function {adj.fun_name}, {adj.filename}:{lineno}:\n{line}\n"
+                )
 
     def resolve_arg(adj, arg):
         # Always try to start with evaluating the argument since it can help
@@ -7725,10 +7683,10 @@ cpu_module_header = """
 #include "builtin.h"
 #include "deterministic.h"
 
-#define builtin_tid1d() wp::linear_tid<wp_linear_tid>(task_index, dim)
-#define builtin_tid2d(x, y) wp::tid(x, y, task_index, dim)
-#define builtin_tid3d(x, y, z) wp::tid(x, y, z, task_index, dim)
-#define builtin_tid4d(x, y, z, w) wp::tid(x, y, z, w, task_index, dim)
+#define builtin_tid1d() wp::linear_tid<wp_linear_tid>(_idx, dim)
+#define builtin_tid2d(x, y) wp::tid(x, y, _idx, dim)
+#define builtin_tid3d(x, y, z) wp::tid(x, y, z, _idx, dim)
+#define builtin_tid4d(x, y, z, w) wp::tid(x, y, z, w, _idx, dim)
 
 #define builtin_block_dim() wp::block_dim()
 
@@ -7932,7 +7890,9 @@ cuda_reverse_function_template = """
 _INLINE_ATTRS = {"noinline": "WP_NOINLINE ", "forceinline": "WP_FORCEINLINE "}
 
 # Lean (grid_stride=False) templates: 3D grid with a per-thread early return, no grid-stride loop.
-# The index flattens blockIdx.{z,y,x}; the grid shape (and its uint32 cap) is built in wp_cuda_launch_kernel.
+# The index flattens blockIdx.{z,y,x} with 32-bit products and one widening multiply. The products
+# cannot wrap: wp_cuda_launch_kernel keeps gridDim.x * blockDim.x <= 2**24, and CUDA limits
+# gridDim.y and gridDim.z to 65535.
 cuda_kernel_template_forward = """
 
 {line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {max_registers_str}{forward_name}(
@@ -9037,10 +8997,11 @@ def codegen_kernel(kernel, device, options):
             "deterministic lowering."
         )
 
-    if is_external_constant_params_entry and _uses_tid_call(adj):
+    if is_external_constant_params_entry and (adj.uses_tid or adj.uses_linear_tid):
+        launch_index_name = "tid" if adj.uses_tid else "linear_tid"
         raise WarpCodegenError(
-            f"Kernel '{kernel.key}' with entry_point_abi='external_constant_params' cannot use wp.tid(); "
-            "the external entry point does not define dim or _idx."
+            f"Kernel '{kernel.key}' with entry_point_abi='external_constant_params' cannot use "
+            f"wp.{launch_index_name}(); the external entry point does not define dim or _idx."
         )
     if is_external_constant_params_entry and adj.get_total_required_shared():
         raise WarpCodegenError(
@@ -9165,7 +9126,7 @@ def codegen_kernel(kernel, device, options):
     if not is_external_constant_params_entry:
         forward_args.append(f"wp::launch_bounds_t<{adj.kernel_dim}> dim")
     if device == "cpu":
-        forward_args.append("size_t task_index")
+        forward_args.append("size_t _idx")
     elif not is_external_constant_params_entry:
         for arg in adj.args:
             forward_args.append(arg.ctype() + " var_" + arg.label)
@@ -9211,7 +9172,7 @@ def codegen_kernel(kernel, device, options):
         # build reverse signature
         reverse_args = [f"wp::launch_bounds_t<{adj.kernel_dim}> dim"]
         if device == "cpu":
-            reverse_args.append("size_t task_index")
+            reverse_args.append("size_t _idx")
         else:
             for arg in adj.args:
                 reverse_args.append(arg.ctype() + " var_" + arg.label)

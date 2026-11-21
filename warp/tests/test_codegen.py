@@ -2480,22 +2480,6 @@ class TestCodeGen(unittest.TestCase):
         self.assertIn("q[0] == 0.0", body)
         ast.parse(f"def generated(q, qd):\n    return {body}\n")
 
-    def test_is_tid_call_requires_warp_receiver(self):
-        from warp._src.codegen import _is_tid_call  # noqa: PLC0415
-
-        class FakeAdjoint:
-            def resolve_external_reference(self, name):
-                return {"wp": wp, "warp_alias": wp, "other": object()}.get(name)
-
-        fake_adj = FakeAdjoint()
-        wp_tid = ast.parse("wp.tid()").body[0].value
-        warp_alias_tid = ast.parse("warp_alias.tid()").body[0].value
-        other_tid = ast.parse("other.tid()").body[0].value
-
-        self.assertTrue(_is_tid_call(wp_tid, fake_adj))
-        self.assertTrue(_is_tid_call(warp_alias_tid, fake_adj))
-        self.assertFalse(_is_tid_call(other_tid, fake_adj))
-
     def test_direct_tid_reference_scan_avoids_fallback_scans(self):
         def direct_tid_kernel(values: wp.array2d[wp.int32]):
             i, j = wp.tid()
@@ -2504,10 +2488,7 @@ class TestCodeGen(unittest.TestCase):
         adj = codegen.Adjoint(direct_tid_kernel)
         fallback_error = AssertionError("direct TID calls must not use fallback scans")
 
-        with (
-            mock.patch.object(codegen, "resolve_reference_tid_aliases", side_effect=fallback_error),
-            mock.patch.object(codegen, "_is_tid_call", side_effect=fallback_error),
-        ):
+        with mock.patch.object(codegen, "resolve_reference_tid_aliases", side_effect=fallback_error):
             adj.get_references()
 
         self.assertEqual(adj.kernel_dim, 2)
@@ -2648,6 +2629,37 @@ class TestCodeGen(unittest.TestCase):
         self.assertIn("*>(params);", source)
         self.assertNotIn("const_cast<unsigned char*>(params)", source)
 
+    @unittest.skipUnless(wp.is_cuda_available(), "requires CUDA support")
+    def test_external_constant_params_entry_point_preserves_linear_tid_symbol(self):
+        """Verify that a CUDA external entry point can use ``builtin_linear_tid`` as its symbol name."""
+
+        @wp.kernel(
+            module="unique",
+            name="builtin_linear_tid",
+            enable_backward=False,
+            entry_point_abi="external_constant_params",
+        )
+        def external_params_kernel(params: EntryPointParams):
+            _ = params.value
+
+        with tempfile.TemporaryDirectory() as module_dir:
+            (artifact,) = wp.compile_aot_module(
+                external_params_kernel.module, arch=80, module_dir=module_dir, use_ptx=True, strip_hash=True
+            )
+            self.assertIn(".entry builtin_linear_tid(", artifact.read_text())
+
+    def test_external_constant_params_entry_point_allows_pruned_launch_index_calls(self):
+        """Verify that CUDA external entry points allow statically pruned launch-index calls."""
+
+        @wp.kernel(module="unique", enable_backward=False, entry_point_abi="external_constant_params")
+        def external_params_kernel(params: EntryPointParams):
+            if wp.static(False):
+                _ = wp.linear_tid()
+                _ = wp.tid()
+            _ = params.value
+
+        self._codegen_cuda_source(external_params_kernel)
+
     def test_external_constant_params_entry_point_rejects_shared_tile_storage(self):
         @wp.kernel(
             module="unique",
@@ -2703,6 +2715,16 @@ class TestCodeGen(unittest.TestCase):
             _ = wp.tid()
 
         with self.assertRaisesRegex(wp.WarpCodegenError, "cannot use wp.tid"):
+            self._codegen_cuda_source(invalid_kernel)
+
+    def test_external_constant_params_entry_point_rejects_linear_tid(self):
+        """Verify that CUDA external entry points reject reachable ``wp.linear_tid()`` calls."""
+
+        @wp.kernel(module="unique", enable_backward=False, entry_point_abi="external_constant_params")
+        def invalid_kernel(params: EntryPointParams):
+            _ = wp.linear_tid()
+
+        with self.assertRaisesRegex(wp.WarpCodegenError, r"cannot use wp\.linear_tid\(\)"):
             self._codegen_cuda_source(invalid_kernel)
 
     def test_external_constant_params_entry_point_rejects_deterministic_lowering(self):
