@@ -1880,7 +1880,7 @@ def test_modulo(test, device, dtype, register_kernels=False):
         v53[0] = (wptype(2) * wp.mod(v5[0], s5[0]))[3]
         v54[0] = (wptype(2) * wp.mod(v5[0], s5[0]))[4]
 
-    kernel = getkernel(check_mod, suffix=dtype.__name__, enable_backward=False)
+    kernel = getkernel(check_mod, suffix=dtype.__name__, enable_backward=dtype in np_float_types)
 
     if register_kernels:
         return
@@ -1957,6 +1957,18 @@ def test_modulo(test, device, dtype, register_kernels=False):
     assert_np_equal(v52.numpy()[0], 2.0 * np.fmod(v5.numpy(), s5.numpy())[0, 2], tol=10 * tol)
     assert_np_equal(v53.numpy()[0], 2.0 * np.fmod(v5.numpy(), s5.numpy())[0, 3], tol=10 * tol)
     assert_np_equal(v54.numpy()[0], 2.0 * np.fmod(v5.numpy(), s5.numpy())[0, 4], tol=10 * tol)
+
+    if dtype in np_float_types:
+        for i, l in enumerate([v20, v21, v30, v31, v32, v40, v41, v42, v43, v50, v51, v52, v53, v54]):
+            tape.backward(loss=l)
+            allgrads = np.concatenate([tape.gradients[v].numpy()[0] for v in [v2, v3, v4, v5]])
+            expected_grads = np.zeros_like(allgrads)
+
+            # d/dv fmod(v, s) = 1 between discontinuities
+            expected_grads[i] = 2
+            assert_np_equal(allgrads, expected_grads, tol=tol)
+
+            tape.zero()
 
 
 def test_equivalent_types(test, device, dtype, register_kernels=False):
