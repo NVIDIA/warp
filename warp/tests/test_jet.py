@@ -436,7 +436,8 @@ class TestJetSpace(unittest.TestCase):
                 second.start()
             finally:
                 resume_first.set()
-                first.join(timeout=5.0)
+                # The first creator still has to finish building the space, which is slow on a loaded machine.
+                first.join(timeout=60.0)
                 if second.ident is not None:
                     second.join(timeout=5.0)
             self.assertFalse(first.is_alive(), "The first creator did not finish.")
