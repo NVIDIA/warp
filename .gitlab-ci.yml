@@ -1020,21 +1020,16 @@ clang compilation:
     - .basic_test_changes_rules
     - .trigger_common
 
-# Paths that could affect an airspeed velocity (ASV) benchmark result.
-.asv-benchmark-paths:
+# Paths that change Warp or its build, and so can change an airspeed
+# velocity (ASV) benchmark result.
+.asv-warp-paths:
   changes:
-    - .gitlab-ci.yml
-    - .gitlab/ci/asv*.yml
-    - asv/**/*
-    - asv.conf.json
     - warp/*.py
-    - warp/*.pyi
-    - warp/py.typed
     - warp/_src/**/*
     - warp/examples/assets/**/*
     - warp/examples/fem/utils.py
+    - warp/experimental/**/*
     - warp/fem/**/*
-    - warp/jax_experimental/**/*
     - warp/native/**/*
     - warp/optim/**/*
     - warp/render/**/*
@@ -1043,6 +1038,15 @@ clang compilation:
     - deps/*
     - build_lib.py
     - build_llvm.py
+
+# Paths that change only how ASV runs. MRs run ASV to test changes to them;
+# main runs it only for the ASV CI files, whose main-only parts MRs skip.
+.asv-setup-paths:
+  changes:
+    - .gitlab-ci.yml
+    - .gitlab/ci/asv*.yml
+    - asv/**/*
+    - asv.conf.json
 
 # Run the ASV benchmark suite. Auto-triggers on MR pipelines whose diff
 # touches any path that could affect a benchmark result; the child pipeline
@@ -1058,16 +1062,18 @@ asv benchmarks:
     - .trigger_common
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
-      changes: !reference [.asv-benchmark-paths, changes]
-    # Manual fallback: any MR whose diff doesn't match the path filter
+      changes: !reference [.asv-warp-paths, changes]
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+      changes: !reference [.asv-setup-paths, changes]
+    # Manual fallback: any MR whose diff doesn't match the path filters
     # above can still opt in to bench via a play button (e.g. tooling
     # changes that affect codegen but live outside warp/**).
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
       when: manual
       allow_failure: true
 
-# Benchmark each push to main that touches the same paths against the main
-# tip before the push, on the L40 and RTX PRO 6000 pools.
+# Benchmark each push to main that changes Warp or the ASV CI files against
+# the main tip before the push, on the L40 and RTX PRO 6000 pools.
 asv main benchmarks:
   stage: child pipelines
   trigger:
@@ -1080,7 +1086,11 @@ asv main benchmarks:
     ASV_PUSH_BEFORE_SHA: $CI_COMMIT_BEFORE_SHA
   rules:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-      changes: !reference [.asv-benchmark-paths, changes]
+      changes: !reference [.asv-warp-paths, changes]
+    # MR pipelines don't run the main-only parts of the ASV CI files.
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes:
+        - .gitlab/ci/asv*.yml
 
 # Benchmark the last day of main on the B200 pool from the daily schedule.
 asv nightly benchmarks:
