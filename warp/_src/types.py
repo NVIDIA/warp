@@ -274,7 +274,7 @@ class bool:
         self.value = x
 
     def __bool__(self) -> builtins.bool:
-        return self.value != 0
+        return builtins.bool(self.value != 0)
 
     def __float__(self) -> float:
         return float(self.value != 0)
@@ -287,6 +287,16 @@ class bool:
 
     def __repr__(self) -> str:
         return f"{type(self).__name__}({self!s})"
+
+    def __eq__(self, x):
+        if isinstance(x, (bool, builtins.bool, np.bool_)):
+            return builtins.bool(self) == builtins.bool(x)
+        if isinstance(x, (int, float, scalar_base, np.number)):
+            return int(self) == x
+        return NotImplemented
+
+    def __hash__(self):
+        return hash(builtins.bool(self))
 
 
 class float16(float_base):

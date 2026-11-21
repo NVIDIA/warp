@@ -346,6 +346,36 @@ class TestTypes(unittest.TestCase):
         except Exception:
             self.fail()
 
+    def test_bool_comparison(self):
+        true = wp.bool(True)
+        false = wp.bool(False)
+
+        self.assertEqual(true, wp.bool(True))
+        self.assertEqual(true, wp.bool(123))
+        self.assertNotEqual(true, false)
+        self.assertEqual(true, True)
+        self.assertEqual(False, false)
+        self.assertNotEqual(true, False)
+        self.assertEqual(true, np.bool_(True))
+        self.assertEqual(true, 1)
+        self.assertEqual(false, 0.0)
+        self.assertEqual(true, wp.int32(1))
+        self.assertNotEqual(true, wp.float32(0.5))
+        self.assertNotEqual(true, "True")
+
+        self.assertIn(true, [True])
+        self.assertEqual(hash(true), hash(True))
+        self.assertEqual(len({true, wp.bool(1), True}), 1)
+
+        # NumPy-backed values convert to a Python bool.
+        np_true = wp.bool(np.bool_(True))
+        np_false = wp.bool(np.bool_(False))
+        self.assertIs(bool(np_true), True)
+        self.assertIs(bool(np_false), False)
+        self.assertEqual(np_true, True)
+        self.assertEqual(np_false, false)
+        self.assertEqual(hash(np_true), hash(True))
+
     def test_constant(self):
         const = wp.constant(123)
         self.assertEqual(const, 123)
