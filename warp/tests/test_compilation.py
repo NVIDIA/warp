@@ -196,6 +196,7 @@ class TestCompilation(unittest.TestCase):
             num_include_dirs = args[3]
             include_dirs = args[4]
             captured["include_dirs"] = [include_dirs[i].decode("utf-8") for i in range(num_include_dirs)]
+            captured["arch"] = args[7]
             return 0
 
         try:
@@ -221,6 +222,7 @@ class TestCompilation(unittest.TestCase):
             _build_module.warp._src.context.runtime = original_runtime
 
         self.assertEqual(captured["include_dirs"], [str(include_dir.resolve())])
+        self.assertEqual(captured["arch"], 80)
 
 
 add_function_test(

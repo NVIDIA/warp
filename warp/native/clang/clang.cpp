@@ -15,6 +15,7 @@
 #if LLVM_VERSION_MAJOR == 21
 #include <llvm/Support/VirtualFileSystem.h>
 #endif
+#include <algorithm>
 #include <cmath>
 #include <condition_variable>
 #include <cstdint>
@@ -109,10 +110,10 @@ static constexpr bool force_legacy_cpu_linker = true;
 static constexpr bool force_legacy_cpu_linker = false;
 #endif
 
-// Minimum CUDA compute capability that supports all of Warp's features.
-// Since we always emit PTX (forward-compatible), targeting the minimum
-// ensures the output runs on all supported GPUs.
-static const char* cuda_target_arch = "sm_75";
+// Highest CUDA compute capability targeted by the Clang CUDA backend.
+// Since we always emit PTX (forward-compatible), GPUs at or above this target
+// share one output, and older GPUs get PTX for their own architecture.
+static const int cuda_max_target_arch = 75;
 
 static void initialize_llvm()
 {
@@ -375,7 +376,8 @@ static std::unique_ptr<clang::CompilerInstance> create_compiler(
     bool verify_fp,
     bool tiles_in_stack_memory,
     const char** extra_flags = nullptr,  // null-terminated array of flag strings, or nullptr for none
-    int optimization_level = 3
+    int optimization_level = 3,
+    const char* cuda_arch = nullptr  // e.g. "sm_75", required when is_cuda
 )
 {
     auto compiler_instance = std::make_unique<clang::CompilerInstance>();
@@ -414,7 +416,7 @@ static std::unique_ptr<clang::CompilerInstance> create_compiler(
         args.push_back("nvptx64-nvidia-cuda");
 
         args.push_back("-target-cpu");
-        args.push_back(cuda_target_arch);
+        args.push_back(cuda_arch);
     } else {
         args.push_back("-triple");
         args.push_back(target_triple);
@@ -623,12 +625,13 @@ static std::unique_ptr<llvm::Module> source_to_llvm(
     bool tiles_in_stack_memory,
     const char** extra_flags = nullptr,  // null-terminated array of flag strings, or nullptr for none
     int optimization_level = 3,
-    const char* pch_path = nullptr
+    const char* pch_path = nullptr,
+    const char* cuda_arch = nullptr  // e.g. "sm_75", required when is_cuda
 )
 {
     auto compiler = create_compiler(
         input_file, include_dir, num_extra_include_dirs, extra_include_dirs, is_cuda, debug, verify_fp,
-        tiles_in_stack_memory, extra_flags, optimization_level
+        tiles_in_stack_memory, extra_flags, optimization_level, cuda_arch
     );
 
     // Map code to a MemoryBuffer
@@ -893,16 +896,20 @@ WP_API int wp_compile_cuda(
     int num_cuda_include_dirs,
     const char** cuda_include_dirs,
     const char* output_file,
-    bool debug
+    bool debug,
+    int arch
 )
 {
     initialize_llvm();
     ScopedLlvmOptions llvm_options;
     llvm_options.enter_default();
 
+    const std::string cuda_arch = "sm_" + std::to_string(std::min(arch, cuda_max_target_arch));
+
     llvm::LLVMContext context;
     std::unique_ptr<llvm::Module> module = source_to_llvm(
-        true, input_file, cpp_src, include_dir, num_cuda_include_dirs, cuda_include_dirs, debug, false, context, false
+        true, input_file, cpp_src, include_dir, num_cuda_include_dirs, cuda_include_dirs, debug, false, context, false,
+        nullptr, 3, nullptr, cuda_arch.c_str()
     );
 
     if (!module) {
@@ -921,12 +928,11 @@ WP_API int wp_compile_cuda(
     llvm::Reloc::Model relocation_model = llvm::Reloc::PIC_;
 #if LLVM_VERSION_MAJOR >= 20
     llvm::TargetMachine* target_machine = target->createTargetMachine(
-        llvm::Triple("nvptx64-nvidia-cuda"), cuda_target_arch, features, target_options, relocation_model
+        llvm::Triple("nvptx64-nvidia-cuda"), cuda_arch, features, target_options, relocation_model
     );
 #else
-    llvm::TargetMachine* target_machine = target->createTargetMachine(
-        "nvptx64-nvidia-cuda", cuda_target_arch, features, target_options, relocation_model
-    );
+    llvm::TargetMachine* target_machine
+        = target->createTargetMachine("nvptx64-nvidia-cuda", cuda_arch, features, target_options, relocation_model);
 #endif
 
     module->setDataLayout(target_machine->createDataLayout());
