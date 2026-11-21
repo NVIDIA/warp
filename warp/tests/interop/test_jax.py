@@ -937,9 +937,6 @@ def test_ffi_jax_kernel_scale_vec_constant(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_scale_vec_static(test, device):
-    if device.ordinal > 0:
-        test.skipTest("Flaky on device ordinal > 0: JAX FFI jit() returns zeros instead of scaled values")
-
     # multiply vectors by scalar (static arg)
     jp = _import_jax_numpy()
 
@@ -1655,9 +1652,6 @@ def test_ffi_shard_map_vma_rank_change(test, _device):
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
-@unittest.skip(
-    "Flaky: race condition in multi-device JAX pmap with FFI - second device output occasionally returns zeros"
-)
 def test_ffi_jax_callable_pmap_mul(test, device):
     jax = _import_jax()
     jp = _import_jax_numpy()
@@ -1682,9 +1676,6 @@ def test_ffi_jax_callable_pmap_mul(test, device):
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
-@unittest.skip(
-    "Flaky: race condition in multi-device JAX pmap with FFI - second device output occasionally returns zeros"
-)
 def test_ffi_jax_callable_pmap_multi_output(test, device):
     jax = _import_jax()
     jp = _import_jax_numpy()
@@ -1723,9 +1714,6 @@ def test_ffi_jax_callable_pmap_multi_output(test, device):
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
-@unittest.skip(
-    "Flaky: race condition in multi-device JAX pmap with FFI - second device output occasionally returns zeros"
-)
 def test_ffi_jax_callable_pmap_multi_stage(test, device):
     jax = _import_jax()
     jp = _import_jax_numpy()
@@ -1800,9 +1788,6 @@ def test_ffi_jax_callable_shard_map_graph_modes(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_callback(test, device):
-    if device.ordinal > 0:
-        test.skipTest("Flaky on device ordinal > 0: JAX FFI segfaults intermittently")
-
     # in-out arguments
     jp = _import_jax_numpy()
 
@@ -1830,8 +1815,10 @@ def test_ffi_callback(test, device):
             # NOTE: the input shapes are from JAX arrays, we need to strip the inner dimension for vec2 arrays
             wp.launch(scale_vec_kernel, dim=b.shape[0], inputs=[b, s], outputs=[d])
 
-    # register callback
-    register_ffi_callback("warp_func", warp_func)
+    # register callback; an FFI target name can be registered only once per process,
+    # and the variants for different devices may share a process
+    callback_name = f"warp_func_{device.ordinal}"
+    register_ffi_callback(callback_name, warp_func)
 
     n = ARRAY_SIZE
 
@@ -1846,7 +1833,7 @@ def test_ffi_callback(test, device):
             jax.ShapeDtypeStruct(a.shape, jp.float32),
             jax.ShapeDtypeStruct(b.shape, jp.float32),  # array of wp.vec2
         ]
-        call = jax.ffi.ffi_call("warp_func", out_types)
+        call = jax.ffi.ffi_call(callback_name, out_types)
 
         # call it
         c, d = call(a, b, scale=s)
@@ -1859,9 +1846,6 @@ def test_ffi_callback(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_autodiff_simple(test, device):
-    if device.ordinal > 0:
-        test.skipTest("Flaky on device ordinal > 0: JAX FFI jit(grad()) returns zeros")
-
     jax = _import_jax()
     jp = _import_jax_numpy()
 
@@ -1936,9 +1920,6 @@ def test_ffi_jax_kernel_block_dim_autodiff(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_autodiff_jit_of_grad_simple(test, device):
-    if device.ordinal > 0:
-        test.skipTest("Flaky on device ordinal > 0: JAX FFI jit(grad()) returns zeros")
-
     jax = _import_jax()
     jp = _import_jax_numpy()
 
@@ -1976,9 +1957,6 @@ def test_ffi_jax_kernel_autodiff_jit_of_grad_simple(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_autodiff_multi_output(test, device):
-    if device.ordinal > 0:
-        test.skipTest("Flaky on device ordinal > 0: JAX FFI jit(grad()) returns zeros")
-
     jax = _import_jax()
     jp = _import_jax_numpy()
 
@@ -2021,9 +1999,6 @@ def test_ffi_jax_kernel_autodiff_multi_output(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_autodiff_jit_of_grad_multi_output(test, device):
-    if device.ordinal > 0:
-        test.skipTest("Flaky on device ordinal > 0: JAX FFI jit(grad()) returns zeros")
-
     jax = _import_jax()
     jp = _import_jax_numpy()
 
@@ -2140,9 +2115,6 @@ def test_ffi_jax_kernel_autodiff_mat22(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_autodiff_static_required(test, device):
-    if device.ordinal > 0:
-        test.skipTest("Flaky on device ordinal > 0: JAX FFI jit(grad()) returns zeros")
-
     jax = _import_jax()
     jp = _import_jax_numpy()
 
@@ -2199,9 +2171,6 @@ def test_ffi_jax_kernel_autodiff_pmap_triple(test, device):
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
-@unittest.skip(
-    "Flaky: race condition in multi-device JAX pmap with FFI - second device output occasionally returns zeros"
-)
 def test_ffi_jax_kernel_autodiff_pmap_multi_output(test, device):
     jax = _import_jax()
     jp = _import_jax_numpy()
@@ -2759,9 +2728,6 @@ def test_ffi_jax_kernel_subscript_vec(test, device):
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_subscript_autodiff(test, device):
     """Test jax_kernel with subscript syntax and enable_backward=True."""
-    if device.ordinal > 0:
-        test.skipTest("Flaky on device ordinal > 0: JAX FFI jit(grad()) returns zeros")
-
     jax = _import_jax()
     jp = _import_jax_numpy()
 
