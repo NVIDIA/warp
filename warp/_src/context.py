@@ -13815,6 +13815,7 @@ def capture_begin(
 
     # Attach APIC capture state if recording
     if apic_capture is not None:
+        apic_capture._cuda_capture_id = capture_id
         graph.apic = True
         graph.apic_state = apic_capture.apic_state
         graph._apic_capture = apic_capture
@@ -13873,6 +13874,8 @@ def capture_end(device: DeviceLike = None, stream: Stream | None = None) -> Grap
         runtime._apic_graph = None
 
     if not result:
+        # Native failure cleanup already releases any unpublished capture graph.
+        graph.graph = None
         # A concrete error should've already been reported, so we don't need to go into details here
         raise RuntimeError(f"CUDA graph capture failed. {runtime.get_error_string()}")
 
@@ -14162,6 +14165,14 @@ def capture_if(
     support a :class:`Graph` from :func:`capture_load`. :func:`capture_save` rejects a CPU graph that records a
     :class:`Graph` branch.
 
+    With CUDA memory pools enabled, arrays created in a callback body receive persistent backing at capture
+    time. The backing is retained until both the array and its owning graph are released; it is reused on
+    every replay. Separately captured :class:`Graph` bodies must not contain memory allocation nodes.
+
+    CUDA conditional bodies cannot copy to or from pageable host memory. In particular, :meth:`warp.array.fill_`
+    values larger than 3968 bytes require unsupported staging and are rejected during conditional capture.
+    Such fills remain supported in a top-level capture.
+
     Args:
         condition: Warp array holding the condition value.
         on_true: A callback function or :class:`Graph` to execute if the condition is True.
@@ -14395,6 +14406,8 @@ def capture_while(condition: warp.array[int], while_body: Callable | Graph, stre
     :func:`capture_while`. CUDA captures with ``apic=True`` do not yet support a :class:`Graph` loop body, and
     CPU captures do not yet support a :class:`Graph` from :func:`capture_load`. :func:`capture_save` rejects a
     CPU graph that records a :class:`Graph` loop body.
+
+    CUDA callback-body allocations follow the persistent backing and lifetime rules of :func:`capture_if`.
 
     Args:
         condition: Warp array holding the condition value.

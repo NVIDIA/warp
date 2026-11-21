@@ -3,11 +3,14 @@
 
 import os
 import tempfile
+import time
 import unittest
+from contextlib import nullcontext
 
 import numpy as np
 
 import warp as wp
+from warp._src.context import DeviceLike
 from warp.tests.unittest_utils import *
 
 
@@ -1037,51 +1040,149 @@ def test_free_during_body_capture(test, device):
 # ================================================================================================================
 
 
-# body graphs with allocations are not supported
+# Separately captured child graphs still cannot contain allocation nodes.
 def body_with_alloc():
     wp.zeros(10)
 
 
-@unittest.skipUnless(wp.is_conditional_graph_supported(), "Conditional graph nodes not supported")
-def test_error_alloc_if(test, device):
-    with wp.ScopedDevice(device):
-        cond = wp.ones(1, dtype=wp.int32)
-        with (
-            suppress_native_error_output(),
-            test.assertRaisesRegex(
-                RuntimeError, r"Conditional body graph contains an unsupported operation \(memory allocation\)"
-            ),
-        ):
-            with wp.ScopedCapture():
-                wp.capture_if(condition=cond, on_true=body_with_alloc)
+def _assert_mempool_reclaimed(test, device, baseline):
+    # CUDA synchronization cannot wait for user-object destructors. Drain callbacks
+    # as they arrive, as in test_capture_release._drain_graph_destroy_callbacks.
+    deadline = time.monotonic() + 10.0
+    while True:
+        wp.synchronize_device(device)
+        used = wp.get_mempool_used_mem_current(device)
+        if used <= baseline:
+            return
+        if time.monotonic() >= deadline:
+            test.assertLessEqual(used, baseline, "Graph-owned backing was not reclaimed")
+        time.sleep(0.01)
 
 
 @unittest.skipUnless(wp.is_conditional_graph_supported(), "Conditional graph nodes not supported")
-def test_error_alloc_else(test, device):
+def test_body_allocation_lifetime(test, device: DeviceLike):
+    """Callable bodies own persistent backing across replay and either destruction order."""
     with wp.ScopedDevice(device):
-        cond = wp.ones(1, dtype=wp.int32)
-        with (
-            suppress_native_error_output(),
-            test.assertRaisesRegex(
-                RuntimeError, r"Conditional body graph contains an unsupported operation \(memory allocation\)"
-            ),
-        ):
-            with wp.ScopedCapture():
-                wp.capture_if(condition=cond, on_false=body_with_alloc)
+        wp.load_module(device=device)
+        for branch in ("on_true", "on_false", "while"):
+            for release_array_first in (False, True):
+                with test.subTest(branch=branch, release_array_first=release_array_first):
+                    condition = wp.zeros(1, dtype=wp.int32)
+                    result = wp.zeros(4, dtype=wp.float32)
+                    holder = {}
+                    wp.synchronize_device()
+                    baseline = wp.get_mempool_used_mem_current(device)
+
+                    def body(result=result, holder=holder, condition=condition):
+                        temporary = wp.empty_like(result)
+                        temporary.fill_(2.0)
+                        launch_multiply_by_two(temporary)
+                        wp.copy(result, temporary)
+                        holder["temporary"] = temporary
+                        condition.zero_()
+
+                    with wp.ScopedCapture(force_module_load=False) as capture:
+                        if branch == "on_true":
+                            wp.capture_if(condition, on_true=body)
+                        elif branch == "on_false":
+                            wp.capture_if(condition, on_false=body)
+                        else:
+                            wp.capture_while(condition, while_body=body)
+                        if release_array_first:
+                            # Drop the array after resuming the parent capture: no free
+                            # node may be recorded for the body's persistent backing.
+                            holder.clear()
+                    for cond in (0, 1, 0, 1):
+                        result.fill_(1.0)
+                        condition.assign([cond])
+                        wp.capture_launch(capture.graph)
+                        executed = not cond if branch == "on_false" else bool(cond)
+                        np.testing.assert_array_equal(result.numpy(), np.full(4, 4.0 if executed else 1.0))
+
+                    # If the array outlives its graph, its backing must remain usable.
+                    del capture
+                    wp.synchronize_device()
+                    if not release_array_first:
+                        holder["temporary"].fill_(3.0)
+                        np.testing.assert_array_equal(holder["temporary"].numpy(), np.full(4, 3.0))
+                        holder.clear()
+                    _assert_mempool_reclaimed(test, device, baseline)
+                    del body  # Drop default-argument references before the next baseline.
 
 
 @unittest.skipUnless(wp.is_conditional_graph_supported(), "Conditional graph nodes not supported")
-def test_error_alloc_while(test, device):
+def test_failed_body_allocation_lifetime(test, device: DeviceLike):
+    """Callback aborts and failed capture ends preserve live scratch without leaking dropped scratch."""
     with wp.ScopedDevice(device):
-        cond = wp.ones(1, dtype=wp.int32)
-        with (
-            suppress_native_error_output(),
-            test.assertRaisesRegex(
-                RuntimeError, r"Conditional body graph contains an unsupported operation \(memory allocation\)"
-            ),
-        ):
-            with wp.ScopedCapture():
-                wp.capture_while(condition=cond, while_body=body_with_alloc)
+        wp.load_module(device=device)
+        condition = wp.ones(1, dtype=wp.int32)
+        result = wp.zeros(4, dtype=wp.float32)
+        inline_type = wp.types.vector(length=992, dtype=wp.float32)
+        large_type = wp.types.vector(length=1000, dtype=wp.float32)
+        inline_result = wp.empty(2, dtype=inline_type)
+        large_result = wp.empty(2, dtype=large_type)
+        # The inline limit works in a callback; larger values still work in the parent graph.
+        with wp.ScopedCapture(force_module_load=False) as fill_capture:
+            large_result.fill_(large_type(7.0))
+            wp.capture_if(condition, on_true=lambda: inline_result.fill_(inline_type(3.0)))
+        wp.capture_launch(fill_capture.graph)
+        np.testing.assert_array_equal(large_result.numpy(), np.full((2, 1000), 7.0, dtype=np.float32))
+        np.testing.assert_array_equal(inline_result.numpy(), np.full((2, 992), 3.0, dtype=np.float32))
+        # Keep fill_capture alive so its deferred release cannot affect the baselines.
+        for failure in ("callback", "capture_end", "large_fill"):
+            for retain_array in (False, True):
+                with test.subTest(failure=failure, retain_array=retain_array):
+                    wp.synchronize_device()
+                    baseline = wp.get_mempool_used_mem_current(device)
+                    holder = {}
+
+                    def body(retain_array=retain_array, holder=holder, failure=failure):
+                        temporary = wp.empty_like(result)
+                        temporary.fill_(2.0)
+                        if retain_array:
+                            holder["temporary"] = temporary
+                        if failure == "callback":
+                            raise ValueError("rejected callback")
+                        if failure == "large_fill":
+                            large_result.fill_(large_type(7.0))
+
+                    error = ValueError if failure == "callback" else RuntimeError
+                    message = {
+                        "callback": "rejected callback",
+                        "capture_end": "CUDA graph capture failed",
+                        "large_fill": "pageable host memory",
+                    }[failure]
+                    stderr = StdErrCapture()
+                    stderr.begin()
+                    try:
+                        with test.assertRaisesRegex(error, message):
+                            with wp.ScopedCapture(
+                                force_module_load=False, capture_mode=wp.CaptureMode.THREAD_LOCAL
+                            ) as capture:
+                                # Expected native stderr can reach CheckOutput's stdout capture on Windows.
+                                with suppress_native_error_output() if failure == "large_fill" else nullcontext():
+                                    wp.capture_if(condition, on_true=body)
+                                if failure == "capture_end":
+                                    # Invalidate only the parent; keep its conditional body valid during teardown.
+                                    with suppress_native_error_output():
+                                        test.assertFalse(
+                                            wp._src.context.runtime.core.wp_cuda_context_synchronize(device.context)
+                                        )
+                    finally:
+                        diagnostics = stderr.end()
+                    test.assertNotIn("invalid argument", diagnostics)
+                    test.assertFalse(device.is_capturing)
+                    # A callback exception may finalize a partial graph. Never replay an aborted capture.
+                    del capture
+                    if retain_array:
+                        holder["temporary"].fill_(3.0)
+                        np.testing.assert_array_equal(holder["temporary"].numpy(), np.full(4, 3.0))
+                        holder.clear()
+                    _assert_mempool_reclaimed(test, device, baseline)
+                    with wp.ScopedCapture(force_module_load=False) as recovery:
+                        result.fill_(5.0)
+                    wp.capture_launch(recovery.graph)
+                    np.testing.assert_array_equal(result.numpy(), np.full(4, 5.0))
 
 
 @unittest.skipUnless(wp.is_conditional_graph_supported(), "Conditional graph nodes not supported")
@@ -1208,13 +1309,16 @@ add_function_test(
 )
 
 add_function_test(
-    TestConditionalCaptures, "test_error_alloc_if", test_error_alloc_if, devices=cuda_devices_with_mempool
+    TestConditionalCaptures,
+    "test_body_allocation_lifetime",
+    test_body_allocation_lifetime,
+    devices=cuda_devices_with_mempool,
 )
 add_function_test(
-    TestConditionalCaptures, "test_error_alloc_else", test_error_alloc_else, devices=cuda_devices_with_mempool
-)
-add_function_test(
-    TestConditionalCaptures, "test_error_alloc_while", test_error_alloc_while, devices=cuda_devices_with_mempool
+    TestConditionalCaptures,
+    "test_failed_body_allocation_lifetime",
+    test_failed_body_allocation_lifetime,
+    devices=cuda_devices_with_mempool,
 )
 add_function_test(
     TestConditionalCaptures,
