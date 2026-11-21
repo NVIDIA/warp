@@ -744,6 +744,7 @@ just focus on the differences:
     so the graph can be reused when JAX supplies different buffer addresses for a compiled call.
   - ``JaxCallableGraphMode.WARP_STAGED_EX`` also captures against stable staging buffers,
     but submits the input and output copies outside the graph.
+    Each CUDA stream that executes the call gets its own capture and staging buffers.
   - ``JaxCallableGraphMode.NONE`` disables graph capture.
     Use this mode if the callable performs operations that are not allowed during graph capture,
     such as host synchronization.

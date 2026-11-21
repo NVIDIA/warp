@@ -6,7 +6,7 @@
 #include <string.h>
 
 namespace wp {
-static char g_error_buffer[4096] = "";
+static thread_local char g_error_buffer[4096] = "";
 static bool g_error_output_enabled = true;
 static FILE* g_error_stream = stderr;
 

@@ -625,6 +625,8 @@ class FfiCallDesc:
 
         # state for each CUDA device the call runs on
         self.device_descs = {}
+        self.staged_streams = {}
+        self.staged_streams_lock = threading.Lock()
 
     def for_device(self, device_ordinal):
         """Return this call's state on one CUDA device.
@@ -663,6 +665,13 @@ class FfiDeviceCallDesc:
         self.output_memcpy_dsts = None
         self.output_memcpy_sizes = None
         self.output_memcpy_kinds = None
+
+
+class FfiStagedStreamDesc(FfiDeviceCallDesc):
+    def __init__(self):
+        super().__init__()
+        self.lock = threading.Lock()
+        self.stream = None
 
 
 class FfiCallable:
@@ -911,35 +920,48 @@ class FfiCallable:
                         )
                     return None
 
-            # Lock is required to prevent race conditions when callback is invoked
-            # from multiple threads, like with pmap.
+            # retrieve call info
+            # NOTE: this assumes that there's only one attribute - call_id (int64).
+            # A more general but slower approach is this:
+            #   attrs = decode_attrs(call_frame.contents.attrs)
+            #   call_id = int(attrs["call_id"])
+            attr = ctypes.cast(call_frame.contents.attrs.attrs[0], ctypes.POINTER(XLA_FFI_Scalar)).contents
+            call_id = ctypes.cast(attr.value, ctypes.POINTER(ctypes.c_int64)).contents.value
+            call_desc = self.call_descriptors[call_id]
+
+            num_inputs = call_frame.contents.args.size
+            inputs = ctypes.cast(call_frame.contents.args.args, ctypes.POINTER(ctypes.POINTER(XLA_FFI_Buffer)))
+
+            num_outputs = call_frame.contents.rets.size
+            outputs = ctypes.cast(call_frame.contents.rets.rets, ctypes.POINTER(ctypes.POINTER(XLA_FFI_Buffer)))
+
+            if num_inputs != self.num_inputs:
+                return create_invalid_argument_ffi_error(
+                    call_frame.contents.api,
+                    f"Expected {self.num_inputs} JAX FFI input buffers, got {num_inputs}",
+                )
+            if num_outputs != self.num_outputs:
+                return create_invalid_argument_ffi_error(
+                    call_frame.contents.api,
+                    f"Expected {self.num_outputs} JAX FFI output buffers, got {num_outputs}",
+                )
+
+            if platform == _FFI_PLATFORM_CUDA:
+                if wp._src.context.runtime is None:
+                    with _FFI_CALLBACK_LOCK:
+                        wp.init()
+                if not wp._src.context.runtime.is_cuda_enabled:
+                    return create_ffi_error(
+                        call_frame.contents.api,
+                        XLA_FFI_Error_Code.FAILED_PRECONDITION,
+                        "This Warp build does not include CUDA support",
+                    )
+
+                if self.graph_mode == JaxCallableGraphMode.WARP_STAGED_EX:
+                    self._run_staged_external(call_frame.contents, call_desc, inputs, outputs)
+                    return None
+
             with _FFI_CALLBACK_LOCK:
-                # retrieve call info
-                # NOTE: this assumes that there's only one attribute - call_id (int64).
-                # A more general but slower approach is this:
-                #   attrs = decode_attrs(call_frame.contents.attrs)
-                #   call_id = int(attrs["call_id"])
-                attr = ctypes.cast(call_frame.contents.attrs.attrs[0], ctypes.POINTER(XLA_FFI_Scalar)).contents
-                call_id = ctypes.cast(attr.value, ctypes.POINTER(ctypes.c_int64)).contents.value
-                call_desc = self.call_descriptors[call_id]
-
-                num_inputs = call_frame.contents.args.size
-                inputs = ctypes.cast(call_frame.contents.args.args, ctypes.POINTER(ctypes.POINTER(XLA_FFI_Buffer)))
-
-                num_outputs = call_frame.contents.rets.size
-                outputs = ctypes.cast(call_frame.contents.rets.rets, ctypes.POINTER(ctypes.POINTER(XLA_FFI_Buffer)))
-
-                if num_inputs != self.num_inputs:
-                    return create_invalid_argument_ffi_error(
-                        call_frame.contents.api,
-                        f"Expected {self.num_inputs} JAX FFI input buffers, got {num_inputs}",
-                    )
-                if num_outputs != self.num_outputs:
-                    return create_invalid_argument_ffi_error(
-                        call_frame.contents.api,
-                        f"Expected {self.num_outputs} JAX FFI output buffers, got {num_outputs}",
-                    )
-
                 if platform == _FFI_PLATFORM_CPU:
                     if self.graph_mode not in (JaxCallableGraphMode.NONE, JaxCallableGraphMode.JAX):
                         return create_invalid_argument_ffi_error(
@@ -967,15 +989,6 @@ class FfiCallable:
                         f"Unsupported JAX FFI platform '{platform}'",
                     )
 
-                if wp._src.context.runtime is None:
-                    wp.init()
-                if not wp._src.context.runtime.is_cuda_enabled:
-                    return create_ffi_error(
-                        call_frame.contents.api,
-                        XLA_FFI_Error_Code.FAILED_PRECONDITION,
-                        "This Warp build does not include CUDA support",
-                    )
-
                 cuda_stream = get_stream_from_callframe(call_frame.contents)
                 device_ordinal = get_device_ordinal_from_callframe(call_frame.contents)
                 device = wp.get_cuda_device(device_ordinal)
@@ -996,53 +1009,6 @@ class FfiCallable:
 
                         # update the graph cache to keep recently used graphs alive
                         self.captures.move_to_end(capture_key)
-
-                        # early out
-                        return
-
-                elif self.graph_mode == JaxCallableGraphMode.WARP_STAGED_EX:
-                    if device_desc.capture is not None:
-                        graph_exec = device_desc.capture.graph.graph_exec
-                        context = device_desc.capture.graph.device.context
-                        wp_memcpy_batch = wp._src.context.runtime.core.wp_memcpy_batch
-
-                        # set source pointers for input memcopies
-                        for memcpy_idx, input_idx in enumerate(device_desc.input_memcpy_indices):
-                            device_desc.input_memcpy_srcs[memcpy_idx] = inputs[input_idx].contents.data
-
-                        # copy inputs to staging buffers
-                        if not wp_memcpy_batch(
-                            context,
-                            device_desc.input_memcpy_dsts,
-                            device_desc.input_memcpy_srcs,
-                            device_desc.input_memcpy_sizes,
-                            device_desc.input_memcpy_count,
-                            cuda_stream,
-                        ):
-                            raise RuntimeError(
-                                f"Failed to run input memcpy batch: {wp._src.context.runtime.get_error_string()}"
-                            )
-
-                        # launch existing graph
-                        if not wp._src.context.runtime.core.wp_cuda_graph_launch(graph_exec, cuda_stream):
-                            raise RuntimeError(f"Graph launch error: {wp._src.context.runtime.get_error_string()}")
-
-                        # set destination pointers for output memcopies
-                        for memcpy_idx, output_idx in enumerate(device_desc.output_memcpy_indices):
-                            device_desc.output_memcpy_dsts[memcpy_idx] = outputs[output_idx].contents.data
-
-                        # copy the outputs from staging buffers
-                        if not wp_memcpy_batch(
-                            context,
-                            device_desc.output_memcpy_dsts,
-                            device_desc.output_memcpy_srcs,
-                            device_desc.output_memcpy_sizes,
-                            device_desc.output_memcpy_count,
-                            cuda_stream,
-                        ):
-                            raise RuntimeError(
-                                f"Failed to run output memcpy batch: {wp._src.context.runtime.get_error_string()}"
-                            )
 
                         # early out
                         return
@@ -1111,49 +1077,6 @@ class FfiCallable:
                         if self._graph_cache_max is not None and len(self.captures) > self._graph_cache_max:
                             self.captures.popitem(last=False)
 
-                    elif self.graph_mode == JaxCallableGraphMode.WARP_STAGED_EX:
-                        # capturing with WARP using staging buffers and memcopies done outside of the graph
-                        wp_memcpy_batch = wp._src.context.runtime.core.wp_memcpy_batch
-
-                        # prepare staging arrays and memcpy info
-                        self._prepare_staging(arg_list, device_desc)
-
-                        # copy inputs to staging arrays (including in-out arrays)
-                        if not wp_memcpy_batch(
-                            device.context,
-                            device_desc.input_memcpy_dsts,
-                            device_desc.input_memcpy_srcs,
-                            device_desc.input_memcpy_sizes,
-                            device_desc.input_memcpy_count,
-                            cuda_stream,
-                        ):
-                            raise RuntimeError(
-                                f"Failed to run input memcpy batch: {wp._src.context.runtime.get_error_string()}"
-                            )
-
-                        # capture callback using staging arrays
-                        with wp.ScopedCapture() as capture:
-                            self.func(*arg_list)
-
-                        wp.capture_launch(capture.graph)
-
-                        # copy outputs from staging arrays (including in-out arrays)
-                        if not wp_memcpy_batch(
-                            device.context,
-                            device_desc.output_memcpy_dsts,
-                            device_desc.output_memcpy_srcs,
-                            device_desc.output_memcpy_sizes,
-                            device_desc.output_memcpy_count,
-                            cuda_stream,
-                        ):
-                            raise RuntimeError(
-                                f"Failed to run output memcpy batch: {wp._src.context.runtime.get_error_string()}"
-                            )
-
-                        # save the capture for replays
-                        # TODO: we should have a way of freeing this
-                        device_desc.capture = capture
-
                     elif self.graph_mode == JaxCallableGraphMode.WARP_STAGED:
                         # capturing with WARP using staging buffers and memcopies done inside of the graph
                         wp_cuda_graph_insert_memcpy_batch = (
@@ -1161,7 +1084,8 @@ class FfiCallable:
                         )
 
                         # prepare staging arrays and memcpy info
-                        self._prepare_staging(arg_list, device_desc)
+                        for dest, src in self._prepare_staging(arg_list, device_desc):
+                            wp.copy(dest, src)
 
                         # prepare graph memcpy nodes
                         input_memcpy_count = device_desc.input_memcpy_count
@@ -1243,6 +1167,79 @@ class FfiCallable:
 
         return None
 
+    def _run_staged_external(self, frame, call_desc, inputs, outputs):
+        ordinal = get_device_ordinal_from_callframe(frame)
+        cuda_stream = get_stream_from_callframe(frame)
+        key = (ordinal, cuda_stream)
+        # XLA can run the same call concurrently on different streams. Each stream
+        # needs its own buffers until its last output copy has completed.
+        with call_desc.staged_streams_lock:
+            desc = call_desc.staged_streams.get(key)
+            if desc is None:
+                desc = FfiStagedStreamDesc()
+                call_desc.staged_streams[key] = desc
+
+        # Keep each input copy, graph launch, and output copy together on this
+        # stream. A CUDA enqueue may wait for another GPU to reach a collective.
+        with desc.lock:
+            if desc.capture is None:
+                with _FFI_CALLBACK_LOCK:
+                    device = wp.get_cuda_device(ordinal)
+                    _load_ffi_module(wp.get_module(self.func.__module__), device)
+                    desc.stream = wp.Stream(device, cuda_stream=cuda_stream)
+                    args = self._build_arg_list(inputs, outputs, call_desc, device)
+                    with wp.ScopedStream(desc.stream, sync_enter=False):
+                        initial_copies = self._prepare_staging(args, desc)
+
+                # Populate selectively staged buffers on the XLA stream before capture.
+                # A static input can also block behind a collective.
+                if initial_copies:
+                    count = len(initial_copies)
+                    destinations = (ctypes.c_void_p * count)(*(dst.ptr for dst, _ in initial_copies))
+                    sources = (ctypes.c_void_p * count)(*(src.ptr for _, src in initial_copies))
+                    sizes = (ctypes.c_size_t * count)(
+                        *(src.size * type_size_in_bytes(src.dtype) for _, src in initial_copies)
+                    )
+                    runtime = wp._src.context.runtime
+                    if not runtime.core.wp_memcpy_batch(
+                        device.context, destinations, sources, sizes, count, cuda_stream
+                    ):
+                        raise RuntimeError(f"Failed to initialize staging buffers: {runtime.get_error_string()}")
+
+                with _FFI_CALLBACK_LOCK:
+                    with wp.ScopedStream(desc.stream, sync_enter=False):
+                        with wp.ScopedCapture() as capture:
+                            self.func(*args)
+                    desc.capture = capture
+
+            graph = desc.capture.graph
+            runtime = wp._src.context.runtime
+            for i, input_idx in enumerate(desc.input_memcpy_indices):
+                desc.input_memcpy_srcs[i] = inputs[input_idx].contents.data
+            if desc.input_memcpy_count and not runtime.core.wp_memcpy_batch(
+                graph.device.context,
+                desc.input_memcpy_dsts,
+                desc.input_memcpy_srcs,
+                desc.input_memcpy_sizes,
+                desc.input_memcpy_count,
+                cuda_stream,
+            ):
+                raise RuntimeError(f"Failed to run input memcpy batch: {runtime.get_error_string()}")
+
+            wp.capture_launch(graph, stream=desc.stream)
+
+            for i, output_idx in enumerate(desc.output_memcpy_indices):
+                desc.output_memcpy_dsts[i] = outputs[output_idx].contents.data
+            if desc.output_memcpy_count and not runtime.core.wp_memcpy_batch(
+                graph.device.context,
+                desc.output_memcpy_dsts,
+                desc.output_memcpy_srcs,
+                desc.output_memcpy_sizes,
+                desc.output_memcpy_count,
+                cuda_stream,
+            ):
+                raise RuntimeError(f"Failed to run output memcpy batch: {runtime.get_error_string()}")
+
     def _prepare_staging(self, arg_list, device_desc):
         # create staging arrays
         input_callback_arrays = []
@@ -1251,7 +1248,7 @@ class FfiCallable:
         output_callback_arrays = []
         output_staging_arrays = []
         output_memcpy_indices = []
-        static_staging_arrays = []
+        initial_copies = []
         for i, arg in enumerate(arg_list):
             # we only care about arrays with non-zero size
             if isinstance(arg, wp.array) and arg.size > 0:
@@ -1264,8 +1261,7 @@ class FfiCallable:
                         input_staging_arrays.append(staging_arr)
                         input_memcpy_indices.append(input_idx)
                     else:
-                        wp.copy(staging_arr, arg)
-                        static_staging_arrays.append(staging_arr)
+                        initial_copies.append((staging_arr, arg))
                 output_idx = self.arg_output_indices[i]
                 if output_idx is not None:
                     # check if this output needs to be copied every time or just once
@@ -1274,8 +1270,7 @@ class FfiCallable:
                         output_staging_arrays.append(staging_arr)
                         output_memcpy_indices.append(output_idx)
                     else:
-                        wp.copy(staging_arr, arg)
-                        static_staging_arrays.append(staging_arr)
+                        initial_copies.append((staging_arr, arg))
                 # substitute staging array in argument list
                 arg_list[i] = staging_arr
 
@@ -1313,7 +1308,7 @@ class FfiCallable:
         # TODO: we should have a way of freeing this
         device_desc.input_staging_arrays = input_staging_arrays
         device_desc.output_staging_arrays = output_staging_arrays
-        device_desc.static_staging_arrays = static_staging_arrays
+        device_desc.static_staging_arrays = [dst for dst, _ in initial_copies]
 
         if wp.config.log_level <= wp.LOG_DEBUG:
             # print some stats
@@ -1332,6 +1327,8 @@ class FfiCallable:
             print(f"  total input size: {total_input_size} bytes")
             print(f"  total output size: {total_output_size} bytes")
             print(f"  total size: {total_input_size + total_output_size} bytes")
+
+        return initial_copies
 
     @property
     def graph_cache_max(self) -> int | None:

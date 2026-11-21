@@ -155,8 +155,6 @@ static bool cuda_driver_initialized = false;
 
 bool ContextGuard::always_restore = false;
 
-CudaTimingState* g_cuda_timing_state = NULL;
-
 
 static inline int get_major(int version) { return version / 1000; }
 

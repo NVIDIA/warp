@@ -1369,6 +1369,22 @@ def test_ffi_jax_callable_graph_cache(test, device):
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
+def test_ffi_jax_callable_selective_staged_inputs(test, device):
+    jax = _import_jax()
+    for mode in (wp.JaxCallableGraphMode.WARP_STAGED, wp.JaxCallableGraphMode.WARP_STAGED_EX):
+        with test.subTest(graph_mode=mode):
+            callback = wp.jax_callable(cache_key_staging_func, num_outputs=2, stage_in_argnames=["a"], graph_mode=mode)
+            run = jax.jit(callback)
+            values = np.arange(8, dtype=np.float32)
+            for offset in (0, 10):
+                a = jax.device_put(values + offset, wp.device_to_jax(device))
+                b = jax.device_put(values + 100 + offset, wp.device_to_jax(device))
+                dynamic, initial = run(a, b)
+                np.testing.assert_array_equal(dynamic, values + offset)
+                np.testing.assert_array_equal(initial, values + 100)
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
 def test_ffi_jax_callable_graph_replay_skips_module_load(test, device):
     """Test that FFI graph capture loads no extra modules and graph replay loads none.
 
@@ -3171,6 +3187,23 @@ class TestJax(unittest.TestCase):
         _run_jax_distributed_device_lookup(self, [env, env])
 
     @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
+    def test_staged_external_collective(self):
+        if len(pmap_warp_devices) < 2 or not all(
+            device.is_cuda and device in jax_candidate_devices for device in pmap_warp_devices[:2]
+        ):
+            self.skipTest("Requires two selected JAX CUDA devices")
+        # CUDA reads its queue size before the first launch in the process.
+        result = subprocess.run(
+            [sys.executable, "-m", "warp.tests.interop.aux_test_jax_staged_collective"],
+            env={**os.environ, "CUDA_SCALE_LAUNCH_QUEUES": "0.25x"},
+            capture_output=True,
+            text=True,
+            timeout=240,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
     def test_device_lookup_jax_distributed_cuda(self):
         """Look up JAX GPUs in a two-process ``jax.distributed`` program with one GPU per process."""
         if wp.get_cuda_device_count() < 2:
@@ -3402,6 +3435,7 @@ else:
         cuda_only_jax_tests = (
             test_ffi_jax_callable_graph_cache,
             test_ffi_jax_callable_graph_replay_skips_module_load,
+            test_ffi_jax_callable_selective_staged_inputs,
             test_ffi_jax_cuda_requires_cuda_support,
             test_ffi_callback,
         )
