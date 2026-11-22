@@ -2766,6 +2766,9 @@ dev = [
     { name = "pre-commit" },
     { name = "psutil" },
     { name = "pyglet" },
+    { name = "sphinx", version = "9.0.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "sphinx", version = "9.1.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.12.*'" },
+    { name = "sphinx", version = "9.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
     { name = "sphinx-copybutton" },
     { name = "usd-core", marker = "(platform_machine != 'ARM64' and platform_machine != 'aarch64' and platform_machine != 'arm64') or sys_platform != 'win32'" },
 ]
@@ -2773,6 +2776,9 @@ docs = [
     { name = "myst-parser" },
     { name = "nvidia-sphinx-theme" },
     { name = "pre-commit" },
+    { name = "sphinx", version = "9.0.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
+    { name = "sphinx", version = "9.1.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.12.*'" },
+    { name = "sphinx", version = "9.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
     { name = "sphinx-copybutton" },
 ]
 examples = [
@@ -2820,6 +2826,7 @@ requires-dist = [
     { name = "pre-commit", marker = "extra == 'docs'" },
     { name = "psutil", marker = "extra == 'examples'", specifier = ">=7.1.0" },
     { name = "pyglet", marker = "extra == 'examples'", specifier = ">=2.1.9" },
+    { name = "sphinx", marker = "extra == 'docs'", specifier = ">=9.0" },
     { name = "sphinx-copybutton", marker = "extra == 'docs'" },
     { name = "torch", marker = "extra == 'torch-cu12'", specifier = ">=2.7.0", index = "https://download.pytorch.org/whl/cu126", conflict = { package = "warp-lang", extra = "torch-cu12" } },
     { name = "torch", marker = "extra == 'torch-cu13'", specifier = ">=2.9.0", index = "https://download.pytorch.org/whl/cu130", conflict = { package = "warp-lang", extra = "torch-cu13" } },

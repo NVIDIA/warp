@@ -421,11 +421,11 @@ Temporary = wp.array
 """Temporary array borrowed from a :class:`TemporaryStore`.
 
 The array will be automatically returned to the temporary pool for reuse upon destruction of this object, unless
-the temporary is explicitly detached from the pool using :meth:`detach`.
-The temporary may also be explicitly returned to the pool before destruction using :meth:`release`.
+the temporary is explicitly detached from the pool using ``detach()``.
+The temporary may also be explicitly returned to the pool before destruction using ``release()``.
 
-Note: `Temporary` is now a direct alias for `wp.array` with a custom deleter. Convenience `detach` and `release`
-are added at borrow time.
+``Temporary`` is an alias of :class:`warp.array`. Borrowed arrays use a custom deleter, and get the ``detach()``
+and ``release()`` methods at borrow time.
 """
 
 
