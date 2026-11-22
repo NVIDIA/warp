@@ -616,6 +616,31 @@ class TestColoring(unittest.TestCase):
         invalid_count = validate_graph_coloring(edge_indices_np, colors_np)
         self.assertEqual(invalid_count, 0, "Valid coloring should have no invalid edges")
 
+    def test_coloring_mcs_many_isolated_nodes(self):
+        """Test MCS coloring of a graph with isolated nodes before, between and after connected components."""
+        num_nodes = 20000
+        path_nodes = np.arange(5000, 5100)
+        ring_nodes = np.arange(10000, 10003)
+        edges = np.concatenate(
+            (
+                np.stack((path_nodes[:-1], path_nodes[1:]), axis=1),
+                np.stack((ring_nodes, np.roll(ring_nodes, -1)), axis=1),
+            )
+        )
+        edge_indices = wp.array(edges, dtype=wp.int32, device="cpu")
+        node_colors = wp.empty(shape=(num_nodes,), dtype=wp.int32, device="cpu")
+
+        num_colors = wp.utils.graph_coloring_assign(edge_indices, node_colors, wp.utils.GraphColoringAlgorithm.MCS)
+
+        colors_np = node_colors.numpy()
+        self.assertEqual(num_colors, 3)
+        self.assertEqual(validate_graph_coloring(edges, colors_np), 0)
+
+        isolated = np.ones(num_nodes, dtype=bool)
+        isolated[path_nodes] = False
+        isolated[ring_nodes] = False
+        np.testing.assert_array_equal(colors_np[isolated], 0)
+
     @unittest.skipUnless(USD_AVAILABLE, "Requires usd-core")
     def test_coloring_trimesh(self):
         """Test graph coloring on a trimesh (bunny mesh)."""
