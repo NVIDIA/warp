@@ -514,7 +514,13 @@
 <dl class="py attribute">
 <dt class="sig sig-object py" id="warp.fem.Temporary">
 <span class="sig-prename descclassname"><span class="pre">warp.fem.</span></span><span class="sig-name descname"><span class="pre">Temporary</span></span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L3728-L5461"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.fem.Temporary" title="Link to this definition">#</a></dt>
-<dd><p class="rubric">Methods</p>
+<dd><p>Temporary array borrowed from a <a class="reference internal" href="warp.fem.TemporaryStore.html#warp.fem.TemporaryStore" title="warp.fem.TemporaryStore"><code class="xref py py-class docutils literal notranslate"><span class="pre">TemporaryStore</span></code></a>.</p>
+<p>The array will be automatically returned to the temporary pool for reuse upon destruction of this object, unless
+the temporary is explicitly detached from the pool using <code class="docutils literal notranslate"><span class="pre">detach()</span></code>.
+The temporary may also be explicitly returned to the pool before destruction using <code class="docutils literal notranslate"><span class="pre">release()</span></code>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">Temporary</span></code> is an alias of <a class="reference internal" href="warp.array.html#warp.array" title="warp.array"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.array</span></code></a>. Borrowed arrays use a custom deleter, and get the <code class="docutils literal notranslate"><span class="pre">detach()</span></code>
+and <code class="docutils literal notranslate"><span class="pre">release()</span></code> methods at borrow time.</p>
+<p class="rubric">Methods</p>
 <div class="pst-scrollable-table-container"><table class="autosummary longtable table">
 <tbody>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">assign</span></code>(src)</p></td>

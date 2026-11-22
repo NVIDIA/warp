@@ -4,6 +4,9 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: Coords_f64
+
+   Type representing element coordinates at fp64 precision.
+
    
    
    .. rubric:: Methods

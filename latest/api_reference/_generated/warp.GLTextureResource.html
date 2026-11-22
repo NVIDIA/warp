@@ -513,7 +513,16 @@
 <h1>warp.GLTextureResource<a class="headerlink" href="#warp-gltextureresource" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.GLTextureResource">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">GLTextureResource</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L1574-L1716"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.GLTextureResource" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">GLTextureResource</span></span><span class="sig-paren">(</span>
+
+<dl>
+<dd><em class="sig-param"><span class="n"><span class="pre">gl_tex_id</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">gl_tex_target</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>,</dd>
+<dd><em class="sig-param"><span class="n"><span class="pre">flags</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">TextureResourceFlags.NONE</span></span></em>,</dd>
+</dl>
+
+<span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/texture.py#L1574-L1716"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.GLTextureResource" title="Link to this definition">#</a></dt>
 <dd><p>Register and use an OpenGL texture with Warp.</p>
 <div class="admonition-experimental admonition">
 <p class="admonition-title">Experimental</p>
@@ -562,10 +571,10 @@ be used by OpenGL again.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>gl_tex_id</strong> – OpenGL texture ID, e.g., from <code class="docutils literal notranslate"><span class="pre">pyglet.gl.glGenTextures()</span></code>.</p></li>
-<li><p><strong>gl_tex_target</strong> – OpenGL texture target, e.g., <code class="docutils literal notranslate"><span class="pre">pyglet.gl.GL_TEXTURE_2D</span></code>.</p></li>
-<li><p><strong>device</strong> – The CUDA device where the texture resides.</p></li>
-<li><p><strong>flags</strong> – Texture resource flags, see <a class="reference internal" href="warp.TextureResourceFlags.html#warp.TextureResourceFlags" title="warp.TextureResourceFlags"><code class="xref py py-class docutils literal notranslate"><span class="pre">TextureResourceFlags</span></code></a>.</p></li>
+<li><p><strong>gl_tex_id</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a>) – OpenGL texture ID, e.g., from <code class="docutils literal notranslate"><span class="pre">pyglet.gl.glGenTextures()</span></code>.</p></li>
+<li><p><strong>gl_tex_target</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a>) – OpenGL texture target, e.g., <code class="docutils literal notranslate"><span class="pre">pyglet.gl.GL_TEXTURE_2D</span></code>.</p></li>
+<li><p><strong>device</strong> (<a class="reference internal" href="warp.DeviceLike.html#warp.DeviceLike" title="warp.DeviceLike"><em>DeviceLike</em></a>) – The CUDA device where the texture resides.</p></li>
+<li><p><strong>flags</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a>) – Texture resource flags, see <a class="reference internal" href="warp.TextureResourceFlags.html#warp.TextureResourceFlags" title="warp.TextureResourceFlags"><code class="xref py py-class docutils literal notranslate"><span class="pre">TextureResourceFlags</span></code></a>.</p></li>
 </ul>
 </dd>
 </dl>

@@ -513,7 +513,7 @@
 <h1>warp.Volume<a class="headerlink" href="#warp-volume" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.Volume">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Volume</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L7104-L8609"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Volume</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">copy</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L7104-L8609"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Volume" title="Link to this definition">#</a></dt>
 <dd><p>Sparse volumetric data structure based on NanoVDB for efficient 3D sampling.</p>
 <p>Class representing a sparse grid.</p>
 <dl class="py attribute">
@@ -526,8 +526,8 @@ Keep this volume alive while its ID is in use.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>data</strong> – Array of bytes representing the volume in NanoVDB format.</p></li>
-<li><p><strong>copy</strong> – Whether the incoming data will be copied or aliased.</p></li>
+<li><p><strong>data</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – Array of bytes representing the volume in NanoVDB format.</p></li>
+<li><p><strong>copy</strong> (<a class="reference internal" href="warp.bool.html#warp.bool" title="warp.bool"><em>bool</em></a>) – Whether the incoming data will be copied or aliased.</p></li>
 </ul>
 </dd>
 </dl>

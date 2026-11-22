@@ -513,7 +513,7 @@
 <h1>warp.Bvh<a class="headerlink" href="#warp-bvh" title="Link to this heading">#</a></h1>
 <dl class="py class">
 <dt class="sig sig-object py" id="warp.Bvh">
-<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Bvh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6506-L6800"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Bvh" title="Link to this definition">#</a></dt>
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">Bvh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">lowers</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">uppers</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">constructor</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">groups</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">leaf_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/types.py#L6506-L6800"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.Bvh" title="Link to this definition">#</a></dt>
 <dd><p>Bounding Volume Hierarchy (BVH) for accelerated spatial queries.</p>
 <p>Class representing a bounding volume hierarchy.</p>
 <p>Depending on which device the input bounds live, it can be either a CPU tree or a GPU tree.</p>
@@ -533,14 +533,14 @@ Keep this BVH alive while its ID is in use.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>lowers</strong> – Array of lower bounds of data type <a class="reference internal" href="warp.vec3.html#warp.vec3" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a>.</p></li>
-<li><p><strong>uppers</strong> – Array of upper bounds of data type <a class="reference internal" href="warp.vec3.html#warp.vec3" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a>.
+<li><p><strong>lowers</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – Array of lower bounds of data type <a class="reference internal" href="warp.vec3.html#warp.vec3" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a>.</p></li>
+<li><p><strong>uppers</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – Array of upper bounds of data type <a class="reference internal" href="warp.vec3.html#warp.vec3" title="warp.vec3"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.vec3</span></code></a>.
 <code class="docutils literal notranslate"><span class="pre">lowers</span></code> and <code class="docutils literal notranslate"><span class="pre">uppers</span></code> must live on the same device.</p></li>
-<li><p><strong>constructor</strong> – The construction algorithm used to build the tree.
+<li><p><strong>constructor</strong> (<em>BvhConstructor</em><em> | </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a><em> | </em><em>None</em>) – The construction algorithm used to build the tree.
 Valid choices are <code class="docutils literal notranslate"><span class="pre">&quot;sah&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;median&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;lbvh&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;cubql&quot;</span></code>, or <code class="docutils literal notranslate"><span class="pre">None</span></code>.
 When <code class="docutils literal notranslate"><span class="pre">None</span></code>, the default constructor will be used (see the note).</p></li>
-<li><p><strong>groups</strong> – Optional array of group indices of data type <a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.int32</span></code></a>.</p></li>
-<li><p><strong>leaf_size</strong> – The number of primitives (AABBs) stored in each leaf node. The optimal value depends on the primary
+<li><p><strong>groups</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>) – Optional array of group indices of data type <a class="reference internal" href="warp.int32.html#warp.int32" title="warp.int32"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.int32</span></code></a>.</p></li>
+<li><p><strong>leaf_size</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a>) – The number of primitives (AABBs) stored in each leaf node. The optimal value depends on the primary
 use case. For intersection queries (e.g., AABB query), a small value like 1 (the default) is generally
 recommended for optimal performance. For closest point queries, a larger value like 4 or 8 can be more
 performant. This is an intrinsic parameter which does not impact the return value of the query method.</p></li>
@@ -609,6 +609,15 @@ Traversal from the global root is not guaranteed to fit the query stack for deep
 <dt class="field-odd">Raises<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/builtins/exceptions.html#NotImplementedError" title="(in Python v3.15)"><strong>NotImplementedError</strong></a> – If called during CPU graph capture, which cannot record the build. Build the BVH
     before capture and update it with <a class="reference internal" href="#warp.Bvh.refit" title="warp.Bvh.refit"><code class="xref py py-meth docutils literal notranslate"><span class="pre">refit()</span></code></a> or <a class="reference internal" href="#warp.Bvh.rebuild" title="warp.Bvh.rebuild"><code class="xref py py-meth docutils literal notranslate"><span class="pre">rebuild()</span></code></a> instead.</p>
+</dd>
+<dt class="field-even">Parameters<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><strong>lowers</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>)</p></li>
+<li><p><strong>uppers</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>)</p></li>
+<li><p><strong>constructor</strong> (<em>BvhConstructor</em><em> | </em><a class="reference external" href="https://docs.python.org/3/builtins/stdtypes.html#str" title="(in Python v3.15)"><em>str</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>groups</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a><em> | </em><em>None</em>)</p></li>
+<li><p><strong>leaf_size</strong> (<a class="reference external" href="https://docs.python.org/3/builtins/functions.html#int" title="(in Python v3.15)"><em>int</em></a>)</p></li>
+</ul>
 </dd>
 </dl>
 <p class="rubric">Methods</p>
