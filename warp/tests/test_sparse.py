@@ -2458,6 +2458,24 @@ def test_bsr_mm_gradient_aliasing(test, device):
             bsr_mm(A, A, A)
 
 
+def test_bsr_mm_reuse_topology_empty_product(test, device):
+    """Reuse the topology of a product that has no blocks, after the work arrays held another product."""
+    rows = wp.array([0], dtype=int, device=device)
+    x = bsr_from_triplets(2, 2, rows, wp.array([0], dtype=int, device=device), wp.ones(1, dtype=float, device=device))
+    y = bsr_from_triplets(2, 2, rows, wp.array([1], dtype=int, device=device), wp.ones(1, dtype=float, device=device))
+    y = bsr_transposed(y)  # only block is (1, 0), so x @ y has no blocks
+
+    work_arrays = bsr_mm_work_arrays()
+    bsr_mm(x, x, work_arrays=work_arrays)
+
+    z = bsr_mm(x, y, work_arrays=work_arrays)
+    test.assertEqual(z.nnz_sync(), 0)
+
+    bsr_mm(x, y, z, work_arrays=work_arrays, reuse_topology=True)
+    test.assertEqual(z.nnz_sync(), 0)
+    assert_np_equal(_bsr_to_dense(z), np.zeros((2, 2)))
+
+
 def test_bsr_gradient_capturability(test, device):
     """Capture the backward pass of bsr_mv and bsr_mm in a graph and check it matches an eager backward pass."""
     rng = np.random.default_rng(123)
@@ -2895,6 +2913,12 @@ add_function_test(TestSparse, "test_bsr_axpy_3_3", make_test_bsr_axpy((3, 3), wp
 add_function_test(TestSparse, "test_csr_mm", make_test_bsr_mm((1, 1), wp.float32), devices=devices)
 add_function_test(TestSparse, "test_bsr_mm_1_3", make_test_bsr_mm((1, 3), wp.float32), devices=devices)
 add_function_test(TestSparse, "test_bsr_mm_3_3", make_test_bsr_mm((3, 3), wp.float64), devices=devices)
+add_function_test(
+    TestSparse,
+    "test_bsr_mm_reuse_topology_empty_product",
+    test_bsr_mm_reuse_topology_empty_product,
+    devices=devices,
+)
 
 add_function_test(
     TestSparse, "test_bsr_multiply_deep_2_2", make_test_bsr_multiply_deep((2, 2), wp.float64), devices=devices
