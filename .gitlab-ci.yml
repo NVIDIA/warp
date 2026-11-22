@@ -1073,7 +1073,7 @@ asv benchmarks:
       allow_failure: true
 
 # Benchmark each push to main that changes Warp or the ASV CI files against
-# the main tip before the push, on the L40 and RTX PRO 6000 pools.
+# the main tip before the push, on the L40, RTX PRO 6000, and B200 pools.
 asv main benchmarks:
   stage: child pipelines
   trigger:
@@ -1091,19 +1091,6 @@ asv main benchmarks:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       changes:
         - .gitlab/ci/asv*.yml
-
-# Benchmark the last day of main on the B200 pool from the daily schedule.
-asv nightly benchmarks:
-  stage: child pipelines
-  trigger:
-    include: /.gitlab/ci/asv-main.yml
-  needs: []
-  extends:
-    - .trigger_common
-  variables:
-    ASV_COMPARE_MODE: nightly
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
 # ==============================================================================
 # Packaging Jobs
