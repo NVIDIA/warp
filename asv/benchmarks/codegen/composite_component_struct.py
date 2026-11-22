@@ -24,11 +24,11 @@ class StateStruct:
 
 @wp.kernel
 def state_multi_field(
-    dst: wp.array(dtype=StateStruct),
-    p: wp.array(dtype=wp.vec3),
-    v: wp.array(dtype=wp.vec3),
-    q: wp.array(dtype=wp.quatf),
-    m: wp.array(dtype=wp.float32),
+    dst: wp.array[StateStruct],
+    p: wp.array[wp.vec3],
+    v: wp.array[wp.vec3],
+    q: wp.array[wp.quatf],
+    m: wp.array[wp.float32],
 ):
     i = wp.tid()
     dst[i].position = p[i]

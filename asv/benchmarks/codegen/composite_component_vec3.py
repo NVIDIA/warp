@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""Composite-component writes on ``wp.array(dtype=wp.vec3)``: all three
+"""Composite-component writes on ``wp.array[wp.vec3]``: all three
 components written per element. Tracks the slot-level codegen fast-path
 introduced for in-place composite-component writes.
 
@@ -15,7 +15,7 @@ from ..benchmarks_utils import LAUNCHES_PER_SAMPLE, CudaEventTimer, capture_laun
 
 
 @wp.kernel
-def vec3_triple_slot(dst: wp.array(dtype=wp.vec3), src: wp.array(dtype=wp.float32)):
+def vec3_triple_slot(dst: wp.array[wp.vec3], src: wp.array[wp.float32]):
     i = wp.tid()
     dst[i].x = src[i] * 2.0
     dst[i].y = src[i] * 3.0

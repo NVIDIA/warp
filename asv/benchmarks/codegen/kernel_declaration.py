@@ -41,11 +41,11 @@ from ..benchmarks_utils import setup_once
 
 
 def small_sparse_mv(
-    rows: wp.array(dtype=wp.int32),
-    cols: wp.array(dtype=wp.int32),
-    vals: wp.array(dtype=wp.float32),
-    x: wp.array(dtype=wp.float32),
-    y: wp.array(dtype=wp.float32),
+    rows: wp.array[wp.int32],
+    cols: wp.array[wp.int32],
+    vals: wp.array[wp.float32],
+    x: wp.array[wp.float32],
+    y: wp.array[wp.float32],
     alpha: wp.float32,
     beta: wp.float32,
 ):
@@ -65,13 +65,13 @@ def small_sparse_mv(
 
 
 def medium_bound_project(
-    lower: wp.array(dtype=wp.float32),
-    upper: wp.array(dtype=wp.float32),
-    diag: wp.array(dtype=wp.float32),
-    rhs: wp.array(dtype=wp.float32),
-    x: wp.array(dtype=wp.float32),
-    out: wp.array(dtype=wp.float32),
-    active: wp.array(dtype=wp.float32),
+    lower: wp.array[wp.float32],
+    upper: wp.array[wp.float32],
+    diag: wp.array[wp.float32],
+    rhs: wp.array[wp.float32],
+    x: wp.array[wp.float32],
+    out: wp.array[wp.float32],
+    active: wp.array[wp.float32],
 ):
     i = wp.tid()
     lo = lower[i]
@@ -100,17 +100,17 @@ def medium_bound_project(
 
 
 def large_equality_flex(
-    body_a: wp.array(dtype=wp.int32),
-    body_b: wp.array(dtype=wp.int32),
-    anchor_a: wp.array(dtype=wp.vec3),
-    anchor_b: wp.array(dtype=wp.vec3),
-    pos: wp.array(dtype=wp.vec3),
-    rot: wp.array(dtype=wp.quatf),
-    stiffness: wp.array(dtype=wp.float32),
-    damping: wp.array(dtype=wp.float32),
-    vel: wp.array(dtype=wp.vec3),
-    out_force: wp.array(dtype=wp.vec3),
-    out_torque: wp.array(dtype=wp.vec3),
+    body_a: wp.array[wp.int32],
+    body_b: wp.array[wp.int32],
+    anchor_a: wp.array[wp.vec3],
+    anchor_b: wp.array[wp.vec3],
+    pos: wp.array[wp.vec3],
+    rot: wp.array[wp.quatf],
+    stiffness: wp.array[wp.float32],
+    damping: wp.array[wp.float32],
+    vel: wp.array[wp.vec3],
+    out_force: wp.array[wp.vec3],
+    out_torque: wp.array[wp.vec3],
 ):
     i = wp.tid()
     a = body_a[i]
@@ -179,11 +179,11 @@ def safe_normalize(v: wp.vec3) -> wp.vec3:
 
 
 def helper_calls(
-    pos: wp.array(dtype=wp.vec3),
-    rest: wp.array(dtype=wp.vec3),
-    vel: wp.array(dtype=wp.vec3),
-    params: wp.array(dtype=wp.vec3),
-    out: wp.array(dtype=wp.vec3),
+    pos: wp.array[wp.vec3],
+    rest: wp.array[wp.vec3],
+    vel: wp.array[wp.vec3],
+    params: wp.array[wp.vec3],
+    out: wp.array[wp.vec3],
 ):
     i = wp.tid()
     p = params[i]

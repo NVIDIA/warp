@@ -10,8 +10,8 @@ from ..benchmarks_utils import setup_once
 
 @wp.kernel
 def array_sum_simt(
-    a: wp.array2d(dtype=wp.float32),
-    result: wp.array(dtype=wp.float32),
+    a: wp.array2d[wp.float32],
+    result: wp.array[wp.float32],
 ):
     i, j = wp.tid()
 
@@ -25,8 +25,8 @@ def array_sum_simt(
 
 @wp.kernel
 def array_sum_tile(
-    a: wp.array2d(dtype=wp.float32),
-    result: wp.array(dtype=wp.float32),
+    a: wp.array2d[wp.float32],
+    result: wp.array[wp.float32],
 ):
     i, j = wp.tid()
 

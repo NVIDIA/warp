@@ -13,7 +13,7 @@ N = 128
 
 
 @wp.kernel
-def kernel_aos(test_array: wp.array4d(dtype=float)):
+def kernel_aos(test_array: wp.array4d[float]):
     i, j, k = wp.tid()
 
     for component_index in range(NUM_COMPONENTS):
@@ -21,7 +21,7 @@ def kernel_aos(test_array: wp.array4d(dtype=float)):
 
 
 @wp.kernel
-def kernel_soa(test_array: wp.array4d(dtype=float)):
+def kernel_soa(test_array: wp.array4d[float]):
     i, j, k = wp.tid()
 
     for component_index in range(NUM_COMPONENTS):
@@ -71,14 +71,14 @@ class StructureOfArrays:
 
 
 @wp.kernel
-def load_store_ij(test_array_in: wp.array2d(dtype=float), test_array_out: wp.array2d(dtype=float)):
+def load_store_ij(test_array_in: wp.array2d[float], test_array_out: wp.array2d[float]):
     i, j = wp.tid()
 
     test_array_out[i, j] = test_array_in[i, j]
 
 
 @wp.kernel
-def load_store_ji(test_array_in: wp.array2d(dtype=float), test_array_out: wp.array2d(dtype=float)):
+def load_store_ji(test_array_in: wp.array2d[float], test_array_out: wp.array2d[float]):
     i, j = wp.tid()
 
     test_array_out[j, i] = test_array_in[j, i]

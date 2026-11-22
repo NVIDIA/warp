@@ -13,7 +13,7 @@ from ..benchmarks_utils import (
 
 
 @wp.kernel
-def array2d_augassign_kernel(x: wp.array2d(dtype=float), y: wp.array2d(dtype=float)):
+def array2d_augassign_kernel(x: wp.array2d[float], y: wp.array2d[float]):
     i, j = wp.tid()
     x[i, j] += y[i, j]
 

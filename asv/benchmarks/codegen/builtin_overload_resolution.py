@@ -25,12 +25,12 @@ from ..benchmarks_utils import setup_once
 
 
 def scalar_arithmetic(
-    a: wp.array(dtype=wp.float32),
-    b: wp.array(dtype=wp.float32),
-    c: wp.array(dtype=wp.float64),
-    n: wp.array(dtype=wp.int32),
-    out: wp.array(dtype=wp.float32),
-    out64: wp.array(dtype=wp.float64),
+    a: wp.array[wp.float32],
+    b: wp.array[wp.float32],
+    c: wp.array[wp.float64],
+    n: wp.array[wp.int32],
+    out: wp.array[wp.float32],
+    out64: wp.array[wp.float64],
 ):
     i = wp.tid()
     x = a[i]
@@ -53,12 +53,12 @@ def scalar_arithmetic(
 
 
 def vector_arithmetic(
-    p: wp.array(dtype=wp.vec3),
-    q: wp.array(dtype=wp.quat),
-    m: wp.array(dtype=wp.mat33),
-    tf: wp.array(dtype=wp.transform),
-    out_v: wp.array(dtype=wp.vec3),
-    out_m: wp.array(dtype=wp.mat33),
+    p: wp.array[wp.vec3],
+    q: wp.array[wp.quat],
+    m: wp.array[wp.mat33],
+    tf: wp.array[wp.transform],
+    out_v: wp.array[wp.vec3],
+    out_m: wp.array[wp.mat33],
 ):
     i = wp.tid()
     v = p[i]
@@ -111,11 +111,11 @@ PAIR_FUNCTIONS = (pair_sphere_sphere, pair_sphere_box, pair_capsule_capsule, pai
 
 
 def static_dispatch(
-    kinds: wp.array(dtype=wp.int32),
-    a: wp.array(dtype=wp.vec3),
-    b: wp.array(dtype=wp.vec3),
-    radii: wp.array(dtype=wp.vec2),
-    dist: wp.array(dtype=wp.float32),
+    kinds: wp.array[wp.int32],
+    a: wp.array[wp.vec3],
+    b: wp.array[wp.vec3],
+    radii: wp.array[wp.vec2],
+    dist: wp.array[wp.float32],
 ):
     i = wp.tid()
     r = radii[i]

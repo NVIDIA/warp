@@ -45,8 +45,8 @@ _LAUNCH_CACHE = {}
 
 @wp.kernel
 def max_kernel(
-    vals: wp.array(dtype=Any),
-    out: wp.array(dtype=Any),
+    vals: wp.array[Any],
+    out: wp.array[Any],
 ):
     tid = wp.tid()
     val = vals[tid]
@@ -55,8 +55,8 @@ def max_kernel(
 
 @wp.kernel
 def min_kernel(
-    vals: wp.array(dtype=Any),
-    out: wp.array(dtype=Any),
+    vals: wp.array[Any],
+    out: wp.array[Any],
 ):
     tid = wp.tid()
     val = vals[tid]

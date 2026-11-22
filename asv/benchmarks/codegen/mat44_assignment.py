@@ -13,7 +13,7 @@ from ..benchmarks_utils import (
 
 
 @wp.kernel
-def component_assignment(a: wp.array2d(dtype=wp.mat44), b: wp.array2d(dtype=wp.mat44)):
+def component_assignment(a: wp.array2d[wp.mat44], b: wp.array2d[wp.mat44]):
     i, j = wp.tid()
 
     m1 = wp.mat44()
