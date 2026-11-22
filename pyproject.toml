@@ -40,6 +40,7 @@ Changelog = "https://github.com/NVIDIA/warp/blob/main/CHANGELOG.md"
 [project.optional-dependencies]
 docs = [
     "nvidia-sphinx-theme",
+    "sphinx>=9.0",
     "sphinx-copybutton",
     "pre-commit",
     "myst_parser",
