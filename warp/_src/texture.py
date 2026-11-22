@@ -1293,7 +1293,7 @@ class Texture1D(Texture):
 
 
         @wp.kernel
-        def sample_kernel(tex: wp.Texture1D, output: wp.array(dtype=float)):
+        def sample_kernel(tex: wp.Texture1D, output: wp.array[float]):
             tid = wp.tid()
             output[tid] = wp.texture_sample(tex, 0.5, dtype=float)
     """
@@ -1384,7 +1384,7 @@ class Texture2D(Texture):
 
 
         @wp.kernel
-        def sample_kernel(tex: wp.Texture2D, output: wp.array(dtype=float)):
+        def sample_kernel(tex: wp.Texture2D, output: wp.array[float]):
             tid = wp.tid()
             output[tid] = wp.texture_sample(tex, wp.vec2f(0.5, 0.5), dtype=float)
     """
@@ -1478,7 +1478,7 @@ class Texture3D(Texture):
 
 
         @wp.kernel
-        def sample_kernel(tex: wp.Texture3D, output: wp.array(dtype=float)):
+        def sample_kernel(tex: wp.Texture3D, output: wp.array[float]):
             tid = wp.tid()
             output[tid] = wp.texture_sample(tex, wp.vec3f(0.5, 0.5, 0.5), dtype=float)
     """
