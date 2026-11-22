@@ -1186,9 +1186,9 @@ class TiledDot:
 def _create_tiled_dot_kernels(tile_size):
     @wp.kernel(module="unique")
     def block_dot_kernel(
-        a: wp.array2d(dtype=Any),
-        b: wp.array2d(dtype=Any),
-        partial_sums: wp.array2d(dtype=Any),
+        a: wp.array2d[Any],
+        b: wp.array2d[Any],
+        partial_sums: wp.array2d[Any],
     ):
         column, block_id, _tid_block = wp.tid()
 
@@ -1203,8 +1203,8 @@ def _create_tiled_dot_kernels(tile_size):
 
     @wp.kernel(module="unique")
     def block_sum_kernel(
-        data: wp.array2d(dtype=Any),
-        partial_sums: wp.array2d(dtype=Any),
+        data: wp.array2d[Any],
+        partial_sums: wp.array2d[Any],
     ):
         column, block_id, _tid_block = wp.tid()
         start = block_id * tile_size
@@ -1304,10 +1304,10 @@ def _create_segmented_tiled_dot_kernels(tile_size):
 
 @wp.kernel(module="unique")
 def batch_dot_kernel(
-    a: wp.array2d(dtype=Any),
-    b: wp.array2d(dtype=Any),
-    result: wp.array2d(dtype=Any),
-    batch_offsets: wp.array1d(dtype=int),
+    a: wp.array2d[Any],
+    b: wp.array2d[Any],
+    result: wp.array2d[Any],
+    batch_offsets: wp.array1d[int],
 ):
     col, batch_id, lane = wp.tid()
 
@@ -2781,7 +2781,7 @@ def _get_tolerances(dtype, tol, atol):
 
 
 @wp.func
-def _find_batch(dof: int, batch_offsets: wp.array(dtype=int)) -> int:
+def _find_batch(dof: int, batch_offsets: wp.array[int]) -> int:
     """Binary search for the batch containing ``dof`` in ``batch_offsets``."""
 
     if not batch_offsets:
@@ -2792,7 +2792,7 @@ def _find_batch(dof: int, batch_offsets: wp.array(dtype=int)) -> int:
 
 
 @wp.func
-def _find_entry_batch(entry: int, batch_offsets: wp.array(dtype=int), dofs_per_entry: int) -> int:
+def _find_entry_batch(entry: int, batch_offsets: wp.array[int], dofs_per_entry: int) -> int:
     return _find_batch(entry * dofs_per_entry, batch_offsets)
 
 
@@ -2800,9 +2800,9 @@ def _find_entry_batch(entry: int, batch_offsets: wp.array(dtype=int), dofs_per_e
 def _initialize_tolerance(
     rtol: Any,
     atol: Any,
-    r_norm_sq: wp.array(dtype=Any),
-    atol_sq: wp.array(dtype=Any),
-    rhs_norm_sq: wp.array(dtype=Any),
+    r_norm_sq: wp.array[Any],
+    atol_sq: wp.array[Any],
+    rhs_norm_sq: wp.array[Any],
 ):
     i = wp.tid()
     a = wp.max(rtol * wp.sqrt(r_norm_sq[i]), atol)
@@ -2840,10 +2840,10 @@ def _create_update_condition_kernel(batch_count: int, tile_size: int):
     def _update_condition(
         maxiter: int,
         cycle_size: int,
-        cur_iter: wp.array(dtype=int),
-        r_norm_sq: wp.array(dtype=Any),
-        atol_sq: wp.array(dtype=Any),
-        condition: wp.array(dtype=int),
+        cur_iter: wp.array[int],
+        r_norm_sq: wp.array[Any],
+        atol_sq: wp.array[Any],
+        condition: wp.array[int],
     ):
         _, lane = wp.tid()
 
@@ -3005,10 +3005,10 @@ def _run_solver_loop(
 
 @wp.kernel(module="unique")
 def _dense_mv_kernel(
-    A: wp.array2d(dtype=Any),
-    x: wp.array1d(dtype=Any),
-    y: wp.array1d(dtype=Any),
-    z: wp.array1d(dtype=Any),
+    A: wp.array2d[Any],
+    x: wp.array1d[Any],
+    y: wp.array1d[Any],
+    z: wp.array1d[Any],
     alpha: Any,
     beta: Any,
 ):
@@ -3030,10 +3030,10 @@ def _dense_mv_kernel(
 
 @wp.kernel(module="unique")
 def _diag_mv_kernel(
-    A: wp.array(dtype=Any),
-    x: wp.array(dtype=Any),
-    y: wp.array(dtype=Any),
-    z: wp.array(dtype=Any),
+    A: wp.array[Any],
+    x: wp.array[Any],
+    y: wp.array[Any],
+    z: wp.array[Any],
     alpha: Any,
     beta: Any,
 ):
@@ -3056,8 +3056,8 @@ def _inverse_diag_coefficient(coeff: Any, use_abs: wp.bool):
 
 @wp.kernel(module="unique")
 def _extract_inverse_diagonal_blocked(
-    diag_block: wp.array(dtype=Any),
-    inv_diag: wp.array(dtype=Any),
+    diag_block: wp.array[Any],
+    inv_diag: wp.array[Any],
     use_abs: int,
 ):
     i = wp.tid()
@@ -3071,8 +3071,8 @@ def _extract_inverse_diagonal_blocked(
 
 @wp.kernel(module="unique")
 def _extract_inverse_diagonal_scalar(
-    diag_array: wp.array(dtype=Any),
-    inv_diag: wp.array(dtype=Any),
+    diag_array: wp.array[Any],
+    inv_diag: wp.array[Any],
     use_abs: int,
 ):
     i = wp.tid()
@@ -3081,8 +3081,8 @@ def _extract_inverse_diagonal_scalar(
 
 @wp.kernel(module="unique")
 def _extract_inverse_diagonal_dense(
-    dense_matrix: wp.array2d(dtype=Any),
-    inv_diag: wp.array(dtype=Any),
+    dense_matrix: wp.array2d[Any],
+    inv_diag: wp.array[Any],
     use_abs: int,
 ):
     i = wp.tid()
@@ -3091,15 +3091,15 @@ def _extract_inverse_diagonal_dense(
 
 @wp.kernel
 def _cg_kernel_1(
-    tol: wp.array(dtype=Any),
-    resid: wp.array(dtype=Any),
-    rz_old: wp.array(dtype=Any),
-    p_Ap: wp.array(dtype=Any),
-    x: wp.array(dtype=Any),
-    r: wp.array(dtype=Any),
-    p: wp.array(dtype=Any),
-    Ap: wp.array(dtype=Any),
-    batch_offsets: wp.array(dtype=int),
+    tol: wp.array[Any],
+    resid: wp.array[Any],
+    rz_old: wp.array[Any],
+    p_Ap: wp.array[Any],
+    x: wp.array[Any],
+    r: wp.array[Any],
+    p: wp.array[Any],
+    Ap: wp.array[Any],
+    batch_offsets: wp.array[int],
     dofs_per_entry: int,
 ):
     i = wp.tid()
@@ -3114,13 +3114,13 @@ def _cg_kernel_1(
 
 @wp.kernel
 def _cg_kernel_2(
-    tol: wp.array(dtype=Any),
-    resid_new: wp.array(dtype=Any),
-    rz_old: wp.array(dtype=Any),
-    rz_new: wp.array(dtype=Any),
-    z: wp.array(dtype=Any),
-    p: wp.array(dtype=Any),
-    batch_offsets: wp.array(dtype=int),
+    tol: wp.array[Any],
+    resid_new: wp.array[Any],
+    rz_old: wp.array[Any],
+    rz_new: wp.array[Any],
+    z: wp.array[Any],
+    p: wp.array[Any],
+    batch_offsets: wp.array[int],
     dofs_per_entry: int,
 ):
     #    p = r + (rz_new / rz_old) * p;
@@ -3135,17 +3135,17 @@ def _cg_kernel_2(
 
 @wp.kernel
 def _cr_kernel_1(
-    tol: wp.array(dtype=Any),
-    resid: wp.array(dtype=Any),
-    zAz_old: wp.array(dtype=Any),
-    y_Ap: wp.array(dtype=Any),
-    x: wp.array(dtype=Any),
-    r: wp.array(dtype=Any),
-    z: wp.array(dtype=Any),
-    p: wp.array(dtype=Any),
-    Ap: wp.array(dtype=Any),
-    y: wp.array(dtype=Any),
-    batch_offsets: wp.array(dtype=int),
+    tol: wp.array[Any],
+    resid: wp.array[Any],
+    zAz_old: wp.array[Any],
+    y_Ap: wp.array[Any],
+    x: wp.array[Any],
+    r: wp.array[Any],
+    z: wp.array[Any],
+    p: wp.array[Any],
+    Ap: wp.array[Any],
+    y: wp.array[Any],
+    batch_offsets: wp.array[int],
     dofs_per_entry: int,
 ):
     i = wp.tid()
@@ -3163,15 +3163,15 @@ def _cr_kernel_1(
 
 @wp.kernel
 def _cr_kernel_2(
-    tol: wp.array(dtype=Any),
-    resid: wp.array(dtype=Any),
-    zAz_old: wp.array(dtype=Any),
-    zAz_new: wp.array(dtype=Any),
-    z: wp.array(dtype=Any),
-    p: wp.array(dtype=Any),
-    Az: wp.array(dtype=Any),
-    Ap: wp.array(dtype=Any),
-    batch_offsets: wp.array(dtype=int),
+    tol: wp.array[Any],
+    resid: wp.array[Any],
+    zAz_old: wp.array[Any],
+    zAz_new: wp.array[Any],
+    z: wp.array[Any],
+    p: wp.array[Any],
+    Az: wp.array[Any],
+    Ap: wp.array[Any],
+    batch_offsets: wp.array[int],
     dofs_per_entry: int,
 ):
     #    p = r + (rz_new / rz_old) * p;
@@ -3189,15 +3189,15 @@ def _cr_kernel_2(
 
 @wp.kernel
 def _bicgstab_kernel_1(
-    tol: wp.array(dtype=Any),
-    resid: wp.array(dtype=Any),
-    rho_old: wp.array(dtype=Any),
-    r0v: wp.array(dtype=Any),
-    x: wp.array(dtype=Any),
-    r: wp.array(dtype=Any),
-    y: wp.array(dtype=Any),
-    v: wp.array(dtype=Any),
-    batch_offsets: wp.array(dtype=int),
+    tol: wp.array[Any],
+    resid: wp.array[Any],
+    rho_old: wp.array[Any],
+    r0v: wp.array[Any],
+    x: wp.array[Any],
+    r: wp.array[Any],
+    y: wp.array[Any],
+    v: wp.array[Any],
+    batch_offsets: wp.array[int],
     dofs_per_entry: int,
 ):
     i = wp.tid()
@@ -3212,15 +3212,15 @@ def _bicgstab_kernel_1(
 
 @wp.kernel
 def _bicgstab_kernel_2(
-    tol: wp.array(dtype=Any),
-    resid: wp.array(dtype=Any),
-    st: wp.array(dtype=Any),
-    tt: wp.array(dtype=Any),
-    z: wp.array(dtype=Any),
-    t: wp.array(dtype=Any),
-    x: wp.array(dtype=Any),
-    r: wp.array(dtype=Any),
-    batch_offsets: wp.array(dtype=int),
+    tol: wp.array[Any],
+    resid: wp.array[Any],
+    st: wp.array[Any],
+    tt: wp.array[Any],
+    z: wp.array[Any],
+    t: wp.array[Any],
+    x: wp.array[Any],
+    r: wp.array[Any],
+    batch_offsets: wp.array[int],
     dofs_per_entry: int,
 ):
     i = wp.tid()
@@ -3235,16 +3235,16 @@ def _bicgstab_kernel_2(
 
 @wp.kernel
 def _bicgstab_kernel_3(
-    tol: wp.array(dtype=Any),
-    resid: wp.array(dtype=Any),
-    rho_new: wp.array(dtype=Any),
-    r0v: wp.array(dtype=Any),
-    st: wp.array(dtype=Any),
-    tt: wp.array(dtype=Any),
-    p: wp.array(dtype=Any),
-    r: wp.array(dtype=Any),
-    v: wp.array(dtype=Any),
-    batch_offsets: wp.array(dtype=int),
+    tol: wp.array[Any],
+    resid: wp.array[Any],
+    rho_new: wp.array[Any],
+    r0v: wp.array[Any],
+    st: wp.array[Any],
+    tt: wp.array[Any],
+    p: wp.array[Any],
+    r: wp.array[Any],
+    v: wp.array[Any],
+    batch_offsets: wp.array[int],
     dofs_per_entry: int,
 ):
     i = wp.tid()
@@ -3261,9 +3261,9 @@ def _bicgstab_kernel_3(
 def _gmres_solve_least_squares(
     k: int,
     pivot_tolerance: float,
-    beta: wp.array(dtype=Any),
-    H: wp.array3d(dtype=Any),
-    y: wp.array2d(dtype=Any),
+    beta: wp.array[Any],
+    H: wp.array3d[Any],
+    y: wp.array2d[Any],
 ):
     # Per-batch QR-by-Givens + back-solve of H y = (beta, 0, ..., 0).
     # H is Hessenberg of shape (batch, k+1, k); one thread per batch.
@@ -3323,9 +3323,9 @@ def make_gmres_solve_least_squares_kernel_tiled(K: int):
     def gmres_solve_least_squares_tiled(
         k: int,
         pivot_tolerance: float,
-        beta: wp.array(dtype=Any),
-        H: wp.array3d(dtype=Any),
-        y: wp.array2d(dtype=Any),
+        beta: wp.array[Any],
+        H: wp.array3d[Any],
+        y: wp.array2d[Any],
     ):
         # One CUDA block per batch, tile_size threads cooperate on that batch's LS.
         # Assumes tiles of size K, and K at least as large as highest number of columns.
@@ -3405,10 +3405,10 @@ def make_gmres_solve_least_squares_kernel_tiled(K: int):
 @wp.kernel(enable_backward=False)
 def _gmres_arnoldi_axpy_kernel(
     j: int,
-    V: wp.array2d(dtype=Any),
-    w: wp.array(dtype=Any),
-    H: wp.array3d(dtype=Any),
-    batch_offsets: wp.array(dtype=int),
+    V: wp.array2d[Any],
+    w: wp.array[Any],
+    H: wp.array3d[Any],
+    batch_offsets: wp.array[int],
     dofs_per_entry: int,
 ):
     tid, lane = wp.tid()
@@ -3429,11 +3429,11 @@ def _gmres_arnoldi_axpy_kernel(
 
 @wp.kernel(enable_backward=False)
 def _gmres_arnoldi_normalize_kernel(
-    x: wp.array(dtype=Any),
-    y: wp.array(dtype=Any),
-    alpha: wp.array(dtype=Any),
-    alpha_copy: wp.array(dtype=Any),
-    batch_offsets: wp.array(dtype=int),
+    x: wp.array[Any],
+    y: wp.array[Any],
+    alpha: wp.array[Any],
+    alpha_copy: wp.array[Any],
+    batch_offsets: wp.array[int],
     dofs_per_entry: int,
 ):
     tid = wp.tid()
@@ -3455,8 +3455,8 @@ def _gmres_arnoldi_normalize_kernel(
 @wp.kernel(enable_backward=False)
 def _gmres_copy_hessenberg_column(
     j: int,
-    src: wp.array2d(dtype=Any),
-    H: wp.array3d(dtype=Any),
+    src: wp.array2d[Any],
+    H: wp.array3d[Any],
 ):
     k, bid = wp.tid()
     if k <= j:
@@ -3467,10 +3467,10 @@ def _gmres_copy_hessenberg_column(
 def _gmres_update_x_kernel(
     k: int,
     scale: Any,
-    y: wp.array2d(dtype=Any),
-    V: wp.array2d(dtype=Any),
-    x: wp.array(dtype=Any),
-    batch_offsets: wp.array(dtype=int),
+    y: wp.array2d[Any],
+    V: wp.array2d[Any],
+    x: wp.array[Any],
+    batch_offsets: wp.array[int],
     dofs_per_entry: int,
 ):
     tid = wp.tid()
@@ -3486,9 +3486,9 @@ def _gmres_update_x_kernel(
 
 @wp.kernel(enable_backward=False)
 def _gmres_add_active_entries_kernel(
-    update: wp.array(dtype=Any),
-    x: wp.array(dtype=Any),
-    batch_offsets: wp.array(dtype=int),
+    update: wp.array[Any],
+    x: wp.array[Any],
+    batch_offsets: wp.array[int],
     dofs_per_entry: int,
 ):
     tid = wp.tid()
@@ -3502,9 +3502,9 @@ def _register_overloads():
     # Pre-register float32 and float64 overloads so the module can be AOT-compiled
     # without requiring a prior runtime launch.
     for dtype in (wp.float32, wp.float64):
-        a = wp.array(dtype=dtype)
-        a2 = wp.array2d(dtype=dtype)
-        a3 = wp.array3d(dtype=dtype)
+        a = wp.array[dtype]
+        a2 = wp.array2d[dtype]
+        a3 = wp.array3d[dtype]
 
         wp.overload(_initialize_tolerance, [dtype, dtype, a, a, a])
         wp.overload(_cg_kernel_1, {"tol": a, "resid": a, "rz_old": a, "p_Ap": a, "x": a, "r": a, "p": a, "Ap": a})

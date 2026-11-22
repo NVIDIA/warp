@@ -9,15 +9,15 @@ from warp._src.types import type_repr
 
 @wp.kernel
 def sgd_step_kernel(
-    g: wp.array(dtype=Any),
-    b: wp.array(dtype=Any),
+    g: wp.array[Any],
+    b: wp.array[Any],
     lr: float,
     momentum: float,
     damping: float,
     weight_decay: float,
     nesterov: int,
     t: int,
-    params: wp.array(dtype=Any),
+    params: wp.array[Any],
 ):
     i = wp.tid()
     gt = g[i]
