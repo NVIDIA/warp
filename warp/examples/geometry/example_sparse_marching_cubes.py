@@ -63,9 +63,7 @@ def voxel_mesh(origins, width):
 
 
 @wp.kernel(enable_backward=False)
-def bunny_sdf_batch_kernel(
-    mesh_id: wp.uint64, points: wp.array(dtype=wp.vec3), angle: float, values: wp.array(dtype=wp.float32)
-):
+def bunny_sdf_batch_kernel(mesh_id: wp.uint64, points: wp.array[wp.vec3], angle: float, values: wp.array[wp.float32]):
     """Signed distance to the (spinning) bunny, evaluated over a batch of points."""
     i = wp.tid()
     p = points[i]
@@ -77,7 +75,7 @@ def bunny_sdf_batch_kernel(
 
 
 @wp.kernel(enable_backward=False)
-def bunny_field_kernel(mesh_id: wp.uint64, field: wp.array3d(dtype=float), origin: wp.vec3, h: float, angle: float):
+def bunny_field_kernel(mesh_id: wp.uint64, field: wp.array3d[float], origin: wp.vec3, h: float, angle: float):
     """Dense field sampler used by the dense extractor for comparison."""
     i, j, k = wp.tid()
     p = origin + h * wp.vec3(float(i), float(j), float(k))
