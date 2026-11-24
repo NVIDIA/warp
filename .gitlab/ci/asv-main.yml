@@ -24,6 +24,10 @@ include:
   - /.gitlab/ci/asv-common.yml
 
 workflow:
+  # Child pipelines don't inherit the parent's workflow:auto_cancel. Without
+  # this, the next push to main cancels the running benchmarks.
+  auto_cancel:
+    on_new_commit: none
   rules:
     - if: $CI_PIPELINE_SOURCE == "parent_pipeline"
 

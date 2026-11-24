@@ -17,6 +17,11 @@ include:
 
 workflow:
   rules:
+    # Child pipelines don't inherit the parent's workflow:auto_cancel, so
+    # repeat its opt-out for main (the nightly schedule also runs on main).
+    - if: $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      auto_cancel:
+        on_new_commit: none
     - if: $CI_PIPELINE_SOURCE == "parent_pipeline"
 
 stages:

@@ -27,6 +27,8 @@ workflow:
       when: never
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
     - if: $CI_MERGE_REQUEST_TARGET_BRANCH_SHA
+    # Child pipelines don't inherit auto_cancel. The child configs that run on
+    # main set it in their own workflow rules.
     - if: $CI_PIPELINE_SOURCE == "schedule" || $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
       auto_cancel:
         on_new_commit: none
