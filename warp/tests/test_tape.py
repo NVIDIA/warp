@@ -1221,6 +1221,25 @@ class TestTape(unittest.TestCase):
         with self.assertRaises(TypeError):
             wp.no_grad(1)
 
+    def test_tape_no_grad_rejects_deferred_functions(self):
+        """Generator and async bodies run after the call returns, so ``no_grad`` cannot decorate them."""
+
+        def generator():
+            yield wp.Tape.get_active()
+
+        async def coroutine():
+            return wp.Tape.get_active()
+
+        async def async_generator():
+            yield wp.Tape.get_active()
+
+        for func in (generator, coroutine, async_generator):
+            with self.subTest(func=func.__name__):
+                with self.assertRaisesRegex(TypeError, "generator or async function"):
+                    wp.no_grad(func)
+                with self.assertRaisesRegex(TypeError, "generator or async function"):
+                    wp.no_grad()(func)
+
     def test_tape_no_grad_reentrant(self):
         pause = wp.no_grad()
 
@@ -1379,6 +1398,13 @@ class TestTape(unittest.TestCase):
 
         cmd.launch()
         assert_np_equal(y.numpy(), np.array([2.0, 4.0]))
+
+        # a zero-sized command is not recorded either, so backward() does not reject it
+        empty = wp.empty(0, dtype=float, requires_grad=True, device="cpu")
+        with wp.Tape(strict=True) as tape:
+            wp.launch(mul_constant_no_adjoint, dim=0, inputs=[empty], outputs=[empty], device="cpu", record_cmd=True)
+        self.assertEqual(tape.launches, [])
+        tape.backward()
 
     def test_tape_strict_integer_only_launch(self):
         """A strict tape allows kernels without an adjoint whose arrays all hold integers or booleans."""

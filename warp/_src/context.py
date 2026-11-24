@@ -12511,8 +12511,8 @@ def launch(
                 log_error(f"Error launching kernel: {kernel.key} on device {device}: {e}")
                 raise
 
-    # record on tape if one is active
-    if runtime.tape and record_tape:
+    # record on tape if one is active; creating a command records nothing, also when its size is zero
+    if runtime.tape and record_tape and not record_cmd:
         # record file, lineno, func as metadata
         callsite = get_warp_function_callsite()
         if callsite is None:

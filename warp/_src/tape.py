@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import contextlib
 import functools
+import inspect
 from collections import defaultdict, namedtuple
 from collections.abc import Callable
 from typing import TypeVar, overload
@@ -658,6 +659,20 @@ class _NoGrad(contextlib.ContextDecorator):
         if tape is not None:
             wp._src.context.runtime.tape = tape
 
+    def __call__(self, func):
+        _check_no_grad_decoratable(func)
+        return super().__call__(func)
+
+
+def _check_no_grad_decoratable(func):
+    """Reject functions whose body runs after the call returns, outside the ``no_grad`` scope."""
+    if inspect.isgeneratorfunction(func) or inspect.iscoroutinefunction(func) or inspect.isasyncgenfunction(func):
+        raise TypeError(
+            f"no_grad() cannot decorate generator or async function {getattr(func, '__qualname__', func)!r}, "
+            "because its body runs after the call returns, when recording has resumed. "
+            "Use 'with wp.no_grad():' inside its body instead."
+        )
+
 
 @overload
 def no_grad(func: None = None) -> _NoGrad: ...
@@ -682,7 +697,9 @@ def no_grad(func: _F | None = None) -> _NoGrad | _F:
     tape.
 
     ``no_grad`` can be used as a context manager or as a function decorator,
-    with or without parentheses.
+    with or without parentheses. Generator and ``async`` functions cannot be
+    decorated, because their body runs after the call returns; use
+    ``with wp.no_grad():`` inside their body instead.
 
     Note:
         Paused operations still run and may overwrite arrays that the tape has
@@ -712,6 +729,7 @@ def no_grad(func: _F | None = None) -> _NoGrad | _F:
 
     if not callable(func):
         raise TypeError(f"no_grad() expects a callable or no argument, got {type(func).__name__}")
+    _check_no_grad_decoratable(func)
 
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
