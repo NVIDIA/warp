@@ -457,6 +457,24 @@ class TestJetSpace(unittest.TestCase):
         self.assertIsNot(wp.JetSpace(2, dtype=wp.float64), J2)
         self.assertIs(wp.JetSpace(2, dtype=wp.float64), J2D)
 
+    def test_register_rejects_mismatched_parameter_names(self):
+        """Reject a jet overload whose parameter names differ from the built-in's keyword names."""
+
+        # The first signature matches and the second does not: neither may be added.
+        @wp.func
+        def misnamed_sine(x: wp.float16) -> wp.float16:
+            return wp.sin(x)
+
+        @wp.func
+        def misnamed_sine(angle: wp.float64) -> wp.float64:
+            return wp.sin(angle)
+
+        sin = wp._src.context.builtin_functions["sin"]
+        before = len(sin.overloads)
+        with self.assertRaisesRegex(TypeError, r"keyword arguments to 'sin' use \[\('x',\)\]"):
+            jet_module._register("sin", misnamed_sine)
+        self.assertEqual(len(sin.overloads), before)
+
     def test_jet_space_rejects_bad_width(self):
         """Check that a non-positive width is rejected."""
         with self.assertRaises(ValueError):
@@ -1261,6 +1279,53 @@ def test_jet2_vector_ops(test, device):
     _check_against_fd(vec2_ops_energy_np, z_np, val, grad, hess)
 
 
+@wp.func
+def keyword_builtin_energy(a: Any, b: Any):
+    return wp.sin(x=a) + wp.pow(x=a, y=2.0) + wp.clamp(x=a, low=0.1, high=0.9) + wp.atan2(y=a, x=b) + wp.max(a=a, b=b)
+
+
+@wp.func
+def positional_builtin_energy(a: Any, b: Any):
+    return wp.sin(a) + wp.pow(a, 2.0) + wp.clamp(a, 0.1, 0.9) + wp.atan2(a, b) + wp.max(a, b)
+
+
+@wp.kernel(enable_backward=False)
+def keyword_builtin_kernel(out: wp.array2d[float]):
+    out[0, 0] = keyword_builtin_energy(0.3, 0.7)
+    out[1, 0] = positional_builtin_energy(0.3, 0.7)
+
+    a, b = J2.seed(0.3, 0.7)
+    first = keyword_builtin_energy(a, b)
+    out[0, 1] = first.value
+    out[0, 2] = first.grad[0]
+    out[0, 3] = first.grad[1]
+    first = positional_builtin_energy(a, b)
+    out[1, 1] = first.value
+    out[1, 2] = first.grad[0]
+    out[1, 3] = first.grad[1]
+
+    a2, b2 = J2_2ND.seed(0.3, 0.7)
+    second = keyword_builtin_energy(a2, b2)
+    out[0, 4] = second.value
+    out[0, 5] = second.grad[0]
+    out[0, 6] = second.hess[0, 0]
+    out[0, 7] = second.hess[0, 1]
+    second = positional_builtin_energy(a2, b2)
+    out[1, 4] = second.value
+    out[1, 5] = second.grad[0]
+    out[1, 6] = second.hess[0, 0]
+    out[1, 7] = second.hess[0, 1]
+
+
+def test_builtin_keyword_arguments(test, device):
+    """Accept built-in keyword arguments in generic functions called with jets, at both orders."""
+    out = wp.zeros((2, 8), dtype=float, device=device)
+    wp.launch(keyword_builtin_kernel, dim=1, outputs=[out], device=device)
+    keyword, positional = out.numpy()
+    np.testing.assert_array_equal(keyword, positional)
+    test.assertTrue(np.all(keyword[[2, 3, 5, 6, 7]] != 0.0), "the derivatives should be nonzero")
+
+
 devices = get_test_devices()
 
 
@@ -1269,6 +1334,7 @@ class TestJet(unittest.TestCase):
 
 
 add_function_test(TestJet, "test_jet_value", test_jet_value, devices=devices)
+add_function_test(TestJet, "test_builtin_keyword_arguments", test_builtin_keyword_arguments, devices=devices)
 add_function_test(TestJet, "test_jet_gradient", test_jet_gradient, devices=devices)
 add_function_test(TestJet, "test_jet_hessian", test_jet_hessian, devices=devices)
 add_function_test(TestJet, "test_jet_hessian_symmetric", test_jet_hessian_symmetric, devices=devices)
