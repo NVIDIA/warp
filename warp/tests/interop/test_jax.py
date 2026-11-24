@@ -1470,7 +1470,8 @@ def test_ffi_jax_callable_selective_staged_inputs(test, device):
             if ext_active:
                 with wp.ScopedDevice(device):
                     ext_stream = ctypes.c_void_p(ctx.stream)
-                    test.assertEqual(cuda_driver.cuStreamBeginCapture_v2(ext_stream, 1), 0)
+                    # CU_STREAM_CAPTURE_MODE_RELAXED = 2 so cleanup can end an aborted capture from the test thread
+                    test.assertEqual(cuda_driver.cuStreamBeginCapture_v2(ext_stream, 2), 0)
 
         def _end_ext(_inputs, _outputs, _attrs, ctx):
             if ext_active:
@@ -1509,13 +1510,21 @@ def test_ffi_jax_callable_selective_staged_inputs(test, device):
                 np.testing.assert_array_equal(np.asarray(out2), (values + 40.0) * 2.0)
                 test.assertEqual(capture_count, 2)
         finally:
-            wp.synchronize_device(device)
-            if ext_stream is not None and wp._src.context.runtime.core.wp_cuda_stream_is_capturing(ext_stream.value):
-                cuda_driver.cuStreamEndCapture(ext_stream, ctypes.byref(ext_graph))
-            if ext_graph_exec:
-                cuda_driver.cuGraphExecDestroy(ext_graph_exec)
-            if ext_graph:
-                cuda_driver.cuGraphDestroy(ext_graph)
+            with wp.ScopedDevice(device):
+                try:
+                    if ext_stream is not None and wp._src.context.runtime.core.wp_cuda_stream_is_capturing(
+                        ext_stream.value
+                    ):
+                        aborted_graph = ctypes.c_void_p()
+                        cuda_driver.cuStreamEndCapture(ext_stream, ctypes.byref(aborted_graph))
+                        if aborted_graph:
+                            cuda_driver.cuGraphDestroy(aborted_graph)
+                    wp.synchronize_device(device)
+                finally:
+                    if ext_graph_exec:
+                        cuda_driver.cuGraphExecDestroy(ext_graph_exec)
+                    if ext_graph:
+                        cuda_driver.cuGraphDestroy(ext_graph)
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
