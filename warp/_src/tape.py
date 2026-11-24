@@ -184,7 +184,9 @@ class Tape:
         strict: If ``True``, launching a kernel that was compiled without an adjoint
             (``enable_backward=False``) while this tape is recording raises a
             :class:`RuntimeError` before the kernel runs, and :meth:`backward` raises
-            instead of warning when such a launch is on the tape.
+            instead of warning when such a launch is on the tape. Launches whose array
+            arguments all hold integers or booleans are allowed, because they cannot
+            carry gradients.
 
     """
 
@@ -281,7 +283,7 @@ class Tape:
         if self.strict:
             for launch in self.launches:
                 if not callable(launch):
-                    self._check_kernel_has_adjoint(launch[0])
+                    self._check_kernel_has_adjoint(launch[0], launch[3], launch[4])
 
         # don't record adjoint launches or seed writes on an active tape, such as an
         # enclosing tape when this is a nested tape
@@ -382,9 +384,9 @@ class Tape:
             metadata = {}
         self.launches.append(TapeLaunch([kernel, dim, max_blocks, inputs, outputs, device, block_dim, metadata]))
 
-    def _check_kernel_has_adjoint(self, kernel):
-        """Raise if ``kernel`` has no adjoint; used in strict mode."""
-        if not _kernel_has_adjoint(kernel):
+    def _check_kernel_has_adjoint(self, kernel, inputs, outputs):
+        """Raise if ``kernel`` has no adjoint and its arguments can carry gradients; used in strict mode."""
+        if not _kernel_has_adjoint(kernel) and any(_may_carry_gradients(a) for a in (*inputs, *outputs)):
             raise RuntimeError(
                 f"Warp: Kernel '{kernel.key}' was compiled with 'enable_backward=False' and cannot be "
                 "recorded on a tape created with strict=True. Run it inside a wp.no_grad() scope if it "

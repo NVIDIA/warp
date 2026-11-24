@@ -60,13 +60,13 @@ Use :func:`no_grad` to run operations inside a tape's scope without recording th
 The tape resumes recording when the ``no_grad`` scope exits::
 
     with wp.Tape() as tape:
-        wp.launch(kernel=policy, inputs=[obs, params], outputs=[action])
+        wp.launch(kernel=policy, dim=n, inputs=[obs, params], outputs=[action])
 
         with wp.no_grad():
             # not recorded: e.g., resetting finished environments
-            wp.launch(kernel=reset_done, inputs=[done], outputs=[state])
+            wp.launch(kernel=reset_done, dim=n, inputs=[done], outputs=[state])
 
-        wp.launch(kernel=loss, inputs=[action], outputs=[l])
+        wp.launch(kernel=loss, dim=n, inputs=[action], outputs=[l])
 
 This is useful in library code that may be called from inside a tape it did not create
 and therefore has no reference to. :func:`no_grad` can also decorate a function.
@@ -80,12 +80,12 @@ Tapes can also be nested. Operations are recorded only on the innermost tape, an
 enclosing tape resumes recording when the inner ``with`` block exits::
 
     with wp.Tape() as outer:
-        wp.launch(kernel=compute1, inputs=[a], outputs=[b])  # recorded on outer
+        wp.launch(kernel=compute1, dim=n, inputs=[a], outputs=[b])  # recorded on outer
 
         with wp.Tape() as inner:
-            wp.launch(kernel=compute2, inputs=[b], outputs=[c])  # recorded on inner only
+            wp.launch(kernel=compute2, dim=n, inputs=[b], outputs=[c])  # recorded on inner only
 
-        wp.launch(kernel=compute3, inputs=[b], outputs=[d])  # recorded on outer
+        wp.launch(kernel=compute3, dim=n, inputs=[b], outputs=[d])  # recorded on outer
 
 Each tape runs only its own recorded operations in :meth:`Tape.backward`.
 
@@ -108,8 +108,9 @@ backward pass of :func:`copy`, with the arrays they access::
 Kernels compiled with ``enable_backward=False`` have no adjoint, so recording them on a tape
 produces incorrect gradients. By default, :meth:`Tape.backward` logs a warning for such kernels.
 Create the tape with ``wp.Tape(strict=True)`` to raise an error instead, as soon as such a kernel
-is launched while the tape is recording and before the kernel runs. Launch these kernels inside
-:func:`no_grad` if they should not be differentiated.
+is launched while the tape is recording and before the kernel runs. Launches whose array arguments
+all hold integers or booleans cannot carry gradients, so they neither warn nor raise. Launch other
+kernels without an adjoint inside :func:`no_grad` if they should not be differentiated.
 
 
 Array Overwrites

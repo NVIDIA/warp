@@ -1366,6 +1366,36 @@ class TestTape(unittest.TestCase):
         tape.backward(grads={y: wp.ones_like(y)})
         assert_np_equal(x.grad.numpy(), np.full(2, 2.0))
         self.assertFalse(wp.Tape().strict)
+    def test_tape_strict_record_cmd(self):
+        """Creating a command records nothing, so a strict tape allows it and the command runs later."""
+        x = wp.array([1.0, 2.0], dtype=float, requires_grad=True, device="cpu")
+        y = wp.zeros_like(x, requires_grad=True)
+
+        with wp.Tape(strict=True) as tape:
+            cmd = wp.launch(
+                mul_constant_no_adjoint, dim=x.shape, inputs=[x], outputs=[y], device="cpu", record_cmd=True
+            )
+        self.assertEqual(tape.launches, [])
+
+        cmd.launch()
+        assert_np_equal(y.numpy(), np.array([2.0, 4.0]))
+
+    def test_tape_strict_integer_only_launch(self):
+        """A strict tape allows kernels without an adjoint whose arrays all hold integers or booleans."""
+        flags = wp.array([True, False, True], dtype=wp.bool, device="cpu")
+        count = wp.zeros(1, dtype=int, device="cpu")
+        x = wp.array([1.0, 2.0], dtype=float, requires_grad=True, device="cpu")
+        y = wp.zeros_like(x, requires_grad=True)
+
+        with wp.Tape(strict=True) as tape:
+            wp.launch(count_true, dim=flags.shape, inputs=[flags], outputs=[count], device="cpu")
+            wp.launch(mul_constant, dim=x.shape, inputs=[x], outputs=[y], device="cpu")
+        self.assertEqual(len(tape.launches), 2)
+        self.assertEqual(count.numpy()[0], 2)
+
+        tape.backward(grads={y: wp.ones_like(y)})
+        assert_np_equal(x.grad.numpy(), np.full(2, 2.0))
+
 
     def test_tape_strict_backward(self):
         x = wp.array([1.0, 2.0], dtype=float, requires_grad=True, device="cpu")
