@@ -4,30 +4,12 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: QuadraturePointIndex
-   
-   
-   .. rubric:: Methods
 
-   .. autosummary::
-   
-      ~QuadraturePointIndex.as_integer_ratio
-      ~QuadraturePointIndex.bit_count
-      ~QuadraturePointIndex.bit_length
-      ~QuadraturePointIndex.conjugate
-      ~QuadraturePointIndex.from_bytes
-      ~QuadraturePointIndex.is_integer
-      ~QuadraturePointIndex.to_bytes
-   
-   
-   
-   
-   .. rubric:: Attributes
+   Type representing the index of a quadrature point.
 
-   .. autosummary::
    
-      ~QuadraturePointIndex.denominator
-      ~QuadraturePointIndex.imag
-      ~QuadraturePointIndex.numerator
-      ~QuadraturePointIndex.real
+   
+   
+   
    
    

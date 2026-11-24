@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>warp.JetSpace &#8212; Warp 1.20.0rc1</title>
+    <title>warp.JetSpace &#8212; Warp 1.20.0rc2</title>
   
   
   
@@ -70,7 +70,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="color-scheme" content="light dark"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.20.0rc1" />
+  <meta name="docsearch:version" content="1.20.0rc2" />
   
     
     <script src="../../_static/searchtools.js"></script>
@@ -147,11 +147,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.20.0rc1 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.20.0rc1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.20.0rc2 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.20.0rc2 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.20.0rc1</p>
+    <p class="title logo__title">Warp 1.20.0rc2</p>
   
 </a></div>
     
@@ -291,11 +291,11 @@
       
     
     
-    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.20.0rc1 - Home"/>
-    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.20.0rc1 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.20.0rc2 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.20.0rc2 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.20.0rc1</p>
+    <p class="title logo__title">Warp 1.20.0rc2</p>
   
 </a>
 
@@ -513,7 +513,7 @@
 <h1>warp.JetSpace<a class="headerlink" href="#warp-jetspace" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.JetSpace">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">JetSpace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">slots</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.20/warp/_src/jet.py#L2552-L2676"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.JetSpace" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">JetSpace</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">slots</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/release-1.20/warp/_src/jet.py#L2949-L3076"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.JetSpace" title="Link to this definition">#</a></dt>
 <dd><p>Return the jet types and helpers for a set of differentiated inputs.</p>
 <div class="admonition-experimental admonition">
 <p class="admonition-title">Experimental</p>
@@ -535,9 +535,9 @@ return a namespace over the same types.</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>slots</strong> – The inputs differentiated with respect to. Either an integer
 <code class="docutils literal notranslate"><span class="pre">n</span></code>, meaning <code class="docutils literal notranslate"><span class="pre">n</span></code> scalar inputs, or a sequence of types, one per
-input: <code class="docutils literal notranslate"><span class="pre">warp.float32</span></code>, <code class="docutils literal notranslate"><span class="pre">warp.vec2</span></code>, <code class="docutils literal notranslate"><span class="pre">warp.vec3</span></code>, <code class="docutils literal notranslate"><span class="pre">warp.mat22</span></code>,
-<code class="docutils literal notranslate"><span class="pre">warp.mat33</span></code>, <code class="docutils literal notranslate"><span class="pre">warp.mat32</span></code> or <code class="docutils literal notranslate"><span class="pre">warp.mat23</span></code>. A spring over two nodes
-is <code class="docutils literal notranslate"><span class="pre">(warp.vec3,</span> <span class="pre">warp.vec3)</span></code>.</p></li>
+input: <code class="docutils literal notranslate"><span class="pre">warp.float32</span></code>, <code class="docutils literal notranslate"><span class="pre">warp.vec2</span></code>, <code class="docutils literal notranslate"><span class="pre">warp.vec3</span></code>, <code class="docutils literal notranslate"><span class="pre">warp.quat</span></code>,
+<code class="docutils literal notranslate"><span class="pre">warp.mat22</span></code>, <code class="docutils literal notranslate"><span class="pre">warp.mat33</span></code>, <code class="docutils literal notranslate"><span class="pre">warp.mat32</span></code> or <code class="docutils literal notranslate"><span class="pre">warp.mat23</span></code>. A spring
+over two nodes is <code class="docutils literal notranslate"><span class="pre">(warp.vec3,</span> <span class="pre">warp.vec3)</span></code>.</p></li>
 <li><p><strong>dtype</strong> – Scalar type the jets are built on. Inferred from <code class="docutils literal notranslate"><span class="pre">slots</span></code> when
 they are Warp types; <code class="docutils literal notranslate"><span class="pre">warp.float32</span></code> when <code class="docutils literal notranslate"><span class="pre">slots</span></code> is an integer
 or contains only Python <code class="docutils literal notranslate"><span class="pre">float</span></code>.</p></li>
@@ -551,10 +551,12 @@ gradient are needed.</p></li>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>A namespace holding the generated jet types (<code class="docutils literal notranslate"><span class="pre">scalar</span></code>, <code class="docutils literal notranslate"><span class="pre">vec2</span></code>,
-<code class="docutils literal notranslate"><span class="pre">vec3</span></code>, <code class="docutils literal notranslate"><span class="pre">mat22</span></code>, <code class="docutils literal notranslate"><span class="pre">mat33</span></code>, <code class="docutils literal notranslate"><span class="pre">mat32</span></code>, <code class="docutils literal notranslate"><span class="pre">mat23</span></code>), the type of
-each one’s <code class="docutils literal notranslate"><span class="pre">grad</span></code> field (<code class="docutils literal notranslate"><span class="pre">grad_type_scalar</span></code>, <code class="docutils literal notranslate"><span class="pre">grad_type_vec2</span></code>,
-and so on through <code class="docutils literal notranslate"><span class="pre">grad_type_mat23</span></code>), the helpers that construct
-jets, and <code class="docutils literal notranslate"><span class="pre">slots</span></code>, the native type of each slot.</p>
+<code class="docutils literal notranslate"><span class="pre">vec3</span></code>, <code class="docutils literal notranslate"><span class="pre">quat</span></code>, <code class="docutils literal notranslate"><span class="pre">mat22</span></code>, <code class="docutils literal notranslate"><span class="pre">mat33</span></code>, <code class="docutils literal notranslate"><span class="pre">mat32</span></code>, <code class="docutils literal notranslate"><span class="pre">mat23</span></code>), the
+type of each one’s <code class="docutils literal notranslate"><span class="pre">grad</span></code> field (<code class="docutils literal notranslate"><span class="pre">grad_type_scalar</span></code>,
+<code class="docutils literal notranslate"><span class="pre">grad_type_vec2</span></code>, and so on through <code class="docutils literal notranslate"><span class="pre">grad_type_mat23</span></code>), the helpers
+that construct jets, including <code class="docutils literal notranslate"><span class="pre">exp_map</span></code>, which maps a <code class="docutils literal notranslate"><span class="pre">vec3</span></code>
+rotation-vector jet to a unit quaternion jet, and <code class="docutils literal notranslate"><span class="pre">slots</span></code>, the native
+type of each slot.</p>
 </dd>
 </dl>
 <p>Jets are created inside a kernel or function with <code class="docutils literal notranslate"><span class="pre">seed</span></code> or

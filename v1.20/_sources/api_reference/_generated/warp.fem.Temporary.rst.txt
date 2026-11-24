@@ -4,6 +4,16 @@
 .. currentmodule:: warp.fem
 
 .. autoclass:: Temporary
+
+   Temporary array borrowed from a :class:`TemporaryStore`.
+   
+   The array will be automatically returned to the temporary pool for reuse upon destruction of this object, unless
+   the temporary is explicitly detached from the pool using ``detach()``.
+   The temporary may also be explicitly returned to the pool before destruction using ``release()``.
+   
+   ``Temporary`` is an alias of :class:`warp.array`. Borrowed arrays use a custom deleter, and get the ``detach()``
+   and ``release()`` methods at borrow time.
+
    
    
    .. rubric:: Methods

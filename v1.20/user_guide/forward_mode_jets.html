@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Forward-Mode Jets &#8212; Warp 1.20.0rc1</title>
+    <title>Forward-Mode Jets &#8212; Warp 1.20.0rc2</title>
   
   
   
@@ -71,7 +71,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="color-scheme" content="light dark"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="1.20.0rc1" />
+  <meta name="docsearch:version" content="1.20.0rc2" />
   
     
     <script src="../_static/searchtools.js"></script>
@@ -148,11 +148,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.20.0rc1 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.20.0rc1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.20.0rc2 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.20.0rc2 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.20.0rc1</p>
+    <p class="title logo__title">Warp 1.20.0rc2</p>
   
 </a></div>
     
@@ -292,11 +292,11 @@
       
     
     
-    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.20.0rc1 - Home"/>
-    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.20.0rc1 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.20.0rc2 - Home"/>
+    <img src="../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.20.0rc2 - Home"/>
   
   
-    <p class="title logo__title">Warp 1.20.0rc1</p>
+    <p class="title logo__title">Warp 1.20.0rc2</p>
   
 </a>
 
@@ -702,7 +702,8 @@ inputs. The <a class="reference internal" href="../api_reference/_generated/warp
 <code class="docutils literal notranslate"><span class="pre">(wp.vec2,</span> <span class="pre">wp.float32,</span> <span class="pre">wp.float32)</span></code> in the example above. Each slot corresponds to one of the function’s inputs. By
 default, the width of the jets is the total number of scalar components (<code class="docutils literal notranslate"><span class="pre">width=4</span></code> in the example above), so the jets
 carry the full Jacobian with respect to these inputs.</p>
-<p>The slot types are scalars, <code class="docutils literal notranslate"><span class="pre">vec2</span></code>, <code class="docutils literal notranslate"><span class="pre">vec3</span></code>, and the <code class="docutils literal notranslate"><span class="pre">mat22</span></code>, <code class="docutils literal notranslate"><span class="pre">mat33</span></code>, <code class="docutils literal notranslate"><span class="pre">mat32</span></code> and <code class="docutils literal notranslate"><span class="pre">mat23</span></code> matrices.
+<p>The slot types are scalars, <code class="docutils literal notranslate"><span class="pre">vec2</span></code>, <code class="docutils literal notranslate"><span class="pre">vec3</span></code>, <code class="docutils literal notranslate"><span class="pre">quat</span></code>, and the <code class="docutils literal notranslate"><span class="pre">mat22</span></code>, <code class="docutils literal notranslate"><span class="pre">mat33</span></code>, <code class="docutils literal notranslate"><span class="pre">mat32</span></code> and <code class="docutils literal notranslate"><span class="pre">mat23</span></code>
+matrices (see <a class="reference internal" href="#jets-rotations"><span class="std std-ref">Rotations</span></a> for quaternions).
 <a class="reference internal" href="../api_reference/_generated/warp.JetSpace.html#warp.JetSpace" title="warp.JetSpace"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.JetSpace</span></code></a> returns a namespace of types that share the same derivative directions. For each slot
 type <code class="docutils literal notranslate"><span class="pre">X</span></code> it holds a jet type <code class="docutils literal notranslate"><span class="pre">J.X</span></code> (<code class="docutils literal notranslate"><span class="pre">J.scalar</span></code>, <code class="docutils literal notranslate"><span class="pre">J.vec2</span></code>, …, <code class="docutils literal notranslate"><span class="pre">J.mat23</span></code>) and the type of that jet’s
 <code class="docutils literal notranslate"><span class="pre">grad</span></code> field, <code class="docutils literal notranslate"><span class="pre">J.grad_type_X</span></code>. For example, a <code class="docutils literal notranslate"><span class="pre">J.vec2</span></code> jet’s gradients are a <code class="docutils literal notranslate"><span class="pre">J.grad_type_vec2</span></code>, a
@@ -794,6 +795,46 @@ scalar jet with value <code class="docutils literal notranslate"><span class="pr
 </pre></div>
 </div>
 </section>
+</section>
+<section id="rotations">
+<span id="jets-rotations"></span><h2>Rotations<a class="headerlink" href="#rotations" title="Link to this heading">#</a></h2>
+<p>Quaternion jets differentiate through rotations. A <a class="reference internal" href="../api_reference/_generated/warp.quat.html#warp.quat" title="warp.quat"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.quat</span></code></a> slot carries four directions, one per component, so
+its derivatives are with respect to all four components, without the unit-norm constraint. To differentiate along
+rotations instead, seed a <code class="docutils literal notranslate"><span class="pre">vec3</span></code> rotation vector and map it to a unit quaternion with <code class="docutils literal notranslate"><span class="pre">J.exp_map()</span></code>. The map is
+smooth through the zero vector, so a jet seeded at zero gives derivatives along the three rotation directions. An
+intrinsic Newton step on a rotation <code class="docutils literal notranslate"><span class="pre">q0</span></code> seeds <code class="docutils literal notranslate"><span class="pre">J.exp_map(theta)</span> <span class="pre">*</span> <span class="pre">q0</span></code> at <code class="docutils literal notranslate"><span class="pre">theta</span> <span class="pre">=</span> <span class="pre">0</span></code> and updates <code class="docutils literal notranslate"><span class="pre">q0</span></code> by the
+resulting step.</p>
+<p>Jet quaternions support <code class="docutils literal notranslate"><span class="pre">+</span></code>, <code class="docutils literal notranslate"><span class="pre">-</span></code>, negation, scaling, the Hamilton product <code class="docutils literal notranslate"><span class="pre">*</span></code>,
+<a class="reference internal" href="../language_reference/_generated/warp.quat_rotate.html#warp._src.lang.quat_rotate" title="warp._src.lang.quat_rotate"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.quat_rotate()</span></code></a>, <a class="reference internal" href="../language_reference/_generated/warp.quat_rotate_inv.html#warp._src.lang.quat_rotate_inv" title="warp._src.lang.quat_rotate_inv"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.quat_rotate_inv()</span></code></a>,
+<a class="reference internal" href="../language_reference/_generated/warp.quat_inverse.html#warp._src.lang.quat_inverse" title="warp._src.lang.quat_inverse"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.quat_inverse()</span></code></a>,
+<a class="reference internal" href="../language_reference/_generated/warp.quat_from_axis_angle.html#warp._src.lang.quat_from_axis_angle" title="warp._src.lang.quat_from_axis_angle"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.quat_from_axis_angle()</span></code></a>, <a class="reference internal" href="../language_reference/_generated/warp.dot.html#warp._src.lang.dot" title="warp._src.lang.dot"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.dot()</span></code></a>,
+<a class="reference internal" href="../language_reference/_generated/warp.length.html#warp._src.lang.length" title="warp._src.lang.length"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.length()</span></code></a>, <a class="reference internal" href="../language_reference/_generated/warp.normalize.html#warp._src.lang.normalize" title="warp._src.lang.normalize"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.normalize()</span></code></a> and indexing, at both
+orders, with jet or plain operands. Scaling accepts a jet scalar with a plain quaternion, so a blend such as
+<code class="docutils literal notranslate"><span class="pre">(1</span> <span class="pre">-</span> <span class="pre">t)</span> <span class="pre">*</span> <span class="pre">q0</span> <span class="pre">+</span> <span class="pre">t</span> <span class="pre">*</span> <span class="pre">q1</span></code> can differentiate along <code class="docutils literal notranslate"><span class="pre">t</span></code> alone. <code class="docutils literal notranslate"><span class="pre">J.make_quat()</span></code> builds a jet quaternion
+from four scalar jets, and <code class="docutils literal notranslate"><span class="pre">J.constant_quat()</span></code> from a plain quaternion. Rotating <code class="docutils literal notranslate"><span class="pre">x</span> <span class="pre">=</span> <span class="pre">(1,</span> <span class="pre">0,</span> <span class="pre">0)</span></code> by the rotation
+vector <code class="docutils literal notranslate"><span class="pre">theta</span></code> gives the derivatives of the rotated point along the three rotation directions at <code class="docutils literal notranslate"><span class="pre">theta</span> <span class="pre">=</span> <span class="pre">0</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">rotation_space</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">JetSpace</span><span class="p">((</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,))</span>  <span class="c1"># a rotation vector, width 3</span>
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">rotation_derivative</span><span class="p">(</span><span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">rotation_space</span><span class="o">.</span><span class="n">grad_type_vec3</span><span class="p">]):</span>
+    <span class="n">theta</span> <span class="o">=</span> <span class="n">rotation_space</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">))</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">quat_rotate</span><span class="p">(</span><span class="n">rotation_space</span><span class="o">.</span><span class="n">exp_map</span><span class="p">(</span><span class="n">theta</span><span class="p">),</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">))</span>
+    <span class="n">out</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">grad</span>  <span class="c1"># row r: derivatives of component r along the three rotation axes</span>
+
+<span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">rotation_space</span><span class="o">.</span><span class="n">grad_type_vec3</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">rotation_derivative</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">out</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">numpy</span><span class="p">()[</span><span class="mi">0</span><span class="p">])</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>[[ 0.  0.  0.]
+ [ 0.  0.  1.]
+ [ 0. -1.  0.]]
+</pre></div>
+</div>
+<p>Rotating about <code class="docutils literal notranslate"><span class="pre">y</span></code> moves the point along <code class="docutils literal notranslate"><span class="pre">-z</span></code>, and rotating about <code class="docutils literal notranslate"><span class="pre">z</span></code> moves it along <code class="docutils literal notranslate"><span class="pre">+y</span></code>. For a Newton solve
+on rotations with second-order quaternion jets, see
+<a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_quat_shape_align.py">example_quat_shape_align.py</a>,
+which runs with <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">warp.examples.optim.example_quat_shape_align</span></code>.</p>
 </section>
 <section id="hessians">
 <h2>Hessians<a class="headerlink" href="#hessians" title="Link to this heading">#</a></h2>
@@ -1143,6 +1184,9 @@ The same holds for a kernel that calls <a class="reference internal" href="../ap
 <a class="reference internal" href="../api_reference/_generated/warp.grad.html#warp.grad" title="warp.grad"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.grad</span></code></a> evaluates the gradient in the forward pass,
 and Warp warns when such a call appears in a kernel that keeps its adjoint,
 because the call does not take part in that kernel’s backward pass.</p>
+<p>A kernel that only uses second-order jets needs no reverse-mode code, since the jets carry the Hessian forward. Declare
+it with <code class="docutils literal notranslate"><span class="pre">&#64;wp.kernel(enable_backward=False)</span></code>, or set the <code class="docutils literal notranslate"><span class="pre">enable_backward</span></code> module option to <code class="docutils literal notranslate"><span class="pre">False</span></code>, so that Warp
+does not generate the unused adjoint, which otherwise dominates the compile time of long jet chains.</p>
 <p id="jets-jacobian-performance"><strong>Jacobian of a many-output function</strong> (<code class="docutils literal notranslate"><span class="pre">benchmark_jet_jacobian.py</span></code>). Take a forward model with <code class="docutils literal notranslate"><span class="pre">k</span> <span class="pre">=</span> <span class="pre">3</span></code> parameters
 that integrates a damped pendulum for 16 steps and then reads out <code class="docutils literal notranslate"><span class="pre">m</span></code> values of the final state, at 200,000 points. The
 integration is shared by all <code class="docutils literal notranslate"><span class="pre">m</span></code> readouts. The jet runs it once on a width-3 jet and evaluates every readout on that
@@ -1306,7 +1350,7 @@ additive and happens once per width and scalar type.</p></li>
 <li><p>Vector and matrix constructors such as <code class="docutils literal notranslate"><span class="pre">wp.vec3(a,</span> <span class="pre">b,</span> <span class="pre">c)</span></code> and <code class="docutils literal notranslate"><span class="pre">wp.mat33(...)</span></code> do not accept jets. Build vector
 and matrix jets with <code class="docutils literal notranslate"><span class="pre">J.make_vec3()</span></code> and <code class="docutils literal notranslate"><span class="pre">J.make_mat33()</span></code> (from columns), or assign components of an existing jet
 (<code class="docutils literal notranslate"><span class="pre">v[i]</span> <span class="pre">=</span> <span class="pre">s</span></code>, <code class="docutils literal notranslate"><span class="pre">F[i,</span> <span class="pre">j]</span> <span class="pre">=</span> <span class="pre">s</span></code>).</p></li>
-<li><p>Second-order jets take scalar, <code class="docutils literal notranslate"><span class="pre">vec2</span></code> and <code class="docutils literal notranslate"><span class="pre">vec3</span></code> slots. Matrix slots are not supported; a matrix input
+<li><p>Second-order jets take scalar, <code class="docutils literal notranslate"><span class="pre">vec2</span></code>, <code class="docutils literal notranslate"><span class="pre">vec3</span></code> and <code class="docutils literal notranslate"><span class="pre">quat</span></code> slots. Matrix slots are not supported; a matrix input
 decomposes into its components.</p></li>
 <li><p>Jet dtypes must be floating point.</p></li>
 <li><p>A plain scalar, vector or matrix of the jet’s dtype can be either operand of a jet operation, and is treated as a
@@ -1374,6 +1418,7 @@ constant. The exception is <code class="docutils literal notranslate"><span clas
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#component-wise-seeding">Component-Wise Seeding</a></li>
 </ul>
 </li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#rotations">Rotations</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#hessians">Hessians</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#reverse-over-forward">Reverse-over-Forward</a><ul class="nav section-nav flex-column">
 <li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#wp-grad-over-wp-jetspace"><code class="docutils literal notranslate"><span class="pre">wp.grad</span></code> over <code class="docutils literal notranslate"><span class="pre">wp.JetSpace</span></code></a></li>
