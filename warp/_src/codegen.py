@@ -4396,6 +4396,10 @@ class Adjoint:
                 # through a Warp struct. Their placeholder adjoints stay inactive.
                 if warp._src.types.is_native_type(aggregate_type) or adj.type_contains_native_value(attr_type):
                     return attr
+                # Skip placeholder adjoints for descriptor fields to preserve the
+                # shape and pointer used for gradient writes to the adjoint array.
+                if is_array(aggregate_type):
+                    return attr
                 if adj.is_differentiable_value_type(strip_reference(attr_type)):
                     adj.add_reverse(f"{aggregate.emit_adj()}.{attr_var.label} += {adj_cast}{attr.emit_adj()};")
                 else:

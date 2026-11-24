@@ -824,6 +824,53 @@ def test_gradient_precedence(test, device):
         assert_np_equal(a.grad.numpy(), np.array([0.0, 0.0, 0.0]))  # unused
 
 
+@wp.kernel
+def shape_after_index_kernel(x: wp.array[float], y: wp.array[float]):
+    tid = wp.tid()
+    # Use a negative index to exercise wrapping against the adjoint array's length.
+    v = x[tid - 3]
+    # Read the shape after indexing so its reverse statement would run first.
+    n = x.shape[0]
+    y[tid] = v * float(n)
+
+
+@wp.kernel
+def ptr_after_index_kernel(x: wp.array[float], y: wp.array[float], ptrs: wp.array[wp.uint64]):
+    tid = wp.tid()
+    y[tid] = 2.0 * x[tid]
+    ptrs[tid] = x.ptr
+
+
+def test_gradient_array_descriptor_attributes(test, device):
+    """Verify gradient writes when a kernel reads ``shape`` or ``ptr`` after indexing the array."""
+    with wp.ScopedDevice(device):
+        # The gradient is a view into a zeroed guard buffer, so a gradient written below
+        # index 0 lands in the guard instead of outside the allocation.
+        x = wp.array([1.0, 2.0, 3.0], dtype=float, requires_grad=True)
+        guard = wp.zeros(6, dtype=float)
+        x.grad = guard[3:]
+        y = wp.zeros(3, dtype=float, requires_grad=True)
+        tape = wp.Tape()
+        with tape:
+            wp.launch(shape_after_index_kernel, dim=3, inputs=[x], outputs=[y])
+        tape.backward(grads={y: wp.ones(3, dtype=float)})
+        assert_np_equal(guard.numpy(), np.array([0.0, 0.0, 0.0, 3.0, 3.0, 3.0]))
+
+        # Verify that the explicit adjoint buffer receives the gradient.
+        x = wp.array([1.0, 2.0, 3.0], dtype=float, requires_grad=True)
+        x_adj = wp.zeros(3, dtype=float)
+        ptrs = wp.zeros(3, dtype=wp.uint64)
+        wp.launch(
+            ptr_after_index_kernel,
+            dim=3,
+            inputs=[x, y, ptrs],
+            adjoint=True,
+            adj_inputs=[x_adj, wp.ones(3, dtype=float), None],
+        )
+        assert_np_equal(x_adj.numpy(), np.array([2.0, 2.0, 2.0]))
+        assert_np_equal(x.grad.numpy(), np.array([0.0, 0.0, 0.0]))
+
+
 def test_gradient_slice_2d(test, device):
     with wp.ScopedDevice(device):
         a = wp.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], dtype=float, requires_grad=True)
@@ -969,6 +1016,9 @@ add_function_test(TestGrad, "test_aliasing", test_aliasing, devices=devices)
 add_function_test(TestGrad, "test_gradient_internal", test_gradient_internal, devices=devices)
 add_function_test(TestGrad, "test_gradient_external", test_gradient_external, devices=devices)
 add_function_test(TestGrad, "test_gradient_precedence", test_gradient_precedence, devices=devices)
+add_function_test(
+    TestGrad, "test_gradient_array_descriptor_attributes", test_gradient_array_descriptor_attributes, devices=devices
+)
 add_function_test(TestGrad, "test_gradient_slice_2d", test_gradient_slice_2d, devices=devices)
 add_function_test(TestGrad, "test_gradient_slice_3d_1d", test_gradient_slice_3d_1d, devices=devices)
 add_function_test(TestGrad, "test_gradient_slice_3d_2d", test_gradient_slice_3d_2d, devices=devices)
