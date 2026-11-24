@@ -8,14 +8,14 @@ import warp as wp
 class A:
     a: int
     b: wp.vec3
-    c: wp.array(dtype=float)
+    c: wp.array[float]
 
 
 @wp.struct
 class B:
     a: A
     b: wp.mat33
-    c: wp.array2d(dtype=int)
+    c: wp.array2d[int]
 
 
 @wp.struct

@@ -200,6 +200,16 @@ warp/examples/optim
         | `basic <https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_fluid_checkpoint.py>`__ · `custom backward <https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_fluid_checkpoint_custom_backward.py>`__
       - particle repulsion
       - navier-stokes perturbation
+    * - .. image:: ./img/examples/optim_implicit_projection.png
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_implicit_projection.py
+      - .. image:: ./img/examples/optim_quat_shape_align.png
+           :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_quat_shape_align.py
+      -
+      -
+    * - implicit projection
+      - quaternion shape alignment
+      -
+      -
 
 warp/examples/tile
 ^^^^^^^^^^^^^^^^^^
@@ -250,8 +260,8 @@ warp/examples/tile
 
     api_reference/warp
     api_reference/warp_autograd
-    api_reference/warp_build_experimental
     api_reference/warp_config
+    api_reference/warp_experimental
     api_reference/warp_fem
     api_reference/warp_geometry
     api_reference/warp_optim

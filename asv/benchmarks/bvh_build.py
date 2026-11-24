@@ -19,10 +19,10 @@ USD_AVAILABLE = pxr is not None
 
 @wp.kernel
 def compute_tri_aabbs(
-    pos: wp.array(dtype=wp.vec3),
-    tri_indices: wp.array(dtype=wp.int32, ndim=1),
-    lower_bounds: wp.array(dtype=wp.vec3),
-    upper_bounds: wp.array(dtype=wp.vec3),
+    pos: wp.array[wp.vec3],
+    tri_indices: wp.array[wp.int32],
+    lower_bounds: wp.array[wp.vec3],
+    upper_bounds: wp.array[wp.vec3],
 ):
     t_id = wp.tid()
 

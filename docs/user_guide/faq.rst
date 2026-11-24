@@ -343,8 +343,10 @@ different performance and concurrency characteristics.
 
 Tile kernels need additional care on the CPU backend because its effective
 ``block_dim`` is one by default. The experimental
-:attr:`warp.config.enable_cpu_blocks` option honors explicit CPU block dimensions
-through 1024 with cooperative fibers on one host thread. Consult
+:attr:`warp.config.enable_cpu_blocks` option changes the CPU default to 256 and
+honors explicit CPU block dimensions through 1024 with cooperative fibers on one
+host thread. Pass ``block_dim=1`` explicitly to retain a single logical thread
+per block while the option is enabled. Consult
 :ref:`CPU Tile Semantics <cpu_tile_semantics>` when the same tile kernel must run
 on both backends. Other device differences are covered in :ref:`devices`.
 

@@ -286,12 +286,12 @@ template <typename T> inline CUDA_CALLABLE array_t<T> add(const array_t<T>& a, c
 }
 
 
-// Shape returned by the in-kernel `wp.zeros()` builtin. Assigning it to a declared
-// fixedarray_t zero-fills that array's own storage, instead of building a zeroed
-// temporary and copying it.
-template <int Size, typename T> struct fixedarray_zeros_t {
+// Shape returned by the in-kernel `wp.zeros()` and `wp.empty()` builtins. Assigning it
+// to a declared fixedarray_t sets that array's shape in place, and zero-fills its own
+// storage when `Zero` is true, instead of building a temporary and copying it.
+template <int Size, typename T, bool Zero> struct fixedarray_init_t {
     // Not default-constructible, so `adj = {}` on a fixedarray stays unambiguous.
-    CUDA_CALLABLE explicit fixedarray_zeros_t(int dim0, int dim1, int dim2, int dim3)
+    CUDA_CALLABLE explicit fixedarray_init_t(int dim0, int dim1, int dim2, int dim3)
         : dims { dim0, dim1, dim2, dim3 }
     {
     }
@@ -300,9 +300,17 @@ template <int Size, typename T> struct fixedarray_zeros_t {
 };
 
 template <int Size, typename T>
-CUDA_CALLABLE inline fixedarray_zeros_t<Size, T> fixedarray_zeros(int dim0, int dim1 = 0, int dim2 = 0, int dim3 = 0)
+CUDA_CALLABLE inline fixedarray_init_t<Size, T, true>
+fixedarray_zeros(int dim0, int dim1 = 0, int dim2 = 0, int dim3 = 0)
 {
-    return fixedarray_zeros_t<Size, T>(dim0, dim1, dim2, dim3);
+    return fixedarray_init_t<Size, T, true>(dim0, dim1, dim2, dim3);
+}
+
+template <int Size, typename T>
+CUDA_CALLABLE inline fixedarray_init_t<Size, T, false>
+fixedarray_empty(int dim0, int dim1 = 0, int dim2 = 0, int dim3 = 0)
+{
+    return fixedarray_init_t<Size, T, false>(dim0, dim1, dim2, dim3);
 }
 
 // Constructor tag that leaves storage uninitialized.
@@ -329,9 +337,9 @@ template <int Size, typename T> struct fixedarray_t : array_t<T> {
     {
     }
 
-    CUDA_CALLABLE fixedarray_t<Size, T>& operator=(const fixedarray_zeros_t<Size, T>& zeros)
+    template <bool Zero> CUDA_CALLABLE fixedarray_t<Size, T>& operator=(const fixedarray_init_t<Size, T, Zero>& init)
     {
-        const int* d = zeros.dims;
+        const int* d = init.dims;
         if (d[1] == 0)
             Base::operator=(Base(storage, d[0]));
         else if (d[2] == 0)
@@ -341,8 +349,10 @@ template <int Size, typename T> struct fixedarray_t : array_t<T> {
         else
             Base::operator=(Base(storage, d[0], d[1], d[2], d[3]));
 
-        for (int i = 0; i < Size; ++i) {
-            storage[i] = T();
+        if constexpr (Zero) {
+            for (int i = 0; i < Size; ++i) {
+                storage[i] = T();
+            }
         }
         return *this;
     }
@@ -367,7 +377,11 @@ template <int Size, typename T> struct fixedarray_t : array_t<T> {
         return *this;
     }
 
-    T storage[Size];
+    // A union leaves the elements unconstructed, so declarations made with `no_init_t`
+    // don't zero element types that have a default constructor, such as vectors.
+    union {
+        T storage[Size];
+    };
 };
 
 
@@ -1203,33 +1217,154 @@ inline CUDA_CALLABLE T* address(const A<T>& buf, int i, int j, int k, int l)
     return &index(buf, i, j, k, l);  // cppcheck-suppress returnDanglingLifetime
 }
 
+#if defined(__CUDA_ARCH__) && !defined(WP_NO_WIDE_ARRAY_ACCESS)
+template <size_t W> struct wide_word;
+template <> struct alignas(16) wide_word<16> {
+    uint32_t x, y, z, w;
+};
+template <> struct alignas(8) wide_word<8> {
+    uint32_t x, y;
+};
+
+// Largest power of two that divides sizeof(T), up to 16 bytes.
+template <typename T> CUDA_CALLABLE constexpr size_t element_access_width()
+{
+    return (sizeof(T) & (~sizeof(T) + 1)) < 16 ? (sizeof(T) & (~sizeof(T) + 1)) : 16;
+}
+#endif
+
+// Warp's vector, matrix and quaternion types are only aligned to their scalar type, so array elements
+// are loaded and stored as 16- or 8-byte words when the whole array is aligned to that width. Arrays can
+// legitimately be misaligned (PyTorch views, ptr= arrays, odd strides), so this is checked at runtime.
+// The check covers the strides as well as the element, so that all elements of an array take the same
+// path, and misaligned arrays keep the scalar accesses of the original code.
+//
+// The wide path accesses integer words rather than the element type. NVVM can otherwise merge it with
+// the scalar path into an unconditional wide access that faults on misaligned elements, as can a
+// per-element check with NVRTC 12.8 and 12.9 (NVBug 6967821). Checking __isGlobal() avoids the latter,
+// but makes NVRTC 12.9 and 13.2 reject some kernels, so it isn't used.
+//
+// The alignment check is only made for elements that are widened. NVVM doesn't always remove an unused
+// check, and for sm_100 and later, what remains can make it reload a local array's data pointer and
+// strides from memory for every access (fixedarray_t).
+//
+// WP_NO_WIDE_ARRAY_ACCESS (set by wp.config.enable_wide_array_access = False) disables the wide path.
+
+// Whether the element at address, and every other element reached through the first ndim strides, is
+// aligned to its access width.
+template <template <typename> class A, typename T>
+CUDA_CALLABLE inline bool element_is_wide_aligned(const T*, const A<T>&, int)
+{
+    return false;
+}
+template <typename T> CUDA_CALLABLE inline bool element_is_wide_aligned(const T* address, const array_t<T>& a, int ndim)
+{
+#if defined(__CUDA_ARCH__) && !defined(WP_NO_WIDE_ARRAY_ACCESS)
+    // Only the low bits matter, and 32-bit arithmetic keeps the strides out of the 64-bit index math.
+    uint32_t bits = static_cast<uint32_t>(reinterpret_cast<size_t>(address));
+    for (int d = 0; d < ndim; ++d)
+        bits |= static_cast<uint32_t>(a.strides[d]);
+    return bits % element_access_width<T>() == 0;
+#else
+    return false;
+#endif
+}
+template <typename T>
+CUDA_CALLABLE inline bool element_is_wide_aligned(const T* address, const indexedarray_t<T>& a, int ndim)
+{
+    return element_is_wide_aligned(address, a.arr, ndim);
+}
+
+// Whether every element reached through the first ndim strides is aligned to its access width. This
+// doesn't depend on the element, so it's the same for all threads.
+template <template <typename> class A, typename T> CUDA_CALLABLE inline bool array_is_wide_aligned(const A<T>&, int)
+{
+    return false;
+}
+template <typename T> CUDA_CALLABLE inline bool array_is_wide_aligned(const array_t<T>& a, int ndim)
+{
+    return element_is_wide_aligned(a.data, a, ndim);
+}
+template <typename T> CUDA_CALLABLE inline bool array_is_wide_aligned(const indexedarray_t<T>& a, int ndim)
+{
+    return element_is_wide_aligned(a.arr.data, a.arr, ndim);
+}
+
+// Smaller elements aren't widened: for misaligned arrays, the unused wide path would cost them more than
+// it saves aligned ones.
+template <typename T, typename A>
+inline CUDA_CALLABLE void element_store(T* address, const T& value, const A& buf, int ndim)
+{
+#if defined(__CUDA_ARCH__) && !defined(WP_NO_WIDE_ARRAY_ACCESS)
+    constexpr size_t width = element_access_width<T>();
+    if constexpr (sizeof(T) >= 16 && width >= 8 && width > alignof(T)) {
+        if (array_is_wide_aligned(buf, ndim)) {
+            using word = wide_word<width>;
+            word* dst = reinterpret_cast<word*>(address);
+            const unsigned char* src = reinterpret_cast<const unsigned char*>(&value);
+            for (size_t k = 0; k < sizeof(T) / width; ++k) {
+                word w;
+                memcpy(&w, src + k * width, width);
+                dst[k] = w;
+            }
+            return;
+        }
+    }
+#endif
+    *address = value;
+}
+
+// Loads are often served from cache, where a wide load mainly saves instructions. It only makes up for
+// its alignment check when a single 16-byte word replaces at least four accesses. For larger elements,
+// the unused wide path slows down the scalar loads of misaligned arrays.
+template <typename T, typename A> inline CUDA_CALLABLE T element_load(const T* address, const A& source, int ndim)
+{
+#if defined(__CUDA_ARCH__) && !defined(WP_NO_WIDE_ARRAY_ACCESS)
+    constexpr size_t width = element_access_width<T>();
+    if constexpr (sizeof(T) == 16 && width == 16 && alignof(T) <= 4) {
+        if (element_is_wide_aligned(address, source, ndim)) {
+            using word = wide_word<width>;
+            const word* src = reinterpret_cast<const word*>(address);
+            T value;
+            unsigned char* dst = reinterpret_cast<unsigned char*>(&value);
+            for (size_t k = 0; k < sizeof(T) / width; ++k) {
+                word w = src[k];
+                memcpy(dst + k * width, &w, width);
+            }
+            return value;
+        }
+    }
+#endif
+    return *address;
+}
+
 template <template <typename> class A, typename T>
 inline CUDA_CALLABLE void array_store(const A<T>& buf, int i, T value)
 {
     FP_VERIFY_FWD_1(value)
 
-    index(buf, i) = value;
+    element_store(&index(buf, i), value, buf, 1);
 }
 template <template <typename> class A, typename T>
 inline CUDA_CALLABLE void array_store(const A<T>& buf, int i, int j, T value)
 {
     FP_VERIFY_FWD_2(value)
 
-    index(buf, i, j) = value;
+    element_store(&index(buf, i, j), value, buf, 2);
 }
 template <template <typename> class A, typename T>
 inline CUDA_CALLABLE void array_store(const A<T>& buf, int i, int j, int k, T value)
 {
     FP_VERIFY_FWD_3(value)
 
-    index(buf, i, j, k) = value;
+    element_store(&index(buf, i, j, k), value, buf, 3);
 }
 template <template <typename> class A, typename T>
 inline CUDA_CALLABLE void array_store(const A<T>& buf, int i, int j, int k, int l, T value)
 {
     FP_VERIFY_FWD_4(value)
 
-    index(buf, i, j, k, l) = value;
+    element_store(&index(buf, i, j, k, l), value, buf, 4);
 }
 
 template <typename T> inline CUDA_CALLABLE void store(T* address, T value)
@@ -1242,6 +1377,15 @@ template <typename T> inline CUDA_CALLABLE void store(T* address, T value)
 template <typename T> inline CUDA_CALLABLE T load(T* address)
 {
     T value = *address;
+    FP_VERIFY_FWD(value)
+
+    return value;
+}
+
+// Loads the element of the array source at address, which was indexed with ndim indices.
+template <typename T, typename A> inline CUDA_CALLABLE T load(T* address, const A& source, int ndim)
+{
+    T value = element_load(address, source, ndim);
     FP_VERIFY_FWD(value)
 
     return value;

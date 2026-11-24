@@ -141,6 +141,48 @@ def test_kernel_enable_backward_propagates_to_function(test, device):
         wp.set_module_options({"enable_backward": old_enable_backward})
 
 
+@wp.kernel
+def count_true(flags: wp.array[wp.bool], count: wp.array[int]):
+    i = wp.tid()
+    if flags[i]:
+        wp.atomic_add(count, 0, 1)
+
+
+@wp.kernel
+def gather(indices: wp.array[int], x: wp.array[float], y: wp.array[float]):
+    i = wp.tid()
+    y[i] = x[indices[i]]
+
+
+def test_options_backward_warns_only_for_float_arrays(test, device):
+    """Run backward in a module that disables backward and warn only about the kernel that takes float arrays.
+
+    Integer and boolean arrays never carry gradients, so skipping the adjoint of ``count_true`` cannot lose any.
+    ``gather`` also reads integer indices, but skipping its adjoint loses the gradient of ``x``.
+    """
+    flags = wp.array([True, False, True], dtype=wp.bool, device=device)
+    count = wp.zeros(1, dtype=int, device=device)
+    indices = wp.array([1, 0], dtype=int, device=device)
+    x = wp.array([1.0, 2.0], dtype=float, requires_grad=True, device=device)
+    y = wp.zeros_like(x)
+
+    old_enable_backward = wp.get_module_options()["enable_backward"]
+    try:
+        wp.set_module_options({"enable_backward": False})
+
+        with wp.Tape() as tape:
+            wp.launch(count_true, dim=flags.shape, inputs=[flags], outputs=[count], device=device)
+            wp.launch(gather, dim=indices.shape, inputs=[indices, x], outputs=[y], device=device)
+
+        with contextlib.redirect_stderr(io.StringIO()) as stderr:
+            tape.backward()
+    finally:
+        wp.set_module_options({"enable_backward": old_enable_backward})
+
+    expected = f"Warp UserWarning: Running the tape backwards may produce incorrect gradients because recorded kernel {gather.key} is defined in a module with the option 'enable_backward=False' set.\n"
+    test.assertEqual(stderr.getvalue(), expected)
+
+
 def test_options_opt_level(test, device):
     assert wp.config.optimization_level is None, "Default global `optimization_level` should be None"
     assert wp.get_module_options()["optimization_level"] is None, "Default module `optimization_level` should be None"
@@ -514,6 +556,12 @@ add_function_test(
     TestOptions,
     "test_kernel_enable_backward_propagates_to_function",
     test_kernel_enable_backward_propagates_to_function,
+    devices=devices,
+)
+add_function_test(
+    TestOptions,
+    "test_options_backward_warns_only_for_float_arrays",
+    test_options_backward_warns_only_for_float_arrays,
     devices=devices,
 )
 add_function_test(TestOptions, "test_options_opt_level", test_options_opt_level, devices=devices, check_output=False)

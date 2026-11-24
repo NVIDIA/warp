@@ -96,10 +96,6 @@ Before running examples, install the optional example dependencies using:
 pip install warp-lang[examples]
 ```
 
-On Linux aarch64 systems (e.g., NVIDIA DGX Spark), the `[examples]` extra automatically installs
-[`usd-exchange`](https://pypi.org/project/usd-exchange/) instead of `usd-core` as a drop-in replacement,
-since `usd-core` wheels are not available for that platform.
-
 Examples can be run from the command-line as follows:
 
 ```text
@@ -243,6 +239,14 @@ python -m warp.examples.browse
             <td align="center">particle repulsion</td>
             <td align="center">navier-stokes perturbation</td>
         </tr>
+        <tr>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_implicit_projection.py"><img src="./docs/img/examples/optim_implicit_projection.png"></a></td>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/optim/example_quat_shape_align.py"><img src="./docs/img/examples/optim_quat_shape_align.png"></a></td>
+        </tr>
+        <tr>
+            <td align="center">implicit projection</td>
+            <td align="center">quaternion shape alignment</td>
+        </tr>
     </tbody>
 </table>
 
@@ -281,9 +285,13 @@ Please see the following resources for additional background on Warp:
 
 See the [FAQ](https://nvidia.github.io/warp/stable/user_guide/faq.html) for common questions.
 
-Problems, questions, and feature requests can be opened on [GitHub Issues](https://github.com/NVIDIA/warp/issues).
+Report bugs, request features, and suggest documentation improvements through
+[GitHub Issues](https://github.com/NVIDIA/warp/issues).
 
-For inquiries not suited for GitHub Issues, please email <warp-python@nvidia.com>.
+Ask usage questions and discuss early ideas in
+[GitHub Discussions](https://github.com/NVIDIA/warp/discussions).
+
+For inquiries not suited for public discussion, please email <warp-python@nvidia.com>.
 
 ## Contributing
 

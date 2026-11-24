@@ -151,7 +151,7 @@ def accumulate_cdf(
 
 @wp.kernel(enable_backward=False)
 def sample_mesh(
-    mesh: wp.uint64,
+    mesh: wp.handle,
     cdf: wp.array[float],
     seed: int,
     out_points: wp.array[wp.vec3],

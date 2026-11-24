@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2026 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
-"""Composite-component writes on ``wp.array(dtype=wp.mat44)``: five
+"""Composite-component writes on ``wp.array[wp.mat44]``: five
 entries written per thread, mimicking constraint-jacobian row population.
 Tracks the slot-level codegen fast-path introduced for in-place
 composite-component writes.
@@ -16,7 +16,7 @@ from ..benchmarks_utils import LAUNCHES_PER_SAMPLE, CudaEventTimer, capture_laun
 
 
 @wp.kernel
-def mat44_multi_elem(dst: wp.array(dtype=wp.mat44), src: wp.array(dtype=wp.float32)):
+def mat44_multi_elem(dst: wp.array[wp.mat44], src: wp.array[wp.float32]):
     i = wp.tid()
     dst[i][0, 0] = src[i] * 1.0
     dst[i][0, 3] = src[i] * 2.0

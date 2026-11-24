@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import ctypes
 import weakref
 from functools import cache
@@ -12,7 +13,7 @@ from numpy import eye
 
 import warp as wp
 import warp._src.utils
-from warp._src.logger import log_warning
+from warp._src import sparse_multi_rhs as _multi_rhs
 from warp._src.types import (
     Array,
     Cols,
@@ -229,7 +230,9 @@ class BsrMatrix(Generic[_BlockType]):
           active.
         columns (Array[int]): Array of size at least equal to ``nnz`` containing
           block column indices. Entries outside active row ranges are not part
-          of the matrix and may be uninitialized.
+          of the matrix and may be uninitialized. Matrices built by
+          ``warp.sparse`` store each row's columns in increasing order, and its
+          operations assume that order; keep it when filling these arrays directly.
         values (Array[BlockType]): Array of size at least equal to ``nnz``
           containing block values. Entries outside active row ranges are not
           part of the matrix and may be uninitialized. Active entries may also
@@ -333,14 +336,51 @@ class BsrMatrix(Generic[_BlockType]):
               instead.
         """
 
+        with self._live_readback("nnz_sync", "Provide an explicit nnz_capacity for padded construction, or query"):
+            buf, event = self._setup_nnz_sync_transfer()
+            stream = wp.get_stream(self.device) if self.device.is_cuda else None
+            wp.copy(src=self.offsets, dest=buf, src_offset=self.nrow, count=1, stream=stream)
+
+            if event is not None:
+                stream.record_event(event, external=True)
+                wp.synchronize_event(event)
+            self.nnz = int(buf.numpy()[0])
+        return self.nnz
+
+    def mean_row_count_sync(self) -> float:
+        """Return the mean number of active stored blocks per row of blocks, synchronizing with the device.
+
+        For compact matrices, this reads the stored block count like :meth:`nnz_sync`, which it
+        also updates. For padded matrices, it sums the active block count of each row on the
+        device and reads back the total, so spare row capacity is not counted.
+
+        Returns:
+            The active stored block count divided by ``nrow``, or ``0.0`` for a matrix without rows.
+
+        Raises:
+            RuntimeError: If called during a live CUDA graph capture, which cannot read device values.
+            NotImplementedError: If called during CPU graph capture after a topology update has been
+              recorded.
+        """
+        if self.nrow == 0:
+            return 0.0
+        if self.row_counts is None:
+            return self.nnz_sync() / self.nrow
+        with self._live_readback("mean_row_count_sync", "Query"):
+            total = wp.zeros(1, dtype=int, device=self.device)
+            wp.launch(_bsr_sum_row_counts, self.nrow, [self.row_counts, total], device=self.device)
+            return int(total.numpy()[0]) / self.nrow
+
+    @contextlib.contextmanager
+    def _live_readback(self, method: str, advice: str):
+        """Run a device-to-host readback outside any CPU graph recording, rejecting CUDA captures."""
         if self.device.is_capturing and not self.device.is_cpu:
             raise RuntimeError(
-                "BsrMatrix.nnz_sync() cannot read the block count during a live CUDA graph "
-                "capture because it requires a device-to-host readback. Provide an explicit "
-                "nnz_capacity for padded construction, or query the count outside the capture."
+                f"BsrMatrix.{method}() cannot read the block count during a live CUDA graph "
+                f"capture because it requires a device-to-host readback. {advice} the count outside the capture."
             )
 
-        # A nnz readback reads the current value "now". Under a CPU APIC capture
+        # A readback reads the current value "now". Under a CPU APIC capture
         # the host copy/readback would otherwise be recorded (deferred), leaving
         # the readback buffer uninitialized, so pause recording around it so it
         # runs live and returns the real value.
@@ -351,24 +391,15 @@ class BsrMatrix(Generic[_BlockType]):
         if apic_graph is not None and apic_graph.device.is_cpu and apic_graph.device == self.device:
             if getattr(self, "_apic_deferred_nnz_capture", None) is apic_graph._apic_capture:
                 raise NotImplementedError(
-                    "BsrMatrix.nnz_sync() cannot read a topology update recorded during CPU APIC capture. "
-                    "Call nnz_sync() after graph replay or avoid the readback inside the capture."
+                    f"BsrMatrix.{method}() cannot read a topology update recorded during CPU APIC capture. "
+                    f"Call {method}() after graph replay or avoid the readback inside the capture."
                 )
             paused_graph = capture_pause(device=self.device)
         try:
-            buf, event = self._nnz_transfer_if_pending()
-            if buf is None:
-                buf, event = self._setup_nnz_transfer()
-                self._start_nnz_transfer(buf, event)
-
-            if event is not None:
-                wp.synchronize_event(event)
-            self.nnz = int(buf.numpy()[0])
-            BsrMatrix.__setattr__(self, "_nnz_transfer_pending", False)
+            yield
         finally:
             if paused_graph is not None:
                 capture_resume(paused_graph, device=self.device)
-        return self.nnz
 
     def status_sync(self) -> int:
         """Return the asynchronous sparse status code, synchronizing if needed.
@@ -438,7 +469,6 @@ class BsrMatrix(Generic[_BlockType]):
               default to `nnz`. The caller is responsible for ensuring it is greater
               or equal to the true ``offsets[nrow]`` value.
         """
-        self._refresh_nnz_transfer_if_pending()
         if nnz is None:
             if nnz_capacity is None:
                 self.nnz_sync()
@@ -447,63 +477,16 @@ class BsrMatrix(Generic[_BlockType]):
 
         _bsr_ensure_fits(self, nnz=nnz, capacity=nnz_capacity)
 
-    def copy_nnz_async(self) -> None:
-        """Start an asynchronous transfer of ``offsets[nrow]`` to host memory.
-
-        .. deprecated:: 1.10
-            This method will be removed in a future release. Prefer :meth:`nnz_sync`, which avoids keeping a
-            potentially stale transfer pending between calls. An asynchronous transfer may be unsafe when matrix
-            topology updates use other streams or when the transfer is captured and replayed in a CUDA graph.
-
-        This method does not update ``nnz``. A later :meth:`nnz_sync` waits for and uses the transferred value.
-        Topology-changing operations restart a pending transfer but do not create one.
-        """
-        log_warning(
-            "The `copy_nnz_async` method is deprecated and will be removed in a future version. Its asynchronous "
-            "transfer may be unsafe with multiple streams or CUDA graph capture; call `nnz_sync` to synchronously "
-            "update the host-side block count.",
-            category=DeprecationWarning,
-            stacklevel=2,
-        )
-        self._copy_nnz_async()
-
-    def _copy_nnz_async(self) -> tuple[wp.array | None, wp.Event | None]:
-        buf, event = self._setup_nnz_transfer()
-        self._start_nnz_transfer(buf, event)
-        BsrMatrix.__setattr__(self, "_nnz_transfer_pending", buf is not None)
-        return buf, event
-
-    def _start_nnz_transfer(self, buf: wp.array | None, event: wp.Event | None) -> None:
-        if buf is not None:
-            stream = wp.get_stream(self.device) if self.device.is_cuda else None
-            wp.copy(src=self.offsets, dest=buf, src_offset=self.nrow, count=1, stream=stream)
-            if event is not None:
-                stream.record_event(event, external=True)
-
-    def _setup_nnz_transfer(self) -> tuple[wp.array | None, wp.Event | None]:
-        buf, event = self._nnz_transfer_if_any()
+    def _setup_nnz_sync_transfer(self) -> tuple[wp.array, wp.Event | None]:
+        buf, event = getattr(self, "_nnz_sync_transfer", (None, None))
         if buf is not None:
             return buf, event
 
         buf, event = _allocate_transfer_buf(self.device)
-        if buf is not None:
-            # buf may still be None if device is currently capturing
-            BsrMatrix.__setattr__(self, "_nnz_transfer", (buf, event))
-            weakref.finalize(self, _redeem_transfer_buf, self.device, buf, event)
+        BsrMatrix.__setattr__(self, "_nnz_sync_transfer", (buf, event))
+        weakref.finalize(self, _redeem_transfer_buf, self.device, buf, event)
 
         return buf, event
-
-    def _nnz_transfer_if_any(self) -> tuple[wp.array | None, wp.Event | None]:
-        return getattr(self, "_nnz_transfer", (None, None))
-
-    def _nnz_transfer_if_pending(self) -> tuple[wp.array | None, wp.Event | None]:
-        if getattr(self, "_nnz_transfer_pending", False):
-            return self._nnz_transfer_if_any()
-        return None, None
-
-    def _refresh_nnz_transfer_if_pending(self) -> None:
-        if getattr(self, "_nnz_transfer_pending", False):
-            self._copy_nnz_async()
 
     def _ensure_status(self) -> wp.array:
         status = self._status_if_any()
@@ -602,12 +585,6 @@ def _allocate_transfer_buf(device):
     if pool:
         return pool.pop()
 
-    # A CUDA captured stream cannot allocate a fresh transfer buffer mid-capture
-    # (the pooled path handles that). A CPU APIC capture allocates host memory
-    # safely, so let it fall through and complete the readback.
-    if device.is_capturing and not device.is_cpu:
-        return None, None
-
     buf = wp.empty(dtype=int, shape=(1,), device="cpu", pinned=device.is_cuda)
     event = wp.Event(device) if device.is_cuda else None
     all_.append((buf, event))  # keep a reference to the buffer and event, prevent garbage collection before redeem
@@ -660,6 +637,11 @@ def bsr_matrix_t(dtype: BlockType):
         )
 
     return _struct_cache[key]
+
+
+@wp.kernel(enable_backward=False)
+def _bsr_sum_row_counts(row_counts: wp.array[int], total: wp.array[int]):
+    wp.atomic_add(total, 0, row_counts[wp.tid()])
 
 
 @wp.kernel(enable_backward=False)
@@ -1004,6 +986,24 @@ def _bsr_status_message(status: int) -> str:
     return f"unknown status {status}"
 
 
+def _bsr_track_native_compress(src: BsrMatrix, values: wp.array | None, compact: bool) -> None:
+    """Register the arrays a native compression accesses with the active APIC capture, if any.
+
+    Under CPU capture, the native call records the compression instead of running it, so a compact
+    compression leaves the block count unknown until replay.
+    """
+    from warp._src.context import _get_apic_capture_for_device  # noqa: PLC0415
+
+    apic_capture = _get_apic_capture_for_device(src.device)
+    if apic_capture is None:
+        return
+
+    for array in (src.offsets, src.row_counts, src.columns, values):
+        apic_capture.track_array(array)
+    if compact and src.device.is_cpu:
+        _mark_apic_deferred_nnz_update(src, apic_capture)
+
+
 def _bsr_try_native_compress_inplace(src: BsrMatrix, prune_numerical_zeros: bool, compact: bool = False) -> str | None:
     scalar_type_code = _bsr_scalar_type_codes.get(src.scalar_type)
     if scalar_type_code is None:
@@ -1026,6 +1026,7 @@ def _bsr_try_native_compress_inplace(src: BsrMatrix, prune_numerical_zeros: bool
 
     scalar_values = src.scalar_values
     zero_value_mask = _zero_value_masks.get(src.scalar_type, 0) if prune_numerical_zeros else 0
+    _bsr_track_native_compress(src, scalar_values, compact)
     with wp.ScopedDevice(src.device):
         native_func(
             src.nrow,
@@ -1043,8 +1044,6 @@ def _bsr_try_native_compress_inplace(src: BsrMatrix, prune_numerical_zeros: bool
             ctypes.c_void_p(scalar_values.ptr),
             True,  # compress_values
         )
-    if compact:
-        src._refresh_nnz_transfer_if_pending()
 
     return None
 
@@ -1087,6 +1086,7 @@ def _bsr_try_native_compress_indices_inplace(
     except AttributeError:
         return "requires native symbolic compression support"
 
+    _bsr_track_native_compress(src, values_to_prune, compact)
     with wp.ScopedDevice(src.device):
         native_func(
             src.nrow,
@@ -1104,8 +1104,6 @@ def _bsr_try_native_compress_indices_inplace(
             _optional_ctypes_pointer(values_to_prune, ctype=ctypes.c_int32),
             False,  # compress_values
         )
-    if compact:
-        src._refresh_nnz_transfer_if_pending()
 
     return None
 
@@ -1152,8 +1150,6 @@ def _bsr_set_from_triplets_native(
     device = dest.device
     apic_capture = _get_apic_capture_for_device(device)
 
-    refresh_nnz_transfer = not masked and dest_offsets is dest.offsets
-
     # Empty compact topology still needs a recordable operation on CPU, where
     # APIC capture defers work instead of executing it. A native call with no
     # triplets emits no semantic record, while zero_() is captured on both CPU
@@ -1165,8 +1161,6 @@ def _bsr_set_from_triplets_native(
                 dest_row_counts.zero_()
             if device.is_cpu and apic_capture is not None:
                 _mark_apic_deferred_nnz_update(dest, apic_capture)
-            if refresh_nnz_transfer:
-                dest._refresh_nnz_transfer_if_pending()
         return
 
     if apic_capture is not None:
@@ -1219,8 +1213,6 @@ def _bsr_set_from_triplets_native(
             _optional_ctypes_pointer(dest_row_counts, ctype=ctypes.c_int32),
             ctypes.cast(dest_columns.ptr, ctypes.POINTER(ctypes.c_int32)),
         )
-    if refresh_nnz_transfer:
-        dest._refresh_nnz_transfer_if_pending()
 
 
 @wp.kernel(module="unique")
@@ -3104,8 +3096,6 @@ def bsr_set_transpose(
                 None,  # status
             )
 
-            dest._refresh_nnz_transfer_if_pending()
-
             _bsr_set_compact_row_counts(dest)
 
     wp.launch(
@@ -4529,12 +4519,191 @@ def bsr_mm(
           ``z`` unchanged, and ``"padded"`` writes the result topology into
           existing destination row capacity and records capacity overflow in
           ``z.status_sync()``.
+
+    When recorded on a :class:`warp.Tape`, the product is differentiable with respect to the values of ``x``,
+    ``y`` and the input ``z``, restricted to their respective non-zero topologies. Differentiating a product in
+    which ``z`` aliases ``x`` or ``y`` is not supported. While a tape is recording, a product that rebuilds the
+    topology of ``z`` (any ``topology`` other than ``"masked"``) first moves ``z`` to new ``offsets``,
+    ``columns`` and ``row_counts`` arrays, so that products recorded earlier keep reading the previous ones.
     """
 
     x, x_scale = _extract_matrix_and_scale(x)
     alpha *= x_scale
     y, y_scale = _extract_matrix_and_scale(y)
     alpha *= y_scale
+
+    tape = wp._src.context.runtime.tape
+    if tape is None:
+        return _bsr_mm_forward(x, y, z, alpha, beta, work_arrays, reuse_topology, tile_size, max_new_nnz, topology)
+
+    if z is not None and z.requires_grad and (z == x or z == y):
+        raise NotImplementedError(
+            "Differentiating bsr_mm() with an output matrix 'z' that aliases 'x' or 'y' is not supported; "
+            "pass a separate output matrix"
+        )
+
+    z_in = None
+    if z is not None and topology != "masked":
+        if beta != 0.0 and z.values.retain_grad:
+            # The output and input adjoints of z may share storage with different block layouts
+            raise NotImplementedError(
+                "Differentiating bsr_mm() with a nonzero 'beta' is not supported when the values of 'z' have "
+                "retain_grad=True"
+            )
+        # The product rebuilds the topology of z. Move z to copies of its topology arrays so that the
+        # originals stay valid for operations recorded earlier and for the adjoint of the input z.
+        z_in = _bsr_capture(z)
+        with _ScopedTapePause():
+            z.offsets = wp.clone(z.offsets)
+            z.columns = wp.clone(z.columns)
+            if z.row_counts is not None:
+                z.row_counts = wp.clone(z.row_counts)
+
+    # The product kernels are not differentiable; launch them off the tape and record a custom adjoint.
+    with _ScopedTapePause():
+        z = _bsr_mm_forward(x, y, z, alpha, beta, work_arrays, reuse_topology, tile_size, max_new_nnz, topology)
+
+    if z.requires_grad:
+        _bsr_mm_record_adjoint(tape, x, y, z, z_in if beta != 0.0 else None, alpha, beta)
+
+    return z
+
+
+@wp.kernel(enable_backward=False)
+def _bsr_mm_input_values_adjoint_kernel(
+    beta: Any,
+    z_in_row_count: int,
+    z_in_offsets: wp.array[int],
+    z_in_row_counts: wp.array[int],
+    z_in_columns: wp.array[int],
+    z_offsets: wp.array[int],
+    z_row_counts: wp.array[int],
+    z_columns: wp.array[int],
+    z_values_adj: wp.array[Any],
+    z_in_values_adj: wp.array[Any],
+):
+    # Gather beta * adjoint of the output block at the coordinates of each input block of z.
+    block = wp.tid()
+
+    row = bsr_row_index(z_in_offsets, z_in_row_count, block, z_in_row_counts)
+    if row == -1:
+        return
+
+    out_block = bsr_block_index(row, z_in_columns[block], z_offsets, z_columns, z_row_counts)
+    if out_block != -1:
+        z_in_values_adj[block] += beta * z_values_adj[out_block]
+
+
+def _bsr_mm_record_adjoint(
+    tape: wp.Tape,
+    x: BsrMatrix,
+    y: BsrMatrix,
+    z: BsrMatrix,
+    z_in: tuple | None,
+    alpha: float,
+    beta: float,
+):
+    """Record the adjoint of ``z := alpha * x @ y + beta * z`` on ``tape``.
+
+    Args:
+        tape: Tape receiving the adjoint.
+        x: Left operand.
+        y: Right operand.
+        z: Result matrix. Its gradient is consumed and replaced by the gradient of the input ``z``.
+        z_in: Captured topology and values of the input ``z`` (see :func:`_bsr_capture`) if the product
+          changed the topology of ``z`` and ``beta`` is nonzero, ``None`` otherwise.
+        alpha: Scaling factor of the product, including any scaling of ``x`` and ``y``.
+        beta: Scaling factor of the input ``z``.
+    """
+    # Like kernel inputs, the arrays are captured by reference. Products that rebuild a matrix
+    # topology move it to new arrays first, so the captured ones are not overwritten.
+    x_mat, y_mat = x, y
+    x, y, z = _bsr_capture(x), _bsr_capture(y), _bsr_capture(z)
+    x_values, y_values, z_values = x[-1], y[-1], z[-1]
+    alpha = float(alpha)
+    beta = float(beta)
+
+    def backward():
+        with _ScopedTapePause():
+            z_adj = _bsr_view(z, z_values.grad)
+
+            if alpha != 0.0:
+                # The adjoints of x and y are the products with the adjoint of z, restricted to their topologies
+                if x_values.grad is not None:
+                    x_adj = _bsr_view(x, x_values.grad)
+                    bsr_mm(
+                        z_adj,
+                        bsr_transposed(_bsr_view(y, source=y_mat)),
+                        x_adj,
+                        alpha=alpha,
+                        beta=1.0,
+                        topology="masked",
+                    )
+                if y_values.grad is not None:
+                    y_adj = _bsr_view(y, y_values.grad)
+                    bsr_mm(
+                        bsr_transposed(_bsr_view(x, source=x_mat)),
+                        z_adj,
+                        y_adj,
+                        alpha=alpha,
+                        beta=1.0,
+                        topology="masked",
+                    )
+
+            if z_in is None:
+                # Unchanged topology: the adjoint of the input z is the scaled adjoint of the output
+                _scale_adjoint(z_values.grad, _consumed_adjoint_scale(z_values, beta))
+                return
+
+            # The input values of z may share storage with the output values, so gather from a copy
+            z_nnz = z[2]
+            z_values_adj = wp.clone(z_values.grad[:z_nnz]) if z_nnz > 0 else None
+            z_values.grad.zero_()
+
+            z_in_nrow, _, z_in_nnz, z_in_offsets, z_in_row_counts, z_in_columns, z_in_values = z_in
+            if z_values_adj is not None and z_in_nnz > 0 and z_in_values.grad is not None:
+                wp.launch(
+                    kernel=_bsr_mm_input_values_adjoint_kernel,
+                    device=z_in_values.device,
+                    dim=z_in_nnz,
+                    inputs=[
+                        type_scalar_type(z_values.dtype)(beta),
+                        z_in_nrow,
+                        z_in_offsets,
+                        z_in_row_counts,
+                        z_in_columns,
+                        z[3],
+                        z[4],
+                        z[5],
+                        z_values_adj,
+                    ],
+                    outputs=[z_in_values.grad],
+                )
+
+    arrays = [a for a in (x_values, y_values, z_values) if a.grad is not None]
+    if z_in is not None and z_in[-1] is not z_values:
+        arrays.append(z_in[-1])
+    tape.record_func(backward, arrays=arrays)
+    if wp.config.verify_autograd_array_access:
+        z_values.mark_write(operation="bsr_mm()")
+        for a in (x_values, y_values, None if z_in is None else z_in[-1]):
+            if a is not None:
+                a.mark_read()
+
+
+def _bsr_mm_forward(
+    x: BsrMatrix,
+    y: BsrMatrix,
+    z: BsrMatrix | None,
+    alpha,
+    beta,
+    work_arrays: bsr_mm_work_arrays | None,
+    reuse_topology: bool,
+    tile_size: int,
+    max_new_nnz: int | None,
+    topology: Literal["compact", "masked", "padded"] | None,
+) -> BsrMatrix:
+    """Compute ``z := alpha * x @ y + beta * z`` for unscaled matrices without recording on a tape."""
 
     if topology is None:
         topology = "compact"
@@ -4760,7 +4929,7 @@ def bsr_mm(
         else:
             # Get back total counts on host -- we need a synchronization here
             # Use pinned buffer from z, we are going to need it later anyway
-            nnz_buf, _ = z._setup_nnz_transfer()
+            nnz_buf, _ = z._setup_nnz_sync_transfer()
             stream = wp.get_stream(device) if device.is_cuda else None
             wp.copy(dest=nnz_buf, src=work_arrays._mm_block_counts, src_offset=x.nnz, count=1, stream=stream)
             if device.is_cuda:
@@ -5023,6 +5192,172 @@ def make_bsr_mv_transpose_kernel(block_rows: int):
     return bsr_mv_transpose_kernel
 
 
+@cache
+def make_bsr_mv_values_adjoint_kernel(transpose: bool):
+
+    @wp.kernel(enable_backward=False, module="unique")
+    def bsr_mv_values_adjoint_kernel(
+        alpha: Any,
+        A_row_count: int,
+        A_offsets: wp.array[int],
+        A_row_counts: wp.array[int],
+        A_columns: wp.array[int],
+        x: wp.array[Any],
+        y_adj: wp.array[Any],
+        A_values_adj: wp.array3d[Any],
+    ):
+        # Accumulate the adjoint of the stored blocks of A for y = alpha * op(A) x,
+        # which is alpha * outer(y_adj, x) restricted to the topology of A.
+        block, subrow, subcol = wp.tid()
+
+        row = bsr_row_index(A_offsets, A_row_count, block, A_row_counts)
+        if row == -1:
+            return
+
+        block_rows = A_values_adj.shape[1]
+        block_cols = A_values_adj.shape[2]
+        col = A_columns[block]
+
+        if wp.static(transpose):
+            g = x[row * block_rows + subrow] * y_adj[col * block_cols + subcol]
+        else:
+            g = y_adj[row * block_rows + subrow] * x[col * block_cols + subcol]
+
+        A_values_adj[block, subrow, subcol] += alpha * g
+
+    return bsr_mv_values_adjoint_kernel
+
+
+class _ScopedTapePause:
+    """Suspend recording onto the active :class:`warp.Tape`, if any.
+
+    Sparse operations whose kernels are not differentiable launch them while
+    the tape is paused and record a custom adjoint with :meth:`warp.Tape.record_func`.
+    The paused tape is available as ``tape`` within the scope.
+    """
+
+    def __enter__(self):
+        runtime = wp._src.context.runtime
+        self.tape = runtime.tape
+        runtime.tape = None
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        wp._src.context.runtime.tape = self.tape
+
+
+def _bsr_capture(A: BsrMatrix) -> tuple:
+    """Capture the current topology and values arrays of ``A`` by reference, for use in a recorded adjoint."""
+    return (A.nrow, A.ncol, A.nnz, A.offsets, A.row_counts, A.columns, A.values)
+
+
+def _bsr_view(captured: tuple, values: wp.array | None = None, source: BsrMatrix | None = None) -> BsrMatrix:
+    """Return a matrix with a captured topology and either the captured or the given values.
+
+    Returns ``source`` itself if it still holds the captured arrays.
+    """
+    nrow, ncol, nnz, offsets, row_counts, columns, captured_values = captured
+    if values is None:
+        values = captured_values
+    if (
+        source is not None
+        and source.values is values
+        and source.offsets is offsets
+        and source.columns is columns
+        and source.row_counts is row_counts
+        and source.nnz == nnz
+    ):
+        return source
+    view = bsr_matrix_t(values.dtype)()
+    view.nrow = nrow
+    view.ncol = ncol
+    view.nnz = nnz
+    view.offsets = offsets
+    view.row_counts = row_counts
+    view.columns = columns
+    view.values = values
+    return view
+
+
+def _consumed_adjoint_scale(output: wp.array, beta: float) -> float:
+    """Return the factor that turns the adjoint of an overwritten output into the adjoint of its input value.
+
+    Like kernel adjoints of array writes, the incoming adjoint is consumed unless ``output.retain_grad`` is set.
+    """
+    return beta + 1.0 if output.retain_grad else beta
+
+
+def _scale_adjoint(adj: wp.array, beta: float) -> None:
+    """Scale an adjoint array in place, as required for the ``beta`` term of in-place affine operations."""
+    if beta == 0.0:
+        adj.zero_()
+    elif beta != 1.0:
+        beta = type_scalar_type(adj.dtype)(beta)
+        wp.launch(kernel=_bsr_scale_1d_kernel, device=adj.device, dim=adj.shape[0], inputs=[beta, adj])
+
+
+def _bsr_mv_record_adjoint(
+    tape: wp.Tape,
+    A: BsrMatrix,
+    x: wp.array,
+    x_values: wp.array,
+    y: wp.array,
+    alpha: float,
+    beta: float,
+    transpose: bool,
+):
+    """Record the adjoint of ``y := alpha * op(A) x + beta * y`` on ``tape``.
+
+    Args:
+        tape: Tape receiving the adjoint.
+        A: Matrix operand, possibly with padded row storage.
+        x: Vector operand as passed by the caller, whose gradient receives ``alpha * op(A)^T y.grad``.
+        x_values: Scalar view of the values of ``x`` read by the forward product. Views a copy of the
+          input ``y`` when ``x`` and ``y`` alias.
+        y: Result vector. Its gradient is consumed and replaced by ``beta * y.grad``.
+        alpha: Scaling factor of the product, including any scaling of ``A``.
+        beta: Scaling factor of the input ``y``.
+        transpose: Whether the forward product used the transpose of ``A``.
+    """
+    # Like kernel inputs, the arrays are captured by reference. Products that rebuild a matrix
+    # topology move it to new arrays first, so the captured ones are not overwritten.
+    A_nrow, _, A_nnz, A_offsets, A_row_counts, A_columns, A_values = captured_A = _bsr_capture(A)
+    block_shape = A.block_shape
+    scalar_type = A.scalar_type
+
+    def backward():
+        with _ScopedTapePause():
+            y_adj = _vec_array_view(y.grad, scalar_type, expected_scalar_count=y.size * type_size(y.dtype))
+            y_adj_scale = _consumed_adjoint_scale(y, beta)
+
+            # x may be uninitialized when alpha is zero, so do not read it
+            if A_values.grad is not None and A_nnz > 0 and alpha != 0.0:
+                wp.launch(
+                    kernel=make_bsr_mv_values_adjoint_kernel(transpose),
+                    device=A_values.device,
+                    dim=(A_nnz, *block_shape),
+                    inputs=[scalar_type(alpha), A_nrow, A_offsets, A_row_counts, A_columns, x_values, y_adj],
+                    outputs=[_as_3d_array(A_values.grad, block_shape)],
+                )
+
+            if x.grad is not None and alpha != 0.0:
+                A_view = _bsr_view(captured_A, source=A)
+                if x.grad.ptr == y.grad.ptr:
+                    # x and y alias: adj_y := alpha * op(A)^T adj_y + scale * adj_y
+                    bsr_mv(A_view, y.grad, y.grad, alpha=alpha, beta=y_adj_scale, transpose=not transpose)
+                    return
+                bsr_mv(A_view, y.grad, x.grad, alpha=alpha, beta=1.0, transpose=not transpose)
+
+            _scale_adjoint(y_adj, y_adj_scale)
+
+    tape.record_func(backward, arrays=[a for a in (A_values, x, y) if a.grad is not None])
+    if wp.config.verify_autograd_array_access:
+        y.mark_write(operation="bsr_mv()")
+        for a in (A_values, x, x_values, y if beta != 0.0 else None):
+            if a is not None:
+                a.mark_read()
+
+
 def _vec_array_view(array: wp.array, dtype: type, expected_scalar_count: int) -> wp.array:
     # cast a 1d or 2d array to a 1d array with the target dtype, adjusting shape as required
 
@@ -5074,10 +5409,17 @@ def bsr_mv(
     transpose: bool = False,
     work_buffer: Array[Vector[Scalar, Rows] | Scalar] | None = None,
     tile_size: int = 0,
+    algorithm: Literal["auto", "loop", "rows", "columns"] = "auto",
 ) -> Array[Vector[Scalar, Rows] | Scalar]:
     """Perform the sparse matrix-vector product ``y := alpha * A * x + beta * y`` and return ``y``.
 
     The ``x`` and ``y`` vectors are allowed to alias.
+
+    ``x`` may also be a batch: a contiguous 2D array whose rows each hold one vector
+    with ``A``'s column dimension, for example of shape ``(count, A.shape[1])`` for a scalar
+    dtype. Each row is then multiplied independently, ``y[r] := alpha * A * x[r] + beta * y[r]``,
+    and ``y`` has one row per vector. A 2D array holding a single vector keeps its
+    single-vector meaning unless ``algorithm`` is set.
 
     Args:
         A: Read-only, left matrix operand of the matrix-vector product.
@@ -5088,12 +5430,41 @@ def bsr_mv(
         transpose: If ``True``, use the transpose of the matrix ``A``. In this case the result is **non-deterministic**.
         work_buffer: Temporary storage is required if and only if ``x`` and ``y`` are the same vector.
           If provided, the ``work_buffer`` array will be used for this purpose,
-          otherwise a temporary allocation will be performed.
+          otherwise a temporary allocation will be performed. For a batch with
+          ``algorithm="loop"``, its first output-vector-sized part serves each row in turn. With
+          ``"rows"`` or ``"columns"``, it is instead a contiguous
+          1D array of ``A``'s scalar type with at least ``count * A.shape[0]`` or
+          ``count * (A.shape[0] + A.shape[1])`` entries respectively, and reusing one avoids a
+          temporary allocation on every call.
         tile_size: If a positive integer, use tiles of this size to compute the matrix-vector product.
           On CPU, values greater than ``1`` require :attr:`warp.config.enable_cpu_blocks` and otherwise
           raise a :class:`ValueError`. Ignored when ``transpose`` is ``True``. If negative, disable
           tile-based computation. Defaults to ``0``, which determines whether to use tiles using a heuristic
           based on the matrix shape and number of non-zeros.
+        algorithm: Kernel strategy for a batch of vectors:
+
+          - ``"loop"`` applies the single-vector product to each vector in turn. It supports every
+            matrix, device and ``transpose``.
+          - ``"rows"`` computes each result row directly: one thread per vector and scalar row, or
+            for square blocks on CUDA beyond two vectors, eight lanes per block row. It supports
+            square blocks.
+          - ``"columns"`` transposes the batch so that the vectors' entries are adjacent, reads each
+            matrix row once for up to eight vectors, and transposes back. It supports square blocks
+            on CUDA and needs scratch storage for both transposed operands.
+          - ``"auto"`` selects a strategy without synchronizing. It uses ``"loop"`` for a single
+            vector, for ``transpose``, when any operand requires gradients, and on CUDA for block
+            shapes other than 1x1 and 3x3. Otherwise it uses ``"rows"`` on CPU and for CSR matrices
+            on CUDA, and for 3x3 BSR on CUDA ``"rows"`` up to four vectors and ``"columns"`` beyond.
+            It cannot see how many entries each row stores, so pin ``"columns"`` for CSR matrices
+            with long or irregular rows, which can be several times faster from four vectors.
+
+          Explicit choices always run the named strategy and raise :class:`ValueError` where it is
+          unsupported, including for operands that require gradients, since ``"rows"`` and
+          ``"columns"`` are forward-only. A single vector requires ``"auto"`` or ``"loop"``.
+
+    When recorded on a :class:`warp.Tape`, the product is differentiable with respect to ``x``, the input ``y``
+    and the values of ``A``, restricted to its non-zero topology. For a batch of vectors, ``"auto"`` and
+    ``"loop"`` are differentiable; ``"rows"`` and ``"columns"`` are forward-only.
     """
 
     A, A_scale = _extract_matrix_and_scale(A)
@@ -5106,11 +5477,29 @@ def bsr_mv(
         block_shape = A.block_shape
         nrow, ncol = A.nrow, A.ncol
 
+    _multi_rhs.validate(algorithm)
+    # Rows that each hold a full vector form a batch; a single row keeps its single-vector
+    # meaning unless a strategy is requested.
+    batched = (
+        x.ndim == 2
+        and x.shape[1] * type_size(x.dtype) == ncol * block_shape[1]
+        and (x.shape[0] > 1 or algorithm != "auto")
+    )
+    if batched and y is None:
+        y = wp.empty(
+            shape=(x.shape[0], nrow * block_shape[0]),
+            device=A.values.device,
+            dtype=A.scalar_type,
+            requires_grad=x.requires_grad or A.requires_grad,
+        )
+        beta = 0.0
     if y is None:
         # If no output array is provided, allocate one for convenience
         y_vec_len = block_shape[0]
         y_dtype = A.scalar_type if y_vec_len == 1 else wp.types.vector(length=y_vec_len, dtype=A.scalar_type)
-        y = wp.empty(shape=(nrow,), device=A.values.device, dtype=y_dtype, requires_grad=x.requires_grad)
+        y = wp.empty(
+            shape=(nrow,), device=A.values.device, dtype=y_dtype, requires_grad=x.requires_grad or A.requires_grad
+        )
         beta = 0.0
 
     alpha = A.scalar_type(alpha)
@@ -5125,6 +5514,49 @@ def bsr_mv(
     # The transposed product never uses tiles.
     if not transpose:
         _validate_tile_size(device, tile_size)
+
+    if batched:
+        _bsr_mv_batch(A, x, y, alpha, beta, transpose, work_buffer, tile_size, algorithm, nrow, ncol, block_shape)
+        return y
+    if algorithm not in ("auto", "loop"):
+        raise ValueError(f"algorithm={algorithm!r} requires a 2D batch of vectors")
+
+    tape = wp._src.context.runtime.tape
+    if tape is None:
+        _bsr_mv_launch(A, x, y, alpha, beta, transpose, work_buffer, tile_size, block_shape, nrow, ncol, device)
+        return y
+
+    # The product kernels are not differentiable; launch them off the tape and record a custom adjoint.
+    with _ScopedTapePause():
+        x_values = x
+        if y.grad is not None and x.ptr == y.ptr:
+            # The backward pass needs the input values of y, which the product overwrites
+            x_values = wp.clone(x, requires_grad=False)
+        x_values = _bsr_mv_launch(
+            A, x_values, y, alpha, beta, transpose, work_buffer, tile_size, block_shape, nrow, ncol, device
+        )
+
+    if y.grad is not None:
+        _bsr_mv_record_adjoint(tape, A, x, x_values, y, alpha.value, beta.value, transpose)
+
+    return y
+
+
+def _bsr_mv_launch(
+    A: BsrMatrix,
+    x: wp.array,
+    y: wp.array,
+    alpha,
+    beta,
+    transpose: bool,
+    work_buffer: wp.array | None,
+    tile_size: int,
+    block_shape: tuple[int, int],
+    nrow: int,
+    ncol: int,
+    device: wp.DeviceLike,
+) -> wp.array:
+    """Launch the forward kernels of :func:`bsr_mv` and return the scalar view of the ``x`` values they read."""
 
     if x.ptr == y.ptr:
         # Aliasing case, need temporary storage
@@ -5192,7 +5624,66 @@ def bsr_mv(
             inputs=[alpha, A.offsets, A.row_counts, A.columns, A.scalar_values, x_view, beta, y_view],
         )
 
-    return y
+    return x_view
+
+
+def _batch_view(array, count, scalar_count, scalar_type, name):
+    """View a contiguous batch as a ``(count, scalar_count)`` array of ``scalar_type``."""
+    if array.ndim != 2 or array.shape[0] != count or array.shape[1] * type_size(array.dtype) != scalar_count:
+        raise ValueError(
+            f"Expected '{name}' with {count} rows of {scalar_count} scalars, got shape {array.shape} "
+            f"of type {type_repr(array.dtype)}"
+        )
+    if type_scalar_type(array.dtype) != scalar_type:
+        raise ValueError(f"Incompatible scalar types for '{name}', expected {type_repr(scalar_type)}")
+    if not array.is_contiguous:
+        raise ValueError(f"'{name}' must be contiguous")
+    if array.dtype != scalar_type:
+        array = array.view(scalar_type)
+    return array.reshape((count, scalar_count))
+
+
+def _bsr_mv_batch(A, x, y, alpha, beta, transpose, work_buffer, tile_size, algorithm, nrow, ncol, block_shape):
+    count = x.shape[0]
+    device = A.values.device
+    alpha, beta = float(alpha.value), float(beta.value)
+    x_rows = _batch_view(x, count, ncol * block_shape[1], A.scalar_type, "x")
+    y_rows = _batch_view(y, count, nrow * block_shape[0], A.scalar_type, "y")
+    if algorithm == "auto" and tile_size != 0:
+        # Tile sizes are a single-vector feature.
+        algorithm = "loop"
+    # Gradients only matter for products recorded on a tape.
+    recording = wp._src.context.runtime.tape is not None
+    requires_grad = recording and (A.requires_grad or x.requires_grad or y.requires_grad)
+    algorithm = _multi_rhs.resolve(algorithm, A, count, device, transpose, requires_grad)
+    if algorithm == "loop":
+        # Each aliased row needs exactly one row of scratch. The rows are scalar views, so view
+        # a vector-valued buffer as scalars too, as the single-vector product accepts it.
+        row_buffer = None
+        if work_buffer is not None:
+            row_buffer = work_buffer.flatten()
+            if row_buffer.dtype != A.scalar_type and type_scalar_type(row_buffer.dtype) == A.scalar_type:
+                row_buffer = row_buffer.view(A.scalar_type).flatten()
+            row_buffer = row_buffer[: y_rows.shape[1]]
+        for r in range(count):
+            bsr_mv(A, x_rows[r], y_rows[r], alpha, beta, transpose, row_buffer, tile_size)
+        return
+    if tile_size != 0:
+        raise ValueError(f"tile_size applies to algorithm='loop', not {algorithm!r}")
+    needed = _multi_rhs.scratch_size(algorithm, A, count)
+    if work_buffer is None:
+        work_buffer = wp.empty(needed, dtype=A.scalar_type, device=device)
+    elif (
+        work_buffer.ndim != 1
+        or work_buffer.dtype != A.scalar_type
+        or not work_buffer.is_contiguous
+        or work_buffer.size < needed
+    ):
+        raise ValueError(
+            f"algorithm={algorithm!r} needs a contiguous 1D work buffer of {type_repr(A.scalar_type)} "
+            f"with at least {needed} entries"
+        )
+    _multi_rhs.product(algorithm, A, x_rows, y_rows, y_rows, alpha, beta, work_buffer)
 
 
 # register API functions so they appear in the documentation

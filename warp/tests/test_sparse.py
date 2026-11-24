@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import contextlib
+import io
 import sys
 import unittest
 from unittest import mock
@@ -500,110 +502,27 @@ def test_bsr_stale_compact_tail(test, device):
 
 
 def test_bsr_nnz_sync_transfer(test, device):
-    """Verify nnz transfer resources are opt-in, refreshed, and reused."""
-
-    def prime_transfer(matrix):
-        with mock.patch("warp._src.sparse.log_warning") as mock_log_warning:
-            matrix.copy_nnz_async()
-
-        mock_log_warning.assert_called_once()
-        test.assertIs(mock_log_warning.call_args.kwargs["category"], DeprecationWarning)
-        test.assertTrue(matrix._nnz_transfer_pending)
-        return matrix._nnz_transfer
-
-    def assert_refreshed(matrix, transfer, expected_nnz):
-        test.assertIs(matrix._nnz_transfer, transfer)
-        test.assertTrue(matrix._nnz_transfer_pending)
-        with mock.patch("warp._src.sparse.wp.copy", wraps=wp.copy) as mock_copy:
-            test.assertEqual(matrix.nnz_sync(), expected_nnz)
-        mock_copy.assert_not_called()
-        test.assertFalse(matrix._nnz_transfer_pending)
-
-    def assert_synchronous_copy(matrix, transfer, expected_nnz):
-        test.assertIs(matrix._nnz_transfer, transfer)
-        test.assertFalse(matrix._nnz_transfer_pending)
-        with mock.patch("warp._src.sparse.wp.copy", wraps=wp.copy) as mock_copy:
-            test.assertEqual(matrix.nnz_sync(), expected_nnz)
-        mock_copy.assert_called_once()
-        test.assertFalse(matrix._nnz_transfer_pending)
-
+    """Verify nnz transfers are synchronous, lazy, and reuse their staging resources."""
     rows = wp.array([0, 0, 1], dtype=int, device=device)
     columns = wp.array([0, 0, 1], dtype=int, device=device)
     values = wp.array([1.0, 2.0, 3.0], dtype=float, device=device)
     matrix = bsr_from_triplets(2, 2, rows, columns, values)
 
-    # Topology operations do not allocate transfer resources by default.
-    test.assertFalse(hasattr(matrix, "_nnz_transfer"))
-    bsr_set_from_triplets(matrix, rows[:1], columns[:1], values[:1])
-    test.assertFalse(hasattr(matrix, "_nnz_transfer"))
+    test.assertFalse(hasattr(matrix, "_nnz_sync_transfer"))
 
-    # A topology update restarts a pending explicit copy, and nnz_sync() uses
-    # its value without copying again.
-    transfer = prime_transfer(matrix)
-    bsr_set_from_triplets(matrix, rows, columns, values)
-    assert_refreshed(matrix, transfer, 2)
+    test.assertEqual(matrix.nnz_sync(), 2)
+    transfer = matrix._nnz_sync_transfer
 
-    # Once nnz_sync() has consumed the pending copy, topology updates leave it
-    # stopped. The next nnz_sync() performs a synchronous copy while reusing
-    # the staging resources.
-    bsr_set_from_triplets(matrix, rows[:1], columns[:1], values[:1])
-    assert_synchronous_copy(matrix, transfer, 1)
-
-    # External topology updates restart a pending copy when explicitly notified.
-    transfer = prime_transfer(matrix)
-    matrix.offsets.zero_()
-    matrix.notify_nnz_changed(nnz=matrix.nnz)
-    assert_refreshed(matrix, transfer, 0)
-
-    # Native compact compression has a separate topology-writing path.
-    compressed = bsr_zeros(1, 3, float, device=device)
-    compressed.nnz = 4
-    compressed.offsets = wp.array([0, 4], dtype=int, device=device)
-    compressed.row_counts = wp.array([4], dtype=int, device=device)
-    compressed.columns = wp.array([1, 0, 1, 2], dtype=int, device=device)
-    compressed.values = wp.array([1.0, 2.0, 3.0, 0.0], dtype=float, device=device)
-    transfer = prime_transfer(compressed)
-    bsr_compress(compressed, inplace=True, topology="compact")
-    assert_refreshed(compressed, transfer, 2)
-
-    # Compact transpose does not use triplet construction.
-    source = bsr_from_triplets(
-        2,
-        3,
-        wp.array([0, 1], dtype=int, device=device),
-        wp.array([2, 0], dtype=int, device=device),
-        wp.array([1.0, 2.0], dtype=float, device=device),
+    bsr_set_from_triplets(
+        matrix,
+        rows=wp.array([0], dtype=int, device=device),
+        columns=wp.array([1], dtype=int, device=device),
+        values=wp.array([4.0], dtype=float, device=device),
     )
-    transposed = bsr_zeros(1, 1, float, device=device)
-    transfer = prime_transfer(transposed)
-    bsr_set_transpose(transposed, source)
-    assert_refreshed(transposed, transfer, 2)
 
-    # General AXPY and bounded matrix multiplication both rebuild topology
-    # through the shared compact triplet path without requiring a host sync.
-    x = bsr_from_triplets(
-        2,
-        2,
-        wp.array([0], dtype=int, device=device),
-        wp.array([0], dtype=int, device=device),
-        wp.array([1.0], dtype=float, device=device),
-    )
-    y = bsr_from_triplets(
-        2,
-        2,
-        wp.array([1], dtype=int, device=device),
-        wp.array([1], dtype=int, device=device),
-        wp.array([2.0], dtype=float, device=device),
-    )
-    transfer = prime_transfer(y)
-    bsr_axpy(x=x, y=y)
-    assert_refreshed(y, transfer, 2)
-
-    identity = bsr_identity(2, block_type=float, device=device)
-    product = bsr_zeros(2, 2, float, device=device)
-    transfer = prime_transfer(product)
-    bsr_mm(identity, identity, z=product, max_new_nnz=4)
-    assert_refreshed(product, transfer, 2)
+    test.assertIs(matrix._nnz_sync_transfer, transfer)
+    test.assertEqual(matrix.nnz_sync(), 1)
+    test.assertIs(matrix._nnz_sync_transfer, transfer)
 
 
 def test_bsr_gapped_layout(test, device):
@@ -1772,6 +1691,204 @@ def test_bsr_compress_compact_capturability(test, device):
     assert_np_equal(_bsr_to_dense(A), np.array([[2.0, 3.0, 4.0], [0.0, 0.0, 8.0]]))
 
 
+def _make_compress_capture_matrix(device, dtype):
+    """Create an uncompressed 2x4 matrix with unsorted, duplicate columns."""
+    matrix = bsr_zeros(2, 4, dtype, device=device)
+    matrix.nnz = 6
+    matrix.offsets = wp.array([0, 3, 6], dtype=int, device=device)
+    matrix.columns = wp.array([2, 0, 2, 1, 1, 3], dtype=int, device=device)
+    matrix.values = wp.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0], dtype=dtype, device=device)
+    return matrix
+
+
+def _assign_bsr_arrays(matrix, offsets, columns, values, row_counts=None):
+    """Overwrite the matrix arrays in place, so a captured graph reads the new data."""
+    matrix.offsets.assign(np.array(offsets, dtype=np.int32))
+    matrix.columns.assign(np.array(columns, dtype=np.int32))
+    matrix.values.assign(np.array(values, dtype=wp.dtype_to_numpy(matrix.scalar_type)))
+    if row_counts is not None:
+        matrix.row_counts.assign(np.array(row_counts, dtype=np.int32))
+
+
+def _assert_compress_capture_inputs_unchanged(matrix):
+    """Assert that recording a compression did not run it."""
+    np.testing.assert_array_equal(matrix.offsets.numpy(), np.array([0, 3, 6]))
+    np.testing.assert_array_equal(matrix.columns.numpy(), np.array([2, 0, 2, 1, 1, 3]))
+    np.testing.assert_array_equal(matrix.values.numpy(), np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0]))
+
+
+def test_bsr_compress_capture_inplace_compact(test, device):
+    """Test that a captured in-place compact compression runs on the current data at every replay."""
+
+    for dtype in (wp.float32, wp.float64):
+        with test.subTest(dtype=dtype):
+            matrix = _make_compress_capture_matrix(device, dtype)
+            with wp.ScopedDevice(device):
+                with wp.ScopedCapture(force_module_load=False) as capture:
+                    bsr_compress(matrix, prune_numerical_zeros=True, inplace=True)
+
+            _assert_compress_capture_inputs_unchanged(matrix)
+
+            # Row 0 has a duplicate and an out-of-range column; row 1 has a zero block to prune.
+            _assign_bsr_arrays(matrix, (0, 4, 6), (3, 1, 3, 7, 0, 2), (1.0, 2.0, 3.0, 9.0, 5.0, 0.0))
+            wp.capture_launch(capture.graph)
+
+            np.testing.assert_array_equal(matrix.offsets.numpy(), np.array([0, 2, 3]))
+            np.testing.assert_array_equal(matrix.columns.numpy()[:3], np.array([1, 3, 0]))
+            np.testing.assert_array_equal(matrix.values.numpy()[:3], np.array([2.0, 4.0, 5.0]))
+
+            _assign_bsr_arrays(matrix, (0, 1, 6), (2, 1, 1, 3, 0, 1), (4.0, 1.0, 2.0, 3.0, 6.0, 7.0))
+            wp.capture_launch(capture.graph)
+
+            np.testing.assert_array_equal(matrix.offsets.numpy(), np.array([0, 1, 4]))
+            np.testing.assert_array_equal(matrix.columns.numpy()[:4], np.array([2, 0, 1, 3]))
+            np.testing.assert_array_equal(matrix.values.numpy()[:4], np.array([4.0, 6.0, 10.0, 3.0]))
+
+
+def test_bsr_compress_capture_inplace_padded(test, device):
+    """Test that a captured in-place padded compression runs on the current data at every replay."""
+
+    matrix = _make_compress_capture_matrix(device, wp.float32)
+    matrix.row_counts = wp.array([3, 3], dtype=int, device=device)
+    with wp.ScopedDevice(device):
+        with wp.ScopedCapture(force_module_load=False) as capture:
+            bsr_compress(matrix, prune_numerical_zeros=False, inplace=True, topology="padded")
+
+    _assert_compress_capture_inputs_unchanged(matrix)
+    np.testing.assert_array_equal(matrix.row_counts.numpy(), np.array([3, 3]))
+
+    # The last slot of row 0 is outside its row count, so its block must be ignored.
+    _assign_bsr_arrays(matrix, (0, 4, 6), (3, 1, 3, 0, 0, 2), (1.0, 2.0, 3.0, 8.0, 5.0, 0.0), row_counts=(3, 2))
+    wp.capture_launch(capture.graph)
+
+    np.testing.assert_array_equal(matrix.offsets.numpy(), np.array([0, 4, 6]))
+    np.testing.assert_array_equal(matrix.row_counts.numpy(), np.array([2, 2]))
+    np.testing.assert_array_equal(matrix.columns.numpy()[0:2], np.array([1, 3]))
+    np.testing.assert_array_equal(matrix.columns.numpy()[4:6], np.array([0, 2]))
+    np.testing.assert_array_equal(matrix.values.numpy()[0:2], np.array([2.0, 4.0]))
+    np.testing.assert_array_equal(matrix.values.numpy()[4:6], np.array([5.0, 0.0]))
+
+    _assign_bsr_arrays(matrix, (0, 1, 6), (2, 1, 1, 3, 0, 1), (4.0, 1.0, 2.0, 3.0, 6.0, 7.0), row_counts=(1, 4))
+    wp.capture_launch(capture.graph)
+
+    np.testing.assert_array_equal(matrix.offsets.numpy(), np.array([0, 1, 6]))
+    np.testing.assert_array_equal(matrix.row_counts.numpy(), np.array([1, 3]))
+    np.testing.assert_array_equal(matrix.columns.numpy()[0:1], np.array([2]))
+    np.testing.assert_array_equal(matrix.columns.numpy()[1:4], np.array([0, 1, 3]))
+    np.testing.assert_array_equal(matrix.values.numpy()[0:1], np.array([4.0]))
+    np.testing.assert_array_equal(matrix.values.numpy()[1:4], np.array([6.0, 3.0, 3.0]))
+
+
+def test_bsr_compress_capture_out_of_place(test, device):
+    """Test that a captured out-of-place compression runs on the current data at every replay."""
+
+    for dtype in (wp.float32, wp.float64):
+        with test.subTest(dtype=dtype):
+            # Load the value-accumulation kernel before module loading is disabled for capture.
+            bsr_compress(_make_compress_capture_matrix(device, dtype), prune_numerical_zeros=False)
+
+            matrix = _make_compress_capture_matrix(device, dtype)
+            with wp.ScopedDevice(device):
+                with wp.ScopedCapture(force_module_load=False) as capture:
+                    bsr_compress(matrix, prune_numerical_zeros=False)
+
+            _assert_compress_capture_inputs_unchanged(matrix)
+
+            # Without pruning, the zero block of row 1 stays.
+            _assign_bsr_arrays(matrix, (0, 4, 6), (3, 1, 3, 7, 0, 2), (1.0, 2.0, 3.0, 9.0, 5.0, 0.0))
+            wp.capture_launch(capture.graph)
+
+            np.testing.assert_array_equal(matrix.offsets.numpy(), np.array([0, 2, 4]))
+            np.testing.assert_array_equal(matrix.columns.numpy()[:4], np.array([1, 3, 0, 2]))
+            np.testing.assert_array_equal(matrix.values.numpy()[:4], np.array([2.0, 4.0, 5.0, 0.0]))
+
+            _assign_bsr_arrays(matrix, (0, 1, 6), (2, 1, 1, 3, 0, 1), (4.0, 1.0, 2.0, 3.0, 6.0, 7.0))
+            wp.capture_launch(capture.graph)
+
+            np.testing.assert_array_equal(matrix.offsets.numpy(), np.array([0, 1, 4]))
+            np.testing.assert_array_equal(matrix.columns.numpy()[:4], np.array([2, 0, 1, 3]))
+            np.testing.assert_array_equal(matrix.values.numpy()[:4], np.array([4.0, 6.0, 10.0, 3.0]))
+
+
+def test_bsr_compress_capture_structure_only(test, device):
+    """Test that a captured structure-only compression runs on the current columns at every replay."""
+
+    matrix = _make_compress_capture_matrix(device, wp.float32)
+    with wp.ScopedDevice(device):
+        with wp.ScopedCapture(force_module_load=False) as capture:
+            bsr_compress(matrix, structure_only=True)
+
+    _assert_compress_capture_inputs_unchanged(matrix)
+
+    # Structure-only compression ignores values, so the zero block of row 1 stays.
+    _assign_bsr_arrays(matrix, (0, 4, 6), (3, 1, 3, 7, 0, 2), (1.0, 2.0, 3.0, 9.0, 5.0, 0.0))
+    wp.capture_launch(capture.graph)
+
+    np.testing.assert_array_equal(matrix.offsets.numpy(), np.array([0, 2, 4]))
+    np.testing.assert_array_equal(matrix.columns.numpy()[:4], np.array([1, 3, 0, 2]))
+
+    _assign_bsr_arrays(matrix, (0, 1, 6), (2, 1, 1, 3, 0, 1), (4.0, 1.0, 2.0, 3.0, 6.0, 7.0))
+    wp.capture_launch(capture.graph)
+
+    np.testing.assert_array_equal(matrix.offsets.numpy(), np.array([0, 1, 4]))
+    np.testing.assert_array_equal(matrix.columns.numpy()[:4], np.array([2, 0, 1, 3]))
+
+
+def test_bsr_compress_capture_empty(test, device):
+    """Test that captured compression of matrices without stored blocks runs on the offsets written before it."""
+
+    # Stale offsets of empty rows: compressing them now would rewrite them to zero.
+    compact = bsr_zeros(3, 4, wp.float32, device=device)
+    compact.offsets.fill_(2)
+    padded = bsr_zeros(3, 4, wp.float32, device=device)
+    padded.row_counts = wp.zeros(3, dtype=int, device=device)
+    with wp.ScopedDevice(device):
+        with wp.ScopedCapture(force_module_load=False) as capture:
+            compact.offsets.zero_()
+            bsr_compress(compact, inplace=True)
+            bsr_compress(padded, inplace=True, topology="padded")
+
+    np.testing.assert_array_equal(compact.offsets.numpy(), np.array([2, 2, 2, 2]))
+
+    wp.capture_launch(capture.graph)
+
+    np.testing.assert_array_equal(compact.offsets.numpy(), np.array([0, 0, 0, 0]))
+    np.testing.assert_array_equal(padded.offsets.numpy(), np.array([0, 0, 0, 0]))
+    np.testing.assert_array_equal(padded.row_counts.numpy(), np.array([0, 0, 0]))
+
+
+def test_bsr_compress_capture_blocks(test, device):
+    """Test that a captured in-place compression moves and sums whole 2x2 blocks at replay."""
+
+    block = np.array([[1.0, 2.0], [3.0, 4.0]])
+    matrix = bsr_zeros(2, 4, wp.mat22d, device=device)
+    matrix.nnz = 6
+    matrix.offsets = wp.array([0, 3, 6], dtype=int, device=device)
+    matrix.columns = wp.array([2, 0, 2, 1, 1, 3], dtype=int, device=device)
+    matrix.values = wp.array(
+        np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])[:, None, None] * block, dtype=wp.mat22d, device=device
+    )
+    with wp.ScopedDevice(device):
+        with wp.ScopedCapture(force_module_load=False) as capture:
+            bsr_compress(matrix, prune_numerical_zeros=True, inplace=True)
+
+    np.testing.assert_array_equal(matrix.offsets.numpy(), np.array([0, 3, 6]))
+    np.testing.assert_array_equal(matrix.columns.numpy(), np.array([2, 0, 2, 1, 1, 3]))
+
+    # Row 0 has a duplicate and an out-of-range column; row 1 has a zero block to prune.
+    _assign_bsr_arrays(
+        matrix,
+        (0, 4, 6),
+        (3, 1, 3, 7, 0, 2),
+        np.array([1.0, 2.0, 3.0, 9.0, 5.0, 0.0])[:, None, None] * block,
+    )
+    wp.capture_launch(capture.graph)
+
+    np.testing.assert_array_equal(matrix.offsets.numpy(), np.array([0, 2, 3]))
+    np.testing.assert_array_equal(matrix.columns.numpy()[:3], np.array([1, 3, 0]))
+    np.testing.assert_array_equal(matrix.values.numpy()[:3], np.array([2.0 * block, 4.0 * block, 5.0 * block]))
+
+
 def test_padded_bsr_capture_constructs_matrix(test, device):
     """Test that padded BSR matrices can be constructed during CUDA graph capture."""
 
@@ -2077,12 +2194,557 @@ def test_bsr_scaled_expression_add_sub(test, device):
     assert_np_equal(_bsr_to_dense(y), y_dense, 0.0001)
 
 
+def _bsr_with_values(bsr, values):
+    """Return a matrix with the topology of ``bsr`` and the given values, for densifying gradients."""
+    view = bsr_zeros(bsr.nrow, bsr.ncol, values.dtype, device=bsr.device)
+    view.nnz = bsr.nnz
+    view.offsets = bsr.offsets
+    view.row_counts = bsr.row_counts
+    view.columns = bsr.columns
+    view.values = values
+    return view
+
+
+def _bsr_dense_mask(bsr):
+    return _bsr_to_dense(_bsr_with_values(bsr, wp.full_like(bsr.values, 1.0))) != 0.0
+
+
+def _bsr_dense_grad(bsr):
+    return _bsr_to_dense(_bsr_with_values(bsr, bsr.values.grad))
+
+
+def _make_gradient_test_bsr(nrow, ncol, block_shape, scalar_type, topology, rng, device, nnz=6):
+    """Build a random matrix whose values require gradients, with compact or padded storage."""
+    block_type = wp.types.matrix(shape=block_shape, dtype=scalar_type) if block_shape != (1, 1) else scalar_type
+    rows = wp.array(rng.integers(0, high=nrow, size=nnz), dtype=int, device=device)
+    cols = wp.array(rng.integers(0, high=ncol, size=nnz), dtype=int, device=device)
+    vals = wp.array(rng.random(size=(nnz, *block_shape)), dtype=scalar_type, device=device)
+
+    if topology == "padded":
+        bsr = bsr_zeros(nrow, ncol, block_type, device=device, row_capacity=ncol)
+    else:
+        bsr = bsr_zeros(nrow, ncol, block_type, device=device)
+    bsr_set_from_triplets(bsr, rows, cols, vals, topology=topology)
+    bsr.values.requires_grad = True
+    return bsr
+
+
+def make_test_bsr_mv_gradient(block_shape, scalar_type):
+    def test_bsr_mv_gradient(test, device):
+        """Check bsr_mv gradients for the matrix, x, and the input y against dense NumPy results."""
+        rng = np.random.default_rng(123)
+        tol = 1.0e-4 if scalar_type == wp.float32 else 1.0e-10
+        alpha, beta = -1.5, 0.5
+
+        for topology in ("compact", "padded"):
+            for transpose in (False, True):
+                A = _make_gradient_test_bsr(4, 3, block_shape, scalar_type, topology, rng, device)
+                A_dense = _bsr_to_dense(A)
+                op_dense = A_dense.T if transpose else A_dense
+
+                x = wp.array(rng.random(op_dense.shape[1]), dtype=scalar_type, device=device, requires_grad=True)
+                y = wp.array(rng.random(op_dense.shape[0]), dtype=scalar_type, device=device, requires_grad=True)
+                y_adj = rng.random(op_dense.shape[0])
+                x_np = x.numpy()
+
+                with wp.Tape() as tape:
+                    bsr_mv(A, x, y, alpha=alpha, beta=beta, transpose=transpose)
+                tape.backward(grads={y: wp.array(y_adj, dtype=scalar_type, device=device)})
+
+                A_adj_expected = alpha * (np.outer(x_np, y_adj) if transpose else np.outer(y_adj, x_np))
+                assert_np_equal(_bsr_dense_grad(A), A_adj_expected * _bsr_dense_mask(A), tol=tol)
+                assert_np_equal(x.grad.numpy(), alpha * op_dense.T @ y_adj, tol=tol)
+                assert_np_equal(y.grad.numpy(), beta * y_adj, tol=tol)
+
+    return test_bsr_mv_gradient
+
+
+def test_bsr_mv_gradient_aliasing(test, device):
+    """Check bsr_mv gradients when x and y are the same array and when y is allocated by bsr_mv."""
+    rng = np.random.default_rng(123)
+    alpha, beta = 2.0, -0.5
+
+    A = _make_gradient_test_bsr(5, 5, (1, 1), wp.float64, "compact", rng, device, nnz=12)
+    A_dense = _bsr_to_dense(A)
+    x_in = rng.random(5)
+    x_adj = rng.random(5)
+
+    # Reusing the caller's work buffer after the product must not affect the backward pass
+    x = wp.array(x_in, dtype=wp.float64, device=device, requires_grad=True)
+    work_buffer = wp.empty_like(x)
+    with wp.Tape() as tape:
+        bsr_mv(A, x, x, alpha=alpha, beta=beta, work_buffer=work_buffer)
+    assert_np_equal(x.numpy(), alpha * A_dense @ x_in + beta * x_in, tol=1.0e-10)
+    work_buffer.fill_(1.0e3)
+    tape.backward(grads={x: wp.array(x_adj, dtype=wp.float64, device=device)})
+
+    assert_np_equal(_bsr_dense_grad(A), alpha * np.outer(x_adj, x_in) * _bsr_dense_mask(A), tol=1.0e-10)
+    assert_np_equal(x.grad.numpy(), alpha * A_dense.T @ x_adj + beta * x_adj, tol=1.0e-10)
+
+    # The allocated result requires gradients when only the matrix does
+    tape.zero()
+    x_const = wp.array(x_in, dtype=wp.float64, device=device)
+    with wp.Tape() as tape:
+        y = bsr_mv(A, x_const)
+    test.assertTrue(y.requires_grad)
+    tape.backward(grads={y: wp.array(x_adj, dtype=wp.float64, device=device)})
+    assert_np_equal(_bsr_dense_grad(A), np.outer(x_adj, x_in) * _bsr_dense_mask(A), tol=1.0e-10)
+
+
+def test_bsr_product_gradient_operand_rebuilt(test, device):
+    """Check product gradients when a later recorded bsr_mm rebuilds an operand's topology and replaces its values."""
+    rng = np.random.default_rng(123)
+    A = _make_gradient_test_bsr(4, 4, (1, 1), wp.float64, "compact", rng, device, nnz=3)
+    B = _make_gradient_test_bsr(4, 4, (1, 1), wp.float64, "compact", rng, device, nnz=8)
+    E = _make_dense_bsr(4, 4, (1, 1), rng, device)
+    x = wp.array(rng.random(4), dtype=wp.float64, device=device, requires_grad=True)
+
+    A_in = _bsr_with_values(A, A.values)
+    A_in.offsets, A_in.columns = wp.clone(A.offsets), wp.clone(A.columns)
+    A_dense, B_dense, x_np = _bsr_to_dense(A), _bsr_to_dense(B), x.numpy()
+
+    with wp.Tape() as tape:
+        D = bsr_mm(A, B)
+        y = bsr_mv(A, x)
+        bsr_mm(E, E, A, beta=0.5)
+
+    # The scenario requires the rebuild to replace the values array of A
+    test.assertIsNot(A.values, A_in.values)
+    test.assertFalse(np.array_equal(_bsr_dense_mask(A), _bsr_dense_mask(A_in)))
+
+    D.values.grad.fill_(1.0)
+    y.grad.fill_(1.0)
+    tape.backward()
+
+    D_adj_dense = np.ones_like(A_dense) * _bsr_dense_mask(D)
+    expected = (D_adj_dense @ B_dense.T + np.outer(np.ones(4), x_np)) * _bsr_dense_mask(A_in)
+    assert_np_equal(_bsr_dense_grad(A_in), expected, tol=1.0e-10)
+
+
+@wp.kernel
+def _overwrite_values_kernel(values: wp.array[wp.float64]):
+    values[wp.tid()] = wp.float64(0.0)
+
+
+def test_bsr_product_gradient_retain_grad(test, device):
+    """Check that bsr_mv and bsr_mm keep the output gradient when it has retain_grad set, like kernel writes."""
+    rng = np.random.default_rng(123)
+    A = _make_gradient_test_bsr(4, 4, (1, 1), wp.float64, "compact", rng, device, nnz=8)
+    y_adj = rng.random(4)
+
+    x = wp.array(rng.random(4), dtype=wp.float64, device=device, requires_grad=True)
+    y = wp.array(rng.random(4), dtype=wp.float64, device=device, requires_grad=True, retain_grad=True)
+    with wp.Tape() as tape:
+        bsr_mv(A, x, y, beta=0.5)
+    tape.backward(grads={y: wp.array(y_adj, dtype=wp.float64, device=device)})
+    assert_np_equal(y.grad.numpy(), 1.5 * y_adj, tol=1.0e-10)
+
+    # The masked topology keeps the values array of C, and thus its retain_grad flag
+    C = _make_gradient_test_bsr(4, 4, (1, 1), wp.float64, "compact", rng, device, nnz=4)
+    C.values.retain_grad = True
+    with wp.Tape() as tape:
+        bsr_mm(A, A, C, topology="masked")
+    C.values.grad.fill_(1.0)
+    tape.backward()
+    assert_np_equal(C.values.grad.numpy()[: C.nnz_sync()], np.ones(C.nnz), tol=0.0)
+
+    # A masked product leaves the topology unchanged, so a nonzero beta works with retain_grad
+    C.values.grad.zero_()
+    with wp.Tape() as tape:
+        bsr_mm(A, A, C, beta=0.5, topology="masked")
+    C.values.grad.fill_(1.0)
+    tape.backward()
+    assert_np_equal(C.values.grad.numpy()[: C.nnz], np.full(C.nnz, 1.5), tol=1.0e-12)
+
+    # Other topologies rebuild z, so its input and output adjoints cannot share retained storage
+    with wp.Tape():
+        with test.assertRaises(NotImplementedError):
+            bsr_mm(A, A, C, beta=1.0)
+
+
+def test_bsr_mv_gradient_zero_alpha(test, device):
+    """Check that bsr_mv with zero alpha leaves gradients finite when x holds non-finite values."""
+    rng = np.random.default_rng(123)
+    A = _make_gradient_test_bsr(4, 4, (1, 1), wp.float64, "compact", rng, device, nnz=8)
+    x = wp.full(4, np.nan, dtype=wp.float64, device=device, requires_grad=True)
+    y = wp.array(rng.random(4), dtype=wp.float64, device=device, requires_grad=True)
+    with wp.Tape() as tape:
+        bsr_mv(A, x, y, alpha=0.0, beta=0.5)
+    tape.backward(grads={y: wp.ones(4, dtype=wp.float64, device=device)})
+    assert_np_equal(A.values.grad.numpy()[: A.nnz_sync()], np.zeros(A.nnz), tol=0.0)
+    assert_np_equal(x.grad.numpy(), np.zeros(4), tol=0.0)
+    assert_np_equal(y.grad.numpy(), np.full(4, 0.5), tol=0.0)
+
+
+def test_bsr_product_gradient_array_access(test, device):
+    """Check that verify_autograd_array_access reports overwriting an operand read by a recorded sparse product."""
+    rng = np.random.default_rng(123)
+    A = _make_gradient_test_bsr(4, 4, (1, 1), wp.float64, "compact", rng, device, nnz=8)
+    x = wp.array(rng.random(4), dtype=wp.float64, device=device, requires_grad=True)
+
+    saved_verify = wp.config.verify_autograd_array_access
+    try:
+        wp.config.verify_autograd_array_access = True
+        for product in (lambda: bsr_mv(A, x), lambda: bsr_mm(A, A)):
+            A.values.mark_init()
+            with contextlib.redirect_stderr(io.StringIO()) as f:
+                with wp.Tape():
+                    product()
+                    wp.launch(_overwrite_values_kernel, dim=A.nnz, inputs=[A.values], device=device)
+            test.assertIn("has already been read from", f.getvalue())
+        wp.synchronize_device(device)
+    finally:
+        wp.config.verify_autograd_array_access = saved_verify
+
+
+def make_test_bsr_mm_gradient(block_shape, scalar_type):
+    def test_bsr_mm_gradient(test, device):
+        """Check bsr_mm gradients for x, y and the input z against dense NumPy results for each topology policy."""
+        rng = np.random.default_rng(123)
+        tol = 1.0e-4 if scalar_type == wp.float32 else 1.0e-10
+        alpha, beta = -2.0, 0.5
+        z_block_shape = (block_shape[0], block_shape[0])
+
+        for topology in ("compact", "masked", "padded"):
+            storage = "padded" if topology == "padded" else "compact"
+            x = _make_gradient_test_bsr(3, 2, block_shape, scalar_type, storage, rng, device)
+            y = _make_gradient_test_bsr(2, 3, block_shape[::-1], scalar_type, storage, rng, device)
+            z = _make_gradient_test_bsr(3, 3, z_block_shape, scalar_type, storage, rng, device, nnz=3)
+
+            # Keep the input topology and values of z, which the product may replace
+            z_in = _bsr_with_values(z, z.values)
+            z_in.offsets, z_in.columns = wp.clone(z.offsets), wp.clone(z.columns)
+            z_in.row_counts = None if z.row_counts is None else wp.clone(z.row_counts)
+            x_dense, y_dense = _bsr_to_dense(x), _bsr_to_dense(y)
+
+            with wp.Tape() as tape:
+                bsr_mm(x, y, z, alpha=alpha, beta=beta, topology=topology)
+
+            z_adj_dense = rng.random(z.shape) * _bsr_dense_mask(z)
+            z_adj = np.zeros((z.values.shape[0], *z_block_shape))
+            z_rows, z_cols = z.uncompress_rows().numpy(), z.columns.numpy()
+            for block in range(z.nnz):
+                if z_rows[block] >= 0:
+                    z_adj[block] = _get_block(z_adj_dense, z_rows[block], z_cols[block], z_block_shape)
+            tape.backward(grads={z.values: wp.array(z_adj, dtype=z.values.dtype, device=device)})
+
+            assert_np_equal(_bsr_dense_grad(x), alpha * z_adj_dense @ y_dense.T * _bsr_dense_mask(x), tol=tol)
+            assert_np_equal(_bsr_dense_grad(y), alpha * x_dense.T @ z_adj_dense * _bsr_dense_mask(y), tol=tol)
+            assert_np_equal(_bsr_dense_grad(z_in), beta * z_adj_dense * _bsr_dense_mask(z_in), tol=tol)
+
+    return test_bsr_mm_gradient
+
+
+def test_bsr_mm_gradient_aliasing(test, device):
+    """Check bsr_mm gradients when x and y are the same matrix, and reject an output aliasing an operand."""
+    rng = np.random.default_rng(123)
+
+    A = _make_gradient_test_bsr(4, 4, (1, 1), wp.float64, "compact", rng, device, nnz=8)
+    A_dense = _bsr_to_dense(A)
+
+    with wp.Tape() as tape:
+        C = bsr_mm(A, A)
+    test.assertTrue(C.requires_grad)
+
+    C.values.grad.fill_(1.0)
+    tape.backward()
+    C_adj_dense = np.ones_like(A_dense) * _bsr_dense_mask(C)
+    assert_np_equal(
+        _bsr_dense_grad(A), (C_adj_dense @ A_dense.T + A_dense.T @ C_adj_dense) * _bsr_dense_mask(A), tol=1.0e-10
+    )
+
+    with wp.Tape():
+        with test.assertRaises(NotImplementedError):
+            bsr_mm(A, A, A)
+
+
+def test_bsr_gradient_capturability(test, device):
+    """Capture the backward pass of bsr_mv and bsr_mm in a graph and check it matches an eager backward pass."""
+    rng = np.random.default_rng(123)
+
+    A = _make_gradient_test_bsr(4, 4, (2, 2), wp.float32, "compact", rng, device, nnz=8)
+    B = _make_gradient_test_bsr(4, 4, (2, 2), wp.float32, "compact", rng, device, nnz=8)
+    C = _make_gradient_test_bsr(4, 4, (2, 2), wp.float32, "compact", rng, device, nnz=10)
+    x = wp.array(rng.random((4, 2)), dtype=wp.vec2, device=device, requires_grad=True)
+
+    with wp.Tape() as tape:
+        y = bsr_mv(A, x)
+        bsr_mm(A, B, C, beta=0.5, topology="masked")
+
+    def backward():
+        y.grad.fill_(1.0)
+        C.values.grad.fill_(1.0)
+        tape.backward()
+
+    backward()
+    expected = [a.grad.numpy() for a in (x, A.values, B.values)]
+    tape.zero()
+
+    with wp.ScopedDevice(device):
+        with wp.ScopedCapture(force_module_load=False) as capture:
+            backward()
+    wp.capture_launch(capture.graph)
+
+    for a, a_grad in zip((x, A.values, B.values), expected, strict=True):
+        assert_np_equal(a.grad.numpy(), a_grad, tol=1.0e-5)
+
+
 devices = get_test_devices()
 cuda_test_devices = get_selected_cuda_test_devices()
 cuda_test_devices_with_mempool = get_selected_cuda_test_devices_with_mempool()
+devices_with_graph_capture_allocation = get_test_devices_with_graph_capture_allocation()
+
+
+def _batch_matrix(device, dtype, block, padded, nrow=11, ncol=11, seed=0):
+    """Return a random sparse matrix in the requested storage and its dense equivalent."""
+    rng = np.random.default_rng(seed)
+    dense = (rng.random((nrow * block, ncol * block)) < 0.3) * rng.normal(size=(nrow * block, ncol * block))
+    dense[np.arange(min(nrow, ncol) * block), np.arange(min(nrow, ncol) * block)] += 4.0
+    rows, cols = np.nonzero(dense)
+    scalar = bsr_from_triplets(
+        nrow * block,
+        ncol * block,
+        wp.array(rows, dtype=int, device=device),
+        wp.array(cols, dtype=int, device=device),
+        wp.array(dense[rows, cols], dtype=dtype, device=device),
+    )
+    A = bsr_copy(scalar, block_shape=(block, block)) if block > 1 else scalar
+    if padded:
+        block_rows, block_cols = np.nonzero(_bsr_to_dense(A).reshape(nrow, block, ncol, block).any(axis=(1, 3)))
+        values = _bsr_to_dense(A).reshape(nrow, block, ncol, block).transpose(0, 2, 1, 3)[block_rows, block_cols]
+        block_type = dtype if block == 1 else wp.types.matrix(shape=(block, block), dtype=dtype)
+        A = bsr_zeros(nrow, ncol, block_type, device=device, row_capacity=ncol)
+        bsr_set_from_triplets(
+            A,
+            wp.array(block_rows, dtype=int, device=device),
+            wp.array(block_cols, dtype=int, device=device),
+            wp.array(values if block > 1 else values.reshape(-1), dtype=block_type, device=device),
+            topology="padded",
+        )
+    return A, dense
+
+
+def _batch_algorithms(device, A):
+    """Return every strategy that supports ``A`` on ``device``."""
+    from warp._src.sparse_multi_rhs import supports  # noqa: PLC0415
+
+    return ["auto", "loop"] + [algorithm for algorithm in ("rows", "columns") if supports(algorithm, A, device)]
+
+
+def test_bsr_mv_batch(test, device):
+    """Check batched products against NumPy for every strategy, storage, scaling and aliasing."""
+    device = wp.get_device(device)
+    rng = np.random.default_rng(7)
+    for dtype, tol in ((wp.float32, 1e-4), (wp.float64, 1e-12)):
+        for block in (1, 2, 3):
+            for padded in (False, True):
+                A, dense = _batch_matrix(device, dtype, block, padded)
+                n = dense.shape[0]
+                for count in (2, 9, 33):
+                    X = rng.normal(size=(count, n))
+                    Y = rng.normal(size=(count, n))
+                    for algorithm in _batch_algorithms(device, A):
+                        for alpha, beta in ((1.0, 0.0), (2.0, 0.5), (0.0, 1.5)):
+                            x = wp.array(X, dtype=dtype, device=device)
+                            y = wp.array(Y, dtype=dtype, device=device)
+                            bsr_mv(A, x, y, alpha, beta, algorithm=algorithm)
+                            np.testing.assert_allclose(
+                                y.numpy(), alpha * X @ dense.T + beta * Y, rtol=tol, atol=tol, err_msg=algorithm
+                            )
+                        # Exact in-place aliasing.
+                        x = wp.array(X, dtype=dtype, device=device)
+                        bsr_mv(A, x, x, 2.0, 1.0, algorithm=algorithm)
+                        np.testing.assert_allclose(x.numpy(), 2.0 * X @ dense.T + X, rtol=tol, atol=tol)
+    # A zero alpha leaves x unread, so NaN inputs cannot reach the result.
+    for block in (1, 3):
+        A, dense = _batch_matrix(device, wp.float64, block, False)
+        Y = rng.normal(size=(5, dense.shape[0]))
+        for algorithm in _batch_algorithms(device, A):
+            x = wp.full((5, dense.shape[1]), float("nan"), dtype=wp.float64, device=device)
+            y = wp.array(Y, dtype=wp.float64, device=device)
+            bsr_mv(A, x, y, 0.0, 0.5, algorithm=algorithm)
+            np.testing.assert_allclose(y.numpy(), 0.5 * Y, rtol=1e-15, err_msg=algorithm)
+    # A reusable batch-sized work buffer serves every aliased row of the loop.
+    A, dense = _batch_matrix(device, wp.float64, 1, False)
+    X = rng.normal(size=(5, dense.shape[0]))
+    x = wp.array(X, dtype=wp.float64, device=device)
+    work = wp.empty(x.size, dtype=wp.float64, device=device)
+    bsr_mv(A, x, x, algorithm="loop", work_buffer=work)
+    np.testing.assert_allclose(x.numpy(), X @ dense.T, rtol=1e-12)
+    # Vector-valued rows and an allocated output.
+    A, dense = _batch_matrix(device, wp.float64, 3, False)
+    X = rng.normal(size=(4, dense.shape[0]))
+    x = wp.array(X.reshape(4, -1, 3), dtype=wp.vec3d, device=device)
+    y = bsr_mv(A, x, algorithm="rows")
+    test.assertEqual(y.shape, (4, dense.shape[0]))
+    np.testing.assert_allclose(y.numpy(), X @ dense.T, rtol=1e-12)
+    # A vector-valued work buffer serves vector-valued aliased rows, as it does for one vector.
+    x = wp.array(X.reshape(4, -1, 3), dtype=wp.vec3d, device=device)
+    work = wp.empty(x.size, dtype=wp.vec3d, device=device)
+    bsr_mv(A, x, x, algorithm="loop", work_buffer=work)
+    np.testing.assert_allclose(x.numpy().reshape(4, -1), X @ dense.T, rtol=1e-12)
+
+
+def test_bsr_mv_batch_gradient(test, device):
+    """Check that a recorded batch propagates the same gradients as separate recorded products."""
+    rng = np.random.default_rng(31)
+    for block in (1, 3):
+        A, dense = _batch_matrix(device, wp.float64, block, False)
+        n = dense.shape[0]
+        X, Y, Y_adj = rng.normal(size=(3, 3, n))
+        grads = {}
+        for batched in (True, False):
+            A.values.grad = wp.zeros_like(A.values)
+            x = wp.array(X, dtype=wp.float64, device=device, requires_grad=True)
+            y = wp.array(Y, dtype=wp.float64, device=device, requires_grad=True)
+            with wp.Tape() as tape:
+                if batched:
+                    bsr_mv(A, x, y, alpha=2.0, beta=0.5)
+                else:
+                    for r in range(3):
+                        bsr_mv(A, x[r], y[r], alpha=2.0, beta=0.5)
+            tape.backward(grads={y: wp.array(Y_adj, dtype=wp.float64, device=device)})
+            grads[batched] = (x.grad.numpy(), y.grad.numpy(), A.values.grad.numpy())
+        for name, got, expected in zip(("x", "y", "A"), grads[True], grads[False], strict=True):
+            np.testing.assert_allclose(got, expected, rtol=1e-12, atol=1e-12, err_msg=f"{name}, block {block}")
+        # x.grad = alpha * A^T y_adj and the input y gradient is beta * y_adj.
+        np.testing.assert_allclose(grads[True][0], 2.0 * Y_adj @ dense, rtol=1e-12, atol=1e-12)
+        np.testing.assert_allclose(grads[True][1], 0.5 * Y_adj, rtol=1e-12, atol=1e-12)
+        test.assertGreater(np.abs(grads[True][2]).max(), 0.0)
+    # An allocated batch output must keep gradient storage when only the matrix requires gradients.
+    A, dense = _batch_matrix(device, wp.float64, 1, False)
+    A.values.requires_grad = True
+    x = wp.array(rng.normal(size=(3, dense.shape[0])), dtype=wp.float64, device=device)
+    with wp.Tape() as tape:
+        y = bsr_mv(A, x)
+    test.assertTrue(y.requires_grad)
+    tape.backward(grads={y: wp.ones_like(y)})
+    test.assertGreater(np.abs(A.values.grad.numpy()).max(), 0.0)
+
+
+def test_bsr_mv_batch_selection(test, device):
+    """Check which strategy AUTO selects and that explicit strategies reject what they cannot run."""
+    from unittest import mock  # noqa: PLC0415
+
+    from warp._src import sparse_multi_rhs  # noqa: PLC0415
+    from warp._src.sparse_multi_rhs import columns_kernel, resolve, rows_kernel, thread_rows_kernel  # noqa: PLC0415
+
+    device = wp.get_device(device)
+    A, dense = _batch_matrix(device, wp.float64, 1, False)
+    # The small test matrix uses ROWS on both CPU and CUDA.
+    test.assertEqual(resolve("auto", A, 8, device, False), "rows")
+    test.assertEqual(resolve("auto", A, 1, device, False), "loop")
+    test.assertEqual(resolve("auto", A, 8, device, True), "loop")
+    # The row and column kernels are forward-only, so AUTO keeps a batch that needs gradients on LOOP.
+    test.assertEqual(resolve("auto", A, 8, device, False, requires_grad=True), "loop")
+    for kernel in (rows_kernel(wp.mat33d), columns_kernel(wp.float64), thread_rows_kernel(wp.float64, 3)):
+        test.assertFalse(kernel.options["enable_backward"])
+    # ROWS runs one thread per scalar row and vector, except for blocks on CUDA beyond two vectors.
+    blocks3, _ = _batch_matrix(device, wp.float64, 3, False)
+    for block_matrix, count, grouped in ((A, 9, False), (blocks3, 2, False), (blocks3, 3, device.is_cuda)):
+        with (
+            mock.patch.object(sparse_multi_rhs, "rows_kernel", wraps=rows_kernel) as group_factory,
+            mock.patch.object(sparse_multi_rhs, "thread_rows_kernel", wraps=thread_rows_kernel) as thread_factory,
+        ):
+            ones = wp.ones((count, block_matrix.shape[1]), dtype=wp.float64, device=device)
+            bsr_mv(block_matrix, ones, algorithm="rows")
+        test.assertEqual((group_factory.call_count, thread_factory.call_count), (int(grouped), int(not grouped)))
+    diagonal = wp.array([0, 1], dtype=int, device=device)
+    scalar = bsr_from_triplets(4, 4, diagonal, diagonal, wp.array([1.0, 2.0], dtype=float, device=device))
+    blocks = bsr_copy(scalar, block_shape=(2, 2))
+    # Only 1x1 and 3x3 blocks were benchmarked on CUDA, so AUTO keeps other shapes on LOOP there.
+    blocks_choice = "loop" if device.is_cuda else "rows"
+    test.assertEqual(resolve("auto", blocks, 8, device, False), blocks_choice)
+    # A 1x1 matrix block type runs through the block kernels.
+    unit = bsr_zeros(4, 4, wp.types.matrix(shape=(1, 1), dtype=wp.float64), device=device)
+    bsr_set_from_triplets(unit, diagonal, diagonal, wp.ones(2, dtype=unit.values.dtype, device=device))
+    test.assertEqual(resolve("auto", unit, 8, device, False), "rows")
+    for algorithm in _batch_algorithms(device, unit):
+        y = bsr_mv(unit, wp.ones((3, 4), dtype=wp.float64, device=device), algorithm=algorithm)
+        np.testing.assert_allclose(y.numpy(), np.tile([1.0, 1.0, 0.0, 0.0], (3, 1)), err_msg=algorithm)
+    # Explicit strategies accept any square block on CUDA, while AUTO keeps untuned shapes on LOOP.
+    test.assertEqual(resolve("rows", blocks, 8, device, False), "rows")
+    if device.is_cuda:
+        test.assertEqual(resolve("columns", blocks, 8, device, False), "columns")
+    else:
+        for matrix in (A, blocks):
+            with test.assertRaises(ValueError):
+                resolve("columns", matrix, 8, device, False)
+    for algorithm in ("rows", "columns"):
+        with test.assertRaises(ValueError):
+            resolve(algorithm, A, 8, device, True)
+
+    n = dense.shape[0]
+    x = wp.ones((3, n), dtype=wp.float64, device=device)
+    y = wp.zeros((3, n), dtype=wp.float64, device=device)
+    for invalid in ("ROWS", "tiles", 2, None):
+        with test.assertRaises(ValueError):
+            bsr_mv(A, x, y, algorithm=invalid)
+    with test.assertRaises(ValueError):
+        bsr_mv(A, x[0], y[0], algorithm="rows")
+    with test.assertRaises(ValueError):
+        bsr_mv(A, x, wp.zeros((2, n), dtype=wp.float64, device=device), algorithm="rows")
+    with test.assertRaises(ValueError):
+        bsr_mv(A, x, y, algorithm="rows", work_buffer=wp.zeros(3 * n - 1, dtype=wp.float64, device=device))
+    with test.assertRaises(ValueError):
+        bsr_mv(A, x, y, algorithm="rows", tile_size=-1)
+    # Explicit row and column strategies are forward-only: they raise while a tape records gradients,
+    # and run normally outside a tape even when an operand requires gradients.
+    x_grad = wp.ones((3, n), dtype=wp.float64, device=device, requires_grad=True)
+    for algorithm in _batch_algorithms(device, A)[2:]:
+        bsr_mv(A, x_grad, y, algorithm=algorithm)
+        with wp.Tape():
+            with test.assertRaisesRegex(ValueError, "forward-only"):
+                bsr_mv(A, x_grad, y, algorithm=algorithm)
+    # A single row keeps its single-vector meaning under AUTO.
+    single = bsr_mv(A, wp.ones((1, n), dtype=wp.float64, device=device))
+    test.assertEqual(single.shape, (n,))
+    np.testing.assert_allclose(single.numpy(), dense.sum(axis=1), rtol=1e-12)
+    # Transposed batches loop over the single-vector product.
+    X = np.random.default_rng(9).normal(size=(3, n))
+    y = bsr_mv(A, wp.array(X, dtype=wp.float64, device=device), transpose=True)
+    np.testing.assert_allclose(y.numpy(), X @ dense, rtol=1e-12, atol=1e-12)
+
+
+def test_bsr_mean_row_count_sync(test, device):
+    """Check mean active blocks per row for compact, padded and empty matrices, and its capture guard."""
+    device = wp.get_device(device)
+    rows = wp.array([0, 0, 1, 2, 2, 2], dtype=int, device=device)
+    cols = wp.array([0, 1, 1, 0, 1, 2], dtype=int, device=device)
+    values = wp.ones(6, dtype=float, device=device)
+    compact = bsr_from_triplets(4, 4, rows, cols, values)
+    test.assertEqual(compact.mean_row_count_sync(), 1.5)
+    test.assertEqual(compact.nnz, 6)
+    # Padded rows reserve spare capacity that does not count.
+    padded = bsr_zeros(4, 4, float, device=device, row_capacity=4)
+    bsr_set_from_triplets(padded, rows, cols, values, topology="padded")
+    test.assertEqual(padded.mean_row_count_sync(), 1.5)
+    test.assertEqual(bsr_zeros(0, 4, float, device=device).mean_row_count_sync(), 0.0)
+    if device.is_cuda:
+        with wp.ScopedCapture(device=device, force_module_load=False):
+            for matrix in (compact, padded):
+                with test.assertRaises(RuntimeError):
+                    matrix.mean_row_count_sync()
 
 
 class TestSparse(unittest.TestCase):
+    def test_bsr_mv_batch_auto_rule(self):
+        """Check AUTO choices for scalar and 3x3 blocks across batch sizes."""
+        from warp._src.sparse_multi_rhs import auto_strategy  # noqa: PLC0415
+
+        rows, columns = "rows", "columns"
+        counts = (2, 4, 5, 8, 33, 64)
+        cases = {(1, 1): (rows,) * 6, (3, 3): (rows,) * 2 + (columns,) * 4}
+        for block, choices in cases.items():
+            for count, choice in zip(counts, choices, strict=True):
+                self.assertEqual(auto_strategy(block, count, True), choice, (block, count))
+                self.assertEqual(auto_strategy(block, count, False), rows, (block, count))
+        # A known row length moves CSR matrices with long rows to COLUMNS from four vectors.
+        for mean_row_count, choices in ((9.0, (rows,) * 6), (27.0, (rows,) + (columns,) * 5)):
+            for count, choice in zip(counts, choices, strict=True):
+                self.assertEqual(auto_strategy((1, 1), count, True, mean_row_count), choice, (mean_row_count, count))
+                self.assertEqual(auto_strategy((1, 1), count, False, mean_row_count), rows, (mean_row_count, count))
+
     def test_bsr_copy_scale(self):
         nrow = 6
         bsize = 2
@@ -2167,6 +2829,23 @@ class TestSparse(unittest.TestCase):
             bsr_mm(x, y, z, alpha=2.0, beta=0.5, tile_size=1)
             assert_np_equal(_bsr_to_dense(z), 2.0 * xy_dense + 0.5 * z0_dense, tol=1.0e-10)
 
+    def test_bsr_compress_cpu_capture_defers_nnz(self):
+        """Test that a recorded compact compression makes nnz_sync() raise inside a CPU capture."""
+        device = wp.get_device("cpu")
+
+        compact = _make_compress_capture_matrix(device, wp.float32)
+        with self.assertRaisesRegex(NotImplementedError, r"nnz_sync\(\) cannot read a topology update recorded"):
+            with wp.ScopedCapture(device=device, force_module_load=False):
+                bsr_compress(compact, inplace=True)
+                compact.nnz_sync()
+
+        # Padded compression keeps the row-capacity offsets, so the block count stays readable.
+        padded = _make_compress_capture_matrix(device, wp.float32)
+        padded.row_counts = wp.array([3, 3], dtype=int, device=device)
+        with wp.ScopedCapture(device=device, force_module_load=False):
+            bsr_compress(padded, inplace=True, topology="padded")
+            self.assertEqual(padded.nnz_sync(), 6)
+
 
 add_function_test(TestSparse, "test_csr_from_triplets", test_csr_from_triplets, devices=devices)
 add_function_test(TestSparse, "test_bsr_from_triplets", test_bsr_from_triplets, devices=devices)
@@ -2228,8 +2907,39 @@ add_function_test(
 )
 
 add_function_test(TestSparse, "test_csr_mv", make_test_bsr_mv((1, 1), wp.float32), devices=devices)
+add_function_test(TestSparse, "test_bsr_mv_batch", test_bsr_mv_batch, devices=devices)
+add_function_test(TestSparse, "test_bsr_mv_batch_selection", test_bsr_mv_batch_selection, devices=devices)
+add_function_test(TestSparse, "test_bsr_mv_batch_gradient", test_bsr_mv_batch_gradient, devices=devices)
+add_function_test(TestSparse, "test_bsr_mean_row_count_sync", test_bsr_mean_row_count_sync, devices=devices)
 add_function_test(TestSparse, "test_bsr_mv_1_3", make_test_bsr_mv((1, 3), wp.float32), devices=devices)
 add_function_test(TestSparse, "test_bsr_mv_3_3", make_test_bsr_mv((3, 3), wp.float64), devices=devices)
+
+add_function_test(TestSparse, "test_csr_mv_gradient", make_test_bsr_mv_gradient((1, 1), wp.float32), devices=devices)
+add_function_test(
+    TestSparse, "test_bsr_mv_gradient_2_3", make_test_bsr_mv_gradient((2, 3), wp.float64), devices=devices
+)
+add_function_test(TestSparse, "test_bsr_mv_gradient_aliasing", test_bsr_mv_gradient_aliasing, devices=devices)
+add_function_test(TestSparse, "test_csr_mm_gradient", make_test_bsr_mm_gradient((1, 1), wp.float32), devices=devices)
+add_function_test(
+    TestSparse, "test_bsr_mm_gradient_2_3", make_test_bsr_mm_gradient((2, 3), wp.float64), devices=devices
+)
+add_function_test(TestSparse, "test_bsr_mm_gradient_aliasing", test_bsr_mm_gradient_aliasing, devices=devices)
+add_function_test(
+    TestSparse, "test_bsr_product_gradient_operand_rebuilt", test_bsr_product_gradient_operand_rebuilt, devices=devices
+)
+add_function_test(
+    TestSparse, "test_bsr_product_gradient_retain_grad", test_bsr_product_gradient_retain_grad, devices=devices
+)
+add_function_test(TestSparse, "test_bsr_mv_gradient_zero_alpha", test_bsr_mv_gradient_zero_alpha, devices=devices)
+add_function_test(
+    TestSparse, "test_bsr_product_gradient_array_access", test_bsr_product_gradient_array_access, devices=devices
+)
+add_function_test(
+    TestSparse,
+    "test_bsr_gradient_capturability",
+    test_bsr_gradient_capturability,
+    devices=cuda_test_devices_with_mempool,
+)
 
 add_function_test(TestSparse, "test_csr_mv_tile_size", make_test_bsr_mv_tile_size((1, 1)), devices=cuda_test_devices)
 add_function_test(
@@ -2251,7 +2961,7 @@ add_function_test(
     TestSparse,
     "test_bsr_compress_trailing_capacity_capturability",
     test_bsr_compress_trailing_capacity_capturability,
-    devices=cuda_test_devices_with_mempool,
+    devices=devices_with_graph_capture_allocation,
 )
 add_function_test(
     TestSparse,
@@ -2263,7 +2973,43 @@ add_function_test(
     TestSparse,
     "test_bsr_compress_compact_capturability",
     test_bsr_compress_compact_capturability,
-    devices=cuda_test_devices_with_mempool,
+    devices=devices_with_graph_capture_allocation,
+)
+add_function_test(
+    TestSparse,
+    "test_bsr_compress_capture_inplace_compact",
+    test_bsr_compress_capture_inplace_compact,
+    devices=devices_with_graph_capture_allocation,
+)
+add_function_test(
+    TestSparse,
+    "test_bsr_compress_capture_inplace_padded",
+    test_bsr_compress_capture_inplace_padded,
+    devices=devices_with_graph_capture_allocation,
+)
+add_function_test(
+    TestSparse,
+    "test_bsr_compress_capture_out_of_place",
+    test_bsr_compress_capture_out_of_place,
+    devices=devices_with_graph_capture_allocation,
+)
+add_function_test(
+    TestSparse,
+    "test_bsr_compress_capture_structure_only",
+    test_bsr_compress_capture_structure_only,
+    devices=devices_with_graph_capture_allocation,
+)
+add_function_test(
+    TestSparse,
+    "test_bsr_compress_capture_empty",
+    test_bsr_compress_capture_empty,
+    devices=devices_with_graph_capture_allocation,
+)
+add_function_test(
+    TestSparse,
+    "test_bsr_compress_capture_blocks",
+    test_bsr_compress_capture_blocks,
+    devices=devices_with_graph_capture_allocation,
 )
 add_function_test(
     TestSparse,

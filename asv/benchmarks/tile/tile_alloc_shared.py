@@ -23,7 +23,7 @@ def _create_zeros_kernel(tile_dim):
     TILE = tile_dim
 
     @wp.kernel
-    def k(out: wp.array2d(dtype=wp.float32)):
+    def k(out: wp.array2d[wp.float32]):
         i, j = wp.tid()
         t = wp.tile_zeros(shape=(TILE, TILE), dtype=wp.float32, storage="shared")
         wp.tile_store(out, t, offset=(i * TILE, j * TILE))
@@ -35,7 +35,7 @@ def _create_empty_kernel(tile_dim):
     TILE = tile_dim
 
     @wp.kernel
-    def k(out: wp.array2d(dtype=wp.float32)):
+    def k(out: wp.array2d[wp.float32]):
         i, j = wp.tid()
         t = wp.tile_empty(shape=(TILE, TILE), dtype=wp.float32, storage="shared")
         wp.tile_store(out, t, offset=(i * TILE, j * TILE))

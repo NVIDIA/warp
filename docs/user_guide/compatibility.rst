@@ -281,10 +281,10 @@ operations to direct storage mutation.
 New allocations and views have no subclass or metadata propagation guarantee.
 Existing operations that return the input for a no-op retain that identity,
 and an explicit ``out`` buffer remains the caller's object. Python metadata and
-helper methods are unavailable inside kernels; subclass compatibility adds no
-operation interception hooks. Dispatch and metadata propagation require a
-separate protocol; see `GH-1834 <https://github.com/NVIDIA/warp/issues/1834>`_
-for the independently tracked discussion.
+helper methods are unavailable inside kernels. Subclassing alone adds no
+operation interception hooks. To intercept supported host APIs and apply
+its own metadata propagation policy, a subclass can implement the opt-in
+:ref:`__warp_function__ protocol <array-function-overrides>`.
 
 Differentiation, interoperability, and capture follow the parent's capabilities
 and ownership rules. Python metadata is not serialized as capture state.
@@ -340,7 +340,8 @@ All supported components (e.g. API functions, Python versions, GPU architectures
 
 * **Experimental**: A new feature that is still under active development.
   It is available for early adopters to test and provide feedback, but its design may change with little or no notice,
-  including in bugfix releases.
+  including in bugfix releases. Experimental modules live under :mod:`warp.experimental` and must be imported
+  explicitly (for example, ``import warp.experimental.build``).
 * **Stable**: The default state for most features. Changes to stable features follow our deprecation timeline 
   and backward compatibility guarantees.
 * **Deprecated**: A feature that is scheduled for removal in a future release.

@@ -1979,7 +1979,7 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
     }
 
     // Store a tile from shared memory to global memory.
-    // Same three-tier path cascade as copy_from_global (see that function for details).
+    // Same three CUDA paths as copy_from_global; CPU always uses the scalar path.
     template <typename Global> inline CUDA_CALLABLE void copy_to_global(const Global& dest)
     {
 
@@ -2114,7 +2114,10 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
 
     // Load a tile from global memory into shared memory.
     //
-    // Three code paths are attempted in order (CUDA only; CPU always uses scalar):
+    // Single-lane CPU execution (WP_TILE_BLOCK_DIM == 1) loads one row at a time
+    // with independent per-element addresses, which LLVM may vectorize.
+    // Cooperative CPU execution uses the scalar fallback (path 3). CUDA execution
+    // attempts three paths in order:
     //
     //   1. Vectorized float4 (2D+ only)
     //      Reinterprets both global and shared memory as float4 arrays for 128-bit
@@ -2131,16 +2134,50 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
     //      Requires contiguous array, tile in-bounds, tile spans full inner dims,
     //      and non-transposed shared layout.
     //
-    //   3. Scalar fallback (universal)
+    //   3. Scalar fallback
     //      Per-element loads with bounds-checked zero-padding for OOB elements.
     //      Handles non-contiguous arrays, partial tiles, transposed layouts, and
-    //      CPU execution. Uses flat byte-offset indexing for 1D, incremental
-    //      coordinate iteration (tile_coord_iter_t) for N-D.
+    //      cooperative CPU execution. Uses flat byte-offset indexing for 1D,
+    //      incremental coordinate iteration (tile_coord_iter_t) for N-D.
     //
     template <typename Global> inline CUDA_CALLABLE void copy_from_global(const Global& src)
     {
         if (initialized)
             WP_TILE_SYNC();
+
+#if !defined(__CUDA_ARCH__)
+        if constexpr (WP_TILE_BLOCK_DIM == 1) {
+            // Independent addresses let LLVM vectorize CPU loads without the
+            // coordinate dependencies carried by the cooperative iterator.
+            using Shape = typename Layout::Shape;
+            constexpr int last = Shape::N - 1;
+            constexpr int width = Shape::dim(last);
+            for (int row = 0; row < Layout::Size; row += width) {
+                auto c = Layout::coord_from_linear(row);
+                bool valid = true;
+                if constexpr (Global::bounds_check) {
+                    for (int d = 0; d < last; ++d) {
+                        if (src.offset[d] + c[d] >= src.data.shape[d])
+                            valid = false;
+                    }
+                }
+                const int64_t base = src.byte_offset_from_coord(c);
+                for (int col = 0; col < width; ++col) {
+                    c[last] = col;
+                    bool element_valid = valid;
+                    if constexpr (Global::bounds_check)
+                        element_valid = element_valid && src.offset[last] + col < src.data.shape[last];
+                    data(c) = element_valid ? *reinterpret_cast<const T*>(
+                                                  reinterpret_cast<const char*>(src.data.data) + base
+                                                  + int64_t(col) * src.data.strides[last]
+                                              )
+                                            : T {};
+                }
+            }
+            initialized = true;
+            return;
+        }
+#endif
 
 #if defined(__CUDA_ARCH__)
         if constexpr (Layout::Shape::N >= 2) {

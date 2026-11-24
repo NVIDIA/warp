@@ -258,7 +258,7 @@ validate fragments:
         - changelog/**/*
         - pyproject.toml
   script:
-    - uvx --from towncrier==25.8.0 towncrier build --draft --version Unreleased
+    - uvx --from towncrier==26.9.0 towncrier build --draft --version Unreleased
 
 type-check stubs:
   stage: quality
@@ -286,6 +286,7 @@ doctest:
   before_script:
     - df -h
     - !reference [.snippets, move-linux-x86_64-binaries]
+    - !reference [.snippets, fetch-intersphinx-fallback]
   script:
     - uv run --extra docs build_docs.py --doctest --doctest-jobs 4 --no-html --warnings-as-errors
 
@@ -457,6 +458,7 @@ linux-aarch64 cu12 test:
     - .test_common_with_coverage
   before_script:
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-aarch64-binaries]
   script:
     - uv run --extra dev --with "jax[cuda12]>=0.5" --with rmm-cu12 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
@@ -469,6 +471,7 @@ linux-aarch64 cu13 test:
     - .test_common_with_coverage
   before_script:
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-aarch64-binaries]
   script:
     - uv run --extra dev --with "jax[cuda13]>=0.5" --with rmm-cu13 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
@@ -478,7 +481,7 @@ linux-aarch64 cu12 test orin:
   image: $UV_TRIXIE_SLIM_ARM_IMAGE
   # Keep the test runner's --timeout below the job timeout so the runner can
   # still write a partial JUnit report before GitLab kills the job.
-  timeout: 1h 30m
+  timeout: 2h
   extends:
     - .save_test_report_artifact
   rules:
@@ -492,11 +495,12 @@ linux-aarch64 cu12 test orin:
   before_script:
     - !reference [.snippets, section-start-install-deps]
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-aarch64-binaries]
     - uv sync --extra dev --no-install-package psutil
     - !reference [.snippets, section-end-install-deps]
   script:
-    - uv run --with rmm-cu12 -m warp.tests --maxjobs 4 --timeout 5100 --junit-report-xml rspec.xml -s autodetect --failfast
+    - uv run --with rmm-cu12 -m warp.tests --maxjobs 4 --timeout 6900 --junit-report-xml rspec.xml -s autodetect --failfast
   tags:
     - gpu/orin
 
@@ -509,6 +513,7 @@ linux-aarch64 cu13 test thor:
   before_script:
     - !reference [.snippets, section-start-install-deps]
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-aarch64-binaries]
     - uv sync --extra dev
     - !reference [.snippets, section-end-install-deps]
@@ -526,6 +531,7 @@ linux-aarch64 cu12 test dgx spark:
   before_script:
     - !reference [.snippets, section-start-install-deps]
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-aarch64-binaries]
     - uv sync --extra dev
     - !reference [.snippets, section-end-install-deps]
@@ -545,6 +551,7 @@ linux-aarch64 cu13 test dgx spark:
   before_script:
     - !reference [.snippets, section-start-install-deps]
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-aarch64-binaries]
     - uv sync --extra dev
     - !reference [.snippets, section-end-install-deps]
@@ -560,14 +567,16 @@ linux-x86_64 cu12 test:
   image: $UV_TRIXIE_IMAGE
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
+    # .ipp_lnx_x86_64_gpu_2x does not pick a GPU product. Some A40 runners return
+    # zeros from the second GPU in the multi-GPU JAX tests.
+    IPP_RUNNER_GPU_TYPE: "NVIDIA-L40S"
   extends:
     - .ipp_lnx_x86_64_gpu_2x
     - .test_common_with_coverage
   before_script:
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-x86_64-binaries]
-    # HACK: disable P2P tests due to misbehaving agents
-    - export WARP_DISABLE_P2P_TESTS=1
   script:
     - uv run --extra dev --extra torch-cu12 --with "jax[cuda12]>=0.5" --with rmm-cu12 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
@@ -576,14 +585,16 @@ linux-x86_64 cu13 test:
   image: $UV_TRIXIE_IMAGE
   variables:
     IPP_RUNNER_EXECUTION_DURATION: "3600"
+    # .ipp_lnx_x86_64_gpu_2x does not pick a GPU product. Some A40 runners return
+    # zeros from the second GPU in the multi-GPU JAX tests.
+    IPP_RUNNER_GPU_TYPE: "NVIDIA-L40S"
   extends:
     - .ipp_lnx_x86_64_gpu_2x
     - .test_common_with_coverage
   before_script:
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-x86_64-binaries]
-    # HACK: disable P2P tests due to misbehaving agents
-    - export WARP_DISABLE_P2P_TESTS=1
   script:
     - uv run --extra dev --extra torch-cu13 --with "jax[cuda13]>=0.5" --with rmm-cu13 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
@@ -593,16 +604,13 @@ linux-x86_64 cu13 blackwell test:
   image: $UV_TRIXIE_SLIM_IMAGE
   extends:
     - .test_common_with_coverage
+    - .blackwell_warp_tags
   before_script:
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-x86_64-binaries]
   script:
     - uv run --extra dev --extra torch-cu13 --with "jax[cuda13]>=0.5" --with rmm-cu13 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
-  tags:
-    - arch/x86_64
-    - gpu/B40
-    - os/linux
-    - platform/horde
 
 linux-x86_64 cu13 free-threaded test:
   stage: test
@@ -618,6 +626,7 @@ linux-x86_64 cu13 free-threaded test:
   before_script:
     - !reference [.snippets, section-start-install-deps]
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - apt-get update && apt-get install build-essential --no-install-recommends -y
     - uv python install 3.14t
     - !reference [.snippets, move-linux-x86_64-binaries]
@@ -646,6 +655,7 @@ linux-x86_64 python 3.15 test:
   before_script:
     - !reference [.snippets, section-start-install-deps]
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - apt-get update && apt-get install build-essential --no-install-recommends -y
     - uv python install 3.15
     - !reference [.snippets, move-linux-x86_64-binaries]
@@ -669,6 +679,7 @@ linux-x86_64 cu13 debug-mode test:
     - .basic_test_changes_rules
   before_script:
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-x86_64-binaries]
   script:
     - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml --suite debug --warp-debug --isolate-test-processes --failfast
@@ -688,6 +699,7 @@ linux-x86_64 cu13 llvm-cuda test:
     - .basic_test_changes_rules
   before_script:
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-x86_64-binaries]
   script:
     - uv run --extra dev python -c "import warp as wp; wp.print_diagnostics(); assert wp.get_cuda_devices(), 'No CUDA device visible to Warp'"
@@ -790,6 +802,7 @@ linux-x86_64 cu13 warp-init test:
     - .basic_test_changes_rules
   before_script:
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-x86_64-binaries]
   script:
     # Keep exactly one test per class: class-level isolation must give every test
@@ -830,9 +843,21 @@ linux-x86_64 cu13 mujoco-warp test:
     # Python environment
     - uv venv
     - uv pip install -e .
-    - uv pip install mujoco
-    - uv pip install "git+https://github.com/google-deepmind/mujoco_warp@main"
+    # MuJoCo Warp's uv sources pull nightly mujoco-core; use the PyPI
+    # release, which upstream keeps MuJoCo Warp main compatible with.
+    - uv pip install --no-sources-package mujoco-core "git+https://github.com/google-deepmind/mujoco_warp@main"
     - uv pip install pytest pytest-xdist "jax[cuda13]"
+    - |
+      uv run --no-sync python - <<'PY'
+      from importlib import metadata
+      import json
+
+      print(f"mujoco-core: {metadata.version('mujoco-core')}")
+      distribution = metadata.distribution("mujoco-warp")
+      origin = json.loads(distribution.read_text("direct_url.json"))
+      commit = origin["vcs_info"]["commit_id"]
+      print(f"MuJoCo Warp commit: {commit}")
+      PY
     - source .venv/bin/activate
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
@@ -858,9 +883,21 @@ linux-x86_64 cu13 mujoco-warp serial test:
     # Python environment
     - uv venv
     - uv pip install -e .
-    - uv pip install mujoco
-    - uv pip install "git+https://github.com/google-deepmind/mujoco_warp@main"
+    # MuJoCo Warp's uv sources pull nightly mujoco-core; use the PyPI
+    # release, which upstream keeps MuJoCo Warp main compatible with.
+    - uv pip install --no-sources-package mujoco-core "git+https://github.com/google-deepmind/mujoco_warp@main"
     - uv pip install pytest
+    - |
+      uv run --no-sync python - <<'PY'
+      from importlib import metadata
+      import json
+
+      print(f"mujoco-core: {metadata.version('mujoco-core')}")
+      distribution = metadata.distribution("mujoco-warp")
+      origin = json.loads(distribution.read_text("direct_url.json"))
+      commit = origin["vcs_info"]["commit_id"]
+      print(f"MuJoCo Warp commit: {commit}")
+      PY
     - source .venv/bin/activate
     - echo -e "\\e[0Ksection_end:`date +%s`:install_dependencies\\r\\e[0K"
   script:
@@ -910,6 +947,7 @@ linux-x86_64 cu13 python-matrix test:
   before_script:
     - !reference [.snippets, section-start-install-deps]
     - df -h
+    - !reference [.snippets, print-cpu-info]
     # Python 3.14 requires a C compiler for some dependencies
     - if [ "$UV_PYTHON" = "3.14" ]; then apt-get update && apt-get install build-essential --no-install-recommends -y; fi
     - !reference [.snippets, move-linux-x86_64-binaries]
@@ -929,6 +967,7 @@ linux-x86_64 cu13 cpp-examples test:
     - .basic_test_changes_rules
   before_script:
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-x86_64-binaries]
     - ls -lh warp/bin/*.so  # Verify binaries exist
   script:
@@ -981,21 +1020,16 @@ clang compilation:
     - .basic_test_changes_rules
     - .trigger_common
 
-# Paths that could affect an airspeed velocity (ASV) benchmark result.
-.asv-benchmark-paths:
+# Paths that change Warp or its build, and so can change an airspeed
+# velocity (ASV) benchmark result.
+.asv-warp-paths:
   changes:
-    - .gitlab-ci.yml
-    - .gitlab/ci/asv*.yml
-    - asv/**/*
-    - asv.conf.json
     - warp/*.py
-    - warp/*.pyi
-    - warp/py.typed
     - warp/_src/**/*
     - warp/examples/assets/**/*
     - warp/examples/fem/utils.py
+    - warp/experimental/**/*
     - warp/fem/**/*
-    - warp/jax_experimental/**/*
     - warp/native/**/*
     - warp/optim/**/*
     - warp/render/**/*
@@ -1004,6 +1038,15 @@ clang compilation:
     - deps/*
     - build_lib.py
     - build_llvm.py
+
+# Paths that change only how ASV runs. MRs run ASV to test changes to them;
+# main runs it only for the ASV CI files, whose main-only parts MRs skip.
+.asv-setup-paths:
+  changes:
+    - .gitlab-ci.yml
+    - .gitlab/ci/asv*.yml
+    - asv/**/*
+    - asv.conf.json
 
 # Run the ASV benchmark suite. Auto-triggers on MR pipelines whose diff
 # touches any path that could affect a benchmark result; the child pipeline
@@ -1019,16 +1062,18 @@ asv benchmarks:
     - .trigger_common
   rules:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
-      changes: !reference [.asv-benchmark-paths, changes]
-    # Manual fallback: any MR whose diff doesn't match the path filter
+      changes: !reference [.asv-warp-paths, changes]
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+      changes: !reference [.asv-setup-paths, changes]
+    # Manual fallback: any MR whose diff doesn't match the path filters
     # above can still opt in to bench via a play button (e.g. tooling
     # changes that affect codegen but live outside warp/**).
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
       when: manual
       allow_failure: true
 
-# Benchmark each push to main that touches the same paths against the main
-# tip before the push, on the L40 and RTX PRO 6000 pools.
+# Benchmark each push to main that changes Warp or the ASV CI files against
+# the main tip before the push, on the L40, RTX PRO 6000, and B200 pools.
 asv main benchmarks:
   stage: child pipelines
   trigger:
@@ -1041,20 +1086,11 @@ asv main benchmarks:
     ASV_PUSH_BEFORE_SHA: $CI_COMMIT_BEFORE_SHA
   rules:
     - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-      changes: !reference [.asv-benchmark-paths, changes]
-
-# Benchmark the last day of main on the B200 pool from the daily schedule.
-asv nightly benchmarks:
-  stage: child pipelines
-  trigger:
-    include: /.gitlab/ci/asv-main.yml
-  needs: []
-  extends:
-    - .trigger_common
-  variables:
-    ASV_COMPARE_MODE: nightly
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes: !reference [.asv-warp-paths, changes]
+    # MR pipelines don't run the main-only parts of the ASV CI files.
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes:
+        - .gitlab/ci/asv*.yml
 
 # ==============================================================================
 # Packaging Jobs
@@ -1246,6 +1282,7 @@ publish wheels to github release:
     - !reference [.snippets, section-start-install-deps]
     - df -h
     - !reference [.snippets, move-linux-x86_64-binaries]
+    - !reference [.snippets, fetch-intersphinx-fallback]
     - !reference [.snippets, section-end-install-deps]
   script:
     - uv run --extra docs build_docs.py --warnings-as-errors
@@ -1269,6 +1306,44 @@ merge request docs:
     url: https://$CI_PROJECT_ROOT_NAMESPACE.$CI_PAGES_DOMAIN/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/public/index.html
   after_script:
     - echo "View the website at https://$CI_PROJECT_ROOT_NAMESPACE.$CI_PAGES_DOMAIN/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/public/index.html"
+
+# Refresh the cached intersphinx inventories that the docs jobs fall back to
+# (fetch-intersphinx-fallback in .gitlab/ci/common.yml). A failure here also
+# flags an upstream inventory URL that moved or broke, which the fallback
+# would otherwise hide in MR pipelines. The list must match
+# _intersphinx_mapping in docs/conf.py.
+refresh intersphinx inventories:
+  stage: deploy
+  image: $UV_TRIXIE_IMAGE
+  needs: []
+  variables:
+    IPP_RUNNER_EXECUTION_DURATION: "900"
+  extends:
+    - .ipp_lnx_x86_64_cpu_micro
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - when: manual
+      allow_failure: true
+  script:
+    - |
+      set -e
+      registry="$CI_API_V4_URL/projects/$CI_PROJECT_ID/packages/generic/intersphinx-inventories/latest"
+      while read -r name url; do
+        curl --fail --silent --show-error --location --retry 3 --max-time 60 --output "$name.inv" "$url/objects.inv"
+        head -c 64 "$name.inv" | grep -q "^# Sphinx inventory version 2" || { echo "$url/objects.inv is not a Sphinx inventory"; exit 1; }
+        # Upload only changed inventories; every upload adds a file to the package.
+        if curl --fail --silent --location --header "JOB-TOKEN: $CI_JOB_TOKEN" --output "$name.old" "$registry/$name.inv" && cmp -s "$name.inv" "$name.old"; then
+          echo "$name: unchanged"
+        else
+          curl --fail --silent --show-error --header "JOB-TOKEN: $CI_JOB_TOKEN" --upload-file "$name.inv" "$registry/$name.inv" > /dev/null
+          echo "$name: uploaded"
+        fi
+      done <<'EOF'
+      jax https://docs.jax.dev/en/latest
+      numpy https://numpy.org/doc/stable
+      python https://docs.python.org/3
+      pytorch https://docs.pytorch.org/docs/stable
+      EOF
 
 # Merge requests: Ensure that docs reference files generated by Sphinx have been
 # manually added to the MR if they are changed

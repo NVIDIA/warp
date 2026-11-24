@@ -231,8 +231,8 @@ identical content. Towncrier combines them into one bullet and appends every
 link. Other content links, such as a migration guide, remain allowed.
 
 Remove a manually written GitHub issue link that duplicates the numeric
-filename. In the final generated release section, preserve Towncrier's issue
-links at the end of the bullet when sorting and wrapping.
+filename. In the final generated release section, keep Towncrier's issue
+links inside the bullet's final period when sorting, editing, and rewrapping.
 
 ## Worked rewrites
 

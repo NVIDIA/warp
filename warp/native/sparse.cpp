@@ -520,6 +520,17 @@ WP_API void wp_bsr_compress_inplace_host(
     bool compress_values
 )
 {
+    // Under CPU graph capture, record the compression (so it replays on the
+    // current topology) instead of executing it now on deferred data. Unlike
+    // the transpose, a call without block storage is recorded too: executing
+    // it now would read offsets that earlier recorded ops only write on replay.
+    if (apic_record_bsr_compress(
+            wp_apic_get_recording_state(), apic_resolve_host_ptr, row_count, col_count, block_size,
+            scalar_size_in_bytes, scalar_type, nnz_upper_bound, prune_numerical_zeros, scalar_zero_mask, make_compact,
+            bsr_offsets, bsr_row_counts, bsr_columns, bsr_values, compress_values
+        ))
+        return;
+
     if (row_count <= 0) {
         return;
     }

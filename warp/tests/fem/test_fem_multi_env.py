@@ -1115,24 +1115,6 @@ def test_adaptive_nanogrid_multi_env(test, device):
     _test_sparse_grid_multi_env(test, device, geo, cell_env)
     _assert_environment_first_pressure_partition(test, geo, cell_env, device)
 
-    legacy_env_cells = (
-        wp.array([[0, 0, 0]], dtype=wp.vec3i, device=device),
-        wp.array([[i, j, k] for i in range(2) for j in range(2) for k in range(2)], dtype=wp.vec3i, device=device),
-    )
-    legacy_env_levels = (
-        wp.array([1], dtype=wp.uint8, device=device),
-        wp.array([0] * legacy_env_cells[1].shape[0], dtype=wp.uint8, device=device),
-    )
-    legacy_geo = fem.AdaptiveNanogrid.from_environment_voxels(
-        legacy_env_cells,
-        legacy_env_levels,
-        level_count=2,
-        voxel_size=0.5,
-        device=device,
-    )
-    np.testing.assert_array_equal(legacy_geo.env_offsets.numpy(), np.array([[0, 0, 0], [4, 0, 0]], dtype=np.int32))
-    test.assertEqual(legacy_geo.cell_count(), 9)
-
     aligned_points = wp.array([[-1, 0, 0], [0, 0, 0]], dtype=wp.vec3i, device=device)
     aligned_levels = wp.array([2, 0], dtype=wp.uint8, device=device)
     aligned_envs = wp.array([0, 1], dtype=wp.int32, device=device)

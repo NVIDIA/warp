@@ -400,6 +400,54 @@ def test_constant_reuse_after_constructor(test, device):
     assert_np_equal(counts.numpy(), np.array([3, 6], dtype=np.int32))
 
 
+SCALAR_CAST_BINS = 8
+
+
+@wp.kernel
+def test_constant_reuse_after_scalar_constructor_kernel(
+    position: wp.float64,
+    values: wp.array[wp.float64],
+    counts: wp.array[wp.int32],
+    wide: wp.array[wp.uint64],
+):
+    """Test that a 64-bit scalar constructor leaves named constants and unrolled indices alone."""
+    # A global constant keeps its int32 type for `SCALAR_CAST_BINS - 1` after a float64 cast.
+    scaled = wp.min(position * wp.float64(SCALAR_CAST_BINS), wp.float64(SCALAR_CAST_BINS))
+    counts[0] = wp.min(int(wp.floor(scaled)), SCALAR_CAST_BINS - 1)
+    # A local constant keeps its int32 type for `2 * bits` after a uint64 cast.
+    bits = 3
+    wide[0] = wp.uint64(1) << wp.uint64(bits)
+    counts[1] = 2 * bits
+    # An unrolled loop index keeps its int32 type for `10 + i` after a float64 cast.
+    for i in range(-1, 3):
+        values[i + 1] = wp.float64(i) * wp.float64(0.5)
+        counts[i + 3] = 10 + i
+
+
+def test_constant_reuse_after_scalar_constructor(test, device):
+    """Verify ``wp.float64``/``wp.int64``/``wp.uint64`` of a shared constant return a new value.
+
+    Only a literal argument belongs to the constructor call. A named constant or an unrolled loop
+    index is shared with every later expression that names it, so retyping it in place would
+    change the type of those expressions too.
+    """
+    values = wp.empty(4, dtype=wp.float64, device=device)
+    counts = wp.empty(6, dtype=wp.int32, device=device)
+    wide = wp.empty(1, dtype=wp.uint64, device=device)
+
+    wp.launch(
+        test_constant_reuse_after_scalar_constructor_kernel,
+        dim=1,
+        inputs=[2.0],
+        outputs=[values, counts, wide],
+        device=device,
+    )
+
+    assert_np_equal(values.numpy(), np.array([-0.5, 0.0, 0.5, 1.0], dtype=np.float64))
+    assert_np_equal(counts.numpy(), np.array([7, 6, 9, 10, 11, 12], dtype=np.int32))
+    assert_np_equal(wide.numpy(), np.array([8], dtype=np.uint64))
+
+
 def test_vector_dtype_float_is_float32(test, device):
     """Verify that wp.types.vector(..., dtype=float) produces float32 elements."""
     result = wp.zeros(1, dtype=wp.vec3, device=device)
@@ -560,6 +608,12 @@ add_function_test(
     TestConstantPrecision,
     "test_constant_reuse_after_constructor",
     test_constant_reuse_after_constructor,
+    devices=devices,
+)
+add_function_test(
+    TestConstantPrecision,
+    "test_constant_reuse_after_scalar_constructor",
+    test_constant_reuse_after_scalar_constructor,
     devices=devices,
 )
 

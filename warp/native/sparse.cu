@@ -1774,6 +1774,22 @@ WP_API void wp_bsr_compress_inplace_device(
     bool compress_values
 )
 {
+    // Under CUDA APIC capture, also record the compression so a saved graph can
+    // rebuild it, then fall through so the live compression issues onto the
+    // captured stream. Its kernels, CUB scan and select, and temporary
+    // allocations need no host readback, so it is fully capturable. A
+    // compression issued on a stream outside the capture runs immediately and
+    // isn't in the live graph, so it isn't recorded either. No-op outside a
+    // CUDA APIC capture.
+    APICState* apic_state = wp_apic_get_cuda_recording_state();
+    if (apic_state && wp_cuda_stream_is_capturing(wp_cuda_stream_get_current())) {
+        apic_record_bsr_compress(
+            apic_state, apic_resolve_live_ptr, row_count, col_count, block_size, scalar_size_in_bytes, scalar_type,
+            nnz_upper_bound, prune_numerical_zeros, scalar_zero_mask, make_compact, bsr_offsets, bsr_row_counts,
+            bsr_columns, bsr_values, compress_values
+        );
+    }
+
     const bool prune_from_input_values = !compress_values && prune_numerical_zeros && bsr_values != nullptr;
     void* values_to_write = compress_values ? bsr_values : nullptr;
 

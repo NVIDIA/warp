@@ -833,7 +833,9 @@ The ``keepalive_stream`` can be any blocking stream on the appropriate device. T
 Temporary memory that Warp allocates and releases within a single operation, such as the scratch space used by
 :func:`wp.utils.array_scan() <warp.utils.array_scan>`, :func:`wp.utils.radix_sort_pairs() <warp.utils.radix_sort_pairs>`,
 or BVH and mesh construction, is released on the stream that the operation runs on. It does not need this treatment.
-The guidance above applies to arrays and other Warp resources that outlive the operations that use them.
+The guidance above applies to arrays and other Warp resources that outlive the operations that use them, including a
+caller-provided ``temp_storage`` buffer passed to :func:`wp.utils.array_scan() <warp.utils.array_scan>`. Scans that can
+run concurrently on different streams must not share such a buffer.
 
 A similar strategy can be used with any external non-blocking stream that uses Warp resources, not just PyTorch streams. This includes streams created from native handles using ``wp.Stream(..., cuda_stream=handle)``. Here is another example of using a non-blocking stream with explicit ``del`` statements to trigger garbage collection. Note the correct and incorrect ordering of operations.
 

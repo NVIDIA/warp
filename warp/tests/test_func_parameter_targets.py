@@ -19,6 +19,7 @@ import numpy as np
 import warp as wp
 import warp.tests.aux_test_function_double as function_double_module
 import warp.tests.aux_test_function_triple as function_triple_module
+from warp._src.codegen import is_regular_builtin_callable_target
 from warp.tests.unittest_utils import *
 
 
@@ -170,6 +171,50 @@ def test_function_builtin_parameter(test, device):
     assert_np_equal(
         out.numpy(),
         np.array([np.sin(0.5), 3.0, 5.0, 4.0, np.sin(0.5), 1.0], dtype=np.float32),
+    )
+
+
+@wp.func
+def function_apply_binary_generic(g: wp.Function, x: Any, y: Any):
+    return g(x, y)
+
+
+def test_function_builtin_parameter_with_jet_overloads(test, device):
+    """Verify built-in targets stay valid once jets add user-function overloads to them."""
+    # Creating a jet space registers user-function overloads on shared built-ins
+    # such as wp.sin() and wp.max(), for the rest of the process.
+    J = wp.JetSpace(2)
+
+    test.assertTrue(is_regular_builtin_callable_target(wp.sin))
+    test.assertTrue(is_regular_builtin_callable_target(wp.max))
+
+    @wp.kernel(module="unique")
+    def function_builtin_parameter_jet_kernel(z: wp.array[float], out: wp.array[float]):
+        # Scalar arguments resolve to the native built-ins.
+        out[0] = function_apply_unary(wp.sin, z[0])
+        out[1] = function_apply_binary(wp.max, z[0], z[1])
+
+        # Jet arguments resolve to the jet overloads, like direct calls do.
+        a = J.variable(z[0], 0)
+        b = J.variable(z[1], 1)
+        s = function_apply_generic(wp.sin, a)
+        m = function_apply_binary_generic(wp.max, a, b)
+        out[2] = s.value
+        out[3] = s.grad[0]
+        out[4] = s.grad[1]
+        out[5] = m.value
+        out[6] = m.grad[0]
+        out[7] = m.grad[1]
+
+    z = wp.array([0.3, 0.8], dtype=float, device=device)
+    out = wp.empty(8, dtype=float, device=device)
+
+    wp.launch(function_builtin_parameter_jet_kernel, dim=1, inputs=[z], outputs=[out], device=device)
+
+    np.testing.assert_allclose(
+        out.numpy(),
+        np.array([np.sin(0.3), 0.8, np.sin(0.3), np.cos(0.3), 0.0, 0.8, 0.0, 1.0], dtype=np.float32),
+        rtol=1e-6,
     )
 
 
@@ -850,6 +895,12 @@ add_function_test(
     TestFuncParameterTargets,
     func=test_function_builtin_parameter,
     name="test_function_builtin_parameter",
+    devices=devices,
+)
+add_function_test(
+    TestFuncParameterTargets,
+    func=test_function_builtin_parameter_with_jet_overloads,
+    name="test_function_builtin_parameter_with_jet_overloads",
     devices=devices,
 )
 add_function_test(

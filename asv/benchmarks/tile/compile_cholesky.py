@@ -14,10 +14,10 @@ TILE = 32
 
 @wp.kernel
 def cholesky(
-    A: wp.array2d(dtype=wp.float64),
-    L: wp.array2d(dtype=wp.float64),
-    X: wp.array1d(dtype=wp.float64),
-    Y: wp.array1d(dtype=wp.float64),
+    A: wp.array2d[wp.float64],
+    L: wp.array2d[wp.float64],
+    X: wp.array[wp.float64],
+    Y: wp.array[wp.float64],
 ):
     k, j, _ = wp.tid()
 

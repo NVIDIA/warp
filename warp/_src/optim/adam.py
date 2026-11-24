@@ -7,15 +7,15 @@ from warp._src.types import type_repr
 
 @wp.kernel
 def adam_step_kernel_vec3(
-    g: wp.array(dtype=wp.vec3),
-    m: wp.array(dtype=wp.vec3),
-    v: wp.array(dtype=wp.vec3),
+    g: wp.array[wp.vec3],
+    m: wp.array[wp.vec3],
+    v: wp.array[wp.vec3],
     lr: float,
     beta1: float,
     beta2: float,
     t: float,
     eps: float,
-    params: wp.array(dtype=wp.vec3),
+    params: wp.array[wp.vec3],
 ):
     i = wp.tid()
     m[i] = beta1 * m[i] + (1.0 - beta1) * g[i]
@@ -29,15 +29,15 @@ def adam_step_kernel_vec3(
 
 @wp.kernel
 def adam_step_kernel_float(
-    g: wp.array(dtype=float),
-    m: wp.array(dtype=float),
-    v: wp.array(dtype=float),
+    g: wp.array[float],
+    m: wp.array[float],
+    v: wp.array[float],
     lr: float,
     beta1: float,
     beta2: float,
     t: float,
     eps: float,
-    params: wp.array(dtype=float),
+    params: wp.array[float],
 ):
     i = wp.tid()
     m[i] = beta1 * m[i] + (1.0 - beta1) * g[i]
@@ -49,15 +49,15 @@ def adam_step_kernel_float(
 
 @wp.kernel
 def adam_step_kernel_half(
-    g: wp.array(dtype=wp.float16),
-    m: wp.array(dtype=float),
-    v: wp.array(dtype=float),
+    g: wp.array[wp.float16],
+    m: wp.array[float],
+    v: wp.array[float],
     lr: float,
     beta1: float,
     beta2: float,
     t: float,
     eps: float,
-    params: wp.array(dtype=wp.float16),
+    params: wp.array[wp.float16],
 ):
     i = wp.tid()
     m[i] = beta1 * m[i] + (1.0 - beta1) * float(g[i])

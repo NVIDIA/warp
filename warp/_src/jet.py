@@ -1,0 +1,4416 @@
+# SPDX-FileCopyrightText: Copyright (c) 2025 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
+"""First-order forward-mode jets as ordinary differentiable Warp types.
+
+A jet carries a value together with its derivatives along ``width`` directions
+at once::
+
+    x = value + sum_q grad[q] * eps_q
+
+Evaluating a function over jets instead of floats produces its derivatives as a
+side effect of evaluating it, with no hand-differentiation. Because the jet
+arithmetic is itself ordinary Warp code, Warp's reverse-mode autodiff can
+differentiate through it, which makes reverse-over-forward -- and therefore
+Hessians -- available without a second-order tape.
+
+:func:`JetSpace` specializes the types at code-generation time. It is described
+by the inputs being differentiated, called slots:
+
+    ============================ ======= ===================================
+    ``JetSpace(slots)``          width   meaning
+    ============================ ======= ===================================
+    ``(wp.vec3, wp.vec3)``       6       two 3D points
+    ``(wp.vec2, wp.mat22)``      6       a 2D point and a 2x2 matrix
+    ``4``                        4       four scalars
+    ============================ ======= ===================================
+
+and generates:
+
+    ========== ================== ====================
+    Name       ``value``          ``grad``
+    ========== ================== ====================
+    ``scalar`` ``dtype``          ``vector(width)``
+    ``vec2``   ``vector(2)``      ``matrix(2, width)``
+    ``vec3``   ``vector(3)``      ``matrix(3, width)``
+    ========== ================== ====================
+
+(plus ``mat22``, ``mat33``, ``mat32`` and ``mat23``). The derivative width is
+independent of the geometric vector dimension.
+
+The generated arithmetic is registered as overloads of Warp's own builtins, so
+jets are written with ordinary operator and builtin syntax::
+
+    J = wp.JetSpace((wp.vec3, wp.vec3))
+
+
+    @wp.func
+    def spring_energy(x0: J.vec3, x1: J.vec3) -> J.scalar:
+        d = x1 - x0
+        r = wp.length(d) - 1.0
+        return 0.5 * r * r
+
+
+    @wp.kernel
+    def local_gradient(
+        x0: wp.array[wp.vec3],
+        x1: wp.array[wp.vec3],
+        grad: wp.array[J.grad_type_scalar],
+    ):
+        i = wp.tid()
+
+        # Six local scalar variables: x0.x/y/z -> directions 0/1/2 and
+        # x1.x/y/z -> directions 3/4/5.
+        a, b = J.seed(x0[i], x1[i])
+
+        grad[i] = spring_energy(a, b).grad
+
+Note that ``spring_energy`` is a plain :func:`warp.func`. Operators resolve
+through Warp's builtin overload table, so nothing has to be imported or bound
+into the calling module beyond the space itself.
+
+Component access follows the same route: ``v[0]`` on a ``J.vec3`` resolves
+through the ``extract`` builtin and yields a ``J.scalar``.
+
+Seeding and construction have no builtin counterpart and stay on the returned
+namespace, as do the 2D-only helpers :attr:`perp` and :attr:`cross2`, which
+Warp does not define for ``vec2``.
+"""
+
+# NOTE: deliberately no `from __future__ import annotations` here. The structs
+# and functions below are annotated with types created inside _make_jet_space,
+# and Warp resolves struct annotations with inspect.get_annotations(eval_str=True),
+# which evaluates them against module globals. Deferred annotations would turn
+# them into strings that no longer resolve.
+
+import itertools
+import linecache
+import numbers
+import operator
+from types import SimpleNamespace
+from typing import Any
+
+import warp as wp
+import warp._src.context
+from warp._src.codegen import _codegen_lock
+from warp._src.types import float_types, matrix, quaternion, type_is_quaternion, vector
+
+# Specialized namespaces, keyed by (width, dtype): first order and second order.
+# Creating a space adds overloads to shared builtins such as ``add``, so it holds the
+# codegen lock: kernel builds resolve those overloads under the same lock, and two
+# threads creating the same space cannot both register it.
+_CACHE = {}
+_CACHE2 = {}
+
+
+def _range_safe_compute_type(dtype):
+    """Return the type a ``dtype`` jet space computes squares and sums of squares in.
+
+    Squaring float16 values overflows above about 256 and underflows below about 2**-12, even
+    when the derivative being formed is representable, so float16 spaces form those intermediates
+    in float32 and round the results back, as native float16 code does. Other types, including
+    bfloat16, whose range matches float32, compute in their own type.
+    """
+    return wp.float32 if dtype is wp.float16 else dtype
+
+
+def _check_space_args(width: int, dtype) -> None:
+    """Validate a jet space's parameters before any type is generated.
+
+    Checked up front because generating a space mutates Warp's global builtin
+    overload table, which cannot be undone for the life of the process.
+    """
+    if width <= 0:
+        raise ValueError("Jet width must be positive")
+    if dtype not in float_types:
+        raise TypeError(
+            f"Jet dtype must be a Warp floating-point type, got {getattr(dtype, '__name__', dtype)}. "
+            "Derivatives are not representable in an integer type: division in the chain rule "
+            "would truncate."
+        )
+
+
+# Parameter names of each builtin's overloads before any jet overload was added, by builtin name.
+_BUILTIN_PARAMETER_NAMES: dict[str, set[tuple[str, ...]]] = {}
+
+
+def _register(name: str, fn) -> None:
+    """Add every signature of ``fn`` as an overload of the builtin ``name``.
+
+    A Warp function defined several times under one name accumulates its
+    signatures in ``user_overloads``. Builtin overload resolution matches
+    against a function's own ``input_types`` and does not recurse into that
+    dict, so each signature has to be appended individually.
+
+    Keyword arguments bind by name, so each jet overload must use the parameter
+    names of a builtin overload with the same number of parameters. Otherwise
+    ``wp.sin(x=a)`` would compile for floats but not for jets.
+    """
+    builtin = warp._src.context.builtin_functions[name]
+    if name not in _BUILTIN_PARAMETER_NAMES:
+        _BUILTIN_PARAMETER_NAMES[name] = {
+            tuple(overload.input_types) for overload in getattr(builtin, "overloads", None) or (builtin,)
+        }
+    expected = _BUILTIN_PARAMETER_NAMES[name]
+
+    # Check every signature before adding any, so a rejected function leaves the builtin unchanged.
+    overloads = tuple(fn.user_overloads.values()) or (fn,)
+    for overload in overloads:
+        names = tuple(overload.input_types)
+        if names not in expected:
+            candidates = sorted(n for n in expected if len(n) == len(names))
+            raise TypeError(
+                f"Jet overload '{overload.key}' of '{name}' has parameters {names}, but keyword arguments "
+                f"to '{name}' use {candidates or sorted(expected)}"
+            )
+
+    for overload in overloads:
+        builtin.add_overload(overload)
+
+
+@wp.func
+def _component_index(i: int, n: int) -> int:
+    # Count a negative index from the end, as native vector and matrix indexing does.
+    if i < 0:
+        return i + n
+    return i
+
+
+# Quaternion formulas shared by both jet orders. They take the components as
+# separate arguments, any of which may be plain floats or scalar jets, so one
+# definition serves jet/jet and mixed jet/plain operands at either order. Each
+# follows Warp's native quat_t formula term by term, so the values match the
+# native operation's.
+
+
+@wp.func
+def _quat_mul_parts(ax: Any, ay: Any, az: Any, aw: Any, bx: Any, by: Any, bz: Any, bw: Any):
+    # The Hamilton product a * b, as native mul(quat_t, quat_t).
+    return (
+        aw * bx + bw * ax + ay * bz - by * az,
+        aw * by + bw * ay + az * bx - bz * ax,
+        aw * bz + bw * az + ax * by - bx * ay,
+        aw * bw - ax * bx - ay * by - az * bz,
+    )
+
+
+@wp.func
+def _quat_rotate_parts(qx: Any, qy: Any, qz: Any, qw: Any, x0: Any, x1: Any, x2: Any, sign: Any, one: Any, two: Any):
+    # quat_rotate (sign = +1) and quat_rotate_inv (sign = -1), as native, which
+    # assume a unit quaternion.
+    c = two * qw * qw - one
+    d = two * (qx * x0 + qy * x1 + qz * x2)
+    return (
+        x0 * c + qx * d + sign * ((qy * x2 - qz * x1) * qw * two),
+        x1 * c + qy * d + sign * ((qz * x0 - qx * x2) * qw * two),
+        x2 * c + qz * d + sign * ((qx * x1 - qy * x0) * qw * two),
+    )
+
+
+def _make_jet_space(width: int, dtype):
+    _check_space_args(width, dtype)
+
+    # Concrete Warp types generated at Python scope.
+    Grad = vector(width, dtype)
+    Compute = _range_safe_compute_type(dtype)
+    ComputeGrad = Grad if Compute is dtype else vector(width, Compute)
+
+    NativeVec2 = vector(2, dtype)
+    NativeVec3 = vector(3, dtype)
+
+    GradVec2 = matrix((2, width), dtype)
+    GradVec3 = matrix((3, width), dtype)
+
+    # ------------------------------------------------------------------
+    # Core data types
+    # ------------------------------------------------------------------
+
+    @wp.struct
+    class JetScalar:
+        value: dtype
+        grad: Grad
+
+    @wp.struct
+    class JetVec2:
+        value: NativeVec2
+        grad: GradVec2
+
+    @wp.struct
+    class JetVec3:
+        value: NativeVec3
+        grad: GradVec3
+
+    # ------------------------------------------------------------------
+    # Scalar construction / seeding
+    # ------------------------------------------------------------------
+
+    @wp.func
+    def scalar_constant(x: dtype) -> JetScalar:
+        return JetScalar(x, Grad())
+
+    @wp.func
+    def scalar_with_grad(x: dtype, grad: Grad) -> JetScalar:
+        return JetScalar(x, grad)
+
+    @wp.func
+    def scalar_variable(x: dtype, direction: int) -> JetScalar:
+        c = Grad()
+        c[direction] = dtype(1.0)
+        return JetScalar(x, c)
+
+    # ------------------------------------------------------------------
+    # Arithmetic
+    #
+    # Warp maps the AST operators to the builtin names add/sub/mul/div/pow/
+    # pos/neg, so registering these below makes ordinary operator syntax work
+    # on jets in any module.
+    # ------------------------------------------------------------------
+
+    @wp.func
+    def jet_add(a: JetScalar, b: JetScalar) -> JetScalar:
+        return JetScalar(a.value + b.value, a.grad + b.grad)
+
+    @wp.func
+    def jet_add(a: JetScalar, b: dtype) -> JetScalar:
+        return JetScalar(a.value + b, a.grad)
+
+    @wp.func
+    def jet_add(a: dtype, b: JetScalar) -> JetScalar:
+        return JetScalar(a + b.value, b.grad)
+
+    @wp.func
+    def jet_sub(a: JetScalar, b: JetScalar) -> JetScalar:
+        return JetScalar(a.value - b.value, a.grad - b.grad)
+
+    @wp.func
+    def jet_sub(a: JetScalar, b: dtype) -> JetScalar:
+        return JetScalar(a.value - b, a.grad)
+
+    @wp.func
+    def jet_sub(a: dtype, b: JetScalar) -> JetScalar:
+        return JetScalar(a - b.value, -b.grad)
+
+    @wp.func
+    def jet_pos(x: JetScalar) -> JetScalar:
+        return x
+
+    @wp.func
+    def jet_neg(x: JetScalar) -> JetScalar:
+        return JetScalar(-x.value, -x.grad)
+
+    @wp.func
+    def jet_mul(a: JetScalar, b: JetScalar) -> JetScalar:
+        return JetScalar(
+            a.value * b.value,
+            a.grad * b.value + b.grad * a.value,
+        )
+
+    @wp.func
+    def jet_mul(a: JetScalar, b: dtype) -> JetScalar:
+        return JetScalar(a.value * b, a.grad * b)
+
+    @wp.func
+    def jet_mul(a: dtype, b: JetScalar) -> JetScalar:
+        return JetScalar(a * b.value, a * b.grad)
+
+    @wp.func
+    def jet_div(a: JetScalar, b: JetScalar) -> JetScalar:
+        # Divide directly, as native division does: forming 1 / b first overflows for
+        # tiny denominators even when the quotient is representable.
+        value = a.value / b.value
+        return JetScalar(value, (a.grad - b.grad * value) / b.value)
+
+    @wp.func
+    def jet_div(a: JetScalar, b: dtype) -> JetScalar:
+        return JetScalar(a.value / b, a.grad / b)
+
+    @wp.func
+    def jet_div(a: dtype, b: JetScalar) -> JetScalar:
+        # As native adj_div() does, scale the gradient by the quotient before applying 1 / b:
+        # forming the derivative -a / b**2 first overflows for small b although its product
+        # with the gradient fits. 1 / b alone only overflows for subnormal b. For float16 this
+        # is done in float32.
+        wb = Compute(b.value)
+        inv_b = Compute(1.0) / wb
+        quotient = Compute(a) * inv_b
+        return JetScalar(a / b.value, Grad(-(quotient * ComputeGrad(b.grad)) * inv_b))
+
+    # ------------------------------------------------------------------
+    # Scalar elementary functions
+    #
+    # Each unary function is the chain rule f(a) = f(value) with derivative
+    # f'(value) scaling the gradients, so they all route through _lift1.
+    # ------------------------------------------------------------------
+
+    @wp.func
+    def _lift1(value: dtype, fp: dtype, a: JetScalar) -> JetScalar:
+        # Single-argument chain rule: value = f(a.value), fp = f'(a.value).
+        return JetScalar(value, fp * a.grad)
+
+    @wp.func
+    def _lift1_wide(value: dtype, fp: Compute, a: JetScalar) -> JetScalar:
+        # _lift1 with f' in the compute type, applied to the gradient there and rounded once.
+        # For float16, f' can overflow or underflow although f' times the gradient fits.
+        return JetScalar(value, Grad(fp * ComputeGrad(a.grad)))
+
+    @wp.func
+    def jet_pow(x: JetScalar, y: dtype) -> JetScalar:
+        # y == 0 makes this the constant 1, whose derivative is 0. The general
+        # y * x**(y-1) form would evaluate it as 0 * inf at x == 0 and give NaN.
+        # Non-integer y < 1 is left alone: its derivative really is infinite
+        # there, and inf is the honest answer.
+        if y == dtype(0.0):
+            return JetScalar(dtype(1.0), Grad())
+        # y * x**(y-1) is formed in the compute type: in float16 it overflows for small x and
+        # y < 1, or for large x, although its product with the gradient fits.
+        exponent = Compute(y)
+        return _lift1_wide(wp.pow(x.value, y), exponent * wp.pow(Compute(x.value), exponent - Compute(1.0)), x)
+
+    @wp.func
+    def jet_pow(x: JetScalar, y: int) -> JetScalar:
+        if y == 0:
+            return JetScalar(dtype(1.0), Grad())
+        return jet_pow(x, dtype(y))
+
+    @wp.func
+    def jet_pow(x: JetScalar, y: JetScalar) -> JetScalar:
+        # x**y: d = y x**(y-1) dx + x**y log(x) dy.
+        #
+        # Both partials are formed to stay finite at x.value == 0. Factoring
+        # them out of the value instead -- value * (y / x) and value * log(x) --
+        # each evaluates as 0 * inf there and gives NaN, even though the limits
+        # are finite for y > 0. The dx partial below is the same expression the
+        # constant-exponent overload uses; the dy partial takes its limit, which
+        # is 0 as x -> 0 from above.
+        value = wp.pow(x.value, y.value)
+        # As in the constant-exponent overload, an exponent of 0 makes the dx partial 0
+        # rather than 0 * inf at x.value == 0.
+        dx = dtype(0.0)
+        if y.value != dtype(0.0):
+            dx = y.value * wp.pow(x.value, y.value - dtype(1.0))
+        if x.value > dtype(0.0):
+            return JetScalar(value, dx * x.grad + (value * wp.log(x.value)) * y.grad)
+        return JetScalar(value, dx * x.grad)
+
+    @wp.func
+    def jet_pow(x: dtype, y: JetScalar) -> JetScalar:
+        value = wp.pow(x, y.value)
+        # A zero base gives a constant result, so the derivative is 0 rather than 0 * log(0).
+        if x == dtype(0.0):
+            return JetScalar(value, Grad())
+        return JetScalar(value, (value * wp.log(x)) * y.grad)
+
+    @wp.func
+    def jet_sin(x: JetScalar) -> JetScalar:
+        return _lift1(wp.sin(x.value), wp.cos(x.value), x)
+
+    @wp.func
+    def jet_cos(x: JetScalar) -> JetScalar:
+        return _lift1(wp.cos(x.value), -wp.sin(x.value), x)
+
+    @wp.func
+    def jet_tan(x: JetScalar) -> JetScalar:
+        c = wp.cos(x.value)
+        return _lift1(wp.tan(x.value), dtype(1.0) / (c * c), x)
+
+    @wp.func
+    def jet_asin(x: JetScalar) -> JetScalar:
+        # Like native asin(), which clamps its argument to [-1, 1], the derivative is zero
+        # unless the argument lies strictly inside the interval. Test the interval before
+        # taking the square root: its adjoint is NaN outside, even where the result is unused.
+        if x.value > dtype(-1.0) and x.value < dtype(1.0):
+            return _lift1(wp.asin(x.value), dtype(1.0) / wp.sqrt(dtype(1.0) - x.value * x.value), x)
+        return JetScalar(wp.asin(x.value), Grad())
+
+    @wp.func
+    def jet_acos(x: JetScalar) -> JetScalar:
+        if x.value > dtype(-1.0) and x.value < dtype(1.0):
+            return _lift1(wp.acos(x.value), -dtype(1.0) / wp.sqrt(dtype(1.0) - x.value * x.value), x)
+        return JetScalar(wp.acos(x.value), Grad())
+
+    @wp.func
+    def jet_atan(x: JetScalar) -> JetScalar:
+        w = Compute(x.value)
+        return _lift1_wide(wp.atan(x.value), Compute(1.0) / (Compute(1.0) + w * w), x)
+
+    @wp.func
+    def jet_exp(x: JetScalar) -> JetScalar:
+        e = wp.exp(x.value)
+        return _lift1(e, e, x)
+
+    @wp.func
+    def jet_log(x: JetScalar) -> JetScalar:
+        return _lift1(wp.log(x.value), dtype(1.0) / x.value, x)
+
+    @wp.func
+    def jet_sqrt(x: JetScalar) -> JetScalar:
+        s = wp.sqrt(x.value)
+        return _lift1(s, dtype(0.5) / s, x)
+
+    @wp.func
+    def jet_atan2(y: JetScalar, x: JetScalar) -> JetScalar:
+        # Like native atan2(), the derivatives are zero at the origin.
+        wx = Compute(x.value)
+        wy = Compute(y.value)
+        d = wx * wx + wy * wy
+        if d > Compute(0.0):
+            # The derivative is (x y.grad - y x.grad) / d with d = x^2 + y^2. Keep this order:
+            # scaling the terms first rounded them differently once CUDA fused one into the
+            # subtraction, so equal contributions stopped cancelling. Float16 forms it in
+            # float32, where float16 values cannot overflow or underflow it.
+            grad = (wx * ComputeGrad(y.grad) - wy * ComputeGrad(x.grad)) / d
+            return JetScalar(wp.atan2(y.value, x.value), Grad(grad))
+        return JetScalar(wp.atan2(y.value, x.value), Grad())
+
+    @wp.func
+    def jet_atan2(y: JetScalar, x: dtype) -> JetScalar:
+        return jet_atan2(y, scalar_constant(x))
+
+    @wp.func
+    def jet_atan2(y: dtype, x: JetScalar) -> JetScalar:
+        return jet_atan2(scalar_constant(y), x)
+
+    @wp.func
+    def jet_abs(x: JetScalar) -> JetScalar:
+        # Native adj_abs() takes the derivative +1 at zero, and abs(NaN) is NaN.
+        if x.value < dtype(0.0):
+            return -x
+        return JetScalar(wp.abs(x.value), x.grad)
+
+    @wp.func
+    def jet_sign(x: JetScalar) -> JetScalar:
+        return JetScalar(wp.sign(x.value), Grad())
+
+    # ------------------------------------------------------------------
+    # Selection / branching. Comparisons are value-only (a jet has no order),
+    # so branch on ``.value`` and carry the chosen jet's derivatives through.
+    # The choice follows native min()/max()/clamp() and their adjoints: a NaN
+    # operand is treated as missing, and a tie selects the second operand.
+    # ------------------------------------------------------------------
+
+    @wp.func
+    def jet_min(a: JetScalar, b: JetScalar) -> JetScalar:
+        if wp.isnan(a.value):
+            return b
+        if wp.isnan(b.value):
+            return a
+        if a.value < b.value:
+            return a
+        return b
+
+    @wp.func
+    def jet_max(a: JetScalar, b: JetScalar) -> JetScalar:
+        if wp.isnan(a.value):
+            return b
+        if wp.isnan(b.value):
+            return a
+        if a.value > b.value:
+            return a
+        return b
+
+    @wp.func
+    def jet_min(a: JetScalar, b: dtype) -> JetScalar:
+        return jet_min(a, scalar_constant(b))
+
+    @wp.func
+    def jet_min(a: dtype, b: JetScalar) -> JetScalar:
+        return jet_min(scalar_constant(a), b)
+
+    @wp.func
+    def jet_max(a: JetScalar, b: dtype) -> JetScalar:
+        return jet_max(a, scalar_constant(b))
+
+    @wp.func
+    def jet_max(a: dtype, b: JetScalar) -> JetScalar:
+        return jet_max(scalar_constant(a), b)
+
+    @wp.func
+    def jet_clamp(x: JetScalar, low: dtype, high: dtype) -> JetScalar:
+        # Native clamp(x, low, high) is min(max(low, x), high), so the same composition
+        # reproduces its NaN handling and its derivative at either bound.
+        return jet_min(jet_max(scalar_constant(low), x), scalar_constant(high))
+
+    @wp.func
+    def jet_where(cond: bool, value_if_true: JetScalar, value_if_false: JetScalar) -> JetScalar:
+        if cond:
+            return value_if_true
+        return value_if_false
+
+    # ------------------------------------------------------------------
+    # Vec2 / Vec3 construction
+    # ------------------------------------------------------------------
+
+    @wp.func
+    def vec2_constant(v: NativeVec2) -> JetVec2:
+        return JetVec2(v, GradVec2())
+
+    @wp.func
+    def vec3_constant(v: NativeVec3) -> JetVec3:
+        return JetVec3(v, GradVec3())
+
+    @wp.func
+    def vec2_from_scalars(x: JetScalar, y: JetScalar) -> JetVec2:
+        c = GradVec2()
+        for q in range(wp.static(width)):
+            c[0, q] = x.grad[q]
+            c[1, q] = y.grad[q]
+        return JetVec2(NativeVec2(x.value, y.value), c)
+
+    @wp.func
+    def vec3_from_scalars(x: JetScalar, y: JetScalar, z: JetScalar) -> JetVec3:
+        c = GradVec3()
+        for q in range(wp.static(width)):
+            c[0, q] = x.grad[q]
+            c[1, q] = y.grad[q]
+            c[2, q] = z.grad[q]
+        return JetVec3(NativeVec3(x.value, y.value, z.value), c)
+
+    # ------------------------------------------------------------------
+    # Component access
+    # ------------------------------------------------------------------
+
+    @wp.func
+    def jet_extract(a: JetVec2, i: int) -> JetScalar:
+        i = _component_index(i, 2)
+        c = Grad()
+        for q in range(wp.static(width)):
+            c[q] = a.grad[i, q]
+        return JetScalar(a.value[i], c)
+
+    @wp.func
+    def jet_extract(a: JetVec3, i: int) -> JetScalar:
+        i = _component_index(i, 3)
+        c = Grad()
+        for q in range(wp.static(width)):
+            c[q] = a.grad[i, q]
+        return JetScalar(a.value[i], c)
+
+    # ------------------------------------------------------------------
+    # Vec2 arithmetic
+    # ------------------------------------------------------------------
+
+    @wp.func
+    def jet_add(a: JetVec2, b: JetVec2) -> JetVec2:
+        return JetVec2(a.value + b.value, a.grad + b.grad)
+
+    @wp.func
+    def jet_add(a: JetVec2, b: NativeVec2) -> JetVec2:
+        return JetVec2(a.value + b, a.grad)
+
+    @wp.func
+    def jet_add(a: NativeVec2, b: JetVec2) -> JetVec2:
+        return JetVec2(a + b.value, b.grad)
+
+    @wp.func
+    def jet_sub(a: JetVec2, b: JetVec2) -> JetVec2:
+        return JetVec2(a.value - b.value, a.grad - b.grad)
+
+    @wp.func
+    def jet_sub(a: JetVec2, b: NativeVec2) -> JetVec2:
+        return JetVec2(a.value - b, a.grad)
+
+    @wp.func
+    def jet_sub(a: NativeVec2, b: JetVec2) -> JetVec2:
+        return JetVec2(a - b.value, -b.grad)
+
+    @wp.func
+    def jet_pos(x: JetVec2) -> JetVec2:
+        return x
+
+    @wp.func
+    def jet_neg(x: JetVec2) -> JetVec2:
+        return JetVec2(-x.value, -x.grad)
+
+    @wp.func
+    def jet_mul(a: JetVec2, b: dtype) -> JetVec2:
+        return JetVec2(a.value * b, a.grad * b)
+
+    @wp.func
+    def jet_mul(a: dtype, b: JetVec2) -> JetVec2:
+        return JetVec2(a * b.value, a * b.grad)
+
+    @wp.func
+    def jet_mul(a: JetVec2, b: JetScalar) -> JetVec2:
+        c = GradVec2()
+        for q in range(wp.static(width)):
+            c[0, q] = a.grad[0, q] * b.value + a.value[0] * b.grad[q]
+            c[1, q] = a.grad[1, q] * b.value + a.value[1] * b.grad[q]
+        return JetVec2(a.value * b.value, c)
+
+    @wp.func
+    def jet_mul(a: JetScalar, b: JetVec2) -> JetVec2:
+        c = GradVec2()
+        for q in range(wp.static(width)):
+            c[0, q] = a.value * b.grad[0, q] + a.grad[q] * b.value[0]
+            c[1, q] = a.value * b.grad[1, q] + a.grad[q] * b.value[1]
+        return JetVec2(a.value * b.value, c)
+
+    @wp.func
+    def jet_mul(a: NativeVec2, b: JetScalar) -> JetVec2:
+        c = GradVec2()
+        for q in range(wp.static(width)):
+            c[0, q] = a[0] * b.grad[q]
+            c[1, q] = a[1] * b.grad[q]
+        return JetVec2(a * b.value, c)
+
+    @wp.func
+    def jet_mul(a: JetScalar, b: NativeVec2) -> JetVec2:
+        c = GradVec2()
+        for q in range(wp.static(width)):
+            c[0, q] = a.grad[q] * b[0]
+            c[1, q] = a.grad[q] * b[1]
+        return JetVec2(a.value * b, c)
+
+    @wp.func
+    def jet_div(a: JetVec2, b: dtype) -> JetVec2:
+        return JetVec2(a.value / b, a.grad / b)
+
+    @wp.func
+    def jet_div(a: NativeVec2, b: JetScalar) -> JetVec2:
+        value = a / b.value
+        c = GradVec2()
+        for q in range(wp.static(width)):
+            c[0, q] = -value[0] * b.grad[q] / b.value
+            c[1, q] = -value[1] * b.grad[q] / b.value
+        return JetVec2(value, c)
+
+    @wp.func
+    def jet_div(a: JetVec2, b: JetScalar) -> JetVec2:
+        value = a.value / b.value
+        c = GradVec2()
+        for q in range(wp.static(width)):
+            c[0, q] = (a.grad[0, q] - value[0] * b.grad[q]) / b.value
+            c[1, q] = (a.grad[1, q] - value[1] * b.grad[q]) / b.value
+        return JetVec2(value, c)
+
+    # ------------------------------------------------------------------
+    # Vec3 arithmetic
+    # ------------------------------------------------------------------
+
+    @wp.func
+    def jet_add(a: JetVec3, b: JetVec3) -> JetVec3:
+        return JetVec3(a.value + b.value, a.grad + b.grad)
+
+    @wp.func
+    def jet_add(a: JetVec3, b: NativeVec3) -> JetVec3:
+        return JetVec3(a.value + b, a.grad)
+
+    @wp.func
+    def jet_add(a: NativeVec3, b: JetVec3) -> JetVec3:
+        return JetVec3(a + b.value, b.grad)
+
+    @wp.func
+    def jet_sub(a: JetVec3, b: JetVec3) -> JetVec3:
+        return JetVec3(a.value - b.value, a.grad - b.grad)
+
+    @wp.func
+    def jet_sub(a: JetVec3, b: NativeVec3) -> JetVec3:
+        return JetVec3(a.value - b, a.grad)
+
+    @wp.func
+    def jet_sub(a: NativeVec3, b: JetVec3) -> JetVec3:
+        return JetVec3(a - b.value, -b.grad)
+
+    @wp.func
+    def jet_pos(x: JetVec3) -> JetVec3:
+        return x
+
+    @wp.func
+    def jet_neg(x: JetVec3) -> JetVec3:
+        return JetVec3(-x.value, -x.grad)
+
+    @wp.func
+    def jet_mul(a: JetVec3, b: dtype) -> JetVec3:
+        return JetVec3(a.value * b, a.grad * b)
+
+    @wp.func
+    def jet_mul(a: dtype, b: JetVec3) -> JetVec3:
+        return JetVec3(a * b.value, a * b.grad)
+
+    @wp.func
+    def jet_mul(a: JetVec3, b: JetScalar) -> JetVec3:
+        c = GradVec3()
+        for q in range(wp.static(width)):
+            c[0, q] = a.grad[0, q] * b.value + a.value[0] * b.grad[q]
+            c[1, q] = a.grad[1, q] * b.value + a.value[1] * b.grad[q]
+            c[2, q] = a.grad[2, q] * b.value + a.value[2] * b.grad[q]
+        return JetVec3(a.value * b.value, c)
+
+    @wp.func
+    def jet_mul(a: JetScalar, b: JetVec3) -> JetVec3:
+        c = GradVec3()
+        for q in range(wp.static(width)):
+            c[0, q] = a.value * b.grad[0, q] + a.grad[q] * b.value[0]
+            c[1, q] = a.value * b.grad[1, q] + a.grad[q] * b.value[1]
+            c[2, q] = a.value * b.grad[2, q] + a.grad[q] * b.value[2]
+        return JetVec3(a.value * b.value, c)
+
+    @wp.func
+    def jet_mul(a: NativeVec3, b: JetScalar) -> JetVec3:
+        c = GradVec3()
+        for q in range(wp.static(width)):
+            c[0, q] = a[0] * b.grad[q]
+            c[1, q] = a[1] * b.grad[q]
+            c[2, q] = a[2] * b.grad[q]
+        return JetVec3(a * b.value, c)
+
+    @wp.func
+    def jet_mul(a: JetScalar, b: NativeVec3) -> JetVec3:
+        c = GradVec3()
+        for q in range(wp.static(width)):
+            c[0, q] = a.grad[q] * b[0]
+            c[1, q] = a.grad[q] * b[1]
+            c[2, q] = a.grad[q] * b[2]
+        return JetVec3(a.value * b, c)
+
+    @wp.func
+    def jet_div(a: JetVec3, b: dtype) -> JetVec3:
+        return JetVec3(a.value / b, a.grad / b)
+
+    @wp.func
+    def jet_div(a: NativeVec3, b: JetScalar) -> JetVec3:
+        value = a / b.value
+        c = GradVec3()
+        for q in range(wp.static(width)):
+            c[0, q] = -value[0] * b.grad[q] / b.value
+            c[1, q] = -value[1] * b.grad[q] / b.value
+            c[2, q] = -value[2] * b.grad[q] / b.value
+        return JetVec3(value, c)
+
+    @wp.func
+    def jet_div(a: JetVec3, b: JetScalar) -> JetVec3:
+        value = a.value / b.value
+        c = GradVec3()
+        for q in range(wp.static(width)):
+            c[0, q] = (a.grad[0, q] - value[0] * b.grad[q]) / b.value
+            c[1, q] = (a.grad[1, q] - value[1] * b.grad[q]) / b.value
+            c[2, q] = (a.grad[2, q] - value[2] * b.grad[q]) / b.value
+        return JetVec3(value, c)
+
+    # ------------------------------------------------------------------
+    # Dot products
+    # ------------------------------------------------------------------
+
+    @wp.func
+    def jet_dot(a: JetVec2, b: JetVec2) -> JetScalar:
+        c = Grad()
+        for q in range(wp.static(width)):
+            c[q] = (
+                a.grad[0, q] * b.value[0]
+                + a.grad[1, q] * b.value[1]
+                + a.value[0] * b.grad[0, q]
+                + a.value[1] * b.grad[1, q]
+            )
+        return JetScalar(wp.dot(a.value, b.value), c)
+
+    @wp.func
+    def jet_dot(a: JetVec2, b: NativeVec2) -> JetScalar:
+        c = Grad()
+        for q in range(wp.static(width)):
+            c[q] = a.grad[0, q] * b[0] + a.grad[1, q] * b[1]
+        return JetScalar(wp.dot(a.value, b), c)
+
+    @wp.func
+    def jet_dot(a: NativeVec2, b: JetVec2) -> JetScalar:
+        c = Grad()
+        for q in range(wp.static(width)):
+            c[q] = a[0] * b.grad[0, q] + a[1] * b.grad[1, q]
+        return JetScalar(wp.dot(a, b.value), c)
+
+    @wp.func
+    def jet_dot(a: JetVec3, b: JetVec3) -> JetScalar:
+        c = Grad()
+        for q in range(wp.static(width)):
+            c[q] = (
+                a.grad[0, q] * b.value[0]
+                + a.grad[1, q] * b.value[1]
+                + a.grad[2, q] * b.value[2]
+                + a.value[0] * b.grad[0, q]
+                + a.value[1] * b.grad[1, q]
+                + a.value[2] * b.grad[2, q]
+            )
+        return JetScalar(wp.dot(a.value, b.value), c)
+
+    @wp.func
+    def jet_dot(a: JetVec3, b: NativeVec3) -> JetScalar:
+        c = Grad()
+        for q in range(wp.static(width)):
+            c[q] = a.grad[0, q] * b[0] + a.grad[1, q] * b[1] + a.grad[2, q] * b[2]
+        return JetScalar(wp.dot(a.value, b), c)
+
+    @wp.func
+    def jet_dot(a: NativeVec3, b: JetVec3) -> JetScalar:
+        c = Grad()
+        for q in range(wp.static(width)):
+            c[q] = a[0] * b.grad[0, q] + a[1] * b.grad[1, q] + a[2] * b.grad[2, q]
+        return JetScalar(wp.dot(a, b.value), c)
+
+    # ------------------------------------------------------------------
+    # Component-wise products
+    # ------------------------------------------------------------------
+
+    @wp.func
+    def jet_cw_mul(a: JetVec2, b: JetVec2) -> JetVec2:
+        c = GradVec2()
+        for i in range(2):
+            for q in range(wp.static(width)):
+                c[i, q] = a.grad[i, q] * b.value[i] + a.value[i] * b.grad[i, q]
+        return JetVec2(wp.cw_mul(a.value, b.value), c)
+
+    @wp.func
+    def jet_cw_mul(a: JetVec2, b: NativeVec2) -> JetVec2:
+        c = GradVec2()
+        for i in range(2):
+            for q in range(wp.static(width)):
+                c[i, q] = a.grad[i, q] * b[i]
+        return JetVec2(wp.cw_mul(a.value, b), c)
+
+    @wp.func
+    def jet_cw_mul(a: NativeVec2, b: JetVec2) -> JetVec2:
+        c = GradVec2()
+        for i in range(2):
+            for q in range(wp.static(width)):
+                c[i, q] = a[i] * b.grad[i, q]
+        return JetVec2(wp.cw_mul(a, b.value), c)
+
+    @wp.func
+    def jet_cw_div(a: JetVec2, b: JetVec2) -> JetVec2:
+        value = wp.cw_div(a.value, b.value)
+        c = GradVec2()
+        for i in range(2):
+            inv_b = dtype(1.0) / b.value[i]
+            for q in range(wp.static(width)):
+                c[i, q] = (a.grad[i, q] - value[i] * b.grad[i, q]) * inv_b
+        return JetVec2(value, c)
+
+    @wp.func
+    def jet_cw_div(a: JetVec2, b: NativeVec2) -> JetVec2:
+        c = GradVec2()
+        for i in range(2):
+            inv_b = dtype(1.0) / b[i]
+            for q in range(wp.static(width)):
+                c[i, q] = a.grad[i, q] * inv_b
+        return JetVec2(wp.cw_div(a.value, b), c)
+
+    @wp.func
+    def jet_cw_div(a: NativeVec2, b: JetVec2) -> JetVec2:
+        value = wp.cw_div(a, b.value)
+        c = GradVec2()
+        for i in range(2):
+            inv_b = dtype(1.0) / b.value[i]
+            for q in range(wp.static(width)):
+                c[i, q] = -value[i] * b.grad[i, q] * inv_b
+        return JetVec2(value, c)
+
+    @wp.func
+    def jet_cw_mul(a: JetVec3, b: JetVec3) -> JetVec3:
+        c = GradVec3()
+        for i in range(3):
+            for q in range(wp.static(width)):
+                c[i, q] = a.grad[i, q] * b.value[i] + a.value[i] * b.grad[i, q]
+        return JetVec3(wp.cw_mul(a.value, b.value), c)
+
+    @wp.func
+    def jet_cw_mul(a: JetVec3, b: NativeVec3) -> JetVec3:
+        c = GradVec3()
+        for i in range(3):
+            for q in range(wp.static(width)):
+                c[i, q] = a.grad[i, q] * b[i]
+        return JetVec3(wp.cw_mul(a.value, b), c)
+
+    @wp.func
+    def jet_cw_mul(a: NativeVec3, b: JetVec3) -> JetVec3:
+        c = GradVec3()
+        for i in range(3):
+            for q in range(wp.static(width)):
+                c[i, q] = a[i] * b.grad[i, q]
+        return JetVec3(wp.cw_mul(a, b.value), c)
+
+    @wp.func
+    def jet_cw_div(a: JetVec3, b: JetVec3) -> JetVec3:
+        value = wp.cw_div(a.value, b.value)
+        c = GradVec3()
+        for i in range(3):
+            inv_b = dtype(1.0) / b.value[i]
+            for q in range(wp.static(width)):
+                c[i, q] = (a.grad[i, q] - value[i] * b.grad[i, q]) * inv_b
+        return JetVec3(value, c)
+
+    @wp.func
+    def jet_cw_div(a: JetVec3, b: NativeVec3) -> JetVec3:
+        c = GradVec3()
+        for i in range(3):
+            inv_b = dtype(1.0) / b[i]
+            for q in range(wp.static(width)):
+                c[i, q] = a.grad[i, q] * inv_b
+        return JetVec3(wp.cw_div(a.value, b), c)
+
+    @wp.func
+    def jet_cw_div(a: NativeVec3, b: JetVec3) -> JetVec3:
+        value = wp.cw_div(a, b.value)
+        c = GradVec3()
+        for i in range(3):
+            inv_b = dtype(1.0) / b.value[i]
+            for q in range(wp.static(width)):
+                c[i, q] = -value[i] * b.grad[i, q] * inv_b
+        return JetVec3(value, c)
+
+    # ------------------------------------------------------------------
+    # Length / normalization
+    # ------------------------------------------------------------------
+
+    @wp.func
+    def jet_length_sq(a: JetVec2) -> JetScalar:
+        return jet_dot(a, a)
+
+    @wp.func
+    def jet_length_sq(a: JetVec3) -> JetScalar:
+        return jet_dot(a, a)
+
+    @wp.func
+    def jet_length(a: JetVec2) -> JetScalar:
+        # Like native wp.length(), a zero-length vector has a zero gradient. The square
+        # root's derivative is infinite there and would turn the zero gradient into NaN.
+        # Only an exact zero is special: a NaN length stays NaN, as in native.
+        x = Compute(a.value[0])
+        y = Compute(a.value[1])
+        length = wp.sqrt(x * x + y * y)
+        if length == Compute(0.0):
+            return JetScalar(dtype(0.0), Grad())
+        # The gradient is the unit vector applied to the component gradients.
+        inv_length = Compute(1.0) / length
+        grad = (x * inv_length) * ComputeGrad(a.grad[0]) + (y * inv_length) * ComputeGrad(a.grad[1])
+        return JetScalar(dtype(length), Grad(grad))
+
+    @wp.func
+    def jet_length(a: JetVec3) -> JetScalar:
+        # Like native wp.length(), a zero-length vector has a zero gradient. The square
+        # root's derivative is infinite there and would turn the zero gradient into NaN.
+        # Only an exact zero is special: a NaN length stays NaN, as in native.
+        x = Compute(a.value[0])
+        y = Compute(a.value[1])
+        z = Compute(a.value[2])
+        length = wp.sqrt(x * x + y * y + z * z)
+        if length == Compute(0.0):
+            return JetScalar(dtype(0.0), Grad())
+        # The gradient is the unit vector applied to the component gradients.
+        inv_length = Compute(1.0) / length
+        grad = (
+            (x * inv_length) * ComputeGrad(a.grad[0])
+            + (y * inv_length) * ComputeGrad(a.grad[1])
+            + (z * inv_length) * ComputeGrad(a.grad[2])
+        )
+        return JetScalar(dtype(length), Grad(grad))
+
+    @wp.func
+    def jet_normalize(a: JetVec2) -> JetVec2:
+        # Like the native normalize(), a zero-length vector normalizes to zero.
+        length = jet_length(a)
+        if wp.static(Compute is not dtype):
+            # A float16 vector can be longer than the float16 maximum although its unit
+            # vector is representable. Scaling by a power of two is exact and leaves the
+            # unit vector and its derivatives unchanged, so normalize a / 256 instead.
+            if wp.isinf(length.value):
+                scaled = jet_mul(a, dtype(0.00390625))
+                return jet_div(scaled, jet_length(scaled))
+        if length.value > dtype(0.0):
+            return jet_div(a, length)
+        return JetVec2(NativeVec2(), GradVec2())
+
+    @wp.func
+    def jet_normalize(a: JetVec3) -> JetVec3:
+        # Like the native normalize(), a zero-length vector normalizes to zero.
+        length = jet_length(a)
+        if wp.static(Compute is not dtype):
+            # A float16 vector can be longer than the float16 maximum although its unit
+            # vector is representable. Scaling by a power of two is exact and leaves the
+            # unit vector and its derivatives unchanged, so normalize a / 256 instead.
+            if wp.isinf(length.value):
+                scaled = jet_mul(a, dtype(0.00390625))
+                return jet_div(scaled, jet_length(scaled))
+        if length.value > dtype(0.0):
+            return jet_div(a, length)
+        return JetVec3(NativeVec3(), GradVec3())
+
+    # ------------------------------------------------------------------
+    # 2D geometry
+    #
+    # Warp defines neither of these for vec2, so they stay on the namespace
+    # instead of becoming builtin overloads.
+    # ------------------------------------------------------------------
+
+    @wp.func
+    def jet_perp(v: JetVec2) -> JetVec2:
+        c = GradVec2()
+        for q in range(wp.static(width)):
+            c[0, q] = -v.grad[1, q]
+            c[1, q] = v.grad[0, q]
+        return JetVec2(NativeVec2(-v.value[1], v.value[0]), c)
+
+    @wp.func
+    def jet_cross2(a: JetVec2, b: JetVec2) -> JetScalar:
+        # Scalar 2D cross product: ax*by - ay*bx
+        c = Grad()
+        for q in range(wp.static(width)):
+            c[q] = (
+                a.grad[0, q] * b.value[1]
+                + a.value[0] * b.grad[1, q]
+                - a.grad[1, q] * b.value[0]
+                - a.value[1] * b.grad[0, q]
+            )
+        return JetScalar(
+            a.value[0] * b.value[1] - a.value[1] * b.value[0],
+            c,
+        )
+
+    @wp.func
+    def jet_cross2(a: JetVec2, b: NativeVec2) -> JetScalar:
+        c = Grad()
+        for q in range(wp.static(width)):
+            c[q] = a.grad[0, q] * b[1] - a.grad[1, q] * b[0]
+        return JetScalar(a.value[0] * b[1] - a.value[1] * b[0], c)
+
+    @wp.func
+    def jet_cross2(a: NativeVec2, b: JetVec2) -> JetScalar:
+        c = Grad()
+        for q in range(wp.static(width)):
+            c[q] = a[0] * b.grad[1, q] - a[1] * b.grad[0, q]
+        return JetScalar(a[0] * b.value[1] - a[1] * b.value[0], c)
+
+    # ------------------------------------------------------------------
+    # 3D cross product
+    # ------------------------------------------------------------------
+
+    @wp.func
+    def jet_cross(a: JetVec3, b: JetVec3) -> JetVec3:
+        c = GradVec3()
+
+        ax = a.value[0]
+        ay = a.value[1]
+        az = a.value[2]
+
+        bx = b.value[0]
+        by = b.value[1]
+        bz = b.value[2]
+
+        for q in range(wp.static(width)):
+            dax = a.grad[0, q]
+            day = a.grad[1, q]
+            daz = a.grad[2, q]
+
+            dbx = b.grad[0, q]
+            dby = b.grad[1, q]
+            dbz = b.grad[2, q]
+
+            # d(a x b) = da x b + a x db
+            c[0, q] = day * bz - daz * by + ay * dbz - az * dby
+            c[1, q] = daz * bx - dax * bz + az * dbx - ax * dbz
+            c[2, q] = dax * by - day * bx + ax * dby - ay * dbx
+
+        return JetVec3(wp.cross(a.value, b.value), c)
+
+    @wp.func
+    def jet_cross(a: JetVec3, b: NativeVec3) -> JetVec3:
+        c = GradVec3()
+
+        bx = b[0]
+        by = b[1]
+        bz = b[2]
+
+        for q in range(wp.static(width)):
+            dax = a.grad[0, q]
+            day = a.grad[1, q]
+            daz = a.grad[2, q]
+
+            c[0, q] = day * bz - daz * by
+            c[1, q] = daz * bx - dax * bz
+            c[2, q] = dax * by - day * bx
+
+        return JetVec3(wp.cross(a.value, b), c)
+
+    @wp.func
+    def jet_cross(a: NativeVec3, b: JetVec3) -> JetVec3:
+        c = GradVec3()
+
+        ax = a[0]
+        ay = a[1]
+        az = a[2]
+
+        for q in range(wp.static(width)):
+            dbx = b.grad[0, q]
+            dby = b.grad[1, q]
+            dbz = b.grad[2, q]
+
+            c[0, q] = ay * dbz - az * dby
+            c[1, q] = az * dbx - ax * dbz
+            c[2, q] = ax * dby - ay * dbx
+
+        return JetVec3(wp.cross(a, b.value), c)
+
+    # ------------------------------------------------------------------
+    # Square matrix jets (mat22 / mat33)
+    #
+    # ``grad`` flattens the matrix row-major: entry (r, c) is row r*n + c of a
+    # (n*n, width) gradient block. Enough to write FEM energies with a native
+    # deformation gradient -- construction, transpose, matmul, matrix-vector
+    # product, determinant, and trace.
+    # ------------------------------------------------------------------
+
+    NativeMat22 = matrix((2, 2), dtype)
+    NativeMat33 = matrix((3, 3), dtype)
+    NativeMat32 = matrix((3, 2), dtype)
+    NativeMat23 = matrix((2, 3), dtype)
+    GradMat4 = matrix((4, width), dtype)
+    GradMat9 = matrix((9, width), dtype)
+    GradMat6 = matrix((6, width), dtype)  # a 3x2 or 2x3 block, row-major
+
+    @wp.struct
+    class JetMat22:
+        value: NativeMat22
+        grad: GradMat4
+
+    @wp.struct
+    class JetMat33:
+        value: NativeMat33
+        grad: GradMat9
+
+    @wp.struct
+    class JetMat32:  # 3x2, e.g. a triangle deformation gradient
+        value: NativeMat32
+        grad: GradMat6
+
+    @wp.struct
+    class JetMat23:  # 2x3
+        value: NativeMat23
+        grad: GradMat6
+
+    @wp.func
+    def mat22_from_cols(c0: JetVec2, c1: JetVec2) -> JetMat22:
+        v = NativeMat22()
+        m = GradMat4()
+        for r in range(2):
+            v[r, 0] = c0.value[r]
+            v[r, 1] = c1.value[r]
+            for q in range(wp.static(width)):
+                m[r * 2 + 0, q] = c0.grad[r, q]
+                m[r * 2 + 1, q] = c1.grad[r, q]
+        return JetMat22(v, m)
+
+    @wp.func
+    def mat33_from_cols(c0: JetVec3, c1: JetVec3, c2: JetVec3) -> JetMat33:
+        v = NativeMat33()
+        m = GradMat9()
+        for r in range(3):
+            v[r, 0] = c0.value[r]
+            v[r, 1] = c1.value[r]
+            v[r, 2] = c2.value[r]
+            for q in range(wp.static(width)):
+                m[r * 3 + 0, q] = c0.grad[r, q]
+                m[r * 3 + 1, q] = c1.grad[r, q]
+                m[r * 3 + 2, q] = c2.grad[r, q]
+        return JetMat33(v, m)
+
+    @wp.func
+    def mat32_from_cols(c0: JetVec3, c1: JetVec3) -> JetMat32:
+        v = NativeMat32()
+        m = GradMat6()
+        for r in range(3):
+            v[r, 0] = c0.value[r]
+            v[r, 1] = c1.value[r]
+            for q in range(wp.static(width)):
+                m[r * 2 + 0, q] = c0.grad[r, q]
+                m[r * 2 + 1, q] = c1.grad[r, q]
+        return JetMat32(v, m)
+
+    @wp.func
+    def jet_transpose(a: JetMat32) -> JetMat23:
+        m = GradMat6()
+        for r in range(3):
+            for c in range(2):
+                for q in range(wp.static(width)):
+                    m[c * 3 + r, q] = a.grad[r * 2 + c, q]
+        return JetMat23(wp.transpose(a.value), m)
+
+    @wp.func
+    def jet_transpose(a: JetMat23) -> JetMat32:
+        m = GradMat6()
+        for r in range(2):
+            for c in range(3):
+                for q in range(wp.static(width)):
+                    m[c * 2 + r, q] = a.grad[r * 3 + c, q]
+        return JetMat32(wp.transpose(a.value), m)
+
+    @wp.func
+    def jet_mul(a: JetMat23, b: JetMat32) -> JetMat22:
+        # (2x3)(3x2) = 2x2, product rule over the shared dimension.
+        m = GradMat4()
+        for i in range(2):
+            for j in range(2):
+                for q in range(wp.static(width)):
+                    acc = dtype(0.0)
+                    for k in range(3):
+                        acc += a.grad[i * 3 + k, q] * b.value[k, j] + a.value[i, k] * b.grad[k * 2 + j, q]
+                    m[i * 2 + j, q] = acc
+        return JetMat22(a.value * b.value, m)
+
+    @wp.func
+    def jet_mul(a: JetMat23, b: NativeMat32) -> JetMat22:
+        m = GradMat4()
+        for i in range(2):
+            for j in range(2):
+                for q in range(wp.static(width)):
+                    acc = dtype(0.0)
+                    for k in range(3):
+                        acc += a.grad[i * 3 + k, q] * b[k, j]
+                    m[i * 2 + j, q] = acc
+        return JetMat22(a.value * b, m)
+
+    @wp.func
+    def jet_mul(a: NativeMat23, b: JetMat32) -> JetMat22:
+        m = GradMat4()
+        for i in range(2):
+            for j in range(2):
+                for q in range(wp.static(width)):
+                    acc = dtype(0.0)
+                    for k in range(3):
+                        acc += a[i, k] * b.grad[k * 2 + j, q]
+                    m[i * 2 + j, q] = acc
+        return JetMat22(a * b.value, m)
+
+    @wp.func
+    def jet_add(a: JetMat22, b: JetMat22) -> JetMat22:
+        return JetMat22(a.value + b.value, a.grad + b.grad)
+
+    @wp.func
+    def jet_add(a: JetMat22, b: NativeMat22) -> JetMat22:
+        return JetMat22(a.value + b, a.grad)
+
+    @wp.func
+    def jet_add(a: NativeMat22, b: JetMat22) -> JetMat22:
+        return JetMat22(a + b.value, b.grad)
+
+    @wp.func
+    def jet_add(a: JetMat33, b: JetMat33) -> JetMat33:
+        return JetMat33(a.value + b.value, a.grad + b.grad)
+
+    @wp.func
+    def jet_add(a: JetMat33, b: NativeMat33) -> JetMat33:
+        return JetMat33(a.value + b, a.grad)
+
+    @wp.func
+    def jet_add(a: NativeMat33, b: JetMat33) -> JetMat33:
+        return JetMat33(a + b.value, b.grad)
+
+    @wp.func
+    def jet_sub(a: JetMat22, b: JetMat22) -> JetMat22:
+        return JetMat22(a.value - b.value, a.grad - b.grad)
+
+    @wp.func
+    def jet_sub(a: JetMat22, b: NativeMat22) -> JetMat22:
+        return JetMat22(a.value - b, a.grad)
+
+    @wp.func
+    def jet_sub(a: NativeMat22, b: JetMat22) -> JetMat22:
+        return JetMat22(a - b.value, -b.grad)
+
+    @wp.func
+    def jet_sub(a: JetMat33, b: JetMat33) -> JetMat33:
+        return JetMat33(a.value - b.value, a.grad - b.grad)
+
+    @wp.func
+    def jet_sub(a: JetMat33, b: NativeMat33) -> JetMat33:
+        return JetMat33(a.value - b, a.grad)
+
+    @wp.func
+    def jet_sub(a: NativeMat33, b: JetMat33) -> JetMat33:
+        return JetMat33(a - b.value, -b.grad)
+
+    @wp.func
+    def jet_mul(a: JetMat22, b: dtype) -> JetMat22:
+        return JetMat22(a.value * b, a.grad * b)
+
+    @wp.func
+    def jet_mul(a: dtype, b: JetMat22) -> JetMat22:
+        return JetMat22(a * b.value, a * b.grad)
+
+    @wp.func
+    def jet_mul(a: JetMat33, b: dtype) -> JetMat33:
+        return JetMat33(a.value * b, a.grad * b)
+
+    @wp.func
+    def jet_mul(a: dtype, b: JetMat33) -> JetMat33:
+        return JetMat33(a * b.value, a * b.grad)
+
+    @wp.func
+    def jet_transpose(a: JetMat33) -> JetMat33:
+        m = GradMat9()
+        for r in range(3):
+            for c in range(3):
+                for q in range(wp.static(width)):
+                    m[c * 3 + r, q] = a.grad[r * 3 + c, q]
+        return JetMat33(wp.transpose(a.value), m)
+
+    @wp.func
+    def jet_transpose(a: JetMat22) -> JetMat22:
+        m = GradMat4()
+        for r in range(2):
+            for c in range(2):
+                for q in range(wp.static(width)):
+                    m[c * 2 + r, q] = a.grad[r * 2 + c, q]
+        return JetMat22(wp.transpose(a.value), m)
+
+    @wp.func
+    def jet_mul(a: JetMat33, b: JetMat33) -> JetMat33:
+        m = GradMat9()
+        for i in range(3):
+            for j in range(3):
+                for q in range(wp.static(width)):
+                    acc = dtype(0.0)
+                    for k in range(3):
+                        acc += a.grad[i * 3 + k, q] * b.value[k, j] + a.value[i, k] * b.grad[k * 3 + j, q]
+                    m[i * 3 + j, q] = acc
+        return JetMat33(a.value * b.value, m)
+
+    @wp.func
+    def jet_mul(a: JetMat22, b: JetMat22) -> JetMat22:
+        m = GradMat4()
+        for i in range(2):
+            for j in range(2):
+                for q in range(wp.static(width)):
+                    acc = dtype(0.0)
+                    for k in range(2):
+                        acc += a.grad[i * 2 + k, q] * b.value[k, j] + a.value[i, k] * b.grad[k * 2 + j, q]
+                    m[i * 2 + j, q] = acc
+        return JetMat22(a.value * b.value, m)
+
+    @wp.func
+    def jet_mul(a: JetMat33, b: NativeMat33) -> JetMat33:
+        m = GradMat9()
+        for i in range(3):
+            for j in range(3):
+                for q in range(wp.static(width)):
+                    acc = dtype(0.0)
+                    for k in range(3):
+                        acc += a.grad[i * 3 + k, q] * b[k, j]
+                    m[i * 3 + j, q] = acc
+        return JetMat33(a.value * b, m)
+
+    @wp.func
+    def jet_mul(a: NativeMat33, b: JetMat33) -> JetMat33:
+        m = GradMat9()
+        for i in range(3):
+            for j in range(3):
+                for q in range(wp.static(width)):
+                    acc = dtype(0.0)
+                    for k in range(3):
+                        acc += a[i, k] * b.grad[k * 3 + j, q]
+                    m[i * 3 + j, q] = acc
+        return JetMat33(a * b.value, m)
+
+    @wp.func
+    def jet_mul(a: JetMat22, b: NativeMat22) -> JetMat22:
+        m = GradMat4()
+        for i in range(2):
+            for j in range(2):
+                for q in range(wp.static(width)):
+                    acc = dtype(0.0)
+                    for k in range(2):
+                        acc += a.grad[i * 2 + k, q] * b[k, j]
+                    m[i * 2 + j, q] = acc
+        return JetMat22(a.value * b, m)
+
+    @wp.func
+    def jet_mul(a: NativeMat22, b: JetMat22) -> JetMat22:
+        m = GradMat4()
+        for i in range(2):
+            for j in range(2):
+                for q in range(wp.static(width)):
+                    acc = dtype(0.0)
+                    for k in range(2):
+                        acc += a[i, k] * b.grad[k * 2 + j, q]
+                    m[i * 2 + j, q] = acc
+        return JetMat22(a * b.value, m)
+
+    @wp.func
+    def jet_mul(a: JetMat22, b: JetVec2) -> JetVec2:
+        c = GradVec2()
+        for i in range(2):
+            for q in range(wp.static(width)):
+                acc = dtype(0.0)
+                for k in range(2):
+                    acc += a.grad[i * 2 + k, q] * b.value[k] + a.value[i, k] * b.grad[k, q]
+                c[i, q] = acc
+        return JetVec2(a.value * b.value, c)
+
+    @wp.func
+    def jet_mul(a: JetMat33, b: JetVec3) -> JetVec3:
+        c = GradVec3()
+        for i in range(3):
+            for q in range(wp.static(width)):
+                acc = dtype(0.0)
+                for k in range(3):
+                    acc += a.grad[i * 3 + k, q] * b.value[k] + a.value[i, k] * b.grad[k, q]
+                c[i, q] = acc
+        return JetVec3(a.value * b.value, c)
+
+    @wp.func
+    def jet_mul(a: JetMat22, b: NativeVec2) -> JetVec2:
+        c = GradVec2()
+        for i in range(2):
+            for q in range(wp.static(width)):
+                acc = dtype(0.0)
+                for k in range(2):
+                    acc += a.grad[i * 2 + k, q] * b[k]
+                c[i, q] = acc
+        return JetVec2(a.value * b, c)
+
+    @wp.func
+    def jet_mul(a: NativeMat22, b: JetVec2) -> JetVec2:
+        c = GradVec2()
+        for i in range(2):
+            for q in range(wp.static(width)):
+                acc = dtype(0.0)
+                for k in range(2):
+                    acc += a[i, k] * b.grad[k, q]
+                c[i, q] = acc
+        return JetVec2(a * b.value, c)
+
+    @wp.func
+    def jet_mul(a: JetMat33, b: NativeVec3) -> JetVec3:
+        c = GradVec3()
+        for i in range(3):
+            for q in range(wp.static(width)):
+                acc = dtype(0.0)
+                for k in range(3):
+                    acc += a.grad[i * 3 + k, q] * b[k]
+                c[i, q] = acc
+        return JetVec3(a.value * b, c)
+
+    @wp.func
+    def jet_mul(a: NativeMat33, b: JetVec3) -> JetVec3:
+        c = GradVec3()
+        for i in range(3):
+            for q in range(wp.static(width)):
+                acc = dtype(0.0)
+                for k in range(3):
+                    acc += a[i, k] * b.grad[k, q]
+                c[i, q] = acc
+        return JetVec3(a * b.value, c)
+
+    @wp.func
+    def jet_trace(a: JetMat33) -> JetScalar:
+        c = Grad()
+        for q in range(wp.static(width)):
+            c[q] = a.grad[0, q] + a.grad[4, q] + a.grad[8, q]
+        return JetScalar(a.value[0, 0] + a.value[1, 1] + a.value[2, 2], c)
+
+    @wp.func
+    def jet_trace(a: JetMat22) -> JetScalar:
+        c = Grad()
+        for q in range(wp.static(width)):
+            c[q] = a.grad[0, q] + a.grad[3, q]
+        return JetScalar(a.value[0, 0] + a.value[1, 1], c)
+
+    @wp.func
+    def jet_determinant(a: JetMat33) -> JetScalar:
+        # d(det A) = sum_ij cofactor(i,j) * dA[i,j]  (Jacobi's formula).
+        m = a.value
+        cof0 = m[1, 1] * m[2, 2] - m[1, 2] * m[2, 1]
+        cof1 = -(m[1, 0] * m[2, 2] - m[1, 2] * m[2, 0])
+        cof2 = m[1, 0] * m[2, 1] - m[1, 1] * m[2, 0]
+        cof3 = -(m[0, 1] * m[2, 2] - m[0, 2] * m[2, 1])
+        cof4 = m[0, 0] * m[2, 2] - m[0, 2] * m[2, 0]
+        cof5 = -(m[0, 0] * m[2, 1] - m[0, 1] * m[2, 0])
+        cof6 = m[0, 1] * m[1, 2] - m[0, 2] * m[1, 1]
+        cof7 = -(m[0, 0] * m[1, 2] - m[0, 2] * m[1, 0])
+        cof8 = m[0, 0] * m[1, 1] - m[0, 1] * m[1, 0]
+        c = Grad()
+        for q in range(wp.static(width)):
+            c[q] = (
+                cof0 * a.grad[0, q]
+                + cof1 * a.grad[1, q]
+                + cof2 * a.grad[2, q]
+                + cof3 * a.grad[3, q]
+                + cof4 * a.grad[4, q]
+                + cof5 * a.grad[5, q]
+                + cof6 * a.grad[6, q]
+                + cof7 * a.grad[7, q]
+                + cof8 * a.grad[8, q]
+            )
+        return JetScalar(wp.determinant(m), c)
+
+    @wp.func
+    def jet_determinant(a: JetMat22) -> JetScalar:
+        m = a.value
+        c = Grad()
+        for q in range(wp.static(width)):
+            c[q] = m[1, 1] * a.grad[0, q] - m[1, 0] * a.grad[1, q] - m[0, 1] * a.grad[2, q] + m[0, 0] * a.grad[3, q]
+        return JetScalar(m[0, 0] * m[1, 1] - m[0, 1] * m[1, 0], c)
+
+    @wp.func
+    def jet_inverse(a: JetMat33) -> JetMat33:
+        # d(A^-1) = -A^-1 (dA) A^-1.
+        ainv = wp.inverse(a.value)
+        m = GradMat9()
+        for q in range(wp.static(width)):
+            da = NativeMat33()
+            for r in range(3):
+                for c in range(3):
+                    da[r, c] = a.grad[r * 3 + c, q]
+            dinv = -(ainv * da * ainv)
+            for r in range(3):
+                for c in range(3):
+                    m[r * 3 + c, q] = dinv[r, c]
+        return JetMat33(ainv, m)
+
+    @wp.func
+    def jet_inverse(a: JetMat22) -> JetMat22:
+        ainv = wp.inverse(a.value)
+        m = GradMat4()
+        for q in range(wp.static(width)):
+            da = NativeMat22()
+            for r in range(2):
+                for c in range(2):
+                    da[r, c] = a.grad[r * 2 + c, q]
+            dinv = -(ainv * da * ainv)
+            for r in range(2):
+                for c in range(2):
+                    m[r * 2 + c, q] = dinv[r, c]
+        return JetMat22(ainv, m)
+
+    # ------------------------------------------------------------------
+    # More scalar functions: chain rule with f'.
+    # ------------------------------------------------------------------
+
+    @wp.func
+    def jet_sinh(x: JetScalar) -> JetScalar:
+        return _lift1(wp.sinh(x.value), wp.cosh(x.value), x)
+
+    @wp.func
+    def jet_cosh(x: JetScalar) -> JetScalar:
+        return _lift1(wp.cosh(x.value), wp.sinh(x.value), x)
+
+    @wp.func
+    def jet_tanh(x: JetScalar) -> JetScalar:
+        t = wp.tanh(x.value)
+        return _lift1(t, dtype(1.0) - t * t, x)
+
+    @wp.func
+    def jet_log2(x: JetScalar) -> JetScalar:
+        return _lift1(wp.log2(x.value), dtype(1.0) / (x.value * dtype(0.6931471805599453)), x)
+
+    @wp.func
+    def jet_log10(x: JetScalar) -> JetScalar:
+        return _lift1(wp.log10(x.value), dtype(1.0) / (x.value * dtype(2.302585092994046)), x)
+
+    @wp.func
+    def jet_cbrt(x: JetScalar) -> JetScalar:
+        # Infinite slope at zero, as for sqrt.
+        c = wp.cbrt(x.value)
+        return _lift1(c, dtype(1.0) / (dtype(3.0) * c * c), x)
+
+    @wp.func
+    def jet_erf(x: JetScalar) -> JetScalar:
+        # erf'(x) = 2 / sqrt(pi) * exp(-x^2)
+        return _lift1(wp.erf(x.value), dtype(1.1283791670955126) * wp.exp(-x.value * x.value), x)
+
+    @wp.func
+    def jet_floor(x: JetScalar) -> JetScalar:
+        # Piecewise constant: zero derivative away from the integers.
+        return JetScalar(wp.floor(x.value), Grad())
+
+    @wp.func
+    def jet_lerp(a: JetScalar, b: JetScalar, t: JetScalar) -> JetScalar:
+        return a + t * (b - a)
+
+    @wp.func
+    def jet_lerp(a: JetScalar, b: JetScalar, t: dtype) -> JetScalar:
+        return a + t * (b - a)
+
+    @wp.func
+    def jet_lerp(a: dtype, b: dtype, t: JetScalar) -> JetScalar:
+        return a + t * (b - a)
+
+    @wp.func
+    def jet_smoothstep(a: dtype, b: dtype, x: JetScalar) -> JetScalar:
+        # Constant outside [a, b]; t^2 (3 - 2t) inside, as wp.smoothstep.
+        t = (x - a) / (b - a)
+        if t.value <= dtype(0.0):
+            return JetScalar(dtype(0.0), Grad())
+        if t.value >= dtype(1.0):
+            return JetScalar(dtype(1.0), Grad())
+        return t * t * (dtype(3.0) - dtype(2.0) * t)
+
+    @wp.func
+    def jet_smoothstep(a: JetScalar, b: JetScalar, x: JetScalar) -> JetScalar:
+        t = (x - a) / (b - a)
+        if t.value <= dtype(0.0):
+            return JetScalar(dtype(0.0), Grad())
+        if t.value >= dtype(1.0):
+            return JetScalar(dtype(1.0), Grad())
+        return t * t * (dtype(3.0) - dtype(2.0) * t)
+
+    # ------------------------------------------------------------------
+    # Vector reductions, component assignment, and outer products
+    # ------------------------------------------------------------------
+
+    @wp.func
+    def jet_abs(x: JetVec2) -> JetVec2:
+        return vec2_from_scalars(jet_abs(jet_extract(x, 0)), jet_abs(jet_extract(x, 1)))
+
+    @wp.func
+    def jet_abs(x: JetVec3) -> JetVec3:
+        return vec3_from_scalars(jet_abs(jet_extract(x, 0)), jet_abs(jet_extract(x, 1)), jet_abs(jet_extract(x, 2)))
+
+    @wp.func
+    def jet_min(a: JetVec2) -> JetScalar:
+        # The smallest component, carrying that component's derivatives.
+        return jet_extract(a, int(wp.argmin(a.value)))
+
+    @wp.func
+    def jet_min(a: JetVec3) -> JetScalar:
+        return jet_extract(a, int(wp.argmin(a.value)))
+
+    @wp.func
+    def jet_max(a: JetVec2) -> JetScalar:
+        return jet_extract(a, int(wp.argmax(a.value)))
+
+    @wp.func
+    def jet_max(a: JetVec3) -> JetScalar:
+        return jet_extract(a, int(wp.argmax(a.value)))
+
+    @wp.func
+    def jet_assign_copy(a: JetVec2, i: int, value: JetScalar) -> JetVec2:
+        # Built entry by entry into new values: writing into a copy of a's
+        # fields would alias a and break the reverse pass.
+        i = _component_index(i, 2)
+        entries = NativeVec2()
+        c = GradVec2()
+        for k in range(2):
+            if k == i:
+                entries[k] = value.value
+                for q in range(wp.static(width)):
+                    c[k, q] = value.grad[q]
+            else:
+                entries[k] = a.value[k]
+                for q in range(wp.static(width)):
+                    c[k, q] = a.grad[k, q]
+        return JetVec2(entries, c)
+
+    @wp.func
+    def jet_assign_copy(a: JetVec3, i: int, value: JetScalar) -> JetVec3:
+        # Built entry by entry into new values: writing into a copy of a's
+        # fields would alias a and break the reverse pass.
+        i = _component_index(i, 3)
+        entries = NativeVec3()
+        c = GradVec3()
+        for k in range(3):
+            if k == i:
+                entries[k] = value.value
+                for q in range(wp.static(width)):
+                    c[k, q] = value.grad[q]
+            else:
+                entries[k] = a.value[k]
+                for q in range(wp.static(width)):
+                    c[k, q] = a.grad[k, q]
+        return JetVec3(entries, c)
+
+    @wp.func
+    def jet_assign_copy(a: JetVec2, i: int, value: dtype) -> JetVec2:
+        return jet_assign_copy(a, i, scalar_constant(value))
+
+    @wp.func
+    def jet_assign_copy(a: JetVec3, i: int, value: dtype) -> JetVec3:
+        return jet_assign_copy(a, i, scalar_constant(value))
+
+    @wp.func
+    def jet_skew(vec: JetVec3) -> JetMat33:
+        # [vec]_x, the cross-product matrix: entries are signed copies of vec's components.
+        value = wp.skew(vec.value)
+        m = GradMat9()
+        for q in range(wp.static(width)):
+            m[1, q] = -vec.grad[2, q]
+            m[2, q] = vec.grad[1, q]
+            m[3, q] = vec.grad[2, q]
+            m[5, q] = -vec.grad[0, q]
+            m[6, q] = -vec.grad[1, q]
+            m[7, q] = vec.grad[0, q]
+        return JetMat33(value, m)
+
+    # Vector jets by length, matrix jets by shape: (jet type, grad type, plain type).
+    vec_types = {2: (JetVec2, GradVec2, NativeVec2), 3: (JetVec3, GradVec3, NativeVec3)}
+    mat_types = {
+        (2, 2): (JetMat22, GradMat4, NativeMat22),
+        (3, 3): (JetMat33, GradMat9, NativeMat33),
+        (3, 2): (JetMat32, GradMat6, NativeMat32),
+        (2, 3): (JetMat23, GradMat6, NativeMat23),
+    }
+
+    def _matrix_ops(rows: int, cols: int):
+        JM, CM, NM = mat_types[(rows, cols)]
+        JRow, CRow, NRow = vec_types[cols]
+        JCol, CCol, NCol = vec_types[rows]
+
+        @wp.func
+        def jet_neg(x: JM) -> JM:
+            return JM(-x.value, -x.grad)
+
+        @wp.func
+        def jet_pos(x: JM) -> JM:
+            return x
+
+        @wp.func
+        def jet_div(a: JM, b: dtype) -> JM:
+            return JM(a.value / b, a.grad / b)
+
+        @wp.func
+        def jet_mul(a: JetScalar, b: JM) -> JM:
+            m = CM()
+            for r in range(rows):
+                for c in range(cols):
+                    for q in range(wp.static(width)):
+                        m[r * cols + c, q] = a.value * b.grad[r * cols + c, q] + b.value[r, c] * a.grad[q]
+            return JM(a.value * b.value, m)
+
+        @wp.func
+        def jet_mul(a: JM, b: JetScalar) -> JM:
+            return jet_mul(b, a)
+
+        @wp.func
+        def jet_mul(a: JetScalar, b: NM) -> JM:
+            m = CM()
+            for r in range(rows):
+                for c in range(cols):
+                    for q in range(wp.static(width)):
+                        m[r * cols + c, q] = b[r, c] * a.grad[q]
+            return JM(a.value * b, m)
+
+        @wp.func
+        def jet_mul(a: NM, b: JetScalar) -> JM:
+            return jet_mul(b, a)
+
+        @wp.func
+        def jet_div(a: JM, b: JetScalar) -> JM:
+            return jet_mul(dtype(1.0) / b, a)
+
+        @wp.func
+        def jet_div(a: NM, b: JetScalar) -> JM:
+            return jet_mul(dtype(1.0) / b, a)
+
+        @wp.func
+        def jet_ddot(a: JM, b: JM) -> JetScalar:
+            g = Grad()
+            for r in range(rows):
+                for c in range(cols):
+                    for q in range(wp.static(width)):
+                        g[q] += a.grad[r * cols + c, q] * b.value[r, c] + a.value[r, c] * b.grad[r * cols + c, q]
+            return JetScalar(wp.ddot(a.value, b.value), g)
+
+        @wp.func
+        def jet_ddot(a: JM, b: NM) -> JetScalar:
+            g = Grad()
+            for r in range(rows):
+                for c in range(cols):
+                    for q in range(wp.static(width)):
+                        g[q] += a.grad[r * cols + c, q] * b[r, c]
+            return JetScalar(wp.ddot(a.value, b), g)
+
+        @wp.func
+        def jet_ddot(a: NM, b: JM) -> JetScalar:
+            return jet_ddot(b, a)
+
+        @wp.func
+        def jet_cw_mul(a: JM, b: JM) -> JM:
+            m = CM()
+            for r in range(rows):
+                for c in range(cols):
+                    for q in range(wp.static(width)):
+                        m[r * cols + c, q] = (
+                            a.grad[r * cols + c, q] * b.value[r, c] + a.value[r, c] * b.grad[r * cols + c, q]
+                        )
+            return JM(wp.cw_mul(a.value, b.value), m)
+
+        @wp.func
+        def jet_cw_mul(a: JM, b: NM) -> JM:
+            m = CM()
+            for r in range(rows):
+                for c in range(cols):
+                    for q in range(wp.static(width)):
+                        m[r * cols + c, q] = a.grad[r * cols + c, q] * b[r, c]
+            return JM(wp.cw_mul(a.value, b), m)
+
+        @wp.func
+        def jet_cw_mul(a: NM, b: JM) -> JM:
+            return jet_cw_mul(b, a)
+
+        @wp.func
+        def jet_cw_div(a: JM, b: JM) -> JM:
+            value = wp.cw_div(a.value, b.value)
+            m = CM()
+            for r in range(rows):
+                for c in range(cols):
+                    for q in range(wp.static(width)):
+                        m[r * cols + c, q] = (
+                            a.grad[r * cols + c, q] - value[r, c] * b.grad[r * cols + c, q]
+                        ) / b.value[r, c]
+            return JM(value, m)
+
+        @wp.func
+        def jet_cw_div(a: JM, b: NM) -> JM:
+            m = CM()
+            for r in range(rows):
+                for c in range(cols):
+                    for q in range(wp.static(width)):
+                        m[r * cols + c, q] = a.grad[r * cols + c, q] / b[r, c]
+            return JM(wp.cw_div(a.value, b), m)
+
+        @wp.func
+        def jet_cw_div(a: NM, b: JM) -> JM:
+            value = wp.cw_div(a, b.value)
+            m = CM()
+            for r in range(rows):
+                for c in range(cols):
+                    for q in range(wp.static(width)):
+                        m[r * cols + c, q] = -value[r, c] * b.grad[r * cols + c, q] / b.value[r, c]
+            return JM(value, m)
+
+        @wp.func
+        def jet_extract(a: JM, i: int, j: int) -> JetScalar:
+            i = _component_index(i, rows)
+            j = _component_index(j, cols)
+            g = Grad()
+            for q in range(wp.static(width)):
+                g[q] = a.grad[i * cols + j, q]
+            return JetScalar(a.value[i, j], g)
+
+        @wp.func
+        def jet_extract(a: JM, i: int) -> JRow:
+            i = _component_index(i, rows)
+            m = CRow()
+            for c in range(cols):
+                for q in range(wp.static(width)):
+                    m[c, q] = a.grad[i * cols + c, q]
+            return JRow(a.value[i], m)
+
+        @wp.func
+        def jet_assign_copy(a: JM, i: int, j: int, value: JetScalar) -> JM:
+            # Built entry by entry into new values, as for vectors above.
+            i = _component_index(i, rows)
+            j = _component_index(j, cols)
+            entries = NM()
+            m = CM()
+            for r in range(rows):
+                for c in range(cols):
+                    if r == i and c == j:
+                        entries[r, c] = value.value
+                        for q in range(wp.static(width)):
+                            m[r * cols + c, q] = value.grad[q]
+                    else:
+                        entries[r, c] = a.value[r, c]
+                        for q in range(wp.static(width)):
+                            m[r * cols + c, q] = a.grad[r * cols + c, q]
+            return JM(entries, m)
+
+        @wp.func
+        def jet_assign_copy(a: JM, i: int, j: int, value: dtype) -> JM:
+            return jet_assign_copy(a, i, j, scalar_constant(value))
+
+        @wp.func
+        def jet_assign_copy(a: JM, i: int, value: JRow) -> JM:
+            i = _component_index(i, rows)
+            entries = NM()
+            m = CM()
+            for r in range(rows):
+                for c in range(cols):
+                    if r == i:
+                        entries[r, c] = value.value[c]
+                        for q in range(wp.static(width)):
+                            m[r * cols + c, q] = value.grad[c, q]
+                    else:
+                        entries[r, c] = a.value[r, c]
+                        for q in range(wp.static(width)):
+                            m[r * cols + c, q] = a.grad[r * cols + c, q]
+            return JM(entries, m)
+
+        @wp.func
+        def jet_outer(a: JCol, b: JRow) -> JM:
+            m = CM()
+            for r in range(rows):
+                for c in range(cols):
+                    for q in range(wp.static(width)):
+                        m[r * cols + c, q] = a.grad[r, q] * b.value[c] + a.value[r] * b.grad[c, q]
+            return JM(wp.outer(a.value, b.value), m)
+
+        @wp.func
+        def jet_outer(a: JCol, b: NRow) -> JM:
+            m = CM()
+            for r in range(rows):
+                for c in range(cols):
+                    for q in range(wp.static(width)):
+                        m[r * cols + c, q] = a.grad[r, q] * b[c]
+            return JM(wp.outer(a.value, b), m)
+
+        @wp.func
+        def jet_outer(a: NCol, b: JRow) -> JM:
+            m = CM()
+            for r in range(rows):
+                for c in range(cols):
+                    for q in range(wp.static(width)):
+                        m[r * cols + c, q] = a[r] * b.grad[c, q]
+            return JM(wp.outer(a, b.value), m)
+
+        @wp.func
+        def jet_mul(a: JCol, b: JM) -> JRow:
+            # Row vector times matrix: (a^T b)_c = sum_r a_r b_rc.
+            m = CRow()
+            for c in range(cols):
+                for q in range(wp.static(width)):
+                    acc = dtype(0.0)
+                    for r in range(rows):
+                        acc += a.grad[r, q] * b.value[r, c] + a.value[r] * b.grad[r * cols + c, q]
+                    m[c, q] = acc
+            return JRow(a.value * b.value, m)
+
+        @wp.func
+        def jet_mul(a: JCol, b: NM) -> JRow:
+            m = CRow()
+            for c in range(cols):
+                for q in range(wp.static(width)):
+                    acc = dtype(0.0)
+                    for r in range(rows):
+                        acc += a.grad[r, q] * b[r, c]
+                    m[c, q] = acc
+            return JRow(a.value * b, m)
+
+        @wp.func
+        def jet_mul(a: NCol, b: JM) -> JRow:
+            m = CRow()
+            for c in range(cols):
+                for q in range(wp.static(width)):
+                    acc = dtype(0.0)
+                    for r in range(rows):
+                        acc += a[r] * b.grad[r * cols + c, q]
+                    m[c, q] = acc
+            return JRow(a * b.value, m)
+
+        defined = {
+            "neg": jet_neg,
+            "pos": jet_pos,
+            "mul": jet_mul,
+            "div": jet_div,
+            "ddot": jet_ddot,
+            "cw_mul": jet_cw_mul,
+            "cw_div": jet_cw_div,
+            "extract": jet_extract,
+            "assign_copy": jet_assign_copy,
+            "outer": jet_outer,
+        }
+
+        # Square and vector-length-matched overloads that only some shapes take.
+        if rows == cols:
+
+            @wp.func
+            def jet_get_diag(mat: JM) -> JCol:
+                m = CCol()
+                for r in range(rows):
+                    for q in range(wp.static(width)):
+                        m[r, q] = mat.grad[r * cols + r, q]
+                return JCol(wp.get_diag(mat.value), m)
+
+            @wp.func
+            def jet_diag(vec: JCol) -> JM:
+                m = CM()
+                for r in range(rows):
+                    for q in range(wp.static(width)):
+                        m[r * cols + r, q] = vec.grad[r, q]
+                return JM(wp.diag(vec.value), m)
+
+            defined["get_diag"] = jet_get_diag
+            defined["diag"] = jet_diag
+
+        else:
+            # mat22 and mat33 already have these above.
+
+            @wp.func
+            def jet_add(a: JM, b: JM) -> JM:
+                return JM(a.value + b.value, a.grad + b.grad)
+
+            @wp.func
+            def jet_add(a: JM, b: NM) -> JM:
+                return JM(a.value + b, a.grad)
+
+            @wp.func
+            def jet_add(a: NM, b: JM) -> JM:
+                return JM(a + b.value, b.grad)
+
+            @wp.func
+            def jet_sub(a: JM, b: JM) -> JM:
+                return JM(a.value - b.value, a.grad - b.grad)
+
+            @wp.func
+            def jet_sub(a: JM, b: NM) -> JM:
+                return JM(a.value - b, a.grad)
+
+            @wp.func
+            def jet_sub(a: NM, b: JM) -> JM:
+                return JM(a - b.value, -b.grad)
+
+            @wp.func
+            def jet_mul(a: JM, b: dtype) -> JM:
+                return JM(a.value * b, a.grad * b)
+
+            @wp.func
+            def jet_mul(a: dtype, b: JM) -> JM:
+                return JM(a * b.value, a * b.grad)
+
+            defined["add"] = jet_add
+            defined["sub"] = jet_sub
+            defined["mul"] = jet_mul
+
+        # Each call defines a separate overload set, so register it per shape.
+        for name, fn in defined.items():
+            _register(name, fn)
+
+    for shape in mat_types:
+        _matrix_ops(*shape)
+
+    @wp.func
+    def jet_mul(a: JetMat32, b: JetMat23) -> JetMat33:
+        # (3x2)(2x3) = 3x3, e.g. A^T A for a 2x3 A.
+        m = GradMat9()
+        for i in range(3):
+            for j in range(3):
+                for q in range(wp.static(width)):
+                    acc = dtype(0.0)
+                    for k in range(2):
+                        acc += a.grad[i * 2 + k, q] * b.value[k, j] + a.value[i, k] * b.grad[k * 3 + j, q]
+                    m[i * 3 + j, q] = acc
+        return JetMat33(a.value * b.value, m)
+
+    @wp.func
+    def jet_mul(a: JetMat32, b: NativeMat23) -> JetMat33:
+        m = GradMat9()
+        for i in range(3):
+            for j in range(3):
+                for q in range(wp.static(width)):
+                    acc = dtype(0.0)
+                    for k in range(2):
+                        acc += a.grad[i * 2 + k, q] * b[k, j]
+                    m[i * 3 + j, q] = acc
+        return JetMat33(a.value * b, m)
+
+    @wp.func
+    def jet_mul(a: NativeMat32, b: JetMat23) -> JetMat33:
+        m = GradMat9()
+        for i in range(3):
+            for j in range(3):
+                for q in range(wp.static(width)):
+                    acc = dtype(0.0)
+                    for k in range(2):
+                        acc += a[i, k] * b.grad[k * 3 + j, q]
+                    m[i * 3 + j, q] = acc
+        return JetMat33(a * b.value, m)
+
+    # ------------------------------------------------------------------
+    # Decompositions. The factors come from the float decomposition of the
+    # value; their derivatives use the analytic rules that Warp's reverse
+    # mode uses (the transpose of adj_svd3, adj_svd2 and adj_eig3), with the
+    # same clamping of nearly repeated singular values or eigenvalues, rather
+    # than differentiating the iterations.
+    # ------------------------------------------------------------------
+
+    svd_epsilon = 1.0e-12 if dtype == wp.float64 else 1.0e-6
+
+    @wp.func
+    def jet_svd3(A: JetMat33):
+        U, sigma, V = wp.svd3(A.value)
+        eps = dtype(svd_epsilon)
+        sx2 = sigma[0] * sigma[0]
+        sy2 = sigma[1] * sigma[1]
+        sz2 = sigma[2] * sigma[2]
+        f01 = dtype(1.0) / wp.min(sy2 - sx2, -eps)
+        f02 = dtype(1.0) / wp.min(sz2 - sx2, -eps)
+        f12 = dtype(1.0) / wp.min(sz2 - sy2, -eps)
+        zero = dtype(0.0)
+        F = NativeMat33(zero, f01, f02, -f01, zero, f12, -f02, -f12, zero)
+        S = wp.diag(sigma)
+        UT = wp.transpose(U)
+        dU = GradMat9()
+        dsigma = GradVec3()
+        dV = GradMat9()
+        for q in range(wp.static(width)):
+            dA = NativeMat33()
+            for r in range(3):
+                for c in range(3):
+                    dA[r, c] = A.grad[r * 3 + c, q]
+            # P = U^T dA V: dsigma = diag(P), dU = U W_u, dV = V W_v.
+            P = UT * dA * V
+            Yu = wp.cw_mul(F, P * S)
+            Yv = wp.cw_mul(F, S * P)
+            dUq = U * (Yu - wp.transpose(Yu))
+            dVq = V * (Yv - wp.transpose(Yv))
+            for r in range(3):
+                dsigma[r, q] = P[r, r]
+                for c in range(3):
+                    dU[r * 3 + c, q] = dUq[r, c]
+                    dV[r * 3 + c, q] = dVq[r, c]
+        return JetMat33(U, dU), JetVec3(sigma, dsigma), JetMat33(V, dV)
+
+    @wp.func
+    def jet_svd2(A: JetMat22):
+        # The transpose of native adj_svd2(). With P = U^T dA V, the singular vectors turn
+        # as dU = U [[0, alpha], [-alpha, 0]] and dV = V [[0, beta], [-beta, 0]], where
+        # alpha and beta combine a skew term (P01 - P10) / (s0 + s1), from rotating A, and a
+        # symmetric term (P01 + P10) / (s0 - s1). Like adj_svd2(), keep the skew term, which
+        # is well defined unless A = 0, and drop only the symmetric one at nearly repeated
+        # singular values, so that derivatives of U V^T stay exact there.
+        U, sigma, V = wp.svd2(A.value)
+        eps = dtype(svd_epsilon)
+        s_sum = sigma[0] + sigma[1]
+        s_diff = sigma[0] - sigma[1]
+        UT = wp.transpose(U)
+        dU = GradMat4()
+        dsigma = GradVec2()
+        dV = GradMat4()
+        for q in range(wp.static(width)):
+            dA = NativeMat22()
+            for r in range(2):
+                for c in range(2):
+                    dA[r, c] = A.grad[r * 2 + c, q]
+            P = UT * dA * V
+            skew = dtype(0.0)
+            if s_sum > dtype(0.0):
+                skew = (P[0, 1] - P[1, 0]) / (dtype(2.0) * s_sum)
+            sym = dtype(0.0)
+            if s_diff > eps * s_sum:
+                sym = (P[0, 1] + P[1, 0]) / (dtype(2.0) * s_diff)
+            alpha = skew - sym
+            beta = -skew - sym
+            dUq = U * NativeMat22(dtype(0.0), alpha, -alpha, dtype(0.0))
+            dVq = V * NativeMat22(dtype(0.0), beta, -beta, dtype(0.0))
+            for r in range(2):
+                dsigma[r, q] = P[r, r]
+                for c in range(2):
+                    dU[r * 2 + c, q] = dUq[r, c]
+                    dV[r * 2 + c, q] = dVq[r, c]
+        return JetMat22(U, dU), JetVec2(sigma, dsigma), JetMat22(V, dV)
+
+    @wp.func
+    def _eigen_gap(x: dtype) -> dtype:
+        # adj_eig3 keeps eigenvalue gaps at least 1e-6 in magnitude. It leaves an
+        # exact zero alone, which forward mode cannot afford: without knowing
+        # whether dQ is used, it would turn dQ into inf or NaN at every matrix
+        # with a repeated eigenvalue, such as the identity.
+        if x < dtype(0.0) and x > dtype(-1.0e-6):
+            return dtype(-1.0e-6)
+        if x >= dtype(0.0) and x < dtype(1.0e-6):
+            return dtype(1.0e-6)
+        return x
+
+    @wp.func
+    def jet_eig3(A: JetMat33):
+        Q, d = wp.eig3(A.value)
+        f01 = dtype(1.0) / _eigen_gap(d[1] - d[0])
+        f02 = dtype(1.0) / _eigen_gap(d[2] - d[0])
+        f12 = dtype(1.0) / _eigen_gap(d[2] - d[1])
+        zero = dtype(0.0)
+        F = NativeMat33(zero, f01, f02, -f01, zero, f12, -f02, -f12, zero)
+        QT = wp.transpose(Q)
+        dQ = GradMat9()
+        dd = GradVec3()
+        for q in range(wp.static(width)):
+            dA = NativeMat33()
+            for r in range(3):
+                for c in range(3):
+                    dA[r, c] = A.grad[r * 3 + c, q]
+            # P = Q^T dA Q: dd = diag(P), dQ = Q (F o P).
+            P = QT * dA * Q
+            dQq = Q * wp.cw_mul(F, P)
+            for r in range(3):
+                dd[r, q] = P[r, r]
+                for c in range(3):
+                    dQ[r * 3 + c, q] = dQq[r, c]
+        return JetMat33(Q, dQ), JetVec3(d, dd)
+
+    # ------------------------------------------------------------------
+    # Publish into Warp's builtin overload table.
+    #
+    # From here on, ordinary Warp syntax resolves on jets by argument type,
+    # in any module, with nothing bound into the caller's namespace.
+    # ------------------------------------------------------------------
+
+    @wp.func
+    def scalar_value(x: JetScalar) -> dtype:
+        return x.value
+
+    # ------------------------------------------------------------------
+    # Quaternions
+    #
+    # A jet quaternion carries the components x, y, z, w (Warp's storage order)
+    # and their derivatives. It is not normalized automatically: seeding a quat
+    # slot differentiates in the full 4-D space, while seeding a vec3 tangent and
+    # mapping it through exp_map() differentiates along unit rotations.
+    # ------------------------------------------------------------------
+
+    NativeQuat = quaternion(dtype)
+    GradQuat = matrix((4, width), dtype)
+
+    @wp.struct
+    class JetQuat:
+        value: NativeQuat
+        grad: GradQuat
+
+    @wp.func
+    def quat_component(q: JetQuat, k: int) -> JetScalar:
+        c = Grad()
+        for j in range(wp.static(width)):
+            c[j] = q.grad[k, j]
+        return JetScalar(q.value[k], c)
+
+    @wp.func
+    def quat_from_scalars(x: JetScalar, y: JetScalar, z: JetScalar, w: JetScalar) -> JetQuat:
+        g = GradQuat()
+        for j in range(wp.static(width)):
+            g[0, j] = x.grad[j]
+            g[1, j] = y.grad[j]
+            g[2, j] = z.grad[j]
+            g[3, j] = w.grad[j]
+        return JetQuat(NativeQuat(x.value, y.value, z.value, w.value), g)
+
+    @wp.func
+    def quat_constant(q: NativeQuat) -> JetQuat:
+        return JetQuat(q, GradQuat())
+
+    @wp.func
+    def jet_extract(a: JetQuat, i: int) -> JetScalar:
+        return quat_component(a, _component_index(i, 4))
+
+    @wp.func
+    def jet_add(a: JetQuat, b: JetQuat) -> JetQuat:
+        return JetQuat(a.value + b.value, a.grad + b.grad)
+
+    @wp.func
+    def jet_add(a: JetQuat, b: NativeQuat) -> JetQuat:
+        return JetQuat(a.value + b, a.grad)
+
+    @wp.func
+    def jet_add(a: NativeQuat, b: JetQuat) -> JetQuat:
+        return JetQuat(a + b.value, b.grad)
+
+    @wp.func
+    def jet_sub(a: JetQuat, b: JetQuat) -> JetQuat:
+        return JetQuat(a.value - b.value, a.grad - b.grad)
+
+    @wp.func
+    def jet_sub(a: JetQuat, b: NativeQuat) -> JetQuat:
+        return JetQuat(a.value - b, a.grad)
+
+    @wp.func
+    def jet_sub(a: NativeQuat, b: JetQuat) -> JetQuat:
+        return JetQuat(a - b.value, -b.grad)
+
+    @wp.func
+    def jet_neg(x: JetQuat) -> JetQuat:
+        return JetQuat(-x.value, -x.grad)
+
+    @wp.func
+    def jet_mul(a: JetQuat, b: dtype) -> JetQuat:
+        return JetQuat(a.value * b, a.grad * b)
+
+    @wp.func
+    def jet_mul(a: dtype, b: JetQuat) -> JetQuat:
+        return JetQuat(a * b.value, a * b.grad)
+
+    @wp.func
+    def jet_mul(a: JetQuat, b: JetScalar) -> JetQuat:
+        return quat_from_scalars(
+            quat_component(a, 0) * b, quat_component(a, 1) * b, quat_component(a, 2) * b, quat_component(a, 3) * b
+        )
+
+    @wp.func
+    def jet_mul(a: JetScalar, b: JetQuat) -> JetQuat:
+        return jet_mul(b, a)
+
+    @wp.func
+    def jet_mul(a: NativeQuat, b: JetScalar) -> JetQuat:
+        # A constant quaternion scaled by a jet, e.g. the endpoints of (1 - t) * q0 + t * q1.
+        return quat_from_scalars(b * a[0], b * a[1], b * a[2], b * a[3])
+
+    @wp.func
+    def jet_mul(a: JetScalar, b: NativeQuat) -> JetQuat:
+        return jet_mul(b, a)
+
+    @wp.func
+    def jet_mul(a: JetQuat, b: JetQuat) -> JetQuat:
+        x, y, z, w = _quat_mul_parts(
+            quat_component(a, 0),
+            quat_component(a, 1),
+            quat_component(a, 2),
+            quat_component(a, 3),
+            quat_component(b, 0),
+            quat_component(b, 1),
+            quat_component(b, 2),
+            quat_component(b, 3),
+        )
+        return quat_from_scalars(x, y, z, w)
+
+    @wp.func
+    def jet_mul(a: JetQuat, b: NativeQuat) -> JetQuat:
+        x, y, z, w = _quat_mul_parts(
+            quat_component(a, 0),
+            quat_component(a, 1),
+            quat_component(a, 2),
+            quat_component(a, 3),
+            b[0],
+            b[1],
+            b[2],
+            b[3],
+        )
+        return quat_from_scalars(x, y, z, w)
+
+    @wp.func
+    def jet_mul(a: NativeQuat, b: JetQuat) -> JetQuat:
+        x, y, z, w = _quat_mul_parts(
+            a[0],
+            a[1],
+            a[2],
+            a[3],
+            quat_component(b, 0),
+            quat_component(b, 1),
+            quat_component(b, 2),
+            quat_component(b, 3),
+        )
+        return quat_from_scalars(x, y, z, w)
+
+    @wp.func
+    def _rotate(q: JetQuat, x: JetVec3, sign: dtype) -> JetVec3:
+        r0, r1, r2 = _quat_rotate_parts(
+            quat_component(q, 0),
+            quat_component(q, 1),
+            quat_component(q, 2),
+            quat_component(q, 3),
+            jet_extract(x, 0),
+            jet_extract(x, 1),
+            jet_extract(x, 2),
+            sign,
+            dtype(1.0),
+            dtype(2.0),
+        )
+        return vec3_from_scalars(r0, r1, r2)
+
+    @wp.func
+    def _rotate(q: JetQuat, x: NativeVec3, sign: dtype) -> JetVec3:
+        r0, r1, r2 = _quat_rotate_parts(
+            quat_component(q, 0),
+            quat_component(q, 1),
+            quat_component(q, 2),
+            quat_component(q, 3),
+            x[0],
+            x[1],
+            x[2],
+            sign,
+            dtype(1.0),
+            dtype(2.0),
+        )
+        return vec3_from_scalars(r0, r1, r2)
+
+    @wp.func
+    def _rotate(q: NativeQuat, x: JetVec3, sign: dtype) -> JetVec3:
+        r0, r1, r2 = _quat_rotate_parts(
+            q[0],
+            q[1],
+            q[2],
+            q[3],
+            jet_extract(x, 0),
+            jet_extract(x, 1),
+            jet_extract(x, 2),
+            sign,
+            dtype(1.0),
+            dtype(2.0),
+        )
+        return vec3_from_scalars(r0, r1, r2)
+
+    @wp.func
+    def jet_quat_rotate(quat: JetQuat, vec: JetVec3) -> JetVec3:
+        return _rotate(quat, vec, dtype(1.0))
+
+    @wp.func
+    def jet_quat_rotate(quat: JetQuat, vec: NativeVec3) -> JetVec3:
+        return _rotate(quat, vec, dtype(1.0))
+
+    @wp.func
+    def jet_quat_rotate(quat: NativeQuat, vec: JetVec3) -> JetVec3:
+        return _rotate(quat, vec, dtype(1.0))
+
+    @wp.func
+    def jet_quat_rotate_inv(quat: JetQuat, vec: JetVec3) -> JetVec3:
+        return _rotate(quat, vec, dtype(-1.0))
+
+    @wp.func
+    def jet_quat_rotate_inv(quat: JetQuat, vec: NativeVec3) -> JetVec3:
+        return _rotate(quat, vec, dtype(-1.0))
+
+    @wp.func
+    def jet_quat_rotate_inv(quat: NativeQuat, vec: JetVec3) -> JetVec3:
+        return _rotate(quat, vec, dtype(-1.0))
+
+    @wp.func
+    def jet_quat_inverse(quat: JetQuat) -> JetQuat:
+        return quat_from_scalars(
+            -quat_component(quat, 0), -quat_component(quat, 1), -quat_component(quat, 2), quat_component(quat, 3)
+        )
+
+    @wp.func
+    def jet_quat_from_axis_angle(axis: JetVec3, angle: JetScalar) -> JetQuat:
+        half = angle * dtype(0.5)
+        s = jet_sin(half)
+        return quat_from_scalars(
+            jet_extract(axis, 0) * s, jet_extract(axis, 1) * s, jet_extract(axis, 2) * s, jet_cos(half)
+        )
+
+    @wp.func
+    def jet_quat_from_axis_angle(axis: NativeVec3, angle: JetScalar) -> JetQuat:
+        half = angle * dtype(0.5)
+        s = jet_sin(half)
+        return quat_from_scalars(axis[0] * s, axis[1] * s, axis[2] * s, jet_cos(half))
+
+    @wp.func
+    def jet_quat_from_axis_angle(axis: JetVec3, angle: dtype) -> JetQuat:
+        half = angle * dtype(0.5)
+        s = wp.sin(half)
+        return quat_from_scalars(
+            jet_extract(axis, 0) * s, jet_extract(axis, 1) * s, jet_extract(axis, 2) * s, scalar_constant(wp.cos(half))
+        )
+
+    @wp.func
+    def jet_dot(a: JetQuat, b: JetQuat) -> JetScalar:
+        return (
+            quat_component(a, 0) * quat_component(b, 0)
+            + quat_component(a, 1) * quat_component(b, 1)
+            + quat_component(a, 2) * quat_component(b, 2)
+            + quat_component(a, 3) * quat_component(b, 3)
+        )
+
+    @wp.func
+    def jet_dot(a: JetQuat, b: NativeQuat) -> JetScalar:
+        return (
+            quat_component(a, 0) * b[0]
+            + quat_component(a, 1) * b[1]
+            + quat_component(a, 2) * b[2]
+            + quat_component(a, 3) * b[3]
+        )
+
+    @wp.func
+    def jet_dot(a: NativeQuat, b: JetQuat) -> JetScalar:
+        return jet_dot(b, a)
+
+    @wp.func
+    def jet_length_sq(a: JetQuat) -> JetScalar:
+        return jet_dot(a, a)
+
+    @wp.func
+    def jet_length(a: JetQuat) -> JetScalar:
+        # As for vectors: a zero quaternion has a zero gradient, like native length(),
+        # and a NaN length stays NaN.
+        length_sq = jet_dot(a, a)
+        if length_sq.value == dtype(0.0):
+            return JetScalar(dtype(0.0), Grad())
+        return jet_sqrt(length_sq)
+
+    @wp.func
+    def jet_normalize(a: JetQuat) -> JetQuat:
+        # Like native normalize(quat), a quaternion whose length is not positive (zero
+        # or NaN) normalizes to the identity rotation, with zero derivatives.
+        length_sq = jet_dot(a, a)
+        if length_sq.value > dtype(0.0):
+            length = jet_sqrt(length_sq)
+            return quat_from_scalars(
+                quat_component(a, 0) / length,
+                quat_component(a, 1) / length,
+                quat_component(a, 2) / length,
+                quat_component(a, 3) / length,
+            )
+        return quat_constant(NativeQuat(dtype(0.0), dtype(0.0), dtype(0.0), dtype(1.0)))
+
+    @wp.func
+    def quat_exp_map(v: JetVec3) -> JetQuat:
+        # The unit quaternion of rotation vector v: [v sin(|v|/2) / |v|, cos(|v|/2)].
+        # Both factors are smooth functions of s = |v|^2. Near s = 0 they are
+        # evaluated by their series, exactly in jet arithmetic; elsewhere by the
+        # closed form, which divides by |v| and is only evaluated when |v| > 0, so
+        # that reverse mode through the jet stays finite at the origin as well.
+        s = jet_dot(v, v)
+        s2 = s * s
+        s3 = s2 * s
+        cos_half = (
+            scalar_constant(dtype(1.0)) + s * dtype(-1.0 / 8.0) + s2 * dtype(1.0 / 384.0) + s3 * dtype(-1.0 / 46080.0)
+        )
+        sinc_half = (
+            scalar_constant(dtype(0.5))
+            + s * dtype(-1.0 / 48.0)
+            + s2 * dtype(1.0 / 3840.0)
+            + s3 * dtype(-1.0 / 645120.0)
+        )
+        if s.value >= dtype(1.0e-3):
+            angle = jet_sqrt(s)
+            half = angle * dtype(0.5)
+            cos_half = jet_cos(half)
+            sinc_half = jet_sin(half) / angle
+        return quat_from_scalars(
+            jet_extract(v, 0) * sinc_half, jet_extract(v, 1) * sinc_half, jet_extract(v, 2) * sinc_half, cos_half
+        )
+
+    _register("quat_rotate", jet_quat_rotate)
+    _register("quat_rotate_inv", jet_quat_rotate_inv)
+    _register("quat_inverse", jet_quat_inverse)
+    _register("quat_from_axis_angle", jet_quat_from_axis_angle)
+
+    _register("value", scalar_value)
+
+    _register("add", jet_add)
+    _register("sub", jet_sub)
+    _register("mul", jet_mul)
+    _register("div", jet_div)
+    _register("pow", jet_pow)
+    _register("neg", jet_neg)
+    _register("pos", jet_pos)
+
+    _register("sin", jet_sin)
+    _register("cos", jet_cos)
+    _register("tan", jet_tan)
+    _register("asin", jet_asin)
+    _register("acos", jet_acos)
+    _register("atan", jet_atan)
+    _register("atan2", jet_atan2)
+    _register("exp", jet_exp)
+    _register("log", jet_log)
+    _register("sqrt", jet_sqrt)
+    _register("abs", jet_abs)
+    _register("sign", jet_sign)
+
+    _register("min", jet_min)
+    _register("max", jet_max)
+    _register("clamp", jet_clamp)
+    _register("where", jet_where)
+
+    _register("extract", jet_extract)
+
+    _register("dot", jet_dot)
+    _register("cw_mul", jet_cw_mul)
+    _register("cw_div", jet_cw_div)
+    _register("length", jet_length)
+    _register("length_sq", jet_length_sq)
+    _register("normalize", jet_normalize)
+    _register("cross", jet_cross)
+
+    _register("transpose", jet_transpose)
+    _register("determinant", jet_determinant)
+    _register("trace", jet_trace)
+    _register("inverse", jet_inverse)
+
+    _register("sinh", jet_sinh)
+    _register("cosh", jet_cosh)
+    _register("tanh", jet_tanh)
+    _register("log2", jet_log2)
+    _register("log10", jet_log10)
+    _register("cbrt", jet_cbrt)
+    _register("erf", jet_erf)
+    _register("floor", jet_floor)
+    _register("lerp", jet_lerp)
+    _register("smoothstep", jet_smoothstep)
+    _register("assign_copy", jet_assign_copy)
+    _register("skew", jet_skew)
+    # Multiple assignment (U, sigma, V = wp.svd3(A)) picks a builtin overload by
+    # its number of outputs, which a @wp.func overload reports through value_func.
+    for fn, outputs in (
+        (jet_svd3, (JetMat33, JetVec3, JetMat33)),
+        (jet_svd2, (JetMat22, JetVec2, JetMat22)),
+        (jet_eig3, (JetMat33, JetVec3)),
+    ):
+        for overload in tuple(fn.user_overloads.values()) or (fn,):
+            overload.value_func = lambda arg_types, arg_values, outputs=outputs: outputs
+    _register("svd3", jet_svd3)
+    _register("svd2", jet_svd2)
+    _register("eig3", jet_eig3)
+
+    return SimpleNamespace(
+        width=width,
+        dtype=dtype,
+        scalar=JetScalar,
+        vec2=JetVec2,
+        vec3=JetVec3,
+        mat22=JetMat22,
+        mat33=JetMat33,
+        mat32=JetMat32,
+        mat23=JetMat23,
+        grad_type_scalar=Grad,
+        grad_type_vec2=GradVec2,
+        grad_type_vec3=GradVec3,
+        grad_type_mat22=GradMat4,
+        grad_type_mat33=GradMat9,
+        grad_type_mat32=GradMat6,
+        grad_type_mat23=GradMat6,
+        native_vec2=NativeVec2,
+        native_vec3=NativeVec3,
+        native_mat22=NativeMat22,
+        native_mat33=NativeMat33,
+        constant=scalar_constant,
+        with_grad=scalar_with_grad,
+        variable=scalar_variable,
+        make_vec2=vec2_from_scalars,
+        make_vec3=vec3_from_scalars,
+        constant_vec2=vec2_constant,
+        constant_vec3=vec3_constant,
+        make_mat22=mat22_from_cols,
+        make_mat33=mat33_from_cols,
+        make_mat32=mat32_from_cols,
+        perp=jet_perp,
+        cross2=jet_cross2,
+        quat=JetQuat,
+        grad_type_quat=GradQuat,
+        native_quat=NativeQuat,
+        make_quat=quat_from_scalars,
+        constant_quat=quat_constant,
+        exp_map=quat_exp_map,
+        _slot_jet_types={
+            "scalar": (JetScalar, Grad),
+            "quat": (JetQuat, GradQuat),
+            "vec2": (JetVec2, GradVec2),
+            "vec3": (JetVec3, GradVec3),
+            "mat22": (JetMat22, GradMat4),
+            "mat33": (JetMat33, GradMat9),
+            "mat32": (JetMat32, GradMat6),
+            "mat23": (JetMat23, GradMat6),
+        },
+    )
+
+
+# Shape of each supported slot kind, and the order of the components it
+# contributes to the derivative directions: row-major for matrices.
+_SLOT_SHAPES = {
+    "scalar": (),
+    "vec2": (2,),
+    "vec3": (3,),
+    "mat22": (2, 2),
+    "mat33": (3, 3),
+    "mat32": (3, 2),
+    "mat23": (2, 3),
+}
+_SHAPE_TO_KIND = {shape: kind for kind, shape in _SLOT_SHAPES.items()}
+# Quaternions are recognized by type, not shape, which they share with a 4-vector.
+_SLOT_SHAPES["quat"] = (4,)
+
+_SLOT_SUMMARY = "scalar, vec2, vec3, quat, mat22, mat33, mat32 and mat23"
+
+# Layout-specific namespaces (what JetSpace and JetSpace2 return), keyed
+# by (order, width, dtype, slot kinds). Types and arithmetic live in _CACHE and
+# _CACHE2 and are shared by every layout of the same width and dtype.
+_CACHE_LAYOUT = {}
+
+_GENERATED_IDS = itertools.count()
+
+
+class _JetNamespace(SimpleNamespace):
+    """Namespace of a jet space that explains the helpers it deliberately lacks."""
+
+    def __getattr__(self, name):
+        # Only reached when normal lookup fails.
+        if name == "seed":
+            raise AttributeError(
+                f"seed() needs one derivative direction per component of the slots, "
+                f"but this space has width {self.width} for {self.slot_components} components. "
+                "Use directional() to supply the directions explicitly."
+            )
+        raise AttributeError(name)
+
+
+def _slot_components(kind: str):
+    """Return the index tuples of the components a slot of ``kind`` contributes."""
+    shape = _SLOT_SHAPES[kind]
+    if len(shape) == 0:
+        return [()]
+    if len(shape) == 1:
+        return [(i,) for i in range(shape[0])]
+    return [(r, c) for r in range(shape[0]) for c in range(shape[1])]
+
+
+def _classify_slot(slot):
+    """Return ``(kind, scalar_dtype)`` for a slot type.
+
+    ``scalar_dtype`` is ``None`` for Python ``float``, which does not commit to a precision.
+    """
+    if slot is float:
+        return "scalar", None
+    if slot in float_types:
+        return "scalar", slot
+
+    shape = getattr(slot, "_shape_", None)
+    scalar_dtype = getattr(slot, "_wp_scalar_type_", None)
+    if isinstance(slot, type) and type_is_quaternion(slot):
+        if scalar_dtype not in float_types:
+            raise TypeError(f"Jet slot {slot.__name__} must have a floating-point scalar type")
+        return "quat", scalar_dtype
+    if shape is not None and scalar_dtype is not None and tuple(shape) in _SHAPE_TO_KIND:
+        if scalar_dtype not in float_types:
+            raise TypeError(f"Jet slot {slot.__name__} must have a floating-point scalar type")
+        return _SHAPE_TO_KIND[tuple(shape)], scalar_dtype
+
+    raise TypeError(
+        f"Unsupported jet slot type {getattr(slot, '__name__', slot)!r}. Supported slot types are {_SLOT_SUMMARY}."
+    )
+
+
+def _normalize_slots(slots, dtype):
+    """Resolve the ``slots`` argument of :func:`JetSpace` into ``(kinds, dtype)``."""
+    if isinstance(slots, numbers.Integral) and not isinstance(slots, bool):
+        count = int(slots)
+        if count <= 0:
+            raise ValueError("Jet width must be positive")
+        return ("scalar",) * count, wp.float32 if dtype is None else dtype
+
+    if not isinstance(slots, (tuple, list)):
+        slots = (slots,)
+    if len(slots) == 0:
+        raise ValueError("A jet space needs at least one slot")
+
+    kinds = []
+    inferred = set()
+    for slot in slots:
+        kind, scalar_dtype = _classify_slot(slot)
+        kinds.append(kind)
+        if scalar_dtype is not None:
+            inferred.add(scalar_dtype)
+
+    if len(inferred) > 1:
+        names = ", ".join(sorted(t.__name__ for t in inferred))
+        raise TypeError(f"Jet slots mix scalar types ({names}); all slots must share one precision")
+    if dtype is not None and inferred and dtype not in inferred:
+        raise TypeError(
+            f"dtype={dtype.__name__} conflicts with the slot types, which are {next(iter(inferred)).__name__}"
+        )
+
+    if dtype is None:
+        dtype = next(iter(inferred)) if inferred else wp.float32
+    return tuple(kinds), dtype
+
+
+def _native_slot_type(kind: str, dtype):
+    if kind == "quat":
+        return quaternion(dtype)
+    shape = _SLOT_SHAPES[kind]
+    if len(shape) == 0:
+        return dtype
+    if len(shape) == 1:
+        return vector(shape[0], dtype)
+    return matrix(shape, dtype)
+
+
+def _define_generated(name: str, source: str, namespace: dict):
+    """Compile ``source`` as a Warp function named ``name``.
+
+    The number of slots varies per space, so the signature and body of the
+    helpers below cannot be written out once. The source is registered with
+    :mod:`linecache` so Warp's codegen can read it back like any other function.
+    """
+    filename = f"<warp-jet-{name}>"
+    linecache.cache[filename] = (len(source), None, source.splitlines(True), filename)
+    namespace = {"__name__": __name__, "wp": wp, **namespace}
+    exec(compile(source, filename, "exec"), namespace)
+    return namespace[name]
+
+
+def _grad_assignment(kind: str, component: int, column: int, value: str, var: str) -> str:
+    # A scalar slot's gradient is a vector over directions; every other slot's is
+    # a (components, directions) matrix, with matrices flattened row-major.
+    if kind == "scalar":
+        return f"{var}[{column}] = {value}"
+    return f"{var}[{component}, {column}] = {value}"
+
+
+def _build_slot_helpers(base, kinds, width: int, dtype, second_order: bool, include_directional: bool):
+    """Generate ``seed`` (and ``directional``) for one slot layout.
+
+    ``seed`` places a unit direction on every component of every slot, in order.
+    ``directional`` takes the directions explicitly, so ``width`` may be smaller
+    than the number of components -- one direction gives a Hessian-vector product.
+
+    Both take their operands as separate positional arguments rather than as
+    tuples. Warp does not propagate adjoints into a tuple argument, which would
+    silently zero the reverse-over-forward derivatives these helpers exist to
+    support.
+    """
+    uid = next(_GENERATED_IDS)
+    nslots = len(kinds)
+
+    natives = tuple(_native_slot_type(kind, dtype) for kind in kinds)
+
+    namespace = {"dtype": dtype}
+    for kind, (jet_type, grad_type) in base._slot_jet_types.items():
+        namespace[f"Jet_{kind}"] = jet_type
+        namespace[f"Grad_{kind}"] = grad_type
+    if second_order:
+        namespace["Hess"] = base.hess_type_scalar
+        namespace["variable"] = base.variable
+
+    # Annotation types are passed by name so the source stays readable.
+    for s_, native in enumerate(natives):
+        namespace[f"Native_{s_}"] = native
+
+    value_params = [f"v{s}: Native_{s}" for s in range(nslots)]
+
+    def construct(slot: int) -> str:
+        kind = kinds[slot]
+        extra = ", Hess()" if second_order else ""
+        return f"    j{slot} = Jet_{kind}(v{slot}, c{slot}{extra})"
+
+    def returns():
+        return "    return " + ", ".join(f"j{s}" for s in range(nslots))
+
+    # seed: component k of every slot gets its own unit direction.
+    lines = ["@wp.func", f"def jet_seed_{uid}({', '.join(value_params)}):"]
+    offset = 0
+    for s, kind in enumerate(kinds):
+        components = _slot_components(kind)
+        if second_order and kind != "scalar":
+            # A second-order vector jet is one scalar jet per component.
+            scalars = ", ".join(f"variable(v{s}[{k}], {offset + k})" for k in range(len(components)))
+            lines.append(f"    j{s} = Jet_{kind}({scalars})")
+        else:
+            lines.append(f"    c{s} = Grad_{kind}()")
+            for k, _ in enumerate(components):
+                lines.append("    " + _grad_assignment(kind, k, offset + k, "dtype(1.0)", f"c{s}"))
+            lines.append(construct(s))
+        offset += len(components)
+    lines.append(returns())
+
+    total = offset
+    seed = _define_generated(f"jet_seed_{uid}", "\n".join(lines) + "\n", namespace) if total == width else None
+
+    directional = None
+    if include_directional:
+        # One direction per column. After the values come the directions, flat and
+        # direction-major: argument d{q * nslots + s} is slot s's value along
+        # direction q.
+        direction_params = [f"d{q * nslots + s}: Native_{s}" for q in range(width) for s in range(nslots)]
+
+        lines = ["@wp.func", f"def jet_directional_{uid}({', '.join(value_params + direction_params)}):"]
+        for s, kind in enumerate(kinds):
+            lines.append(f"    c{s} = Grad_{kind}()")
+            for q in range(width):
+                for k, component in enumerate(_slot_components(kind)):
+                    access = f"d{q * nslots + s}" + (f"[{', '.join(map(str, component))}]" if component else "")
+                    lines.append("    " + _grad_assignment(kind, k, q, access, f"c{s}"))
+            lines.append(construct(s))
+        lines.append(returns())
+        directional = _define_generated(f"jet_directional_{uid}", "\n".join(lines) + "\n", namespace)
+
+    return seed, directional, natives, total
+
+
+def _type_lookup(base, dtype, index: int, what: str):
+    """Return a function mapping a Warp type to entry ``index`` of ``base._slot_jet_types``."""
+
+    def lookup(t):
+        kind, scalar_dtype = _classify_slot(t)
+        if scalar_dtype is not None and scalar_dtype is not dtype:
+            raise TypeError(
+                f"{getattr(t, '__name__', t)} has scalar type {scalar_dtype.__name__}, "
+                f"but this jet space is built on {dtype.__name__}"
+            )
+        entry = base._slot_jet_types.get(kind)
+        if entry is None or entry[index] is None:
+            raise TypeError(f"This jet space has no {what} for {getattr(t, '__name__', t)}")
+        return entry[index]
+
+    return lookup
+
+
+def _layout_namespace(base, kinds, width: int, dtype, second_order: bool):
+    key = (second_order, width, dtype, kinds)
+    J = _CACHE_LAYOUT.get(key)
+    if J is None:
+        seed, directional, natives, total = _build_slot_helpers(
+            base, kinds, width, dtype, second_order, include_directional=not second_order
+        )
+        members = {k: v for k, v in vars(base).items() if not k.startswith("_")}
+        members.update(slots=natives, slot_components=total)
+        members["jet_type"] = _type_lookup(base, dtype, 0, "jet type")
+        if not second_order:
+            members["grad_type"] = _type_lookup(base, dtype, 1, "gradient type")
+        if directional is not None:
+            members["directional"] = directional
+        if seed is not None:
+            members["seed"] = seed
+        J = _JetNamespace(**members)
+        _CACHE_LAYOUT[key] = J
+    return J
+
+
+def JetSpace(slots, dtype=None, *, width=None):
+    """Return the jet types and helpers for a set of differentiated inputs.
+
+    .. admonition:: Experimental
+
+        Forward-mode jets are experimental and subject to change without a formal deprecation
+        cycle.
+
+    A jet is a value paired with its first derivatives along a fixed set of
+    directions. Arithmetic on jets updates the derivatives alongside the value,
+    so evaluating a function on jets computes its derivatives in the same pass.
+    This is forward-mode automatic differentiation, in contrast to the
+    reverse-mode differentiation of :func:`warp.grad` and :class:`warp.Tape`.
+    Jets are ordinary Warp types, so reverse mode can also differentiate through
+    code that uses them.
+
+    The first call for a given width and scalar type generates the types and
+    registers their arithmetic as overloads of Warp's builtins; later calls
+    return a namespace over the same types.
+
+    Args:
+        slots: The inputs differentiated with respect to. Either an integer
+            ``n``, meaning ``n`` scalar inputs, or a sequence of types, one per
+            input: ``wp.float32``, ``wp.vec2``, ``wp.vec3``, ``wp.quat``,
+            ``wp.mat22``, ``wp.mat33``, ``wp.mat32`` or ``wp.mat23``. A spring
+            over two nodes is ``(wp.vec3, wp.vec3)``.
+        dtype: Scalar type the jets are built on. Inferred from ``slots`` when
+            they are Warp types; ``wp.float32`` when ``slots`` is an integer
+            or contains only Python ``float``.
+        width: Number of derivative directions each jet carries. Defaults to the
+            total number of scalar components in ``slots``, in which case
+            ``seed`` seeds the unit directions and a jet carries the full
+            gradient. A smaller width carries only the directions passed to
+            ``directional``, which is cheaper when only a few projections of the
+            gradient are needed.
+
+    Returns:
+        A namespace holding the generated jet types (``scalar``, ``vec2``,
+        ``vec3``, ``quat``, ``mat22``, ``mat33``, ``mat32``, ``mat23``), the
+        type of each one's ``grad`` field (``grad_type_scalar``,
+        ``grad_type_vec2``, and so on through ``grad_type_mat23``), the helpers
+        that construct jets, including ``exp_map``, which maps a ``vec3``
+        rotation-vector jet to a unit quaternion jet, and ``slots``, the native
+        type of each slot.
+
+    Jets are created inside a kernel or function with ``seed`` or
+    ``directional``. With ``spring_energy`` an ordinary ``@wp.func`` that is
+    generic over its argument types::
+
+        J = wp.JetSpace((wp.vec3, wp.vec3))  # two 3D points, width 6
+
+
+        @wp.func
+        def spring_gradient(x0: wp.vec3, x1: wp.vec3):
+            # x0_jet and x1_jet are J.vec3: x0_jet carries directions 0-2, x1_jet 3-5.
+            x0_jet, x1_jet = J.seed(x0, x1)
+            return spring_energy(x0_jet, x1_jet).grad  # the 6-component gradient
+
+    ``seed(*values)`` takes one value per slot and returns one jet per slot,
+    with the derivative directions numbered slot by slot in the order the
+    components appear (row-major for matrices). With a single slot it takes and
+    returns the bare value. It is available only when ``width`` equals the
+    number of components; otherwise use ``directional``.
+
+    ``directional(*values, *directions)`` takes the same values, followed by
+    ``width * len(slots)`` direction vectors ordered direction-major: direction
+    ``q`` of slot ``s`` is argument ``q * len(slots) + s`` after the values. For
+    example, for a width-1 space the directions are one value per slot, and the
+    jets carry the derivative along the combined direction::
+
+        J1 = wp.JetSpace((wp.vec3, wp.vec3), width=1)
+
+
+        @wp.func
+        def spring_directional_derivative(x0: wp.vec3, x1: wp.vec3, v0: wp.vec3, v1: wp.vec3):
+            # Derivative along the combined direction (v0, v1).
+            x0_jet, x1_jet = J1.directional(x0, x1, v0, v1)
+            return spring_energy(x0_jet, x1_jet).grad[0]
+
+    ``variable(x, direction)`` is the underlying scalar primitive: a scalar jet
+    with a unit derivative along ``direction``. Use it to seed in a loop, where
+    the number of scalars is not a fixed argument list.
+
+    ``jet_type(t)`` and ``grad_type(t)`` look the types up by the Warp type of
+    the value instead: ``J.grad_type(wp.vec2)`` is ``J.grad_type_vec2``. They
+    are Python functions, so they work in annotations and host code, such as
+    ``wp.array[J.grad_type(wp.vec2)]``, but cannot be called inside a kernel
+    or ``@wp.func``, where the attributes are needed. A type whose scalar type
+    differs from the space's, or that the space does not support, raises
+    :class:`TypeError`.
+
+    ``width`` is fixed when the types are specialized, not when a kernel runs:
+    it becomes the length of ``grad`` and is unrolled into the generated code.
+    Every intermediate value carries all ``width`` derivative components, so
+    cost in registers and compile time scales with the width requested,
+    regardless of how many components are read back. Different widths are
+    independent specializations that may coexist in one process.
+
+    This makes jets suited to *local* derivatives of fixed arity -- a spring
+    over two ``vec3`` nodes has width 6, a triangle 9, a tetrahedron 12 -- where
+    the layout is known where the kernel is written and the dense local gradient
+    or Hessian block is scattered into a sparse global matrix. They are not
+    suited to differentiating with respect to an unbounded or runtime number of
+    variables: a problem-sized width cannot specialize a type, and even when it
+    could, forward mode would cost one direction per variable against reverse
+    mode's single backward pass. Use :class:`warp.Tape` or :func:`warp.grad` for
+    that outer derivative, and jets for the fixed-arity term inside it.
+
+    Registering the arithmetic mutates Warp's global builtin overload table,
+    which is what lets ``a * b`` resolve on jets from any module. The effect is
+    additive and lasts for the lifetime of the process.
+    """
+    kinds, dtype = _normalize_slots(slots, dtype)
+    total = sum(len(_slot_components(kind)) for kind in kinds)
+
+    if width is None:
+        width = total
+    else:
+        width = operator.index(width)
+
+    key = (width, dtype)
+    with _codegen_lock:
+        base = _CACHE.get(key)
+        if base is None:
+            base = _make_jet_space(width, dtype)
+            _CACHE[key] = base
+
+        return _layout_namespace(base, kinds, width, dtype, second_order=False)
+
+
+# ==========================================================================
+# Second-order (forward-over-forward) jets.
+#
+# A width-k second-order jet carries value, gradient, and the full k x k
+# Hessian of one scalar with respect to k variables:
+#
+#     x = value + grad . eps + 0.5 eps^T hess eps
+#
+# Propagating it through a scalar function in a single forward pass yields the
+# local Hessian directly -- no reverse pass, no tape. The per-intermediate
+# state is O(k^2), so this is a small-k strategy: register pressure grows
+# quadratically where the first-order jet's grows linearly.
+#
+# Scalars, plus vec2/vec3 built from one scalar jet per component; no matrices.
+# ==========================================================================
+
+
+def _make_jet_space2(width: int, dtype):
+    _check_space_args(width, dtype)
+
+    Grad = vector(width, dtype)
+    Hess = matrix((width, width), dtype)
+    Compute = _range_safe_compute_type(dtype)
+    ComputeGrad = Grad if Compute is dtype else vector(width, Compute)
+    ComputeHess = Hess if Compute is dtype else matrix((width, width), Compute)
+
+    @wp.struct
+    class Jet2Scalar:
+        value: dtype
+        grad: Grad
+        hess: Hess
+
+    # ---- construction / seeding ----
+
+    @wp.func
+    def scalar_constant(x: dtype) -> Jet2Scalar:
+        return Jet2Scalar(x, Grad(), Hess())
+
+    @wp.func
+    def scalar_variable(x: dtype, direction: int) -> Jet2Scalar:
+        g = Grad()
+        g[direction] = dtype(1.0)
+        return Jet2Scalar(x, g, Hess())
+
+    # ---- linear ops ----
+
+    @wp.func
+    def jet_add(a: Jet2Scalar, b: Jet2Scalar) -> Jet2Scalar:
+        return Jet2Scalar(a.value + b.value, a.grad + b.grad, a.hess + b.hess)
+
+    @wp.func
+    def jet_add(a: Jet2Scalar, b: dtype) -> Jet2Scalar:
+        return Jet2Scalar(a.value + b, a.grad, a.hess)
+
+    @wp.func
+    def jet_add(a: dtype, b: Jet2Scalar) -> Jet2Scalar:
+        return Jet2Scalar(a + b.value, b.grad, b.hess)
+
+    @wp.func
+    def jet_sub(a: Jet2Scalar, b: Jet2Scalar) -> Jet2Scalar:
+        return Jet2Scalar(a.value - b.value, a.grad - b.grad, a.hess - b.hess)
+
+    @wp.func
+    def jet_sub(a: Jet2Scalar, b: dtype) -> Jet2Scalar:
+        return Jet2Scalar(a.value - b, a.grad, a.hess)
+
+    @wp.func
+    def jet_sub(a: dtype, b: Jet2Scalar) -> Jet2Scalar:
+        return Jet2Scalar(a - b.value, -b.grad, -b.hess)
+
+    @wp.func
+    def jet_pos(x: Jet2Scalar) -> Jet2Scalar:
+        return x
+
+    @wp.func
+    def jet_neg(x: Jet2Scalar) -> Jet2Scalar:
+        return Jet2Scalar(-x.value, -x.grad, -x.hess)
+
+    @wp.func
+    def jet_mul(a: Jet2Scalar, b: dtype) -> Jet2Scalar:
+        return Jet2Scalar(a.value * b, a.grad * b, a.hess * b)
+
+    @wp.func
+    def jet_mul(a: dtype, b: Jet2Scalar) -> Jet2Scalar:
+        return Jet2Scalar(a * b.value, a * b.grad, a * b.hess)
+
+    @wp.func
+    def jet_div(a: Jet2Scalar, b: dtype) -> Jet2Scalar:
+        return Jet2Scalar(a.value / b, a.grad / b, a.hess / b)
+
+    # ---- product: hess picks up the grad outer products ----
+
+    @wp.func
+    def jet_mul(a: Jet2Scalar, b: Jet2Scalar) -> Jet2Scalar:
+        outer_ab = wp.outer(a.grad, b.grad)
+        return Jet2Scalar(
+            a.value * b.value,
+            a.value * b.grad + b.value * a.grad,
+            a.value * b.hess + b.value * a.hess + outer_ab + wp.transpose(outer_ab),
+        )
+
+    @wp.func
+    def jet_div(a: Jet2Scalar, b: Jet2Scalar) -> Jet2Scalar:
+        # Differentiating q * b = a twice gives each derivative of q divided by b once.
+        # Dividing directly, as native division does, avoids forming 1 / b and its
+        # derivatives, which overflow for small denominators.
+        value = a.value / b.value
+        grad = (a.grad - value * b.grad) / b.value
+        outer_gb = wp.outer(grad, b.grad)
+        hess = (a.hess - value * b.hess - outer_gb - wp.transpose(outer_gb)) / b.value
+        return Jet2Scalar(value, grad, hess)
+
+    # ---- elementary functions: chain rule with f' and f'' ----
+
+    @wp.func
+    def _lift(value: dtype, fp: dtype, fpp: dtype, a: Jet2Scalar) -> Jet2Scalar:
+        return Jet2Scalar(value, fp * a.grad, fp * a.hess + fpp * wp.outer(a.grad, a.grad))
+
+    @wp.func
+    def _lift_wide(value: dtype, fp: Compute, fpp: Compute, a: Jet2Scalar) -> Jet2Scalar:
+        # _lift with f' and f'' in the compute type, applied to the gradient and Hessian there
+        # and rounded once. For float16, the factors and the outer product can overflow or
+        # underflow although the derivatives fit.
+        g = ComputeGrad(a.grad)
+        return Jet2Scalar(value, Grad(fp * g), Hess(fp * ComputeHess(a.hess) + fpp * wp.outer(g, g)))
+
+    @wp.func
+    def jet_sin(x: Jet2Scalar) -> Jet2Scalar:
+        return _lift(wp.sin(x.value), wp.cos(x.value), -wp.sin(x.value), x)
+
+    @wp.func
+    def jet_cos(x: Jet2Scalar) -> Jet2Scalar:
+        return _lift(wp.cos(x.value), -wp.sin(x.value), -wp.cos(x.value), x)
+
+    @wp.func
+    def jet_exp(x: Jet2Scalar) -> Jet2Scalar:
+        e = wp.exp(x.value)
+        return _lift(e, e, e, x)
+
+    @wp.func
+    def jet_log(x: Jet2Scalar) -> Jet2Scalar:
+        # 1 / x**2 is formed in the compute type: in float16 it overflows for small x although
+        # its product with the gradient's outer product fits.
+        inv = Compute(1.0) / Compute(x.value)
+        return _lift_wide(wp.log(x.value), inv, -inv * inv, x)
+
+    @wp.func
+    def jet_sqrt(x: Jet2Scalar) -> Jet2Scalar:
+        # The second derivative -1 / (4 s**3) overflows for small arguments even when its
+        # contraction with the gradient is representable, so scale the gradient by 1 / s
+        # first: f'' g g^T = -(1 / (4 s)) (g / s) (g / s)^T.
+        s = wp.sqrt(x.value)
+        fp = dtype(0.5) / s
+        g = x.grad / s
+        return Jet2Scalar(s, fp * x.grad, fp * x.hess - (dtype(0.25) / s) * wp.outer(g, g))
+
+    @wp.func
+    def jet_tan(x: Jet2Scalar) -> Jet2Scalar:
+        c = wp.cos(x.value)
+        sec2 = dtype(1.0) / (c * c)
+        return _lift(wp.tan(x.value), sec2, dtype(2.0) * wp.tan(x.value) * sec2, x)
+
+    @wp.func
+    def jet_asin(x: Jet2Scalar) -> Jet2Scalar:
+        # Like native asin(), which clamps its argument to [-1, 1], the derivatives are
+        # zero unless the argument lies strictly inside the interval. Test the interval
+        # before taking the square root, whose adjoint is NaN outside it.
+        if x.value > dtype(-1.0) and x.value < dtype(1.0):
+            r = dtype(1.0) / wp.sqrt(dtype(1.0) - x.value * x.value)
+            return _lift(wp.asin(x.value), r, x.value * r * r * r, x)
+        return Jet2Scalar(wp.asin(x.value), Grad(), Hess())
+
+    @wp.func
+    def jet_acos(x: Jet2Scalar) -> Jet2Scalar:
+        if x.value > dtype(-1.0) and x.value < dtype(1.0):
+            r = dtype(1.0) / wp.sqrt(dtype(1.0) - x.value * x.value)
+            return _lift(wp.acos(x.value), -r, -x.value * r * r * r, x)
+        return Jet2Scalar(wp.acos(x.value), Grad(), Hess())
+
+    @wp.func
+    def jet_atan(x: Jet2Scalar) -> Jet2Scalar:
+        w = Compute(x.value)
+        u = Compute(1.0) / (Compute(1.0) + w * w)
+        return _lift_wide(wp.atan(x.value), u, -Compute(2.0) * w * u * u, x)
+
+    @wp.func
+    def _pow_const(a: Jet2Scalar, p: dtype) -> Jet2Scalar:
+        """a**p for a constant exponent, with the degenerate exponents guarded.
+
+        The general term p (p-1) a**(p-2) evaluates as 0 * inf at a == 0 for
+        p == 1, and both derivative terms do so for p == 0, where the true
+        derivatives are zero. Non-integer p below those is left alone: its
+        derivatives really are infinite at zero, so inf is the honest answer.
+        """
+        if p == dtype(0.0):
+            return Jet2Scalar(dtype(1.0), Grad(), Hess())
+
+        v = wp.pow(a.value, p)
+        # The derivatives are formed in the compute type: in float16 the powers of a overflow or
+        # underflow for small or large a although their products with the gradient fit.
+        wa = Compute(a.value)
+        exponent = Compute(p)
+        fp = exponent * wp.pow(wa, exponent - Compute(1.0))
+
+        if p == dtype(1.0):
+            return _lift_wide(v, fp, Compute(0.0), a)
+
+        return _lift_wide(v, fp, exponent * (exponent - Compute(1.0)) * wp.pow(wa, exponent - Compute(2.0)), a)
+
+    @wp.func
+    def jet_pow(x: Jet2Scalar, y: int) -> Jet2Scalar:
+        return _pow_const(x, dtype(y))
+
+    @wp.func
+    def jet_pow(x: Jet2Scalar, y: dtype) -> Jet2Scalar:
+        return _pow_const(x, y)
+
+    @wp.func
+    def jet_pow(x: dtype, y: Jet2Scalar) -> Jet2Scalar:
+        v = wp.pow(x, y.value)
+        # A zero base gives a constant result, so the derivatives are 0 rather than 0 * log(0).
+        if x == dtype(0.0):
+            return Jet2Scalar(v, Grad(), Hess())
+        la = wp.log(x)
+        return _lift(v, v * la, v * la * la, y)
+
+    @wp.func
+    def jet_div(a: dtype, b: Jet2Scalar) -> Jet2Scalar:
+        return jet_div(scalar_constant(a), b)
+
+    # ---- two-argument chain rule: value = F(u, v), F's partials as scalars ----
+
+    @wp.func
+    def _lift2(
+        value: dtype,
+        fu: dtype,
+        fv: dtype,
+        fuu: dtype,
+        fvv: dtype,
+        fuv: dtype,
+        u: Jet2Scalar,
+        v: Jet2Scalar,
+    ) -> Jet2Scalar:
+        ouv = wp.outer(u.grad, v.grad)
+        hess = (
+            fu * u.hess
+            + fv * v.hess
+            + fuu * wp.outer(u.grad, u.grad)
+            + fvv * wp.outer(v.grad, v.grad)
+            + fuv * (ouv + wp.transpose(ouv))
+        )
+        return Jet2Scalar(value, fu * u.grad + fv * v.grad, hess)
+
+    @wp.func
+    def _lift2_wide(
+        value: dtype,
+        fu: Compute,
+        fv: Compute,
+        fuu: Compute,
+        fvv: Compute,
+        fuv: Compute,
+        u: Jet2Scalar,
+        v: Jet2Scalar,
+    ) -> Jet2Scalar:
+        # _lift2 with F's partials in the compute type, applied there and rounded once.
+        gu = ComputeGrad(u.grad)
+        gv = ComputeGrad(v.grad)
+        ouv = wp.outer(gu, gv)
+        hess = (
+            fu * ComputeHess(u.hess)
+            + fv * ComputeHess(v.hess)
+            + fuu * wp.outer(gu, gu)
+            + fvv * wp.outer(gv, gv)
+            + fuv * (ouv + wp.transpose(ouv))
+        )
+        return Jet2Scalar(value, Grad(fu * gu + fv * gv), Hess(hess))
+
+    @wp.func
+    def jet_atan2(y: Jet2Scalar, x: Jet2Scalar) -> Jet2Scalar:
+        # Like native atan2(), the derivatives are zero at the origin.
+        wx = Compute(x.value)
+        wy = Compute(y.value)
+        d = wx * wx + wy * wy
+        if not (d > Compute(0.0)):
+            return Jet2Scalar(wp.atan2(y.value, x.value), Grad(), Hess())
+        d2 = d * d
+        return _lift2_wide(
+            wp.atan2(y.value, x.value),
+            wx / d,  # d/dy
+            -wy / d,  # d/dx
+            -Compute(2.0) * wx * wy / d2,  # d2/dy2
+            Compute(2.0) * wx * wy / d2,  # d2/dx2
+            (wy * wy - wx * wx) / d2,  # d2/dydx
+            y,
+            x,
+        )
+
+    @wp.func
+    def jet_atan2(y: Jet2Scalar, x: dtype) -> Jet2Scalar:
+        return jet_atan2(y, scalar_constant(x))
+
+    @wp.func
+    def jet_atan2(y: dtype, x: Jet2Scalar) -> Jet2Scalar:
+        return jet_atan2(scalar_constant(y), x)
+
+    @wp.func
+    def jet_pow(x: Jet2Scalar, y: Jet2Scalar) -> Jet2Scalar:
+        # Partials written against wp.pow rather than as g / x, for the same
+        # reason as the first-order overload: at x.value == 0 the 1 / x form
+        # gives 0 * inf = NaN where the limit is finite. The three partials
+        # carrying log(x) are zero in that limit for y > 0.
+        g = wp.pow(x.value, y.value)
+        # The dx and d2/dx2 partials take the same guards as the constant-exponent
+        # overload: they are 0, not 0 * inf, for an exponent of 0, and d2/dx2 also for 1.
+        dx = dtype(0.0)
+        if y.value != dtype(0.0):
+            dx = y.value * wp.pow(x.value, y.value - dtype(1.0))
+        dxx = dtype(0.0)
+        if y.value != dtype(0.0) and y.value != dtype(1.0):
+            dxx = y.value * (y.value - dtype(1.0)) * wp.pow(x.value, y.value - dtype(2.0))
+        if x.value > dtype(0.0):
+            la = wp.log(x.value)
+            return _lift2(
+                g,
+                dx,  # d/dx
+                g * la,  # d/dy
+                dxx,  # d2/dx2
+                g * la * la,  # d2/dy2
+                wp.pow(x.value, y.value - dtype(1.0)) * (dtype(1.0) + y.value * la),  # d2/dxdy
+                x,
+                y,
+            )
+        return _lift2(g, dx, dtype(0.0), dxx, dtype(0.0), dtype(0.0), x, y)
+
+    # ---- branching: value-only comparisons carry the chosen jet's derivatives ----
+
+    @wp.func
+    def jet_abs(x: Jet2Scalar) -> Jet2Scalar:
+        # Native adj_abs() takes the derivative +1 at zero, and abs(NaN) is NaN.
+        if x.value < dtype(0.0):
+            return -x
+        return Jet2Scalar(wp.abs(x.value), x.grad, x.hess)
+
+    @wp.func
+    def jet_sign(x: Jet2Scalar) -> Jet2Scalar:
+        return Jet2Scalar(wp.sign(x.value), Grad(), Hess())
+
+    # min/max/clamp follow native Warp as in the first-order space: a NaN operand is
+    # treated as missing, and a tie selects the second operand.
+
+    @wp.func
+    def jet_min(a: Jet2Scalar, b: Jet2Scalar) -> Jet2Scalar:
+        if wp.isnan(a.value):
+            return b
+        if wp.isnan(b.value):
+            return a
+        if a.value < b.value:
+            return a
+        return b
+
+    @wp.func
+    def jet_min(a: Jet2Scalar, b: dtype) -> Jet2Scalar:
+        return jet_min(a, scalar_constant(b))
+
+    @wp.func
+    def jet_min(a: dtype, b: Jet2Scalar) -> Jet2Scalar:
+        return jet_min(scalar_constant(a), b)
+
+    @wp.func
+    def jet_max(a: Jet2Scalar, b: Jet2Scalar) -> Jet2Scalar:
+        if wp.isnan(a.value):
+            return b
+        if wp.isnan(b.value):
+            return a
+        if a.value > b.value:
+            return a
+        return b
+
+    @wp.func
+    def jet_max(a: Jet2Scalar, b: dtype) -> Jet2Scalar:
+        return jet_max(a, scalar_constant(b))
+
+    @wp.func
+    def jet_max(a: dtype, b: Jet2Scalar) -> Jet2Scalar:
+        return jet_max(scalar_constant(a), b)
+
+    @wp.func
+    def jet_clamp(x: Jet2Scalar, low: dtype, high: dtype) -> Jet2Scalar:
+        # Native clamp(x, low, high) is min(max(low, x), high).
+        return jet_min(jet_max(scalar_constant(low), x), scalar_constant(high))
+
+    @wp.func
+    def jet_where(cond: bool, value_if_true: Jet2Scalar, value_if_false: Jet2Scalar) -> Jet2Scalar:
+        if cond:
+            return value_if_true
+        return value_if_false
+
+    # ---- vectors: one scalar jet per component ----
+    #
+    # Each operation is composed from the scalar operations above, so a vector
+    # expression performs exactly the arithmetic of the same expression written
+    # out per component, and needs no second-order rules of its own.
+
+    NativeVec2 = vector(2, dtype)
+    NativeVec3 = vector(3, dtype)
+
+    @wp.struct
+    class Jet2Vec2:
+        x: Jet2Scalar
+        y: Jet2Scalar
+
+    @wp.struct
+    class Jet2Vec3:
+        x: Jet2Scalar
+        y: Jet2Scalar
+        z: Jet2Scalar
+
+    @wp.func
+    def vec2_constant(v: NativeVec2) -> Jet2Vec2:
+        return Jet2Vec2(scalar_constant(v[0]), scalar_constant(v[1]))
+
+    @wp.func
+    def vec3_constant(v: NativeVec3) -> Jet2Vec3:
+        return Jet2Vec3(scalar_constant(v[0]), scalar_constant(v[1]), scalar_constant(v[2]))
+
+    @wp.func
+    def vec2_from_scalars(x: Jet2Scalar, y: Jet2Scalar) -> Jet2Vec2:
+        return Jet2Vec2(x, y)
+
+    @wp.func
+    def vec3_from_scalars(x: Jet2Scalar, y: Jet2Scalar, z: Jet2Scalar) -> Jet2Vec3:
+        return Jet2Vec3(x, y, z)
+
+    # Indexing goes through a native vector of component numbers so that negative
+    # and out-of-range indices behave exactly as they do on a native vector.
+
+    @wp.func
+    def jet_extract(a: Jet2Vec2, i: int) -> Jet2Scalar:
+        if wp.vec2i(0, 1)[i] == 0:
+            return a.x
+        return a.y
+
+    @wp.func
+    def jet_extract(a: Jet2Vec3, i: int) -> Jet2Scalar:
+        component = wp.vec3i(0, 1, 2)[i]
+        if component == 0:
+            return a.x
+        if component == 1:
+            return a.y
+        return a.z
+
+    @wp.func
+    def jet_add(a: Jet2Vec2, b: Jet2Vec2) -> Jet2Vec2:
+        return Jet2Vec2(a.x + b.x, a.y + b.y)
+
+    @wp.func
+    def jet_add(a: Jet2Vec2, b: NativeVec2) -> Jet2Vec2:
+        return Jet2Vec2(a.x + b[0], a.y + b[1])
+
+    @wp.func
+    def jet_add(a: NativeVec2, b: Jet2Vec2) -> Jet2Vec2:
+        return Jet2Vec2(a[0] + b.x, a[1] + b.y)
+
+    @wp.func
+    def jet_add(a: Jet2Vec3, b: Jet2Vec3) -> Jet2Vec3:
+        return Jet2Vec3(a.x + b.x, a.y + b.y, a.z + b.z)
+
+    @wp.func
+    def jet_add(a: Jet2Vec3, b: NativeVec3) -> Jet2Vec3:
+        return Jet2Vec3(a.x + b[0], a.y + b[1], a.z + b[2])
+
+    @wp.func
+    def jet_add(a: NativeVec3, b: Jet2Vec3) -> Jet2Vec3:
+        return Jet2Vec3(a[0] + b.x, a[1] + b.y, a[2] + b.z)
+
+    @wp.func
+    def jet_sub(a: Jet2Vec2, b: Jet2Vec2) -> Jet2Vec2:
+        return Jet2Vec2(a.x - b.x, a.y - b.y)
+
+    @wp.func
+    def jet_sub(a: Jet2Vec2, b: NativeVec2) -> Jet2Vec2:
+        return Jet2Vec2(a.x - b[0], a.y - b[1])
+
+    @wp.func
+    def jet_sub(a: NativeVec2, b: Jet2Vec2) -> Jet2Vec2:
+        return Jet2Vec2(a[0] - b.x, a[1] - b.y)
+
+    @wp.func
+    def jet_sub(a: Jet2Vec3, b: Jet2Vec3) -> Jet2Vec3:
+        return Jet2Vec3(a.x - b.x, a.y - b.y, a.z - b.z)
+
+    @wp.func
+    def jet_sub(a: Jet2Vec3, b: NativeVec3) -> Jet2Vec3:
+        return Jet2Vec3(a.x - b[0], a.y - b[1], a.z - b[2])
+
+    @wp.func
+    def jet_sub(a: NativeVec3, b: Jet2Vec3) -> Jet2Vec3:
+        return Jet2Vec3(a[0] - b.x, a[1] - b.y, a[2] - b.z)
+
+    @wp.func
+    def jet_pos(x: Jet2Vec2) -> Jet2Vec2:
+        return x
+
+    @wp.func
+    def jet_pos(x: Jet2Vec3) -> Jet2Vec3:
+        return x
+
+    @wp.func
+    def jet_neg(x: Jet2Vec2) -> Jet2Vec2:
+        return Jet2Vec2(-x.x, -x.y)
+
+    @wp.func
+    def jet_neg(x: Jet2Vec3) -> Jet2Vec3:
+        return Jet2Vec3(-x.x, -x.y, -x.z)
+
+    @wp.func
+    def jet_mul(a: Jet2Vec2, b: dtype) -> Jet2Vec2:
+        return Jet2Vec2(a.x * b, a.y * b)
+
+    @wp.func
+    def jet_mul(a: dtype, b: Jet2Vec2) -> Jet2Vec2:
+        return Jet2Vec2(a * b.x, a * b.y)
+
+    @wp.func
+    def jet_mul(a: Jet2Vec2, b: Jet2Scalar) -> Jet2Vec2:
+        return Jet2Vec2(a.x * b, a.y * b)
+
+    @wp.func
+    def jet_mul(a: Jet2Scalar, b: Jet2Vec2) -> Jet2Vec2:
+        return Jet2Vec2(a * b.x, a * b.y)
+
+    @wp.func
+    def jet_mul(a: NativeVec2, b: Jet2Scalar) -> Jet2Vec2:
+        return Jet2Vec2(a[0] * b, a[1] * b)
+
+    @wp.func
+    def jet_mul(a: Jet2Scalar, b: NativeVec2) -> Jet2Vec2:
+        return Jet2Vec2(a * b[0], a * b[1])
+
+    @wp.func
+    def jet_mul(a: Jet2Vec3, b: dtype) -> Jet2Vec3:
+        return Jet2Vec3(a.x * b, a.y * b, a.z * b)
+
+    @wp.func
+    def jet_mul(a: dtype, b: Jet2Vec3) -> Jet2Vec3:
+        return Jet2Vec3(a * b.x, a * b.y, a * b.z)
+
+    @wp.func
+    def jet_mul(a: Jet2Vec3, b: Jet2Scalar) -> Jet2Vec3:
+        return Jet2Vec3(a.x * b, a.y * b, a.z * b)
+
+    @wp.func
+    def jet_mul(a: Jet2Scalar, b: Jet2Vec3) -> Jet2Vec3:
+        return Jet2Vec3(a * b.x, a * b.y, a * b.z)
+
+    @wp.func
+    def jet_mul(a: NativeVec3, b: Jet2Scalar) -> Jet2Vec3:
+        return Jet2Vec3(a[0] * b, a[1] * b, a[2] * b)
+
+    @wp.func
+    def jet_mul(a: Jet2Scalar, b: NativeVec3) -> Jet2Vec3:
+        return Jet2Vec3(a * b[0], a * b[1], a * b[2])
+
+    # A plain matrix times a vector jet, one row at a time.
+
+    NativeMat22 = matrix((2, 2), dtype)
+    NativeMat33 = matrix((3, 3), dtype)
+
+    @wp.func
+    def jet_mul(a: NativeMat22, b: Jet2Vec2) -> Jet2Vec2:
+        return Jet2Vec2(a[0, 0] * b.x + a[0, 1] * b.y, a[1, 0] * b.x + a[1, 1] * b.y)
+
+    @wp.func
+    def jet_mul(a: NativeMat33, b: Jet2Vec3) -> Jet2Vec3:
+        return Jet2Vec3(
+            a[0, 0] * b.x + a[0, 1] * b.y + a[0, 2] * b.z,
+            a[1, 0] * b.x + a[1, 1] * b.y + a[1, 2] * b.z,
+            a[2, 0] * b.x + a[2, 1] * b.y + a[2, 2] * b.z,
+        )
+
+    # Division by a jet takes one reciprocal and multiplies, rather than dividing
+    # every component.
+
+    @wp.func
+    def jet_div(a: Jet2Vec2, b: dtype) -> Jet2Vec2:
+        return Jet2Vec2(a.x / b, a.y / b)
+
+    @wp.func
+    def jet_div(a: Jet2Vec2, b: Jet2Scalar) -> Jet2Vec2:
+        # Divide each component, rather than multiply by 1 / b, whose second derivative
+        # overflows for small b.
+        return Jet2Vec2(a.x / b, a.y / b)
+
+    @wp.func
+    def jet_div(a: NativeVec2, b: Jet2Scalar) -> Jet2Vec2:
+        return Jet2Vec2(a[0] / b, a[1] / b)
+
+    @wp.func
+    def jet_div(a: Jet2Vec3, b: dtype) -> Jet2Vec3:
+        return Jet2Vec3(a.x / b, a.y / b, a.z / b)
+
+    @wp.func
+    def jet_div(a: Jet2Vec3, b: Jet2Scalar) -> Jet2Vec3:
+        # Divide each component, rather than multiply by 1 / b, whose second derivative
+        # overflows for small b.
+        return Jet2Vec3(a.x / b, a.y / b, a.z / b)
+
+    @wp.func
+    def jet_div(a: NativeVec3, b: Jet2Scalar) -> Jet2Vec3:
+        return Jet2Vec3(a[0] / b, a[1] / b, a[2] / b)
+
+    @wp.func
+    def jet_dot(a: Jet2Vec2, b: Jet2Vec2) -> Jet2Scalar:
+        return a.x * b.x + a.y * b.y
+
+    @wp.func
+    def jet_dot(a: Jet2Vec2, b: NativeVec2) -> Jet2Scalar:
+        return a.x * b[0] + a.y * b[1]
+
+    @wp.func
+    def jet_dot(a: NativeVec2, b: Jet2Vec2) -> Jet2Scalar:
+        return a[0] * b.x + a[1] * b.y
+
+    @wp.func
+    def jet_dot(a: Jet2Vec3, b: Jet2Vec3) -> Jet2Scalar:
+        return a.x * b.x + a.y * b.y + a.z * b.z
+
+    @wp.func
+    def jet_dot(a: Jet2Vec3, b: NativeVec3) -> Jet2Scalar:
+        return a.x * b[0] + a.y * b[1] + a.z * b[2]
+
+    @wp.func
+    def jet_dot(a: NativeVec3, b: Jet2Vec3) -> Jet2Scalar:
+        return a[0] * b.x + a[1] * b.y + a[2] * b.z
+
+    @wp.func
+    def jet_cw_mul(a: Jet2Vec2, b: Jet2Vec2) -> Jet2Vec2:
+        return Jet2Vec2(a.x * b.x, a.y * b.y)
+
+    @wp.func
+    def jet_cw_mul(a: Jet2Vec2, b: NativeVec2) -> Jet2Vec2:
+        return Jet2Vec2(a.x * b[0], a.y * b[1])
+
+    @wp.func
+    def jet_cw_mul(a: NativeVec2, b: Jet2Vec2) -> Jet2Vec2:
+        return Jet2Vec2(a[0] * b.x, a[1] * b.y)
+
+    @wp.func
+    def jet_cw_mul(a: Jet2Vec3, b: Jet2Vec3) -> Jet2Vec3:
+        return Jet2Vec3(a.x * b.x, a.y * b.y, a.z * b.z)
+
+    @wp.func
+    def jet_cw_mul(a: Jet2Vec3, b: NativeVec3) -> Jet2Vec3:
+        return Jet2Vec3(a.x * b[0], a.y * b[1], a.z * b[2])
+
+    @wp.func
+    def jet_cw_mul(a: NativeVec3, b: Jet2Vec3) -> Jet2Vec3:
+        return Jet2Vec3(a[0] * b.x, a[1] * b.y, a[2] * b.z)
+
+    @wp.func
+    def jet_cw_div(a: Jet2Vec2, b: Jet2Vec2) -> Jet2Vec2:
+        return Jet2Vec2(a.x / b.x, a.y / b.y)
+
+    @wp.func
+    def jet_cw_div(a: Jet2Vec2, b: NativeVec2) -> Jet2Vec2:
+        return Jet2Vec2(a.x / b[0], a.y / b[1])
+
+    @wp.func
+    def jet_cw_div(a: NativeVec2, b: Jet2Vec2) -> Jet2Vec2:
+        return Jet2Vec2(a[0] / b.x, a[1] / b.y)
+
+    @wp.func
+    def jet_cw_div(a: Jet2Vec3, b: Jet2Vec3) -> Jet2Vec3:
+        return Jet2Vec3(a.x / b.x, a.y / b.y, a.z / b.z)
+
+    @wp.func
+    def jet_cw_div(a: Jet2Vec3, b: NativeVec3) -> Jet2Vec3:
+        return Jet2Vec3(a.x / b[0], a.y / b[1], a.z / b[2])
+
+    @wp.func
+    def jet_cw_div(a: NativeVec3, b: Jet2Vec3) -> Jet2Vec3:
+        return Jet2Vec3(a[0] / b.x, a[1] / b.y, a[2] / b.z)
+
+    @wp.func
+    def jet_length_sq(a: Jet2Vec2) -> Jet2Scalar:
+        return jet_dot(a, a)
+
+    @wp.func
+    def jet_length_sq(a: Jet2Vec3) -> Jet2Scalar:
+        return jet_dot(a, a)
+
+    @wp.func
+    def jet_length(a: Jet2Vec2) -> Jet2Scalar:
+        # Like native wp.length(), a zero-length vector has a zero gradient, and its
+        # Hessian, which is undefined there, is taken as zero too.
+        x = Compute(a.x.value)
+        y = Compute(a.y.value)
+        length = wp.sqrt(x * x + y * y)
+        if length == Compute(0.0):
+            return Jet2Scalar(dtype(0.0), Grad(), Hess())
+        # With unit vector u and component gradients g_i, the gradient is sum u_i g_i and the
+        # Hessian is sum u_i H_i + (sum g_i g_i^T - grad grad^T) / length. Scaling one factor of
+        # each outer product by 1 / length keeps every intermediate no larger than its term.
+        # For float16 all of it is formed in float32 and rounded once, since the outer products
+        # can overflow and cancel even when the Hessian fits.
+        inv_length = Compute(1.0) / length
+        ux = x * inv_length
+        uy = y * inv_length
+        gx = ComputeGrad(a.x.grad)
+        gy = ComputeGrad(a.y.grad)
+        grad = ux * gx + uy * gy
+        hess = (
+            ux * ComputeHess(a.x.hess)
+            + uy * ComputeHess(a.y.hess)
+            + wp.outer(gx, inv_length * gx)
+            + wp.outer(gy, inv_length * gy)
+            - wp.outer(grad, inv_length * grad)
+        )
+        return Jet2Scalar(dtype(length), Grad(grad), Hess(hess))
+
+    @wp.func
+    def jet_length(a: Jet2Vec3) -> Jet2Scalar:
+        # Like native wp.length(), a zero-length vector has a zero gradient, and its
+        # Hessian, which is undefined there, is taken as zero too.
+        x = Compute(a.x.value)
+        y = Compute(a.y.value)
+        z = Compute(a.z.value)
+        length = wp.sqrt(x * x + y * y + z * z)
+        if length == Compute(0.0):
+            return Jet2Scalar(dtype(0.0), Grad(), Hess())
+        # With unit vector u and component gradients g_i, the gradient is sum u_i g_i and the
+        # Hessian is sum u_i H_i + (sum g_i g_i^T - grad grad^T) / length. Scaling one factor of
+        # each outer product by 1 / length keeps every intermediate no larger than its term.
+        # For float16 all of it is formed in float32 and rounded once, since the outer products
+        # can overflow and cancel even when the Hessian fits.
+        inv_length = Compute(1.0) / length
+        ux = x * inv_length
+        uy = y * inv_length
+        uz = z * inv_length
+        gx = ComputeGrad(a.x.grad)
+        gy = ComputeGrad(a.y.grad)
+        gz = ComputeGrad(a.z.grad)
+        grad = ux * gx + uy * gy + uz * gz
+        hess = (
+            ux * ComputeHess(a.x.hess)
+            + uy * ComputeHess(a.y.hess)
+            + uz * ComputeHess(a.z.hess)
+            + wp.outer(gx, inv_length * gx)
+            + wp.outer(gy, inv_length * gy)
+            + wp.outer(gz, inv_length * gz)
+            - wp.outer(grad, inv_length * grad)
+        )
+        return Jet2Scalar(dtype(length), Grad(grad), Hess(hess))
+
+    @wp.func
+    def jet_normalize(a: Jet2Vec2) -> Jet2Vec2:
+        # Like the native normalize(), a zero-length vector normalizes to zero.
+        length = jet_length(a)
+        if wp.static(Compute is not dtype):
+            # A float16 vector can be longer than the float16 maximum although its unit
+            # vector is representable. Scaling by a power of two is exact and leaves the
+            # unit vector and its derivatives unchanged, so normalize a / 256 instead.
+            if wp.isinf(length.value):
+                scaled = jet_mul(a, dtype(0.00390625))
+                return jet_div(scaled, jet_length(scaled))
+        if length.value > dtype(0.0):
+            return jet_div(a, length)
+        zero = scalar_constant(dtype(0.0))
+        return Jet2Vec2(zero, zero)
+
+    @wp.func
+    def jet_normalize(a: Jet2Vec3) -> Jet2Vec3:
+        # Like the native normalize(), a zero-length vector normalizes to zero.
+        length = jet_length(a)
+        if wp.static(Compute is not dtype):
+            # A float16 vector can be longer than the float16 maximum although its unit
+            # vector is representable. Scaling by a power of two is exact and leaves the
+            # unit vector and its derivatives unchanged, so normalize a / 256 instead.
+            if wp.isinf(length.value):
+                scaled = jet_mul(a, dtype(0.00390625))
+                return jet_div(scaled, jet_length(scaled))
+        if length.value > dtype(0.0):
+            return jet_div(a, length)
+        zero = scalar_constant(dtype(0.0))
+        return Jet2Vec3(zero, zero, zero)
+
+    # Warp defines neither of these for vec2, so they stay on the namespace
+    # instead of becoming builtin overloads, as in the first-order space.
+
+    @wp.func
+    def jet_perp(v: Jet2Vec2) -> Jet2Vec2:
+        return Jet2Vec2(-v.y, v.x)
+
+    @wp.func
+    def jet_cross2(a: Jet2Vec2, b: Jet2Vec2) -> Jet2Scalar:
+        return a.x * b.y - a.y * b.x
+
+    @wp.func
+    def jet_cross2(a: Jet2Vec2, b: NativeVec2) -> Jet2Scalar:
+        return a.x * b[1] - a.y * b[0]
+
+    @wp.func
+    def jet_cross2(a: NativeVec2, b: Jet2Vec2) -> Jet2Scalar:
+        return a[0] * b.y - a[1] * b.x
+
+    @wp.func
+    def jet_cross(a: Jet2Vec3, b: Jet2Vec3) -> Jet2Vec3:
+        return Jet2Vec3(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x)
+
+    @wp.func
+    def jet_cross(a: Jet2Vec3, b: NativeVec3) -> Jet2Vec3:
+        return Jet2Vec3(a.y * b[2] - a.z * b[1], a.z * b[0] - a.x * b[2], a.x * b[1] - a.y * b[0])
+
+    @wp.func
+    def jet_cross(a: NativeVec3, b: Jet2Vec3) -> Jet2Vec3:
+        return Jet2Vec3(a[1] * b.z - a[2] * b.y, a[2] * b.x - a[0] * b.z, a[0] * b.y - a[1] * b.x)
+
+    # ---- more scalar functions: chain rule with f' and f'' ----
+
+    @wp.func
+    def jet_sinh(x: Jet2Scalar) -> Jet2Scalar:
+        s = wp.sinh(x.value)
+        c = wp.cosh(x.value)
+        return _lift(s, c, s, x)
+
+    @wp.func
+    def jet_cosh(x: Jet2Scalar) -> Jet2Scalar:
+        s = wp.sinh(x.value)
+        c = wp.cosh(x.value)
+        return _lift(c, s, c, x)
+
+    @wp.func
+    def jet_tanh(x: Jet2Scalar) -> Jet2Scalar:
+        t = wp.tanh(x.value)
+        fp = dtype(1.0) - t * t
+        return _lift(t, fp, -dtype(2.0) * t * fp, x)
+
+    @wp.func
+    def jet_log2(x: Jet2Scalar) -> Jet2Scalar:
+        inv = Compute(1.0) / Compute(x.value)
+        k = Compute(1.0) / Compute(0.6931471805599453)
+        return _lift_wide(wp.log2(x.value), k * inv, -k * inv * inv, x)
+
+    @wp.func
+    def jet_log10(x: Jet2Scalar) -> Jet2Scalar:
+        inv = Compute(1.0) / Compute(x.value)
+        k = Compute(1.0) / Compute(2.302585092994046)
+        return _lift_wide(wp.log10(x.value), k * inv, -k * inv * inv, x)
+
+    @wp.func
+    def jet_cbrt(x: Jet2Scalar) -> Jet2Scalar:
+        # The derivatives are formed in the compute type: in float16 the second derivative
+        # overflows for small x although its product with the gradient's outer product fits.
+        wa = Compute(x.value)
+        c = wp.cbrt(wa)
+        fp = Compute(1.0) / (Compute(3.0) * c * c)
+        return _lift_wide(wp.cbrt(x.value), fp, -Compute(2.0) * fp / (Compute(3.0) * wa), x)
+
+    @wp.func
+    def jet_erf(x: Jet2Scalar) -> Jet2Scalar:
+        fp = dtype(1.1283791670955126) * wp.exp(-x.value * x.value)
+        return _lift(wp.erf(x.value), fp, -dtype(2.0) * x.value * fp, x)
+
+    @wp.func
+    def jet_floor(x: Jet2Scalar) -> Jet2Scalar:
+        return Jet2Scalar(wp.floor(x.value), Grad(), Hess())
+
+    @wp.func
+    def jet_lerp(a: Jet2Scalar, b: Jet2Scalar, t: Jet2Scalar) -> Jet2Scalar:
+        return a + t * (b - a)
+
+    @wp.func
+    def jet_lerp(a: Jet2Scalar, b: Jet2Scalar, t: dtype) -> Jet2Scalar:
+        return a + t * (b - a)
+
+    @wp.func
+    def jet_lerp(a: dtype, b: dtype, t: Jet2Scalar) -> Jet2Scalar:
+        return a + t * (b - a)
+
+    @wp.func
+    def jet_smoothstep(a: dtype, b: dtype, x: Jet2Scalar) -> Jet2Scalar:
+        t = (x - a) / (b - a)
+        if t.value <= dtype(0.0):
+            return Jet2Scalar(dtype(0.0), Grad(), Hess())
+        if t.value >= dtype(1.0):
+            return Jet2Scalar(dtype(1.0), Grad(), Hess())
+        return t * t * (dtype(3.0) - dtype(2.0) * t)
+
+    @wp.func
+    def jet_smoothstep(a: Jet2Scalar, b: Jet2Scalar, x: Jet2Scalar) -> Jet2Scalar:
+        t = (x - a) / (b - a)
+        if t.value <= dtype(0.0):
+            return Jet2Scalar(dtype(0.0), Grad(), Hess())
+        if t.value >= dtype(1.0):
+            return Jet2Scalar(dtype(1.0), Grad(), Hess())
+        return t * t * (dtype(3.0) - dtype(2.0) * t)
+
+    # ---- vector reductions and component assignment ----
+
+    @wp.func
+    def jet_abs(x: Jet2Vec2) -> Jet2Vec2:
+        return Jet2Vec2(jet_abs(x.x), jet_abs(x.y))
+
+    @wp.func
+    def jet_abs(x: Jet2Vec3) -> Jet2Vec3:
+        return Jet2Vec3(jet_abs(x.x), jet_abs(x.y), jet_abs(x.z))
+
+    @wp.func
+    def jet_min(a: Jet2Vec2) -> Jet2Scalar:
+        return jet_extract(a, int(wp.argmin(wp.vector(a.x.value, a.y.value))))
+
+    @wp.func
+    def jet_min(a: Jet2Vec3) -> Jet2Scalar:
+        return jet_extract(a, int(wp.argmin(wp.vector(a.x.value, a.y.value, a.z.value))))
+
+    @wp.func
+    def jet_max(a: Jet2Vec2) -> Jet2Scalar:
+        return jet_extract(a, int(wp.argmax(wp.vector(a.x.value, a.y.value))))
+
+    @wp.func
+    def jet_max(a: Jet2Vec3) -> Jet2Scalar:
+        return jet_extract(a, int(wp.argmax(wp.vector(a.x.value, a.y.value, a.z.value))))
+
+    @wp.func
+    def jet_assign_copy(a: Jet2Vec2, i: int, value: Jet2Scalar) -> Jet2Vec2:
+        i = _component_index(i, 2)
+        if i == 0:
+            return Jet2Vec2(value, a.y)
+        return Jet2Vec2(a.x, value)
+
+    @wp.func
+    def jet_assign_copy(a: Jet2Vec3, i: int, value: Jet2Scalar) -> Jet2Vec3:
+        i = _component_index(i, 3)
+        if i == 0:
+            return Jet2Vec3(value, a.y, a.z)
+        if i == 1:
+            return Jet2Vec3(a.x, value, a.z)
+        return Jet2Vec3(a.x, a.y, value)
+
+    @wp.func
+    def jet_assign_copy(a: Jet2Vec2, i: int, value: dtype) -> Jet2Vec2:
+        return jet_assign_copy(a, i, scalar_constant(value))
+
+    @wp.func
+    def jet_assign_copy(a: Jet2Vec3, i: int, value: dtype) -> Jet2Vec3:
+        return jet_assign_copy(a, i, scalar_constant(value))
+
+    @wp.func
+    def scalar_value(x: Jet2Scalar) -> dtype:
+        return x.value
+
+    # ---- quaternions: one scalar jet per component, as for vectors ----
+
+    NativeQuat = quaternion(dtype)
+
+    @wp.struct
+    class Jet2Quat:
+        x: Jet2Scalar
+        y: Jet2Scalar
+        z: Jet2Scalar
+        w: Jet2Scalar
+
+    @wp.func
+    def quat_from_scalars(x: Jet2Scalar, y: Jet2Scalar, z: Jet2Scalar, w: Jet2Scalar) -> Jet2Quat:
+        return Jet2Quat(x, y, z, w)
+
+    @wp.func
+    def quat_constant(q: NativeQuat) -> Jet2Quat:
+        return Jet2Quat(scalar_constant(q[0]), scalar_constant(q[1]), scalar_constant(q[2]), scalar_constant(q[3]))
+
+    @wp.func
+    def jet_extract(a: Jet2Quat, i: int) -> Jet2Scalar:
+        component = wp.vec4i(0, 1, 2, 3)[i]
+        if component == 0:
+            return a.x
+        if component == 1:
+            return a.y
+        if component == 2:
+            return a.z
+        return a.w
+
+    @wp.func
+    def jet_add(a: Jet2Quat, b: Jet2Quat) -> Jet2Quat:
+        return Jet2Quat(a.x + b.x, a.y + b.y, a.z + b.z, a.w + b.w)
+
+    @wp.func
+    def jet_add(a: Jet2Quat, b: NativeQuat) -> Jet2Quat:
+        return Jet2Quat(a.x + b[0], a.y + b[1], a.z + b[2], a.w + b[3])
+
+    @wp.func
+    def jet_add(a: NativeQuat, b: Jet2Quat) -> Jet2Quat:
+        return Jet2Quat(a[0] + b.x, a[1] + b.y, a[2] + b.z, a[3] + b.w)
+
+    @wp.func
+    def jet_sub(a: Jet2Quat, b: Jet2Quat) -> Jet2Quat:
+        return Jet2Quat(a.x - b.x, a.y - b.y, a.z - b.z, a.w - b.w)
+
+    @wp.func
+    def jet_sub(a: Jet2Quat, b: NativeQuat) -> Jet2Quat:
+        return Jet2Quat(a.x - b[0], a.y - b[1], a.z - b[2], a.w - b[3])
+
+    @wp.func
+    def jet_sub(a: NativeQuat, b: Jet2Quat) -> Jet2Quat:
+        return Jet2Quat(a[0] - b.x, a[1] - b.y, a[2] - b.z, a[3] - b.w)
+
+    @wp.func
+    def jet_neg(x: Jet2Quat) -> Jet2Quat:
+        return Jet2Quat(-x.x, -x.y, -x.z, -x.w)
+
+    @wp.func
+    def jet_mul(a: Jet2Quat, b: dtype) -> Jet2Quat:
+        return Jet2Quat(a.x * b, a.y * b, a.z * b, a.w * b)
+
+    @wp.func
+    def jet_mul(a: dtype, b: Jet2Quat) -> Jet2Quat:
+        return Jet2Quat(a * b.x, a * b.y, a * b.z, a * b.w)
+
+    @wp.func
+    def jet_mul(a: Jet2Quat, b: Jet2Scalar) -> Jet2Quat:
+        return Jet2Quat(a.x * b, a.y * b, a.z * b, a.w * b)
+
+    @wp.func
+    def jet_mul(a: Jet2Scalar, b: Jet2Quat) -> Jet2Quat:
+        return Jet2Quat(a * b.x, a * b.y, a * b.z, a * b.w)
+
+    @wp.func
+    def jet_mul(a: NativeQuat, b: Jet2Scalar) -> Jet2Quat:
+        # A constant quaternion scaled by a jet, e.g. the endpoints of (1 - t) * q0 + t * q1.
+        return Jet2Quat(b * a[0], b * a[1], b * a[2], b * a[3])
+
+    @wp.func
+    def jet_mul(a: Jet2Scalar, b: NativeQuat) -> Jet2Quat:
+        return jet_mul(b, a)
+
+    @wp.func
+    def jet_mul(a: Jet2Quat, b: Jet2Quat) -> Jet2Quat:
+        x, y, z, w = _quat_mul_parts(a.x, a.y, a.z, a.w, b.x, b.y, b.z, b.w)
+        return Jet2Quat(x, y, z, w)
+
+    @wp.func
+    def jet_mul(a: Jet2Quat, b: NativeQuat) -> Jet2Quat:
+        x, y, z, w = _quat_mul_parts(a.x, a.y, a.z, a.w, b[0], b[1], b[2], b[3])
+        return Jet2Quat(x, y, z, w)
+
+    @wp.func
+    def jet_mul(a: NativeQuat, b: Jet2Quat) -> Jet2Quat:
+        x, y, z, w = _quat_mul_parts(a[0], a[1], a[2], a[3], b.x, b.y, b.z, b.w)
+        return Jet2Quat(x, y, z, w)
+
+    @wp.func
+    def jet_quat_rotate(quat: Jet2Quat, vec: Jet2Vec3) -> Jet2Vec3:
+        r0, r1, r2 = _quat_rotate_parts(
+            quat.x, quat.y, quat.z, quat.w, vec.x, vec.y, vec.z, dtype(1.0), dtype(1.0), dtype(2.0)
+        )
+        return Jet2Vec3(r0, r1, r2)
+
+    @wp.func
+    def jet_quat_rotate(quat: Jet2Quat, vec: NativeVec3) -> Jet2Vec3:
+        r0, r1, r2 = _quat_rotate_parts(
+            quat.x, quat.y, quat.z, quat.w, vec[0], vec[1], vec[2], dtype(1.0), dtype(1.0), dtype(2.0)
+        )
+        return Jet2Vec3(r0, r1, r2)
+
+    @wp.func
+    def jet_quat_rotate(quat: NativeQuat, vec: Jet2Vec3) -> Jet2Vec3:
+        r0, r1, r2 = _quat_rotate_parts(
+            quat[0], quat[1], quat[2], quat[3], vec.x, vec.y, vec.z, dtype(1.0), dtype(1.0), dtype(2.0)
+        )
+        return Jet2Vec3(r0, r1, r2)
+
+    @wp.func
+    def jet_quat_rotate_inv(quat: Jet2Quat, vec: Jet2Vec3) -> Jet2Vec3:
+        r0, r1, r2 = _quat_rotate_parts(
+            quat.x, quat.y, quat.z, quat.w, vec.x, vec.y, vec.z, dtype(-1.0), dtype(1.0), dtype(2.0)
+        )
+        return Jet2Vec3(r0, r1, r2)
+
+    @wp.func
+    def jet_quat_rotate_inv(quat: Jet2Quat, vec: NativeVec3) -> Jet2Vec3:
+        r0, r1, r2 = _quat_rotate_parts(
+            quat.x, quat.y, quat.z, quat.w, vec[0], vec[1], vec[2], dtype(-1.0), dtype(1.0), dtype(2.0)
+        )
+        return Jet2Vec3(r0, r1, r2)
+
+    @wp.func
+    def jet_quat_rotate_inv(quat: NativeQuat, vec: Jet2Vec3) -> Jet2Vec3:
+        r0, r1, r2 = _quat_rotate_parts(
+            quat[0], quat[1], quat[2], quat[3], vec.x, vec.y, vec.z, dtype(-1.0), dtype(1.0), dtype(2.0)
+        )
+        return Jet2Vec3(r0, r1, r2)
+
+    @wp.func
+    def jet_quat_inverse(quat: Jet2Quat) -> Jet2Quat:
+        return Jet2Quat(-quat.x, -quat.y, -quat.z, quat.w)
+
+    @wp.func
+    def jet_quat_from_axis_angle(axis: Jet2Vec3, angle: Jet2Scalar) -> Jet2Quat:
+        half = angle * dtype(0.5)
+        s = jet_sin(half)
+        return Jet2Quat(axis.x * s, axis.y * s, axis.z * s, jet_cos(half))
+
+    @wp.func
+    def jet_quat_from_axis_angle(axis: NativeVec3, angle: Jet2Scalar) -> Jet2Quat:
+        half = angle * dtype(0.5)
+        s = jet_sin(half)
+        return Jet2Quat(axis[0] * s, axis[1] * s, axis[2] * s, jet_cos(half))
+
+    @wp.func
+    def jet_quat_from_axis_angle(axis: Jet2Vec3, angle: dtype) -> Jet2Quat:
+        half = angle * dtype(0.5)
+        s = wp.sin(half)
+        return Jet2Quat(axis.x * s, axis.y * s, axis.z * s, scalar_constant(wp.cos(half)))
+
+    @wp.func
+    def jet_dot(a: Jet2Quat, b: Jet2Quat) -> Jet2Scalar:
+        return a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w
+
+    @wp.func
+    def jet_dot(a: Jet2Quat, b: NativeQuat) -> Jet2Scalar:
+        return a.x * b[0] + a.y * b[1] + a.z * b[2] + a.w * b[3]
+
+    @wp.func
+    def jet_dot(a: NativeQuat, b: Jet2Quat) -> Jet2Scalar:
+        return jet_dot(b, a)
+
+    @wp.func
+    def jet_length_sq(a: Jet2Quat) -> Jet2Scalar:
+        return jet_dot(a, a)
+
+    @wp.func
+    def jet_length(a: Jet2Quat) -> Jet2Scalar:
+        # As for vectors: a zero quaternion has zero derivatives, and a NaN length stays NaN.
+        length_sq = jet_dot(a, a)
+        if length_sq.value == dtype(0.0):
+            return Jet2Scalar(dtype(0.0), Grad(), Hess())
+        return jet_sqrt(length_sq)
+
+    @wp.func
+    def jet_normalize(a: Jet2Quat) -> Jet2Quat:
+        # Like native normalize(quat), a quaternion whose length is not positive (zero
+        # or NaN) normalizes to the identity rotation, with zero derivatives.
+        length_sq = jet_dot(a, a)
+        if length_sq.value > dtype(0.0):
+            length = jet_sqrt(length_sq)
+            return Jet2Quat(a.x / length, a.y / length, a.z / length, a.w / length)
+        return quat_constant(NativeQuat(dtype(0.0), dtype(0.0), dtype(0.0), dtype(1.0)))
+
+    @wp.func
+    def quat_exp_map(v: Jet2Vec3) -> Jet2Quat:
+        # As in the first-order space: series near the origin, closed form elsewhere.
+        s = jet_dot(v, v)
+        s2 = s * s
+        s3 = s2 * s
+        cos_half = (
+            scalar_constant(dtype(1.0)) + s * dtype(-1.0 / 8.0) + s2 * dtype(1.0 / 384.0) + s3 * dtype(-1.0 / 46080.0)
+        )
+        sinc_half = (
+            scalar_constant(dtype(0.5))
+            + s * dtype(-1.0 / 48.0)
+            + s2 * dtype(1.0 / 3840.0)
+            + s3 * dtype(-1.0 / 645120.0)
+        )
+        if s.value >= dtype(1.0e-3):
+            angle = jet_sqrt(s)
+            half = angle * dtype(0.5)
+            cos_half = jet_cos(half)
+            sinc_half = jet_sin(half) / angle
+        return Jet2Quat(v.x * sinc_half, v.y * sinc_half, v.z * sinc_half, cos_half)
+
+    _register("quat_rotate", jet_quat_rotate)
+    _register("quat_rotate_inv", jet_quat_rotate_inv)
+    _register("quat_inverse", jet_quat_inverse)
+    _register("quat_from_axis_angle", jet_quat_from_axis_angle)
+
+    _register("value", scalar_value)
+
+    _register("add", jet_add)
+    _register("sub", jet_sub)
+    _register("mul", jet_mul)
+    _register("div", jet_div)
+    _register("pow", jet_pow)
+    _register("neg", jet_neg)
+    _register("pos", jet_pos)
+
+    _register("sin", jet_sin)
+    _register("cos", jet_cos)
+    _register("tan", jet_tan)
+    _register("asin", jet_asin)
+    _register("acos", jet_acos)
+    _register("atan", jet_atan)
+    _register("atan2", jet_atan2)
+    _register("exp", jet_exp)
+    _register("log", jet_log)
+    _register("sqrt", jet_sqrt)
+    _register("abs", jet_abs)
+    _register("sign", jet_sign)
+
+    _register("min", jet_min)
+    _register("max", jet_max)
+    _register("clamp", jet_clamp)
+    _register("where", jet_where)
+
+    _register("extract", jet_extract)
+
+    _register("dot", jet_dot)
+    _register("cw_mul", jet_cw_mul)
+    _register("cw_div", jet_cw_div)
+    _register("length", jet_length)
+    _register("length_sq", jet_length_sq)
+    _register("normalize", jet_normalize)
+    _register("cross", jet_cross)
+
+    _register("sinh", jet_sinh)
+    _register("cosh", jet_cosh)
+    _register("tanh", jet_tanh)
+    _register("log2", jet_log2)
+    _register("log10", jet_log10)
+    _register("cbrt", jet_cbrt)
+    _register("erf", jet_erf)
+    _register("floor", jet_floor)
+    _register("lerp", jet_lerp)
+    _register("smoothstep", jet_smoothstep)
+    _register("assign_copy", jet_assign_copy)
+
+    return SimpleNamespace(
+        width=width,
+        dtype=dtype,
+        scalar=Jet2Scalar,
+        vec2=Jet2Vec2,
+        vec3=Jet2Vec3,
+        grad_type_scalar=Grad,
+        hess_type_scalar=Hess,
+        native_vec2=NativeVec2,
+        native_vec3=NativeVec3,
+        constant=scalar_constant,
+        variable=scalar_variable,
+        make_vec2=vec2_from_scalars,
+        make_vec3=vec3_from_scalars,
+        constant_vec2=vec2_constant,
+        constant_vec3=vec3_constant,
+        perp=jet_perp,
+        cross2=jet_cross2,
+        quat=Jet2Quat,
+        native_quat=NativeQuat,
+        make_quat=quat_from_scalars,
+        constant_quat=quat_constant,
+        exp_map=quat_exp_map,
+        _slot_jet_types={
+            "scalar": (Jet2Scalar, Grad),
+            "vec2": (Jet2Vec2, None),
+            "vec3": (Jet2Vec3, None),
+            "quat": (Jet2Quat, None),
+        },
+    )
+
+
+def JetSpace2(slots, dtype=None):
+    """Return second-order (forward-over-forward) jet types for a set of differentiated inputs.
+
+    .. admonition:: Experimental
+
+        Forward-mode jets are experimental and subject to change without a formal deprecation
+        cycle.
+
+    A width-k second-order jet tracks value, gradient, and the full k x k
+    Hessian; propagating it through a scalar function in one forward pass yields
+    the local Hessian with no reverse pass. Per-intermediate state is O(k^2), so
+    this suits small k.
+
+    Args:
+        slots: The inputs differentiated with respect to. Either an integer
+            ``n``, meaning ``n`` scalar inputs, or a sequence of types, one per
+            input: ``wp.float32``, ``wp.vec2``, ``wp.vec3`` or ``wp.quat``. A
+            spring over two nodes is ``(wp.vec3, wp.vec3)``, with width 6.
+        dtype: Scalar type the jets are built on. Inferred from ``slots`` when
+            they are Warp types; ``wp.float32`` when ``slots`` is an integer
+            or contains only Python ``float``.
+
+    Returns:
+        A namespace holding the generated jet types (``scalar``, ``vec2``,
+        ``vec3``, ``quat``), the types of a scalar jet's ``grad`` and ``hess``
+        fields (``grad_type_scalar``, ``hess_type_scalar``), the helpers that
+        construct jets, including ``exp_map``, and ``jet_type(t)``, which looks a jet type up by the
+        Warp type of the value as in :func:`warp.JetSpace`.
+
+    The width is always the total number of scalar components in ``slots``:
+    unlike :func:`warp.JetSpace`, there is no ``width`` argument and no
+    ``directional``.
+
+    ``seed(*values)`` takes one value per slot and returns one jet per slot,
+    with the derivative directions numbered slot by slot in the order the
+    components appear, as in :func:`warp.JetSpace`. With ``spring_energy`` an
+    ordinary ``@wp.func`` that is generic over its argument types::
+
+        J2 = wp.JetSpace2((wp.vec3, wp.vec3))  # two 3D points, width 6
+
+
+        @wp.func
+        def spring_hessian(x0: wp.vec3, x1: wp.vec3):
+            x0_jet, x1_jet = J2.seed(x0, x1)
+            return spring_energy(x0_jet, x1_jet).hess  # the 6 x 6 Hessian
+
+    Vector jets support the same arithmetic and geometry as first-order ones
+    (``dot``, ``cross``, ``length``, ``normalize``, indexing), so the same
+    ``spring_energy`` also runs on :func:`warp.JetSpace` jets. A second-order
+    vector jet is one scalar jet per component, so it carries the same state as
+    the function written out per component. ``variable(x, direction)`` seeds a
+    single scalar, for use in a loop.
+
+    A second-order jet carries the Hessian forward, so a kernel that only uses
+    second-order jets needs no reverse-mode code. Declare it with
+    ``@wp.kernel(enable_backward=False)``, or set the ``enable_backward`` module
+    option to ``False``: otherwise Warp still generates the unused adjoint, which
+    dominates compile time for long jet chains.
+
+    As with :func:`warp.JetSpace`, the width is a compile-time constant and the
+    types are for local derivatives of fixed, statically known arity. The
+    quadratic state makes that limit tighter here: register pressure and compile
+    time both grow with ``width**2``, so for wider energies prefer a first-order
+    jet with a reverse sweep over it (via :class:`warp.Tape`, or in-kernel with
+    :func:`warp.grad`), which reaches the same Hessian with linear state.
+    """
+    kinds, dtype = _normalize_slots(slots, dtype)
+    if any(kind not in ("scalar", "vec2", "vec3", "quat") for kind in kinds):
+        raise TypeError(
+            "Second-order jets support scalar, vec2, vec3 and quat slots, not matrix slots. Pass a matrix as its "
+            "columns or scalar components, or use a first-order JetSpace with a reverse sweep."
+        )
+    width = sum(len(_slot_components(kind)) for kind in kinds)
+
+    key = (width, dtype)
+    with _codegen_lock:
+        base = _CACHE2.get(key)
+        if base is None:
+            base = _make_jet_space2(width, dtype)
+            _CACHE2[key] = base
+
+        return _layout_namespace(base, kinds, width, dtype, second_order=True)

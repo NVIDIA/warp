@@ -39,7 +39,7 @@ def deform(positions: wp.array[wp.vec3], t: float):
 def simulate(
     positions: wp.array[wp.vec3],
     velocities: wp.array[wp.vec3],
-    mesh: wp.uint64,
+    mesh: wp.handle,
     margin: float,
     dt: float,
 ):

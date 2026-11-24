@@ -816,6 +816,9 @@ class Texture:
                     return src.copy_to(self)
                 src = array(ptr=src._host_ptr, shape=src._get_shape(), dtype=src.dtype, device=src.device)
 
+            # Expose vector channels as scalars to match the texture storage.
+            if type_is_vector(src.dtype):
+                src = src.view(self.dtype)
             self_array = array(ptr=self._host_ptr, shape=self._get_shape(), dtype=self.dtype, device=self.device)
             warp._src.context.copy(self_array, src)
 
@@ -923,6 +926,9 @@ class Texture:
                     return dst.copy_from(self)
                 dst = array(ptr=dst._host_ptr, shape=dst._get_shape(), dtype=dst.dtype, device=dst.device)
 
+            # Expose vector channels as scalars to match the texture storage.
+            if type_is_vector(dst.dtype):
+                dst = dst.view(self.dtype)
             self_array = array(ptr=self._host_ptr, shape=self._get_shape(), dtype=self.dtype, device=self.device)
             warp._src.context.copy(dst, self_array)
 
@@ -1287,7 +1293,7 @@ class Texture1D(Texture):
 
 
         @wp.kernel
-        def sample_kernel(tex: wp.Texture1D, output: wp.array(dtype=float)):
+        def sample_kernel(tex: wp.Texture1D, output: wp.array[float]):
             tid = wp.tid()
             output[tid] = wp.texture_sample(tex, 0.5, dtype=float)
     """
@@ -1378,7 +1384,7 @@ class Texture2D(Texture):
 
 
         @wp.kernel
-        def sample_kernel(tex: wp.Texture2D, output: wp.array(dtype=float)):
+        def sample_kernel(tex: wp.Texture2D, output: wp.array[float]):
             tid = wp.tid()
             output[tid] = wp.texture_sample(tex, wp.vec2f(0.5, 0.5), dtype=float)
     """
@@ -1472,7 +1478,7 @@ class Texture3D(Texture):
 
 
         @wp.kernel
-        def sample_kernel(tex: wp.Texture3D, output: wp.array(dtype=float)):
+        def sample_kernel(tex: wp.Texture3D, output: wp.array[float]):
             tid = wp.tid()
             output[tid] = wp.texture_sample(tex, wp.vec3f(0.5, 0.5, 0.5), dtype=float)
     """

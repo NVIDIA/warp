@@ -13,7 +13,7 @@ import numpy as np
 
 import warp._src.build
 import warp._src.context
-from warp._src.codegen import Var, get_arg_value
+from warp._src.codegen import AdjointUnsupportedError, Var, get_arg_value
 from warp._src.logger import log_warning
 from warp._src.types import *
 from warp._src.types import _BvhQueryAabb, _BvhQueryCapsule, _BvhQueryRay, _BvhQuerySphere, _MeshQuerySphere
@@ -134,6 +134,70 @@ add_builtin(
         -1 if ``x`` < 0 and 1 otherwise.""",
     group="Scalar Math",
     is_differentiable=False,
+)
+
+add_builtin(
+    "value",
+    input_types={"x": Float},
+    value_func=sametypes_create_value_func(Float),
+    doc="""Return the value of a scalar jet without its derivatives, or a plain float unchanged.
+
+    .. admonition:: Experimental
+
+        Forward-mode jets are experimental and subject to change without a formal deprecation
+        cycle. See :func:`warp.JetSpace`.
+
+    Comparisons such as ``a < b`` are not defined on jets, so a function written
+    generically over plain floats and jets compares ``wp.value(a) < wp.value(b)``
+    instead. A branch chosen this way carries the derivative of the branch taken.
+
+    The signatures listed here take plain floats. Each space
+    ``J = wp.JetSpace(...)`` or ``J = wp.JetSpace2(...)`` adds one that takes a
+    scalar jet of that space, an instance of ``J.scalar`` such as ``J.seed(1.5)``
+    (not the space ``J`` itself), and returns its ``value`` field.
+
+    The result carries no forward-mode derivatives, but ``wp.value()`` is not a
+    stop-gradient: in reverse mode it is the identity, so a :class:`warp.Tape` or
+    :func:`warp.grad` still differentiates through it.
+
+    Args:
+        x: A ``float16``, ``float32`` or ``float64`` scalar, or a scalar jet
+            (an instance of ``J.scalar`` for a jet space ``J``).
+
+    Returns:
+        ``x`` itself for a plain float, otherwise the jet's ``value`` field,
+        a plain float of the jet's dtype.
+
+    Example:
+
+        Branch on a value in a function that takes plain floats and scalar jets alike:
+
+        .. testcode::
+
+            J = wp.JetSpace(1)
+
+            @wp.func
+            def ramp_squared(x: Any):
+                if wp.value(x) > 0.0:
+                    return x * x
+                return 0.0 * x
+
+            @wp.kernel
+            def ramp_kernel(out: wp.array[float]):
+                x = J.seed(1.5)
+                y = ramp_squared(x)  # a jet
+                out[0] = wp.value(y)  # its value, a plain float
+                out[1] = y.grad[0]  # its derivative, d(x**2)/dx = 2x
+                out[2] = ramp_squared(1.5)  # the same function on a plain float
+
+            out = wp.zeros(3, dtype=float)
+            wp.launch(ramp_kernel, dim=1, outputs=[out])
+            print(out.numpy())
+
+        .. testoutput::
+
+            [2.25 3.   2.25]""",
+    group="Scalar Math",
 )
 
 add_builtin(
@@ -6782,9 +6846,11 @@ add_builtin(
     Quaternion values are supported with ``preserve_type=True``. Use
     :func:`~warp.untile` to convert the tile back to per-thread values.
 
-    Every thread of the block must reach this call. On CPU the effective block width is
-    ``1``, so the tile has a single element regardless of the requested ``block_dim`` -
-    see :ref:`CPU Tile Semantics <cpu_tile_semantics>`.
+    Every thread of the block must reach this call. On CPU, the effective block width
+    is ``1`` when :attr:`warp.config.enable_cpu_blocks` is ``False``, so scalar inputs
+    produce a one-element tile. When enabled, the block width defaults to 256 and
+    honors explicit block dimensions; the tile's trailing dimension follows that
+    effective width. See :ref:`CPU Tile Semantics <cpu_tile_semantics>`.
 
     Args:
         x: A per-thread local value, e.g. scalar, vector, or matrix.
@@ -9569,7 +9635,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def query_region(bvh_id: wp.uint64, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
+            def query_region(bvh_id: wp.handle, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
                              lo: wp.vec3, hi: wp.vec3, centers: wp.array[wp.vec3]):
                 query = wp.bvh_query_aabb(bvh_id, lo, hi)
                 item = int(0)
@@ -9627,7 +9693,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def cast_ray(bvh_id: wp.uint64, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
+            def cast_ray(bvh_id: wp.handle, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
                          origin: wp.vec3, dir: wp.vec3, centers: wp.array[wp.vec3]):
                 query = wp.bvh_query_ray(bvh_id, origin, dir)
                 item = int(0)
@@ -9682,7 +9748,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def capsule_sweep(bvh_id: wp.uint64, p0: wp.vec3, p1: wp.vec3, radius: float,
+            def capsule_sweep(bvh_id: wp.handle, p0: wp.vec3, p1: wp.vec3, radius: float,
                                count: wp.array[wp.int32]):
                 query = wp.bvh_query_capsule(bvh_id, p0, p1 - p0, radius)
                 item = int(0)
@@ -9731,7 +9797,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def find_items_in_sphere(bvh_id: wp.uint64, center: wp.vec3, radius: float,
+            def find_items_in_sphere(bvh_id: wp.handle, center: wp.vec3, radius: float,
                                      hits: wp.array[wp.int32]):
                 query = wp.bvh_query_sphere(bvh_id, center, radius)
                 item = int(0)
@@ -9790,7 +9856,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def query_region(bvh_id: wp.uint64, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
+            def query_region(bvh_id: wp.handle, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
                              lo: wp.vec3, hi: wp.vec3, centers: wp.array[wp.vec3]):
                 query = wp.bvh_query_aabb(bvh_id, lo, hi)
                 item = int(0)
@@ -10016,7 +10082,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def overlapping_bounds(bvh_id: wp.uint64, lo: wp.vec3, hi: wp.vec3, counts: wp.array[wp.int32]):
+            def overlapping_bounds(bvh_id: wp.handle, lo: wp.vec3, hi: wp.vec3, counts: wp.array[wp.int32]):
                 query = wp.tile_bvh_query_aabb(bvh_id, lo, hi)
                 while wp.tile_query_valid(query):
                     # one bound index per thread, negative where this thread has no result
@@ -10071,7 +10137,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def bounds_along_ray(bvh_id: wp.uint64, start: wp.vec3, dir: wp.vec3, counts: wp.array[wp.int32]):
+            def bounds_along_ray(bvh_id: wp.handle, start: wp.vec3, dir: wp.vec3, counts: wp.array[wp.int32]):
                 query = wp.tile_bvh_query_ray(bvh_id, start, dir)
                 while wp.tile_query_valid(query):
                     bound = wp.untile(wp.tile_bvh_query_next(query))
@@ -10493,7 +10559,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def query_group(bvh_id: wp.uint64, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
+            def query_group(bvh_id: wp.handle, lowers: wp.array[wp.vec3], uppers: wp.array[wp.vec3],
                             lo: wp.vec3, hi: wp.vec3, centers: wp.array[wp.vec3]):
                 root = wp.bvh_get_group_root(bvh_id, 1)  # restrict the query to group 1
                 query = wp.bvh_query_aabb(bvh_id, lo, hi, root)
@@ -10537,7 +10603,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def group1_only(mesh_id: wp.uint64, origin: wp.vec3, dir: wp.vec3, out_face: wp.array[wp.int32]):
+            def group1_only(mesh_id: wp.handle, origin: wp.vec3, dir: wp.vec3, out_face: wp.array[wp.int32]):
                 root = wp.mesh_get_group_root(mesh_id, 1)
                 hit = wp.mesh_query_ray(mesh_id, origin, dir, 1.0e6, root)
                 if hit.result:
@@ -10642,7 +10708,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def nearest(mesh_id: wp.uint64, p: wp.vec3, out_pos: wp.array[wp.vec3], out_inside: wp.array[wp.int32]):
+            def nearest(mesh_id: wp.handle, p: wp.vec3, out_pos: wp.array[wp.vec3], out_inside: wp.array[wp.int32]):
                 res = wp.mesh_query_point(mesh_id, p, 1.0e6)
                 if res.result:
                     out_pos[0] = wp.mesh_eval_position(mesh_id, res.face, res.u, res.v)
@@ -10771,7 +10837,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def classify(mesh_id: wp.uint64, p: wp.vec3, out_inside: wp.array[wp.int32]):
+            def classify(mesh_id: wp.handle, p: wp.vec3, out_inside: wp.array[wp.int32]):
                 res = wp.mesh_query_point_sign_parity(mesh_id, p, 1.0e6)
                 if res.result:
                     out_inside[0] = wp.where(res.sign < 0.0, 1, 0)
@@ -10859,7 +10925,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def nearest(mesh_id: wp.uint64, p: wp.vec3, out_pos: wp.array[wp.vec3]):
+            def nearest(mesh_id: wp.handle, p: wp.vec3, out_pos: wp.array[wp.vec3]):
                 res = wp.mesh_query_point_no_sign(mesh_id, p, 1.0e6)
                 if res.result:
                     out_pos[0] = wp.mesh_eval_position(mesh_id, res.face, res.u, res.v)
@@ -10948,7 +11014,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def farthest(mesh_id: wp.uint64, p: wp.vec3, out_pos: wp.array[wp.vec3]):
+            def farthest(mesh_id: wp.handle, p: wp.vec3, out_pos: wp.array[wp.vec3]):
                 res = wp.mesh_query_furthest_point_no_sign(mesh_id, p, 0.0)
                 if res.result:
                     out_pos[0] = wp.mesh_eval_position(mesh_id, res.face, res.u, res.v)
@@ -11052,7 +11118,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def classify(mesh_id: wp.uint64, p: wp.vec3, out_inside: wp.array[wp.int32]):
+            def classify(mesh_id: wp.handle, p: wp.vec3, out_inside: wp.array[wp.int32]):
                 res = wp.mesh_query_point_sign_normal(mesh_id, p, 1.0e6)
                 if res.result:
                     out_inside[0] = wp.where(res.sign < 0.0, 1, 0)
@@ -11176,7 +11242,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def classify(mesh_id: wp.uint64, p: wp.vec3, out_inside: wp.array[wp.int32]):
+            def classify(mesh_id: wp.handle, p: wp.vec3, out_inside: wp.array[wp.int32]):
                 res = wp.mesh_query_point_sign_winding_number(mesh_id, p, 1.0e6)
                 if res.result:
                     out_inside[0] = wp.where(res.sign < 0.0, 1, 0)
@@ -11283,7 +11349,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def cast(mesh_id: wp.uint64, origin: wp.vec3, dir: wp.vec3, out_t: wp.array[wp.float32], out_n: wp.array[wp.vec3]):
+            def cast(mesh_id: wp.handle, origin: wp.vec3, dir: wp.vec3, out_t: wp.array[wp.float32], out_n: wp.array[wp.vec3]):
                 hit = wp.mesh_query_ray(mesh_id, origin, dir, 1.0e6)
                 if hit.result:
                     out_t[0] = hit.t
@@ -11344,7 +11410,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def occluded(mesh_id: wp.uint64, origin: wp.vec3, dir: wp.vec3, out_hit: wp.array[wp.int32]):
+            def occluded(mesh_id: wp.handle, origin: wp.vec3, dir: wp.vec3, out_hit: wp.array[wp.int32]):
                 out_hit[0] = wp.where(wp.mesh_query_ray_anyhit(mesh_id, origin, dir, 1.0e6), 1, 0)
 
             points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
@@ -11401,7 +11467,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def crossings(mesh_id: wp.uint64, origin: wp.vec3, dir: wp.vec3, out_n: wp.array[wp.int32]):
+            def crossings(mesh_id: wp.handle, origin: wp.vec3, dir: wp.vec3, out_n: wp.array[wp.int32]):
                 out_n[0] = wp.mesh_query_ray_count_intersections(mesh_id, origin, dir)
 
             points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
@@ -11467,7 +11533,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def count_faces(mesh_id: wp.uint64, lo: wp.vec3, hi: wp.vec3, out_count: wp.array[wp.int32]):
+            def count_faces(mesh_id: wp.handle, lo: wp.vec3, hi: wp.vec3, out_count: wp.array[wp.int32]):
                 query = wp.mesh_query_aabb(mesh_id, lo, hi)
                 face = int(0)
                 while wp.mesh_query_next(query, face):
@@ -11512,7 +11578,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def find_tris_in_sphere(mesh_id: wp.uint64, center: wp.vec3, radius: float,
+            def find_tris_in_sphere(mesh_id: wp.handle, center: wp.vec3, radius: float,
                                     hits: wp.array[wp.int32]):
                 query = wp.mesh_query_sphere(mesh_id, center, radius)
                 face = int(0)
@@ -11562,7 +11628,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def count_faces(mesh_id: wp.uint64, lo: wp.vec3, hi: wp.vec3, out_count: wp.array[wp.int32]):
+            def count_faces(mesh_id: wp.handle, lo: wp.vec3, hi: wp.vec3, out_count: wp.array[wp.int32]):
                 query = wp.mesh_query_aabb(mesh_id, lo, hi)
                 face = int(0)
                 while wp.mesh_query_next(query, face):
@@ -11782,7 +11848,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def overlapping_faces(mesh_id: wp.uint64, lo: wp.vec3, hi: wp.vec3, counts: wp.array[wp.int32]):
+            def overlapping_faces(mesh_id: wp.handle, lo: wp.vec3, hi: wp.vec3, counts: wp.array[wp.int32]):
                 query = wp.tile_mesh_query_aabb(mesh_id, lo, hi)
                 while wp.tile_query_valid(query):
                     # one face index per thread, negative where this thread has no result
@@ -11886,7 +11952,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def centroid(mesh_id: wp.uint64, out: wp.array[wp.vec3]):
+            def centroid(mesh_id: wp.handle, out: wp.array[wp.vec3]):
                 out[0] = wp.mesh_eval_position(mesh_id, 0, 1.0 / 3.0, 1.0 / 3.0)
 
             points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
@@ -11931,7 +11997,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def vel_at(mesh_id: wp.uint64, out: wp.array[wp.vec3]):
+            def vel_at(mesh_id: wp.handle, out: wp.array[wp.vec3]):
                 out[0] = wp.mesh_eval_velocity(mesh_id, 0, 0.25, 0.25)
 
             points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
@@ -12137,7 +12203,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def gather(grid_id: wp.uint64, pts: wp.array[wp.vec3], out: wp.array[wp.vec3]):
+            def gather(grid_id: wp.handle, pts: wp.array[wp.vec3], out: wp.array[wp.vec3]):
                 i = wp.tid()
                 # visit points in the grid's cell-sorted order for memory locality;
                 # hash_grid_point_id maps sorted position i -> the original point index
@@ -12247,7 +12313,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def first_face_vertex(mesh_id: wp.uint64, out: wp.array[wp.vec3]):
+            def first_face_vertex(mesh_id: wp.handle, out: wp.array[wp.vec3]):
                 m = wp.mesh_get(mesh_id)
                 # the returned struct exposes the mesh arrays (points, indices, velocities)
                 out[0] = m.points[m.indices[0]]  # position of the first face's first vertex
@@ -12290,7 +12356,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def face0_normal(mesh_id: wp.uint64, out: wp.array[wp.vec3]):
+            def face0_normal(mesh_id: wp.handle, out: wp.array[wp.vec3]):
                 out[0] = wp.mesh_eval_face_normal(mesh_id, 0)
 
             points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
@@ -12333,7 +12399,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def slot0(mesh_id: wp.uint64, out: wp.array[wp.vec3]):
+            def slot0(mesh_id: wp.handle, out: wp.array[wp.vec3]):
                 out[0] = wp.mesh_get_point(mesh_id, 0)
 
             points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
@@ -12376,7 +12442,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def slot0(mesh_id: wp.uint64, out: wp.array[wp.vec3]):
+            def slot0(mesh_id: wp.handle, out: wp.array[wp.vec3]):
                 out[0] = wp.mesh_get_velocity(mesh_id, 0)
 
             points = wp.array([[0,0,0],[1,0,0],[1,1,0],[0,1,0],[0,0,1],[1,0,1],[1,1,1],[0,1,1]], dtype=wp.vec3)
@@ -12418,7 +12484,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def face0_verts(mesh_id: wp.uint64, out: wp.array[wp.int32]):
+            def face0_verts(mesh_id: wp.handle, out: wp.array[wp.int32]):
                 out[0] = wp.mesh_get_index(mesh_id, 0)
                 out[1] = wp.mesh_get_index(mesh_id, 1)
                 out[2] = wp.mesh_get_index(mesh_id, 2)
@@ -12671,7 +12737,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def sample(vid: wp.uint64, out: wp.array[wp.float32]):
+            def sample(vid: wp.handle, out: wp.array[wp.float32]):
                 p = wp.volume_world_to_index(vid, wp.vec3(0.5, 0.0, 0.0))
                 out[0] = wp.volume_sample(vid, p, wp.Volume.LINEAR, dtype=float)
 
@@ -12751,7 +12817,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def sample_grad(vid: wp.uint64, out: wp.array[wp.float32]):
+            def sample_grad(vid: wp.handle, out: wp.array[wp.float32]):
                 grad = wp.vec3()
                 out[0] = wp.volume_sample_grad(vid, wp.vec3(0.5, 0.0, 0.0), wp.Volume.LINEAR, grad, dtype=float)
                 out[1] = grad[0]
@@ -12822,7 +12888,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def lookup(vid: wp.uint64, out: wp.array[wp.float32]):
+            def lookup(vid: wp.handle, out: wp.array[wp.float32]):
                 out[0] = wp.volume_lookup(vid, 1, 0, 0, dtype=float)
 
             values = np.zeros((2, 2, 2), dtype=np.float32)
@@ -12873,11 +12939,11 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def store(vid: wp.uint64):
+            def store(vid: wp.handle):
                 wp.volume_store(vid, 1, 2, 3, 4.0)
 
             @wp.kernel
-            def lookup(vid: wp.uint64, out: wp.array[wp.float32]):
+            def lookup(vid: wp.handle, out: wp.array[wp.float32]):
                 out[0] = wp.volume_lookup(vid, 1, 2, 3, dtype=float)
 
             volume = wp.Volume.load_from_numpy(np.zeros((2, 2, 2), dtype=np.float32), voxel_size=1.0, bg_value=0.0)
@@ -13124,14 +13190,14 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def fill(vid: wp.uint64, d: wp.array[wp.float32]):
+            def fill(vid: wp.handle, d: wp.array[wp.float32]):
                 i, j, k = wp.tid()
                 idx = wp.volume_lookup_index(vid, i, j, k)
                 if idx >= 0:
                     d[idx] = wp.float32(i) * 10.0
 
             @wp.kernel
-            def sample(vid: wp.uint64, d: wp.array[wp.float32], out: wp.array[wp.float32]):
+            def sample(vid: wp.handle, d: wp.array[wp.float32], out: wp.array[wp.float32]):
                 out[0] = wp.volume_sample_index(vid, wp.vec3(0.5, 0.0, 0.0), wp.Volume.LINEAR, d, 0.0)
 
             voxels = wp.array([[0, 0, 0], [1, 0, 0]], dtype=wp.vec3i)
@@ -13211,14 +13277,14 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def fill(vid: wp.uint64, d: wp.array[wp.float32]):
+            def fill(vid: wp.handle, d: wp.array[wp.float32]):
                 i, j, k = wp.tid()
                 idx = wp.volume_lookup_index(vid, i, j, k)
                 if idx >= 0:
                     d[idx] = wp.float32(i) * 10.0
 
             @wp.kernel
-            def sample_grad(vid: wp.uint64, d: wp.array[wp.float32], out: wp.array[wp.float32]):
+            def sample_grad(vid: wp.handle, d: wp.array[wp.float32], out: wp.array[wp.float32]):
                 grad = wp.vec3()
                 out[0] = wp.volume_sample_grad_index(vid, wp.vec3(0.5, 0.0, 0.0), wp.Volume.LINEAR, d, 0.0, grad)
                 out[1] = grad[0]
@@ -13260,7 +13326,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def lookup_index(vid: wp.uint64, out: wp.array[wp.int32]):
+            def lookup_index(vid: wp.handle, out: wp.array[wp.int32]):
                 out[0] = wp.volume_lookup_index(vid, 1, 0, 0)
 
             voxels = wp.array([[0, 0, 0], [1, 0, 0]], dtype=wp.vec3i)
@@ -13298,7 +13364,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def count(vid: wp.uint64, out: wp.array[wp.int32]):
+            def count(vid: wp.handle, out: wp.array[wp.int32]):
                 out[0] = wp.volume_voxel_count(vid)
 
             voxels = wp.array([[0, 0, 0], [1, 0, 0]], dtype=wp.vec3i)
@@ -13336,7 +13402,7 @@ add_builtin(
         .. testcode::
 
             @wp.kernel
-            def to_world(vid: wp.uint64, out: wp.array[wp.vec3]):
+            def to_world(vid: wp.handle, out: wp.array[wp.vec3]):
                 out[0] = wp.volume_index_to_world(vid, wp.vec3(2.0, 0.0, 0.0))
 
             volume = wp.Volume.load_from_numpy(
@@ -14904,7 +14970,7 @@ add_builtin(
 )
 
 
-def zeros_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
+def fixedarray_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     if arg_types is None:
         return fixedarray(dtype=Scalar)
 
@@ -14912,12 +14978,12 @@ def zeros_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any
     shape = extract_tuple(arg_values["shape"], as_constant=True)
 
     if None in shape:
-        raise RuntimeError("the `shape` argument must be specified as a constant when zero-initializing an array")
+        raise RuntimeError("the `shape` argument must be specified as a constant when creating a fixed-size array")
 
     return fixedarray(dtype=dtype, shape=shape)
 
 
-def zeros_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+def fixedarray_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
     # We're in the codegen stage where we emit the code calling the built-in.
     # Further validate the given argument values if needed and map them
     # to the underlying C++ function's runtime and template params.
@@ -14933,11 +14999,49 @@ def zeros_dispatch_func(input_types: Mapping[str, type], return_type: Any, args:
 
 
 add_builtin(
+    "empty",
+    input_types={"shape": tuple[int, ...], "dtype": Any},
+    value_func=fixedarray_value_func,
+    export_func=lambda input_types: {},
+    dispatch_func=fixedarray_dispatch_func,
+    native_func="fixedarray_empty",
+    doc="""Create a fixed-size array of the given shape and dtype, leaving its data uninitialized.
+
+    Use it instead of :func:`~warp._src.lang.zeros` when every element is written before being read.
+
+    .. warning::
+
+        Use it with caution: reading an element before it is written is undefined behavior.""",
+    group="Utility",
+    export=False,
+    is_differentiable=False,
+)
+
+add_builtin(
+    "empty",
+    input_types={"shape": int, "dtype": Any},
+    value_func=fixedarray_value_func,
+    export_func=lambda input_types: {},
+    dispatch_func=fixedarray_dispatch_func,
+    native_func="fixedarray_empty",
+    doc="""Create a fixed-size array of the given length and dtype, leaving its data uninitialized.
+
+    Use it instead of :func:`~warp._src.lang.zeros` when every element is written before being read.
+
+    .. warning::
+
+        Use it with caution: reading an element before it is written is undefined behavior.""",
+    group="Utility",
+    export=False,
+    is_differentiable=False,
+)
+
+add_builtin(
     "zeros",
     input_types={"shape": tuple[int, ...], "dtype": Any},
-    value_func=zeros_value_func,
+    value_func=fixedarray_value_func,
     export_func=lambda input_types: {},
-    dispatch_func=zeros_dispatch_func,
+    dispatch_func=fixedarray_dispatch_func,
     native_func="fixedarray_zeros",
     doc="Create a zero-initialized fixed-size array of the given shape and dtype.",
     group="Utility",
@@ -14948,9 +15052,9 @@ add_builtin(
 add_builtin(
     "zeros",
     input_types={"shape": int, "dtype": Any},
-    value_func=zeros_value_func,
+    value_func=fixedarray_value_func,
     export_func=lambda input_types: {},
-    dispatch_func=zeros_dispatch_func,
+    dispatch_func=fixedarray_dispatch_func,
     native_func="fixedarray_zeros",
     doc="Create a zero-initialized fixed-size array of the given length and dtype.",
     group="Utility",
@@ -15182,6 +15286,25 @@ add_builtin(
     input_types={"address": Any},
     value_func=lambda arg_types, arg_values: arg_types["address"],
     dispatch_func=load_dispatch_func,
+    hidden=True,
+    group="Utility",
+    is_differentiable=False,
+)
+
+
+def load_element_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    func_args = (Reference(args["address"]), args["source"], args["ndim"])
+    template_args = ()
+    return (func_args, template_args)
+
+
+# Loads an array element whose address was taken from ``source`` with ``ndim`` indices, so that it can
+# be loaded as wide words when the array is aligned.
+add_builtin(
+    "load",
+    input_types={"address": Any, "source": Any, "ndim": int},
+    value_func=lambda arg_types, arg_values: arg_types["address"],
+    dispatch_func=load_element_dispatch_func,
     hidden=True,
     group="Utility",
     is_differentiable=False,
@@ -18500,12 +18623,14 @@ def tile_matmul_lto_dispatch_func(
             "Allowed 'out' dtypes are float16, float32, and float64."
         )
     if options["enable_backward"] and (a.type.dtype == bfloat16 or b.type.dtype == bfloat16):
-        raise TypeError(
+        raise AdjointUnsupportedError(
             "tile_matmul() does not support bfloat16 'a' or 'b' tiles when the backward pass is enabled. "
             "Allowed accumulator dtypes are float16, float32, and float64 (the backward pass uses 'a' "
-            "and 'b' as accumulators for adjA and adjB). If gradients are not needed, set "
-            "`enable_backward=False` on the kernel's module, e.g. "
-            "`wp.set_module_options({'enable_backward': False})`."
+            "and 'b' as accumulators for adjA and adjB). If gradients are not needed, disable the backward pass "
+            "for the kernel, e.g. `@wp.kernel(enable_backward=False)`, or for its module, e.g. "
+            "`wp.set_module_options({'enable_backward': False})`. A `@wp.func` that calls tile_matmul() with "
+            "such tiles needs the backward pass disabled for every kernel that calls it, and cannot be "
+            "differentiated with wp.grad()."
         )
 
     if (
@@ -18750,11 +18875,15 @@ add_builtin(
     This is a cooperative operation, so every thread in the block must call it.
 
     ``a``, ``b``, and ``out`` may independently use ``float16``, ``float32``, or
-    ``float64``. Accumulation uses the dtype of ``out``. Currently, ``a`` and ``b`` may
-    also use ``bfloat16`` when backward compilation is disabled with the module option
-    ``enable_backward=False``. Apart from the ``M``, ``N``, and ``K`` extents having to
-    agree, the shapes are unconstrained, but large tiles may exhaust shared memory or
-    fail to compile the cuBLASDx kernel.
+    ``float64``. Accumulation uses the dtype of ``out``.
+
+    Currently, ``a`` and ``b`` may also use ``bfloat16``, but such a product cannot be
+    differentiated. Disable the backward pass for the calling kernel with
+    ``@wp.kernel(enable_backward=False)`` or the module option ``enable_backward=False``.
+
+    Apart from the ``M``, ``N``, and ``K`` extents having to agree, the shapes are
+    unconstrained, but large tiles may exhaust shared memory or fail to compile the
+    cuBLASDx kernel.
 
     Tile data is migrated to shared memory when necessary.
 
@@ -19245,7 +19374,7 @@ add_builtin(
 )
 
 
-cusolver_function_map = {"getrf": 0, "getrf_no_pivot": 1, "potrf": 2, "potrs": 3, "trsm": 4}
+cusolver_function_map = {"getrf_no_pivot": 0, "potrf": 2, "potrs": 3, "trsm": 4, "getrf_partial_pivot": 5}
 
 cusolver_type_map = {float32: ("wp::float32", 5), float64: ("wp::float64", 6)}
 
@@ -19254,6 +19383,341 @@ cusolver_fill_mode_map = {"upper": 0, "lower": 1}
 cusolver_side_map = {"-": -1, "left": 0, "right": 1}
 
 cusolver_diag_map = {"-": -1, "unit": 0, "nounit": 1}
+
+
+def tile_lu_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return (
+            tile(dtype=Float, shape=tuple[int, int]),
+            tile(dtype=int32, shape=tuple[int]),
+            tile(dtype=int32, shape=tuple[int]),
+        )
+
+    a = arg_types["A"]
+    if not is_tile(a):
+        raise TypeError(f"tile_lu() argument must be a tile, got {a!r}")
+    if len(a.shape) != 2:
+        raise ValueError("tile_lu() argument must be a 2D tile")
+    if a.shape[0] != a.shape[1]:
+        raise ValueError("tile_lu() argument must be square")
+    if a.dtype not in cusolver_type_map:
+        raise TypeError("tile_lu() argument must be a tile of float32 or float64 entries")
+
+    # Materialize views into a dense output suitable for the solver's fixed leading dimension.
+    return (
+        tile(dtype=a.dtype, shape=a.shape, storage="shared"),
+        tile(dtype=int32, shape=(a.shape[0],), storage="shared"),
+        tile(dtype=int32, shape=(1,), storage="shared"),
+    )
+
+
+def tile_lu_lto_dispatch_func(arg_types, return_type, return_values, arg_values, options, builder):
+    a = arg_values["A"]
+    a.type.storage = "shared"
+    n = a.type.shape[0]
+    scratch_bytes = n * n * type_size_in_bytes(a.type.dtype) if options["enable_backward"] else 0
+    arch = options["output_arch"]
+    if (
+        arch is None
+        or not warp._src.context.runtime.core.wp_is_mathdx_enabled()
+        or not options.get("enable_mathdx_solver", True)
+    ):
+        # Cooperative CPU adjoints allocate scratch from the shared tile arena.
+        return ((0, 0, 0, a), [], [], scratch_bytes if arch is None else 0)
+
+    out = return_values[0]
+    dtype, precision = cusolver_type_map[a.type.dtype]
+    smem_bytes = 2 * n * n * type_size_in_bytes(a.type.dtype) + (n + 1) * 4 + scratch_bytes
+    symbol, code = warp._src.build.build_lto_solver(
+        n,
+        n,
+        1,
+        "getrf_partial_pivot",
+        cusolver_function_map["getrf_partial_pivot"],
+        cusolver_side_map["-"],
+        cusolver_diag_map["-"],
+        out.type.layout,
+        out.type.layout,
+        -1,  # LU reads the full matrix; cuSOLVERDx rejects a FillMode operator.
+        arch,
+        precision,
+        options["block_dim"],
+        f"({dtype}*, int*, int*)",
+        builder,
+        smem_estimate_bytes=smem_bytes,
+    )
+    functions = [Var(symbol, str, False, True, False)]
+    ltoirs = [code]
+    if options["enable_backward"]:
+        # The output is dense row-major; column-major exposes its transpose.
+        # Solve L^T * X = W, then Y * U^T = X, without unpacking the factors.
+        for side, diagonal, triangle in (("left", "unit", "upper"), ("right", "nounit", "lower")):
+            symbol, code = warp._src.build.build_lto_solver(
+                n,
+                n,
+                1,
+                "trsm",
+                cusolver_function_map["trsm"],
+                cusolver_side_map[side],
+                cusolver_diag_map[diagonal],
+                "colmajor",
+                "rowmajor",
+                cusolver_fill_mode_map[triangle],
+                arch,
+                precision,
+                options["block_dim"],
+                f"({dtype}*, {dtype}*)",
+                builder,
+                smem_estimate_bytes=smem_bytes,
+            )
+            functions.append(Var(symbol, str, False, True, False))
+            ltoirs.append(code)
+    else:
+        functions.extend((0, 0))
+    return ((*functions, a), [], ltoirs, 0)
+
+
+add_builtin(
+    "tile_lu",
+    input_types={"A": tile(dtype=Float, shape=tuple[int, int])},
+    value_func=tile_lu_value_func,
+    lto_dispatch_func=tile_lu_lto_dispatch_func,
+    doc="""Compute an LU factorization with partial pivoting of a square tile ``A``.
+
+    ``A`` is not modified. The factorization completes even for singular inputs.
+
+    Supports ``float32`` and ``float64``. On CUDA, uses cuSOLVERDx when available
+    and :attr:`warp.config.enable_mathdx_solver` is enabled (also configurable per
+    module). Otherwise uses a cooperative native implementation, including on CPU.
+    Pivot choices may differ between backends when magnitudes are tied.
+
+    This is a cooperative operation, so every thread in the block must call it.
+
+    Gradients propagate through ``lu`` to ``A`` with the recorded pivot sequence
+    held fixed. ``pivots`` and ``info`` are nondifferentiable. Gradients are
+    undefined for singular inputs and where the selected pivot sequence changes.
+
+    Args:
+        A: A square tile with ``shape=(N, N)``.
+
+    Returns:
+        A tuple ``(lu, pivots, info)`` of tiles in shared storage:
+
+        - ``lu``: The packed factors, with ``shape=(N, N)``. The upper triangle
+          holds ``U``. The strict lower triangle holds ``L``, whose unit diagonal
+          is implicit and not stored.
+        - ``pivots``: Zero-based row-swap indices, as an ``int32`` tile with
+          ``shape=(N,)``. Swapping rows ``k`` and ``pivots[k]`` of ``A`` for
+          ``k = 0, 1, ..., N-1`` in that order gives ``P @ A = L @ U``. The
+          indices are a sequence of swaps, not a permutation vector.
+        - ``info``: An ``int32`` tile with ``shape=(1,)``. ``info[0] == 0``
+          indicates success. A positive value ``i`` indicates that
+          ``U[i-1, i-1]`` is exactly zero, so the factors cannot be used for a
+          nonsingular solve. ``info`` does not estimate conditioning.
+
+    Example:
+
+        .. testsetup::
+
+            __name__ = "warp_docs_tile_lu"
+
+        .. testcode::
+
+            @wp.kernel
+            def solve_linear_system(a: wp.array2d[float], b: wp.array[float], x: wp.array[float], status: wp.array[int]):
+                lu, pivots, info = wp.tile_lu(wp.tile_load(a, shape=(3, 3)))
+                status[0] = info[0]
+                if info[0] == 0:
+                    # every thread solves the small system with the shared factors
+                    y = wp.vec3(b[0], b[1], b[2])
+
+                    # apply the row swaps to the right-hand side in order
+                    for k in range(3):
+                        p = pivots[k]
+                        swapped = y[k]
+                        y[k] = y[p]
+                        y[p] = swapped
+
+                    # forward substitution with the implicit unit diagonal of L
+                    for i in range(3):
+                        for j in range(i):
+                            y[i] -= lu[i, j] * y[j]
+
+                    # back substitution with U
+                    for i in range(2, -1, -1):
+                        for j in range(i + 1, 3):
+                            y[i] -= lu[i, j] * y[j]
+                        y[i] /= lu[i, i]
+
+                    for i in range(3):
+                        x[i] = y[i]
+
+            # the zero in the top-left corner requires a row swap
+            a = wp.array(np.array([[0.0, 2.0, 1.0], [1.0, 1.0, 1.0], [2.0, 1.0, 0.0]], dtype=np.float32))
+            b = wp.array(np.array([7.0, 6.0, 4.0], dtype=np.float32))
+            x = wp.zeros(3, dtype=float)
+            status = wp.zeros(1, dtype=int)
+
+            wp.launch_tiled(solve_linear_system, dim=1, inputs=[a, b], outputs=[x, status], block_dim=32)
+
+            print(status.numpy()[0])
+            print(np.round(x.numpy(), 3))
+
+        .. testoutput::
+
+            0
+            [1. 2. 3.]
+    """,
+    group="Tile Primitives",
+    export=False,
+)
+
+
+##
+## Symmetric indefinite factorization
+##
+def tile_ldlt_value_func(arg_types, arg_values):
+    if arg_types is None:
+        return (
+            tile(dtype=Float, shape=tuple[int, int]),
+            tile(dtype=int32, shape=tuple[int]),
+            tile(dtype=int32, shape=tuple[int]),
+        )
+    a = arg_types["A"]
+    if not is_tile(a):
+        raise TypeError(f"tile_ldlt() argument must be a tile, got {a!r}")
+    if len(a.shape) != 2 or a.shape[0] != a.shape[1] or a.shape[0] < 1:
+        raise ValueError("tile_ldlt() argument must be a nonempty square 2D tile")
+    if a.dtype not in (float32, float64):
+        raise TypeError("tile_ldlt() argument must be a tile of float32 or float64 entries")
+    return (
+        tile(dtype=a.dtype, shape=a.shape, storage="shared"),
+        tile(dtype=int32, shape=(a.shape[0],), storage="shared"),
+        tile(dtype=int32, shape=(1,), storage="shared"),
+    )
+
+
+def tile_ldlt_dispatch_func(arg_types, return_type, return_values, arg_values, options, builder):
+    a = arg_values["A"]
+    a.type.storage = "shared"
+    upper = _tile_cholesky_extract_fill_mode(arg_values, "tile_ldlt")
+    scratch_bytes = 0
+    if options["output_arch"] is None:
+        scalar_size = type_size_in_bytes(a.type.dtype)
+        scratch_bytes = 4 * scalar_size
+        if options["enable_backward"]:
+            n = a.type.shape[0]
+            scratch_bytes = max(scratch_bytes, ((n * n * scalar_size + 15) // 16 + 2 * ((4 * n + 15) // 16)) * 16)
+    return ((a,), [upper], [], scratch_bytes)
+
+
+add_builtin(
+    "tile_ldlt",
+    input_types={"A": tile(dtype=Float, shape=tuple[int, int]), "fill_mode": str},
+    defaults={"fill_mode": "lower"},
+    value_func=tile_ldlt_value_func,
+    lto_dispatch_func=tile_ldlt_dispatch_func,
+    adjoint_uses_template_args=True,
+    doc="""Compute a Bunch-Kaufman factorization of a real symmetric square tile.
+
+    Factor the symmetric matrix defined by the selected triangle of ``A`` without
+    modifying ``A``; the other triangle is ignored. This is a cooperative operation,
+    so every thread in the block must call it.
+
+    Automatic differentiation of the packed factors holds the recorded permutation
+    and diagonal-block choices fixed. Pivot indices and status are nondifferentiable.
+    Gradients are undefined for singular inputs or at boundaries where the pivot or
+    block choices change. Only the selected input triangle receives gradients; each
+    off-diagonal input represents both symmetric matrix entries. On CUDA, a kernel
+    compiled with backward support reserves additional static shared memory for the
+    adjoint, which can limit the tile size. See :ref:`tile_shared_memory_budget` for
+    how to budget shared memory and for forward-only options.
+
+    Args:
+        A: A nonempty real tile with ``shape=(N, N)`` and dtype ``float32`` or
+            ``float64``, with finite entries in the selected triangle.
+        fill_mode: Compile-time triangle selector, ``"lower"`` or ``"upper"``.
+
+    Returns:
+        A tuple ``(ld, pivots, info)`` of tiles with dense shared storage:
+
+        * ``ld``: The packed factors, with ``shape=(N, N)`` and the dtype of ``A``.
+          For ``fill_mode="lower"``, they satisfy ``P @ A @ P.T = L @ D @ L.T``, where
+          ``L`` is unit lower triangular and ``D`` is symmetric block diagonal with
+          1-by-1 and 2-by-2 blocks. The diagonal of ``ld`` holds the diagonal of ``D``.
+          For each 2-by-2 block starting at ``k``, ``ld[k+1, k]`` holds its off-diagonal
+          entry, and ``L[k+1, k]`` is zero. All other strict lower entries hold ``L``,
+          which is already in permuted row order, so it needs no further row swaps.
+          The upper triangle of ``ld`` is zero. For ``fill_mode="upper"``, the storage
+          is transposed: ``ld`` holds ``U = L.T`` and the upper triangle of ``D``,
+          satisfying ``P @ A @ P.T = U.T @ D @ U``, and the lower triangle is zero.
+        * ``pivots``: An ``int32`` tile with ``shape=(N,)`` that encodes the symmetric
+          swaps and block sizes for either fill mode. Decode it in increasing index
+          order. If ``pivots[k] >= 0``, interchange rows and columns ``k`` and
+          ``pivots[k]`` and advance by one, which denotes a 1-by-1 diagonal block.
+          Otherwise, ``pivots[k] == pivots[k+1] == -(p+1)`` denotes a 2-by-2 block:
+          interchange rows and columns ``k+1`` and ``p``, then advance by two. Apply
+          the swaps to an identity permutation to construct ``P``.
+        * ``info``: An ``int32`` tile with ``shape=(1,)``. Zero indicates success. A
+          positive value ``i`` identifies the first exactly zero 1-by-1 pivot
+          ``D[i-1, i-1]``. Factorization completes for singular inputs, but the
+          factors cannot then be used for a nonsingular solve. This status does not
+          estimate conditioning.
+
+    Example:
+
+        Factor a KKT matrix and check its inertia from the diagonal of ``D``. For this
+        matrix every pivot is 1-by-1, so ``P`` follows from the swaps directly.
+
+        .. testsetup::
+
+            __name__ = "warp_docs_tile_ldlt"
+
+        .. testcode::
+
+            @wp.kernel
+            def factor_kernel(
+                a: wp.array2d[float],
+                factors: wp.array2d[float],
+                pivots: wp.array[int],
+                status: wp.array[int],
+            ):
+                ld, p, info = wp.tile_ldlt(wp.tile_load(a, shape=(4, 4)))
+                wp.tile_store(factors, ld)
+                wp.tile_store(pivots, p)
+                wp.tile_store(status, info)
+
+            # [[0, C], [C.T, H]] with two constraints and two primal variables
+            a_np = np.array(
+                [[0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0], [1.0, 0.0, 4.0, 1.0], [0.0, 1.0, 1.0, 3.0]],
+                dtype=np.float32,
+            )
+            a = wp.array(a_np)
+            factors = wp.zeros((4, 4), dtype=float)
+            pivots = wp.zeros(4, dtype=int)
+            status = wp.zeros(1, dtype=int)
+
+            # one full warp cooperates on the factorization
+            wp.launch_tiled(factor_kernel, dim=1, inputs=[a], outputs=[factors, pivots, status], block_dim=32)
+
+            ld = factors.numpy()
+            swaps = pivots.numpy()
+            perm = np.arange(4)
+            for k in range(4):  # all pivots are 1-by-1 here
+                perm[[k, swaps[k]]] = perm[[swaps[k], k]]
+
+            ell = np.tril(ld, -1) + np.eye(4)
+            reconstructed = ell @ np.diag(np.diag(ld)) @ ell.T
+            print(status.numpy()[0], np.allclose(reconstructed, a_np[np.ix_(perm, perm)], atol=1e-5))
+            print((np.diag(ld) > 0).sum(), (np.diag(ld) < 0).sum())
+
+        .. testoutput::
+
+            0 True
+            2 2""",
+    group="Tile Primitives",
+    export=False,
+)
 
 
 ##
@@ -19265,7 +19729,12 @@ def _tile_cholesky_generic_value_func(inplace: bool, arg_types, arg_values):
             return None
         return tile(dtype=Float, shape=tuple[int, int])
 
-    if len(arg_types) > 2:
+    if inplace:
+        if len(arg_types) > 3:
+            raise TypeError(
+                f"tile_cholesky_inplace() takes 1 positional argument and 2 optional arguments but {len(arg_types)} were given"
+            )
+    elif len(arg_types) > 2:
         raise TypeError(
             f"tile_cholesky() takes 1 positional argument and 1 optional argument but {len(arg_types)} were given"
         )
@@ -19308,6 +19777,16 @@ def _tile_cholesky_extract_fill_mode(arg_values, func_name="tile_cholesky"):
     return fill_mode_str == "upper"
 
 
+def _tile_cholesky_extract_zero_opposite(arg_values):
+    """Extract zero_opposite from arg_values (``tile_cholesky_inplace`` only)."""
+    var = arg_values.get("zero_opposite")
+    if var is None:
+        return True
+    if not hasattr(var, "constant") or var.constant is None:
+        raise ValueError("tile_cholesky_inplace() zero_opposite must be a compile-time constant")
+    return builtins.bool(var.constant)
+
+
 def _tile_cholesky_generic_lto_dispatch_func(
     inplace: bool,
     arg_types: Mapping[str, type],
@@ -19318,6 +19797,10 @@ def _tile_cholesky_generic_lto_dispatch_func(
     builder: warp._src.context.ModuleBuilder,
 ):
     upper = _tile_cholesky_extract_fill_mode(arg_values)
+    if inplace:
+        template_args = [upper, _tile_cholesky_extract_zero_opposite(arg_values)]
+    else:
+        template_args = [upper]
     a = arg_values["A"]
     # force source tile to shared memory
     a.type.storage = "shared"
@@ -19346,8 +19829,8 @@ def _tile_cholesky_generic_lto_dispatch_func(
         # CPU/no-MathDx/disabled dispatch -- falls into the cooperative scalar
         # branch via wp_is_null_func<Fwd>.
         if inplace:
-            return ((0, a), [upper], [], 0)
-        return ((0, 0, 0, a, out), [upper], [], 0)
+            return ((0, a), template_args, [], 0)
+        return ((0, 0, 0, a, out), template_args, [], 0)
     else:
         solver = "potrf"
         solver_enum = cusolver_function_map[solver]
@@ -19387,7 +19870,7 @@ def _tile_cholesky_generic_lto_dispatch_func(
 
         if inplace:
             var = Var(lto_symbol, str, False, True, False)
-            return ((var, a), [upper], [lto_code_data], 0)
+            return ((var, a), template_args, [lto_code_data], 0)
 
         # for out-of-place Cholesky, build backward LTOs for adjoint
         # we need a GEMM and two trsm solves for the adjoint
@@ -19451,7 +19934,7 @@ def _tile_cholesky_generic_lto_dispatch_func(
         else:
             var_gemm = 0
             var_trsm = 0
-        result = ((var_fwd, var_gemm, var_trsm, a, out), [upper], lto_list, 0)
+        result = ((var_fwd, var_gemm, var_trsm, a, out), template_args, lto_list, 0)
         return result
 
 
@@ -19546,8 +20029,8 @@ add_builtin(
 
 add_builtin(
     "tile_cholesky_inplace",
-    input_types={"A": tile(dtype=Float, shape=tuple[int, int]), "fill_mode": str},
-    defaults={"fill_mode": "lower"},
+    input_types={"A": tile(dtype=Float, shape=tuple[int, int]), "fill_mode": str, "zero_opposite": builtins.bool},
+    defaults={"fill_mode": "lower", "zero_opposite": True},
     value_func=tile_cholesky_inplace_generic_value_func,
     lto_dispatch_func=tile_cholesky_inplace_generic_lto_dispatch_func,
     variadic=True,
@@ -19556,7 +20039,8 @@ add_builtin(
     With ``fill_mode="lower"`` the lower triangle of ``A`` is replaced by
     the factor ``L`` such that ``L @ L^T = A`` and the upper triangle is set to zero;
     with ``fill_mode="upper"`` the upper triangle is replaced by ``U`` such that
-    ``U^T @ U = A`` and the lower triangle is set to zero. Only the triangle selected by
+    ``U^T @ U = A`` and the lower triangle is set to zero. With ``zero_opposite=False``
+    the opposite triangle is left unchanged instead. Only the triangle selected by
     ``fill_mode`` is read. ``fill_mode`` must be a compile-time constant.
 
     Supported dtypes, the positive-definiteness requirement, and backend selection match
@@ -19570,7 +20054,13 @@ add_builtin(
     Args:
         A: A square, symmetric positive-definite tile with ``shape=(N, N)``, overwritten
             by the factor.
-        fill_mode: ``"lower"`` or ``"upper"``. Must be a compile-time constant.""",
+        fill_mode: ``"lower"`` or ``"upper"``. Must be a compile-time constant.
+        zero_opposite: Whether to zero the triangle opposite ``fill_mode``. If ``False``,
+            that triangle keeps its input values, which saves a pass over the tile. Use
+            this only when the factor is passed to solves with the same ``fill_mode``,
+            such as :func:`~warp.tile_cholesky_solve`, which read only that triangle, and
+            not to operations that read the whole tile, such as :func:`~warp.tile_matmul`.
+            Must be a compile-time constant.""",
     group="Tile Primitives",
     export=False,
     is_differentiable=False,

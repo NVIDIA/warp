@@ -21,7 +21,7 @@ from warp.tests.unittest_utils import (
 # ============================================================================
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture1d_f_at_centers(
     tex: wp.Texture1D,
     output: wp.array[float],
@@ -37,7 +37,7 @@ def sample_texture1d_f_at_centers(
     output[tid] = wp.texture_sample(tex, u, dtype=float)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture1d_v2_at_centers(
     tex: wp.Texture1D,
     output: wp.array[wp.vec2f],
@@ -51,7 +51,7 @@ def sample_texture1d_v2_at_centers(
     output[tid] = wp.texture_sample(tex, u, dtype=wp.vec2f)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture1d_v4_at_centers(
     tex: wp.Texture1D,
     output: wp.array[wp.vec4f],
@@ -65,7 +65,7 @@ def sample_texture1d_v4_at_centers(
     output[tid] = wp.texture_sample(tex, u, dtype=wp.vec4f)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def test_texture1d_resolution(
     tex: wp.Texture1D,
     expected_width: int,
@@ -81,7 +81,7 @@ def test_texture1d_resolution(
 # ============================================================================
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture2d_f_at_centers(
     tex: wp.Texture2D,
     output: wp.array[float],
@@ -101,7 +101,7 @@ def sample_texture2d_f_at_centers(
     output[tid] = wp.texture_sample(tex, wp.vec2f(u, v), dtype=float)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture2d_v2_at_centers(
     tex: wp.Texture2D,
     output: wp.array[wp.vec2f],
@@ -119,7 +119,7 @@ def sample_texture2d_v2_at_centers(
     output[tid] = wp.texture_sample(tex, wp.vec2f(u, v), dtype=wp.vec2f)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture2d_v4_at_centers(
     tex: wp.Texture2D,
     output: wp.array[wp.vec4f],
@@ -137,7 +137,7 @@ def sample_texture2d_v4_at_centers(
     output[tid] = wp.texture_sample(tex, wp.vec2f(u, v), dtype=wp.vec4f)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def test_texture2d_resolution(
     tex: wp.Texture2D,
     expected_width: int,
@@ -156,7 +156,7 @@ def test_texture2d_resolution(
 # ============================================================================
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture3d_f_at_centers(
     tex: wp.Texture3D,
     output: wp.array[float],
@@ -178,7 +178,7 @@ def sample_texture3d_f_at_centers(
     output[tid] = wp.texture_sample(tex, wp.vec3f(u, v, ww), dtype=float)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture3d_v2_at_centers(
     tex: wp.Texture3D,
     output: wp.array[wp.vec2f],
@@ -199,7 +199,7 @@ def sample_texture3d_v2_at_centers(
     output[tid] = wp.texture_sample(tex, wp.vec3f(u, v, ww), dtype=wp.vec2f)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture3d_v4_at_centers(
     tex: wp.Texture3D,
     output: wp.array[wp.vec4f],
@@ -220,7 +220,7 @@ def sample_texture3d_v4_at_centers(
     output[tid] = wp.texture_sample(tex, wp.vec3f(u, v, ww), dtype=wp.vec4f)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def test_texture3d_resolution(
     tex: wp.Texture3D,
     expected_width: int,
@@ -916,6 +916,31 @@ def test_texture2d_constructor_from_same_device_array(test, device):
     np.testing.assert_allclose(output.numpy(), expected, rtol=1e-5, atol=1e-5)
 
 
+def test_texture_vector_array_transfers(test, device):
+    """Verify vector array construction and copies across texture and array devices."""
+    scalar_types = (wp.float32, wp.float16, wp.uint8, wp.uint16, wp.int8, wp.int16, wp.int32, wp.uint32)
+    array_devices = get_test_devices() if wp.get_device(device).is_cpu else [wp.get_device("cpu"), device]
+    for texture_type, shape in ((wp.Texture1D, (8,)), (wp.Texture2D, (4, 8)), (wp.Texture3D, (2, 4, 8))):
+        for scalar_type in scalar_types:
+            for channels in (2, 4):
+                vector_type = wp.types.vector(channels, scalar_type)
+                data = np.arange(np.prod(shape) * channels).reshape((*shape, channels)) % 101
+                data = data.astype(wp.dtype_to_numpy(scalar_type))
+                for array_device in array_devices:
+                    with test.subTest(texture=texture_type.__name__, dtype=vector_type, array_device=str(array_device)):
+                        src = wp.array(data, dtype=vector_type, device=array_device)
+                        tex = texture_type(src, device=device)
+                        scalar_dst = wp.empty(data.shape, dtype=scalar_type, device="cpu")
+                        tex.copy_to(scalar_dst)
+                        np.testing.assert_array_equal(scalar_dst.numpy(), data)
+
+                        replacement = wp.array(data + 1, dtype=vector_type, device=array_device)
+                        tex.copy_from(replacement)
+                        dst = wp.empty(shape, dtype=vector_type, device=array_device)
+                        tex.copy_to(dst)
+                        np.testing.assert_array_equal(dst.numpy(), data + 1)
+
+
 def test_texture2d_constructor_transfers_cross_device(test, device):
     """Verify that constructor should transparently transfer wp.array data to the target device."""
     data = np.random.default_rng(42).random((4, 4), dtype=np.float32)
@@ -1303,7 +1328,7 @@ def test_texture3d_new_del(test, device):
 # ============================================================================
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture2d_at_uv(
     tex: wp.Texture2D,
     uvs: wp.array[wp.vec2f],
@@ -1315,7 +1340,7 @@ def sample_texture2d_at_uv(
     output[tid] = wp.texture_sample(tex, uv, dtype=float)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture3d_at_uvw(
     tex: wp.Texture3D,
     uvws: wp.array[wp.vec3f],
@@ -1941,7 +1966,7 @@ def test_texture3d_uint16_linear_interpolation(test, device):
 # ============================================================================
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture2d_outside_bounds(
     tex: wp.Texture2D,
     uvs: wp.array[wp.vec2f],
@@ -1953,7 +1978,7 @@ def sample_texture2d_outside_bounds(
     output[tid] = wp.texture_sample(tex, uv, dtype=float)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture3d_outside_bounds(
     tex: wp.Texture3D,
     uvws: wp.array[wp.vec3f],
@@ -2223,7 +2248,7 @@ def test_texture2d_mirror_linear_edge(test, device):
 # ============================================================================
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture2d_texel_coords(
     tex: wp.Texture2D,
     coords: wp.array[wp.vec2f],
@@ -2235,7 +2260,7 @@ def sample_texture2d_texel_coords(
     output[tid] = wp.texture_sample(tex, coord, dtype=float)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture3d_texel_coords(
     tex: wp.Texture3D,
     coords: wp.array[wp.vec3f],
@@ -2477,7 +2502,7 @@ class TextureStructBoth:
     multiplier: float
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture2d_from_struct(
     s: TextureStruct2D,
     uv: wp.vec2f,
@@ -2489,7 +2514,7 @@ def sample_texture2d_from_struct(
     output[tid] = value * s.scale
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture3d_from_struct(
     s: TextureStruct3D,
     uvw: wp.vec3f,
@@ -2501,7 +2526,7 @@ def sample_texture3d_from_struct(
     output[tid] = value + s.offset
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_both_textures_from_struct(
     s: TextureStructBoth,
     uv: wp.vec2f,
@@ -2738,7 +2763,7 @@ def test_texture3d_array(test, device):
 # ============================================================================
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture2d_mipmap(
     tex: wp.Texture2D,
     output: wp.array2d[wp.vec4f],
@@ -2752,7 +2777,7 @@ def sample_texture2d_mipmap(
     output[i, j] = wp.texture_sample(tex, wp.vec2f(u, v), dtype=wp.vec4f, lod=lod)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture1d_mipmap(
     tex: wp.Texture1D,
     output: wp.array[float],
@@ -2764,7 +2789,7 @@ def sample_texture1d_mipmap(
     output[tid] = wp.texture_sample(tex, u, dtype=float, lod=lod)
 
 
-@wp.kernel
+@wp.kernel(enable_backward=False)
 def sample_texture3d_mipmap(
     tex: wp.Texture3D,
     output: wp.array3d[float],
@@ -4612,6 +4637,19 @@ def test_texture_sample_grad_moderate_cancellation(test, device):
 
 
 class TestTexture(unittest.TestCase):
+    def test_texture_cpu_rejects_compound_arrays(self):
+        """Reject unsupported compound arrays before copying beyond CPU texture storage."""
+        for dtype in (wp.mat22, wp.quat):
+            with self.subTest(dtype=dtype):
+                arr = wp.zeros((2, 3), dtype=dtype, device="cpu")
+                tex = wp.Texture2D(np.zeros((2, 3), dtype=np.float32), device="cpu")
+                with self.assertRaisesRegex(RuntimeError, "Incompatible array data types"):
+                    wp.Texture2D(arr, device="cpu")
+                with self.assertRaisesRegex(RuntimeError, "Incompatible array data types"):
+                    tex.copy_from(arr)
+                with self.assertRaisesRegex(RuntimeError, "Incompatible array data types"):
+                    tex.copy_to(arr)
+
     def test_texture_cpu_large_dimensions(self):
         """Address extreme CPU dimensions without allocating their texel storage."""
 
@@ -4669,6 +4707,9 @@ all_devices = get_test_devices()
 
 # Core texture tests - run on all devices (CPU + CUDA)
 add_function_test(
+    TestTexture, "test_texture_vector_array_transfers", test_texture_vector_array_transfers, devices=all_devices
+)
+add_function_test(
     TestTexture,
     "test_texture_sample_grad_zero_seeds",
     test_texture_sample_grad_zero_seeds,
@@ -4715,7 +4756,7 @@ add_function_test(
     TestTexture,
     "test_texture2d_constructor_from_same_device_array",
     test_texture2d_constructor_from_same_device_array,
-    devices=cuda_devices,
+    devices=all_devices,
 )
 add_function_test(
     TestTexture,

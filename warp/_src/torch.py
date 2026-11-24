@@ -10,6 +10,7 @@ import numpy
 
 import warp
 import warp._src.context
+from warp._src.function_dispatch import warp_function
 
 if TYPE_CHECKING:
     import torch
@@ -156,7 +157,7 @@ def dtype_is_compatible(torch_dtype, warp_dtype) -> bool:
             torch.float16: {warp.float16},
             torch.bfloat16: {warp.bfloat16},
             # allow aliasing integer tensors as signed or unsigned integer arrays
-            # wp.handle interop is intentionally deferred; APIC handle arrays use wp.array().
+            # Direct wp.handle interop is deferred; import integer storage and use .view(wp.handle).
             torch.int64: {warp.int64, warp.uint64},
             torch.int32: {warp.int32, warp.uint32},
             torch.int16: {warp.int16, warp.uint16},
@@ -187,6 +188,7 @@ dtype_is_compatible.compatible_sets = None
 
 
 # wrap a PyTorch tensor to a wp.array, data is not copied
+@warp_function
 def from_torch(
     t: torch.Tensor,
     dtype: type | None = None,
@@ -340,6 +342,7 @@ def from_torch(
         return a
 
 
+@warp_function
 def to_torch(a: warp.array, requires_grad: bool | None = None):
     """Convert a Warp array to a PyTorch tensor without copying the data.
 

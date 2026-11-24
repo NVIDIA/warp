@@ -28,9 +28,9 @@ seed = 42
 @wp.kernel
 def sample_mesh_query_no_sign(
     mesh: wp.uint64,
-    query_points: wp.array(dtype=wp.vec3),
+    query_points: wp.array[wp.vec3],
     query_d_max: float,
-    query_closest_points: wp.array(dtype=wp.vec3),
+    query_closest_points: wp.array[wp.vec3],
 ):
     tid = wp.tid()
     p = query_points[tid]
@@ -45,9 +45,9 @@ def sample_mesh_query_no_sign(
 @wp.kernel
 def sample_mesh_query_signed(
     mesh: wp.uint64,
-    query_points: wp.array(dtype=wp.vec3),
+    query_points: wp.array[wp.vec3],
     query_d_max: float,
-    query_closest_points: wp.array(dtype=wp.vec3),
+    query_closest_points: wp.array[wp.vec3],
 ):
     tid = wp.tid()
     p = query_points[tid]
@@ -157,8 +157,8 @@ class Camera:
 class DirectionalLights:
     """Stores arrays of directional light directions and intensities."""
 
-    dirs: wp.array(dtype=wp.vec3)
-    intensities: wp.array(dtype=float)
+    dirs: wp.array[wp.vec3]
+    intensities: wp.array[float]
     num_lights: int
 
 
@@ -167,11 +167,11 @@ def get_v_t_collision_kernel(is_wp_bvh):
     def vertex_triangle_collision_detection_kernel_broad_only_base(
         query_radius: float,
         geom_id: wp.uint64,
-        pos: wp.array(dtype=wp.vec3),
-        vertex_colliding_triangles_offsets: wp.array(dtype=wp.int32),
+        pos: wp.array[wp.vec3],
+        vertex_colliding_triangles_offsets: wp.array[wp.int32],
         # outputs
-        vertex_colliding_triangles: wp.array(dtype=wp.int32),
-        vertex_colliding_triangles_count: wp.array(dtype=wp.int32),
+        vertex_colliding_triangles: wp.array[wp.int32],
+        vertex_colliding_triangles_count: wp.array[wp.int32],
     ):
         v_index = wp.tid()
         v = pos[v_index]
@@ -211,11 +211,11 @@ def get_ray_query_kernel(is_wp_bvh):
     def ray_vs_aabb_query_kernel_base(
         geom_id: wp.uint64,
         camera: Camera,
-        mesh_pos: wp.array(dtype=wp.vec3),
-        mesh_rot: wp.array(dtype=wp.quat),
+        mesh_pos: wp.array[wp.vec3],
+        mesh_rot: wp.array[wp.quat],
         rays_width: int,
         rays_height: int,
-        rays: wp.array(dtype=wp.vec3),
+        rays: wp.array[wp.vec3],
     ):
         tid = wp.tid()
 
@@ -271,10 +271,10 @@ def _rand_rotation(rand_eng, rotation_sigma_rad: float) -> np.ndarray:
 
 @wp.kernel
 def compute_tri_aabbs(
-    pos: wp.array(dtype=wp.vec3),
-    tri_indices: wp.array(dtype=wp.int32, ndim=1),
-    lower_bounds: wp.array(dtype=wp.vec3),
-    upper_bounds: wp.array(dtype=wp.vec3),
+    pos: wp.array[wp.vec3],
+    tri_indices: wp.array[wp.int32],
+    lower_bounds: wp.array[wp.vec3],
+    upper_bounds: wp.array[wp.vec3],
 ):
     t_id = wp.tid()
 

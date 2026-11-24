@@ -13,7 +13,7 @@ from ..benchmarks_utils import (
 
 
 @wp.kernel
-def matrix_augassign_kernel(a: wp.array2d(dtype=wp.mat22), b: wp.array2d(dtype=wp.mat22)):
+def matrix_augassign_kernel(a: wp.array2d[wp.mat22], b: wp.array2d[wp.mat22]):
     i, j = wp.tid()
 
     m1 = wp.mat22()

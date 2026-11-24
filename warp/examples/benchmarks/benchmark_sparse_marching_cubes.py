@@ -70,13 +70,13 @@ def _scene_sdf(p: wp.vec3):
 
 
 @wp.kernel(enable_backward=False)
-def _analytic_field_kernel(field: wp.array3d(dtype=float), origin: wp.vec3, h: float):
+def _analytic_field_kernel(field: wp.array3d[float], origin: wp.vec3, h: float):
     i, j, k = wp.tid()
     field[i, j, k] = _scene_sdf(origin + h * wp.vec3(float(i), float(j), float(k)))
 
 
 @wp.kernel(enable_backward=False)
-def _analytic_batch_kernel(points: wp.array(dtype=wp.vec3), values: wp.array(dtype=wp.float32)):
+def _analytic_batch_kernel(points: wp.array[wp.vec3], values: wp.array[wp.float32]):
     i = wp.tid()
     values[i] = wp.float32(_scene_sdf(points[i]))
 
@@ -110,7 +110,7 @@ def analytic_backend(device):
 
 
 @wp.kernel(enable_backward=False)
-def _mesh_sdf_batch_kernel(mesh_id: wp.uint64, points: wp.array(dtype=wp.vec3), values: wp.array(dtype=wp.float32)):
+def _mesh_sdf_batch_kernel(mesh_id: wp.uint64, points: wp.array[wp.vec3], values: wp.array[wp.float32]):
     i = wp.tid()
     p = points[i]
     q = wp.mesh_query_point_sign_winding_number(mesh_id, p, 1.0e6)
@@ -118,7 +118,7 @@ def _mesh_sdf_batch_kernel(mesh_id: wp.uint64, points: wp.array(dtype=wp.vec3), 
 
 
 @wp.kernel(enable_backward=False)
-def _mesh_field_kernel(mesh_id: wp.uint64, field: wp.array3d(dtype=float), origin: wp.vec3, h: float):
+def _mesh_field_kernel(mesh_id: wp.uint64, field: wp.array3d[float], origin: wp.vec3, h: float):
     i, j, k = wp.tid()
     p = origin + h * wp.vec3(float(i), float(j), float(k))
     q = wp.mesh_query_point_sign_winding_number(mesh_id, p, 1.0e6)

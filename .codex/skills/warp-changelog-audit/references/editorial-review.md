@@ -63,6 +63,9 @@ an integration, feature area, or ordering between subsystems. Use previous
 releases as style evidence, and explain decisions through the behavior changed.
 
 After fragment consumption, stage edits to the new release section directly.
+Each edit keeps Towncrier's layout: refill the edited entry to at most 120
+columns with a two-space continuation indent, keep inline code and links on
+one line, and keep issue links inside the entry's final period.
 Preserve the build commit and its consumed-path evidence. An empty Towncrier
 draft confirms fragment consumption; it does not authorize rebuilding the
 section over reviewed prose. Keep temporary review files outside commits.

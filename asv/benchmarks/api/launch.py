@@ -11,7 +11,7 @@ N = 8192
 
 
 @wp.kernel
-def inc_kernel(a: wp.array(dtype=float)):
+def inc_kernel(a: wp.array[float]):
     tid = wp.tid()
     a[tid] = a[tid] + 1.0
 
@@ -58,9 +58,9 @@ class KernelLaunch:
 
 @wp.struct
 class Sz:
-    a: wp.array(dtype=float)
-    b: wp.array(dtype=float)
-    c: wp.array(dtype=float)
+    a: wp.array[float]
+    b: wp.array[float]
+    c: wp.array[float]
     x: float
     y: float
     z: float
@@ -76,9 +76,9 @@ def ksz(s: Sz):
 
 @wp.kernel
 def kz(
-    a: wp.array(dtype=float),
-    b: wp.array(dtype=float),
-    c: wp.array(dtype=float),
+    a: wp.array[float],
+    b: wp.array[float],
+    c: wp.array[float],
     x: float,
     y: float,
     z: float,

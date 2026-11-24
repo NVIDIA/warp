@@ -101,9 +101,10 @@ linux-x86_64 cu13 asv rtxpro6000 tile:
 
 # Runs both suites in one booking. The pool is small, and booking a machine
 # can take a long time when GTL has to reimage it, so the job only runs when
-# started by hand; asv-main.yml runs it daily. It is optional: its failures
-# don't fail the pipeline, and a timeout (usually the pool staying busy for
-# the whole wait) isn't retried the way the default retry policy would.
+# started by hand; asv-main.yml runs it on pushes to main. It is optional:
+# its failures don't fail the pipeline, and a timeout (usually the pool
+# staying busy for the whole wait) isn't retried the way the default retry
+# policy would.
 linux-x86_64 cu13 asv b200:
   extends: .linux-x86_64-cu13-asv-bench-b200
   allow_failure: true

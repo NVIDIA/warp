@@ -814,7 +814,7 @@ def _swept_volume_transforms(transforms, device):
     arr = np.asarray(transforms, dtype=np.float32)
     if arr.ndim != 3 or arr.shape[2] != 7:
         raise ValueError(
-            "'transforms' must be a wp.array2d(dtype=wp.transform) or an array of "
+            "'transforms' must be a wp.array2d[wp.transform] or an array of "
             f"shape (num_meshes, num_samples, 7), got shape {arr.shape}."
         )
     return wp.array2d(arr, dtype=wp.transform, device=device)
@@ -1067,7 +1067,7 @@ def swept_volume_field(
 
     Returns:
         A tuple ``(field, lower, upper)`` where ``field`` is a
-        ``wp.array3d(dtype=wp.float32)`` of signed distances, and ``lower`` and
+        ``wp.array3d[wp.float32]`` of signed distances, and ``lower`` and
         ``upper`` are the :class:`warp.vec3` world coordinates that grid nodes
         ``(0, 0, 0)`` and ``(nx-1, ny-1, nz-1)`` map to.
     """
@@ -1179,8 +1179,8 @@ def swept_volume_mesh(
 
     Returns:
         A tuple ``(vertices, indices)`` where ``vertices`` is a
-        ``wp.array(dtype=wp.vec3)`` in world coordinates and ``indices`` is a
-        flat ``wp.array(dtype=wp.int32)`` with three entries per triangle.
+        ``wp.array[wp.vec3]`` in world coordinates and ``indices`` is a
+        flat ``wp.array[wp.int32]`` with three entries per triangle.
 
     Examples:
         Sweep a tetrahedron one unit along x. The swept solid spans

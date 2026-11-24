@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import struct
+import sys
 import unittest
 
 import numpy as np
@@ -300,6 +301,8 @@ def test_bf16_math_builtins(test, device):
 # Test bfloat16 in user-defined vector/matrix types
 bf16_vec3 = wp.types.vector(3, dtype=wp.bfloat16)
 bf16_mat22 = wp.types.matrix(shape=(2, 2), dtype=wp.bfloat16)
+bf16_quat = wp.types.quaternion(dtype=wp.bfloat16)
+bf16_transform = wp.types.transformation(dtype=wp.bfloat16)
 
 
 @wp.kernel
@@ -526,8 +529,66 @@ def test_bf16_cross_device_consistency(test, device):
         np.testing.assert_array_equal(cpu_f32.numpy(), gpu_f32.numpy(), err_msg=f"Mismatch for {op}")
 
 
+BF16_VEC3_CONSTANT = wp.constant(bf16_vec3(1.0, -2.0, 0.25))
+
+
+# In a module of its own, so that a failure to hash the constant only fails its own test.
+@wp.kernel(module="unique")
+def bf16_vec3_constant_kernel(out: wp.array[wp.float32]):
+    out[0] = wp.float32(BF16_VEC3_CONSTANT[0])
+    out[1] = wp.float32(BF16_VEC3_CONSTANT[1])
+    out[2] = wp.float32(BF16_VEC3_CONSTANT[2])
+
+
+def test_bf16_vector_constant(test, device):
+    """Use a bfloat16 vector constant in a kernel."""
+    out = wp.zeros(3, dtype=wp.float32, device=device)
+    wp.launch(bf16_vec3_constant_kernel, dim=1, outputs=[out], device=device)
+    np.testing.assert_array_equal(out.numpy(), np.array((1.0, -2.0, 0.25), dtype=np.float32), strict=True)
+
+
 class TestBf16(unittest.TestCase):
-    pass
+    @unittest.skipUnless(sys.version_info >= (3, 12), "Python 3.12 is the first to let a type define its buffer")
+    def test_bf16_numpy_reads_composite_values(self):
+        """NumPy reads bfloat16 vectors, matrices, quaternions, and transforms as float32 values, not their stored bits."""
+        vec = np.asarray(bf16_vec3(1.0, -2.0, 0.25))
+        np.testing.assert_array_equal(vec, np.array((1.0, -2.0, 0.25), dtype=np.float32), strict=True)
+
+        mat = np.asarray(bf16_mat22(1.0, 2.0, -3.0, 0.5))
+        np.testing.assert_array_equal(mat, np.array((1.0, 2.0, -3.0, 0.5), dtype=np.float32), strict=True)
+
+        quat = np.asarray(bf16_quat(0.5, -0.5, 0.25, 1.0))
+        np.testing.assert_array_equal(quat, np.array((0.5, -0.5, 0.25, 1.0), dtype=np.float32), strict=True)
+
+        xform = np.asarray(bf16_transform(bf16_vec3(1.0, 2.0, 3.0), bf16_quat(0.0, 0.0, 0.0, 1.0)))
+        np.testing.assert_array_equal(
+            xform, np.array((1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 1.0), dtype=np.float32), strict=True
+        )
+
+        as_float64 = np.asarray(bf16_vec3(1.0, -2.0, 0.25), dtype=np.float64)
+        np.testing.assert_array_equal(as_float64, np.array((1.0, -2.0, 0.25)), strict=True)
+
+    @unittest.skipUnless(sys.version_info >= (3, 12), "Python 3.12 is the first to let a type define its buffer")
+    def test_bf16_numpy_reads_mixed_sequence(self):
+        """NumPy reads a bfloat16 vector next to values of another type, where only the vector knows its format."""
+        result = np.asarray([(1.0, 2.0, 3.0), bf16_vec3(4.0, -5.0, 0.25)])
+        np.testing.assert_array_equal(result, np.array(((1.0, 2.0, 3.0), (4.0, -5.0, 0.25))), strict=True)
+
+    @unittest.skipUnless(sys.version_info >= (3, 12), "Python 3.12 is the first to let a type define its buffer")
+    @unittest.skipUnless(np.lib.NumpyVersion(np.__version__) >= "2.0.0", "NumPy 2 is the first to ask for a copy")
+    def test_bf16_numpy_read_without_copy(self):
+        """Reading a bfloat16 vector without a copy fails, since its values must be decoded into a new array."""
+        with self.assertRaises(ValueError):
+            np.asarray(bf16_vec3(1.0, -2.0, 0.25), copy=False)
+
+    @unittest.skipUnless(sys.version_info >= (3, 12), "Python 3.12 is the first to let a type define its buffer")
+    def test_bf16_composite_buffer(self):
+        """A bfloat16 vector exports no buffer, since no buffer format describes bfloat16 values."""
+        value = bf16_vec3(1.0, -2.0, 0.25)
+        with self.assertRaises(BufferError):
+            bytes(value)
+        with self.assertRaises(BufferError):
+            memoryview(value)
 
 
 def test_bf16_ml_dtypes_conversion_helpers(test, device):
@@ -879,6 +940,7 @@ add_function_test(
 add_function_test(
     TestBf16, "test_bf16_ml_dtypes_conversion_helpers", test_bf16_ml_dtypes_conversion_helpers, devices=devices
 )
+add_function_test(TestBf16, "test_bf16_vector_constant", test_bf16_vector_constant, devices=devices)
 
 
 @unittest.skipUnless(_has_ml_dtypes, "ml_dtypes not installed")

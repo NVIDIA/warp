@@ -82,11 +82,14 @@ def norm_huber(v: Any, delta: Any = 1.0) -> float:
     Returns:
         float: The Huber norm of the vector.
     """
-    delta_t = type(v[0])(delta)
     a = wp.dot(v, v)
-    if a <= delta_t * delta_t:
-        return type(v[0])(0.5) * a
-    return delta_t * (wp.sqrt(a) - type(v[0])(0.5) * delta_t)
+    # Compare the primal value so forward-mode jets retain their derivatives.
+    primal = wp.value(a)
+    delta_t = type(primal)(delta)
+    half = type(primal)(0.5)
+    if primal <= delta_t * delta_t:
+        return half * a
+    return delta_t * (wp.sqrt(a) - half * delta_t)
 
 
 @wp.func

@@ -92,7 +92,7 @@ The Python script compiles a SAXPY kernel to CUBIN:
 
 ```python
 @wp.kernel
-def saxpy(alpha: wp.float32, x: wp.array(dtype=wp.float32), y: wp.array(dtype=wp.float32)):
+def saxpy(alpha: wp.float32, x: wp.array[wp.float32], y: wp.array[wp.float32]):
     """SAXPY: Single-Precision A·X Plus Y
 
     Computes: y = alpha * x + y

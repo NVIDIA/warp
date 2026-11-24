@@ -64,7 +64,7 @@ import warp as wp
 
 
 @wp.kernel
-def my_kernel(x: wp.array(dtype=wp.float32)):
+def my_kernel(x: wp.array[wp.float32]):
     tid = wp.tid()
     x[tid] = x[tid] * 2.0
 

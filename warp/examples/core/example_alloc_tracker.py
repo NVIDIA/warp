@@ -32,15 +32,15 @@ import warp as wp
 
 
 @wp.kernel
-def apply_gravity(velocities: wp.array(dtype=wp.vec3), dt: float):
+def apply_gravity(velocities: wp.array[wp.vec3], dt: float):
     tid = wp.tid()
     velocities[tid] = velocities[tid] + wp.vec3(0.0, -9.81, 0.0) * dt
 
 
 @wp.kernel
 def integrate(
-    positions: wp.array(dtype=wp.vec3),
-    velocities: wp.array(dtype=wp.vec3),
+    positions: wp.array[wp.vec3],
+    velocities: wp.array[wp.vec3],
     dt: float,
 ):
     tid = wp.tid()
@@ -49,8 +49,8 @@ def integrate(
 
 @wp.kernel
 def enforce_ground(
-    positions: wp.array(dtype=wp.vec3),
-    velocities: wp.array(dtype=wp.vec3),
+    positions: wp.array[wp.vec3],
+    velocities: wp.array[wp.vec3],
     restitution: float,
 ):
     tid = wp.tid()

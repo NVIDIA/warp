@@ -5,8 +5,8 @@
 # ASV Benchmarking Templates
 #
 # Hidden job templates shared by the ASV child pipelines: asv-mr.yml (merge
-# requests) and asv-main.yml (main branch and the daily schedule). Including
-# this file adds no jobs.
+# requests) and asv-main.yml (pushes to main). Including this file adds no
+# jobs.
 # ==============================================================================
 
 # Build Warp wheels for COMPARE_REF_SHA and CI_COMMIT_SHA on a CPU runner so
@@ -18,7 +18,6 @@
 # trigger job in /.gitlab-ci.yml sets:
 #   - unset (merge requests): the MR target branch.
 #   - `push`: the main tip before this push.
-#   - `nightly`: main as of 24 hours before this pipeline was created.
 .linux-x86_64-cu13-asv-build:
   stage: build
   needs: []
@@ -57,14 +56,6 @@
             "" | 0000000000000000000000000000000000000000 | "$CI_COMMIT_SHA") COMPARE_REF="$(git rev-parse "$CI_COMMIT_SHA^")" ;;
           esac
           ;;
-        nightly)
-          # The previous daily run benchmarked main as of about this time.
-          # The checkout is shallow, so fetch the history to search first.
-          since="$(date -u -d "@$(( $(date -d "$CI_PIPELINE_CREATED_AT" +%s) - 86400 ))" +%FT%TZ)"
-          fetch_compare_ref "$CI_COMMIT_SHA"
-          COMPARE_REF="$(git rev-list -1 --first-parent --before="$since" "$CI_COMMIT_SHA")"
-          test -n "$COMPARE_REF" || { echo "no commit before $since in the history of $CI_COMMIT_SHA"; exit 1; }
-          ;;
         *)
           COMPARE_REF="${CI_MERGE_REQUEST_TARGET_BRANCH_SHA:-${CI_MERGE_REQUEST_TARGET_BRANCH_NAME:-main}}"
           ;;
@@ -86,14 +77,6 @@
     - printf "%s\n" "$COMPARE_REF_SOURCE" > _wheels/compare_ref.source
     - printf "%s\n" "$COMPARE_REF_SHA" > _wheels/compare_ref.sha
     - printf "%s\n" "$CI_COMMIT_SHA" > _wheels/target_ref.sha
-    # The baseline is this commit only for a daily run with nothing new on
-    # main since the previous one. The bench jobs then still book a machine,
-    # but stop before setup.
-    - |
-      if [ "$COMPARE_REF_SHA" = "$CI_COMMIT_SHA" ]; then
-        echo "The baseline is this commit; nothing to build."
-        exit 0
-      fi
     - uvx asv machine --machine asv-build --yes
     # asv has no `build` subcommand; `continuous --quick` builds both refs
     # (populating asv/env/*/asv-build-cache/) and runs a tiny PythonBuiltins
@@ -145,13 +128,11 @@
     GCN_TASK_TIMEOUT: "28800"
     # Slowdown ratio that asv reports as a regression.
     ASV_FACTOR: "1.10"
+    # Number CUDA devices in the order nvidia-smi lists them, so that CUDA
+    # device 0 is the GPU whose NUMA node before_script looks up.
+    CUDA_DEVICE_ORDER: "PCI_BUS_ID"
   before_script:
     - !reference [.snippets, section-start-install-deps]
-    - |
-      if [ "$(cat _wheels/compare_ref.sha 2>/dev/null)" = "$CI_COMMIT_SHA" ]; then
-        echo "The baseline is this commit; nothing to compare."
-        exit 0
-      fi
     - df -h
     - nvidia-smi
     # Pin the CPU frequency governor to `performance` so CPU-bound benchmarks
@@ -197,6 +178,26 @@
         else
           echo "WARNING: failed to lock the GPU core clock to $ASV_GPU_CLOCK_MHZ MHz"
         fi
+      fi
+    # How fast a benchmark process launches work depends on the CPU it runs
+    # on. It is slower on a NUMA node away from the GPU and, on the B200
+    # hosts, on the second hyperthread of a core, where it slows down over
+    # its first second even while the first hyperthread is idle. The
+    # scheduler places every process anew, so the baseline's and the
+    # candidate's processes could differ by more than ASV_FACTOR. asv runs
+    # on the first hyperthread of each core on GPU 0's NUMA node instead.
+    - |
+      gpu_bus_id="$(nvidia-smi --query-gpu=pci.bus_id --format=csv,noheader -i 0 | tr 'A-F' 'a-f')"
+      gpu_node="$(cat "/sys/bus/pci/devices/${gpu_bus_id#0000}/numa_node" 2>/dev/null || echo -1)"
+      # lscpu lists CPUs in ascending order, so the first CPU listed for a
+      # core is its first hyperthread.
+      ASV_CPUS="$(lscpu -p=CPU,CORE,NODE 2>/dev/null |
+        awk -F, -v node="$gpu_node" '!/^#/ && (node < 0 || $3 == node) && !seen[$2]++ { print $1 }' | paste -sd, -)" || true
+      if [ -n "$ASV_CPUS" ] && command -v taskset > /dev/null; then
+        echo "GPU 0 ($gpu_bus_id) is on NUMA node $gpu_node; asv runs on CPUs $ASV_CPUS"
+      else
+        ASV_CPUS=
+        echo "WARNING: failed to find the CPUs for GPU 0 ($gpu_bus_id); asv runs on all CPUs"
       fi
     - curl -LsSf https://astral.sh/uv/install.sh | sh
     - export PATH="$HOME/.local/bin:$PATH"
@@ -261,11 +262,12 @@
       section_start() { echo -e "\e[0Ksection_start:$(date +%s):$1[collapsed=true]\r\e[0K$2"; }
       section_end() { echo -e "\e[0Ksection_end:$(date +%s):$1\r\e[0K"; }
       asv_progress='^(·|\[ *[0-9.]+%\] (··|···) [^=])'
+      on_gpu_cpus() { if [ -n "$ASV_CPUS" ]; then taskset -c "$ASV_CPUS" "$@"; else "$@"; fi; }
 
       date -u +"asv continuous start: %FT%TZ"
       {
         asv_rc=0
-        uvx asv continuous -e --interleave-rounds --append-samples --no-only-changed -f "$ASV_FACTOR" --bench "$ASV_BENCH_FILTER" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || asv_rc=$?
+        on_gpu_cpus uvx asv continuous -e --interleave-rounds --append-samples --no-only-changed -f "$ASV_FACTOR" --bench "$ASV_BENCH_FILTER" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || asv_rc=$?
         echo "$asv_rc" > asv-continuous.rc
       } | tee asv-continuous.log | LC_ALL=C grep --line-buffered -E "$asv_progress" || true
       rc="$(cat asv-continuous.rc)"
@@ -284,8 +286,9 @@
       # rc=1: regressions detected. rc>1: benchmark failures (e.g. a new
       # benchmark uses an API not yet on the compare ref); the table still
       # covers the benchmarks that ran. The exit status is propagated at the
-      # end.
-      uvx asv compare --split -f "$ASV_FACTOR" --machine "$ASV_MACHINE_NAME" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || true
+      # end. Each group is sorted by descending ratio, so slowdowns too small
+      # to count as regressions top the unchanged group.
+      uvx asv compare --split --sort ratio -f "$ASV_FACTOR" --machine "$ASV_MACHINE_NAME" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || true
       printf '\n'
 
       if [ "$rc" -eq 1 ]; then
@@ -306,7 +309,7 @@
           uv run --no-project python -c 'import json; conf = json.load(open("asv.conf.json")); conf["results_dir"] = "asv/results-rerun"; json.dump(conf, open("asv-rerun.conf.json", "w"), indent=2)'
           {
             rerun_rc=0
-            uvx asv continuous --config asv-rerun.conf.json -e --interleave-rounds -f "$ASV_FACTOR" --bench "$rerun_filter" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || rerun_rc=$?
+            on_gpu_cpus uvx asv continuous --config asv-rerun.conf.json -e --interleave-rounds -f "$ASV_FACTOR" --bench "$rerun_filter" "$COMPARE_REF_SHA" "$CI_COMMIT_SHA" 2>&1 || rerun_rc=$?
             echo "$rerun_rc" > asv-rerun.rc
           } | tee -a asv-continuous.log | LC_ALL=C grep --line-buffered -E "$asv_progress|^\|" || true
           rerun_rc="$(cat asv-rerun.rc)"

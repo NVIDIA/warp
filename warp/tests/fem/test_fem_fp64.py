@@ -327,6 +327,50 @@ def test_fp64_lookup(test, device):
             _ = fem.integrate(lookup_integrand, domain=domain)
 
 
+def test_fp64_grid_particle_lookup(test, device):
+    """Preserve particle cell ownership and coordinates across FP64 boundaries."""
+    with wp.ScopedDevice(device):
+        for dim, grid_type, res_type, pos_type in (
+            (2, fem.Grid2D, wp.vec2i, wp.vec2d),
+            (3, fem.Grid3D, wp.vec3i, wp.vec3d),
+        ):
+            for env_count in (1, 2):
+                for nearest in (False, True):
+                    with test.subTest(dimension=dim, environments=env_count, nearest=nearest):
+                        grid = grid_type(res_type(2), scalar_type=wp.float64, env_count=env_count)
+                        cell_stride = 2 ** (dim - 1)
+                        cells_per_env = 2**dim
+                        data = np.full((3 * env_count, dim), 0.25, dtype=np.float64)
+                        data[:, 0] = np.tile([0.5 - 2.0**-32, 0.5 + 2.0**-32, 0.4], env_count)
+                        envs = np.repeat(np.arange(env_count, dtype=np.int32), 3)
+                        local_cells = np.full(len(data), cell_stride) if nearest else (data[:, 0] >= 0.5) * cell_stride
+                        expected_cells = local_cells + envs * cells_per_env
+                        expected_coords = np.zeros((len(data), 3), dtype=np.float64)
+                        expected_coords[:, :dim] = data * 2.0
+                        expected_coords[:, 0] -= local_cells / cell_stride
+                        if nearest:
+                            mask = (np.arange(grid.cell_count()) % cells_per_env >= cell_stride).astype(np.int32)
+                            domain = fem.Cells(fem.ExplicitGeometryPartition(grid, wp.array(mask, dtype=int)))
+                        else:
+                            domain = fem.Cells(grid)
+                        quadrature = fem.PicQuadrature(
+                            domain,
+                            wp.array(data, dtype=pos_type),
+                            measures=wp.ones(len(data), dtype=wp.float64),
+                            env_indices=wp.array(envs, dtype=int) if env_count > 1 else None,
+                            max_dist=0.2 if nearest else 0.0,
+                        )
+                        args = quadrature.arg_value(device)
+                        order = args.cell_particle_indices.numpy()
+                        cell_indices = np.repeat(
+                            np.arange(grid.cell_count()), np.diff(args.cell_particle_offsets.numpy())
+                        )
+                        np.testing.assert_array_equal(cell_indices, expected_cells[order])
+                        np.testing.assert_allclose(
+                            args.cell_particle_coords.numpy(), expected_coords[order], rtol=0, atol=1e-14
+                        )
+
+
 # -- Test class --
 
 
@@ -345,6 +389,8 @@ add_function_test(TestFemFp64, "test_fp64_interpolation", test_fp64_interpolatio
 add_function_test(TestFemFp64, "test_fp64_scalar_type_operator", test_fp64_scalar_type_operator, devices=devices)
 add_function_test(TestFemFp64, "test_fp64_nanogrid_volume", test_fp64_nanogrid_volume, devices=devices)
 add_function_test(TestFemFp64, "test_fp64_lookup", test_fp64_lookup, devices=devices)
+
+add_function_test(TestFemFp64, "test_fp64_grid_particle_lookup", test_fp64_grid_particle_lookup, devices=devices)
 
 if __name__ == "__main__":
     unittest.main()
