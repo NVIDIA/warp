@@ -90,17 +90,19 @@ enclosing tape resumes recording when the inner ``with`` block exits::
 Each tape runs only its own recorded operations in :meth:`Tape.backward`.
 
 A library can use an inner tape to inspect what a function does before deciding what to
-record on the enclosing tape. Recorded operations are available in ``tape.launches`` as
-:class:`TapeLaunch` entries for kernel launches, with the launched kernel, its inputs and outputs,
-and :class:`TapeFunc` entries for functions recorded with :meth:`Tape.record_func`, such as the
-backward pass of :func:`copy`, with the arrays they access::
+record on the enclosing tape. Kernel launches are available in ``tape.launches`` as
+:class:`TapeLaunch` entries, with the launched kernel, its inputs and outputs, and the arrays it
+accesses. Functions recorded with :meth:`Tape.record_func`, such as the backward pass of
+:func:`copy`, are stored in ``tape.launches`` as plain callables, and the arrays they access are
+keys of ``tape.gradients``::
 
     with wp.Tape() as scratch:
         simulate(state)
 
-    accessed = set()
+    accessed = {id(a) for a in scratch.gradients}
     for launch in scratch.launches:
-        accessed.update(id(a) for a in launch.arrays)
+        if isinstance(launch, wp.TapeLaunch):
+            accessed.update(id(a) for a in launch.arrays)
 
     # discard the recording without zeroing gradients that other tapes still use
     scratch.reset(zero_grads=False)

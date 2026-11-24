@@ -121,28 +121,6 @@ class TapeLaunch(list):
         return _kernel_has_adjoint(self[0])
 
 
-class TapeFunc:
-    """A function recorded on a :class:`Tape` with :meth:`Tape.record_func`.
-
-    Entries of ``Tape.launches`` that record functions, including the backward
-    pass of :func:`warp.copy`, are instances of this class. Calling it calls :attr:`func`.
-    """
-
-    __slots__ = ("arrays", "func")
-
-    def __init__(self, func: Callable, arrays: list):
-        self.func = func
-        """The function to call in the backward pass."""
-        self.arrays = arrays
-        """The arrays that the function reads or writes gradients of."""
-
-    def __call__(self, *args, **kwargs):
-        return self.func(*args, **kwargs)
-
-    def __repr__(self):
-        return f"TapeFunc({self.func!r})"
-
-
 class Tape:
     """
     Record kernel launches within a Tape scope to enable automatic differentiation.
@@ -176,9 +154,8 @@ class Tape:
     To run operations without recording them on any tape, use :func:`warp.no_grad`.
     A tape that is already active cannot be entered again until it exits.
 
-    Recorded operations are stored in ``tape.launches`` as :class:`TapeLaunch`
-    entries for kernel launches and :class:`TapeFunc` entries for functions
-    recorded with :meth:`record_func`.
+    Kernel launches are stored in ``tape.launches`` as :class:`TapeLaunch` entries.
+    Functions recorded with :meth:`record_func` are stored as the callables passed to it.
 
     Args:
         strict: If ``True``, launching a kernel that was compiled without an adjoint
@@ -400,9 +377,6 @@ class Tape:
         Args:
             backward (Callable): A callable Python object (can be any function) that will be executed in the backward pass.
             arrays (list): A list of arrays that are used by the backward function. The tape keeps track of these to be able to zero their gradients in Tape.zero()
-
-        The function is stored in ``launches`` as a :class:`TapeFunc`, which
-        also records ``arrays``.
         """
         arrays = list(arrays)
         for a in arrays:
@@ -411,7 +385,7 @@ class Tape:
                     f"Array {a} is not of type wp.array or is missing a gradient array. Set array parameter requires_grad=True during instantiation."
                 )
 
-        self.launches.append(TapeFunc(backward, arrays))
+        self.launches.append(backward)
 
         for a in arrays:
             self.gradients[a] = a.grad
@@ -570,19 +544,14 @@ class Tape:
                 parent._is_read = False
                 parent = parent._ref
 
-        # self.gradients only covers kernel launches once backward() has run
+        # self.gradients holds the arrays of functions recorded with record_func(),
+        # but only covers kernel launches once backward() has run
         for launch in self.launches:
             if not callable(launch):
                 for arrays in (launch[3], launch[4]):  # inputs and outputs
                     for a in arrays:
                         if isinstance(a, wp.array):
                             clear_read_flags(a)
-        # arrays used by copies and functions recorded with record_func()
-        for launch in self.launches:
-            if isinstance(launch, TapeFunc):
-                for a in launch.arrays:
-                    if isinstance(a, wp.array):
-                        clear_read_flags(a)
         for a in self.gradients:
             if isinstance(a, wp.array):
                 clear_read_flags(a)

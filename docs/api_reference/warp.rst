@@ -318,11 +318,10 @@ Automatic Differentiation
    :toctree: _generated
 
    Tape
-   TapeFunc
    TapeLaunch
-   no_grad
    JetSpace
    JetSpace2
+   no_grad
 
 Device Management
 -----------------

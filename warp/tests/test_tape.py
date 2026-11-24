@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import contextlib
+import inspect
 import io
 import unittest
 from unittest.mock import patch
@@ -1261,11 +1262,11 @@ class TestTape(unittest.TestCase):
         self.assertEqual(launch.arrays, [x, y])
         self.assertTrue(launch.has_adjoint)
 
-        self.assertIsInstance(copy, wp.TapeFunc)
-        self.assertTrue(callable(copy))
-        self.assertEqual(len(copy.arrays), 2)
-        self.assertIs(copy.arrays[0], z)
-        self.assertIs(copy.arrays[1], y)
+        # functions recorded with record_func(), such as the copy, stay plain callables
+        self.assertNotIsInstance(copy, wp.TapeLaunch)
+        self.assertTrue(inspect.isfunction(copy))
+        self.assertIn(z, tape.gradients)
+        self.assertIn(y, tape.gradients)
 
         with wp.Tape() as tape:
             wp.launch(mul_constant_no_adjoint, dim=x.shape, inputs=[x], outputs=[y], device="cpu")
@@ -1281,9 +1282,7 @@ class TestTape(unittest.TestCase):
         tape = wp.Tape()
         tape.record_func(backward, arrays=(x,))
         (func,) = tape.launches
-        self.assertIsInstance(func, wp.TapeFunc)
-        self.assertIs(func.func, backward)
-        self.assertEqual(func.arrays, [x])
+        self.assertIs(func, backward)
         self.assertIs(tape.gradients[x], x.grad)
 
         tape.backward()
@@ -1366,6 +1365,7 @@ class TestTape(unittest.TestCase):
         tape.backward(grads={y: wp.ones_like(y)})
         assert_np_equal(x.grad.numpy(), np.full(2, 2.0))
         self.assertFalse(wp.Tape().strict)
+
     def test_tape_strict_record_cmd(self):
         """Creating a command records nothing, so a strict tape allows it and the command runs later."""
         x = wp.array([1.0, 2.0], dtype=float, requires_grad=True, device="cpu")
@@ -1395,7 +1395,6 @@ class TestTape(unittest.TestCase):
 
         tape.backward(grads={y: wp.ones_like(y)})
         assert_np_equal(x.grad.numpy(), np.full(2, 2.0))
-
 
     def test_tape_strict_backward(self):
         x = wp.array([1.0, 2.0], dtype=float, requires_grad=True, device="cpu")
