@@ -987,6 +987,17 @@ class FfiCallable:
                 is_capturing = bool(wp._src.context.runtime.core.wp_cuda_stream_is_capturing(cuda_stream))
                 capture_key = None
 
+                if (
+                    is_capturing
+                    and self.graph_mode in (JaxCallableGraphMode.WARP_STAGED, JaxCallableGraphMode.WARP_STAGED_EX)
+                    and (self.stage_in_argnames is not None or self.stage_out_argnames is not None)
+                ):
+                    return create_invalid_argument_ffi_error(
+                        call_frame.contents.api,
+                        f"JaxCallableGraphMode.{self.graph_mode.name} with stage_in_argnames or stage_out_argnames "
+                        "is not supported during an active CUDA stream capture",
+                    )
+
                 if not is_capturing:
                     if self.graph_mode == JaxCallableGraphMode.WARP:
                         # check if we already captured an identical call
@@ -1835,11 +1846,13 @@ def jax_callable(
             buffers on each call in ``WARP_STAGED`` or ``WARP_STAGED_EX`` mode.
             If ``None``, copy every non-empty array input. When specific names
             are provided, other array inputs keep the values copied during
-            graph setup.
+            graph setup. Not supported during an active external CUDA stream
+            capture.
         stage_out_argnames: Names of non-empty array outputs to copy from staging
             buffers on each call in ``WARP_STAGED`` or ``WARP_STAGED_EX`` mode.
             If ``None``, copy every non-empty array output. When specific names
-            are provided, other array outputs are not copied back.
+            are provided, other array outputs are not copied back. Not
+            supported during an active external CUDA stream capture.
         graph_cache_max: Maximum number of cached graphs captured using ``JaxCallableGraphMode.WARP``.
             If ``None``, the graph cache is unlimited.
         module_preload_mode: Specify the devices where the module should be preloaded.

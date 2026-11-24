@@ -1414,8 +1414,8 @@ def _assert_external_capture_preserves_staged_graph(test, device, jax_device, gr
         if ext_active:
             with wp.ScopedDevice(device):
                 ext_stream = ctypes.c_void_p(ctx.stream)
-                # CU_STREAM_CAPTURE_MODE_THREAD_LOCAL = 1
-                test.assertEqual(cuda_driver.cuStreamBeginCapture_v2(ext_stream, 1), 0)
+                # CU_STREAM_CAPTURE_MODE_RELAXED = 2 so cleanup can end an aborted capture from the test thread
+                test.assertEqual(cuda_driver.cuStreamBeginCapture_v2(ext_stream, 2), 0)
 
     def _end_ext(_inputs, _outputs, _attrs, ctx):
         if ext_active:
@@ -1460,13 +1460,58 @@ def _assert_external_capture_preserves_staged_graph(test, device, jax_device, gr
             assert_np_equal(np.asarray(out2), val2 * 2.0)
             test.assertEqual(capture_count, 2)
     finally:
-        wp.synchronize_device(device)
-        if ext_stream is not None and wp._src.context.runtime.core.wp_cuda_stream_is_capturing(ext_stream.value):
-            cuda_driver.cuStreamEndCapture(ext_stream, ctypes.byref(ext_graph))
-        if ext_graph_exec:
-            cuda_driver.cuGraphExecDestroy(ext_graph_exec)
-        if ext_graph:
-            cuda_driver.cuGraphDestroy(ext_graph)
+        with wp.ScopedDevice(device):
+            try:
+                if ext_stream is not None and wp._src.context.runtime.core.wp_cuda_stream_is_capturing(
+                    ext_stream.value
+                ):
+                    aborted_graph = ctypes.c_void_p()
+                    cuda_driver.cuStreamEndCapture(ext_stream, ctypes.byref(aborted_graph))
+                    if aborted_graph:
+                        cuda_driver.cuGraphDestroy(aborted_graph)
+                wp.synchronize_device(device)
+            finally:
+                if ext_graph_exec:
+                    cuda_driver.cuGraphExecDestroy(ext_graph_exec)
+                if ext_graph:
+                    cuda_driver.cuGraphDestroy(ext_graph)
+
+    # Selective staging cannot honor setup-time snapshots or skipped outputs inside an enclosing
+    # external capture, so it must fail explicitly without disturbing the cached staged graph.
+    selective_captures = 0
+
+    def selective_add(a: wp.array[float], b: wp.array[float], c: wp.array[float]):
+        nonlocal selective_captures
+        selective_captures += 1
+        wp.launch(add_kernel, dim=a.shape, inputs=[a, b], outputs=[c])
+
+    for staging_kwargs in ({"stage_in_argnames": ["a"]}, {"stage_out_argnames": ["c"]}):
+        selective_captures = 0
+        selective_cb = wp.jax_callable(selective_add, graph_mode=graph_mode, **staging_kwargs)
+        run_selective = jax.jit(lambda x, y, selective_cb=selective_cb: selective_cb(x, y)[0])
+
+        with jax.default_device(jax_device):
+            a0 = np.full(8, 1.0, dtype=np.float32)
+            b0 = np.full(8, 10.0, dtype=np.float32)
+            out0 = run_selective(jax.device_put(a0, jax_device), jax.device_put(b0, jax_device))
+            assert_np_equal(np.asarray(out0), a0 + b0)
+            test.assertEqual(selective_captures, 1)
+
+            a1 = np.full(8, 2.0, dtype=np.float32)
+            b1 = np.full(8, 20.0, dtype=np.float32)
+            with (
+                mock.patch.object(wp._src.context.runtime.core, "wp_cuda_stream_is_capturing", return_value=1),
+                test.assertRaisesRegex(Exception, "not supported during an active CUDA stream capture"),
+            ):
+                run_selective(jax.device_put(a1, jax_device), jax.device_put(b1, jax_device)).block_until_ready()
+
+            # Non-capturing replay still uses the cached graph and setup-time snapshots.
+            a2 = np.full(8, 3.0, dtype=np.float32)
+            b2 = np.full(8, 30.0, dtype=np.float32)
+            out2 = run_selective(jax.device_put(a2, jax_device), jax.device_put(b2, jax_device))
+            expected = a2 + b0 if "stage_in_argnames" in staging_kwargs else a2 + b2
+            assert_np_equal(np.asarray(out2), expected)
+            test.assertEqual(selective_captures, 1)
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
