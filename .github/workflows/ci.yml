@@ -803,21 +803,21 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # CUDA 13 rows install the cutile extra and the locked tests-cu13
-          # group (JAX, RMM) instead of `--with` overlays: cuTile Python finds
-          # the pip tileiras only in the first `nvidia.cu13` path entry, and an
-          # overlay environment puts JAX's nvidia-* wheels ahead of it. This
-          # matches the GitLab CUDA 13 test jobs.
+          # CUDA 13 rows install the cutile extra without JAX or RMM: cuTile
+          # Python finds the pip tileiras only in the first `nvidia.cu13` path
+          # entry, and a `--with "jax[cuda13]"` overlay environment puts JAX's
+          # nvidia-* wheels ahead of it. This matches the GitLab CUDA 13 test
+          # jobs.
           - runner-label: linux-amd64-gpu-h100-latest-1
             gpu-name: h100
             artifact-name: build-artifact-ubuntu-x86_64-cuda13
             python-version: "3.12"
-            test-deps: --extra torch-cu13 --extra cutile --group tests-cu13
+            test-deps: --extra torch-cu13 --extra cutile
           - runner-label: linux-amd64-gpu-rtxpro6000-latest-1
             gpu-name: rtxpro6000
             artifact-name: build-artifact-ubuntu-x86_64-cuda13
             python-version: "3.12"
-            test-deps: --extra torch-cu13 --extra cutile --group tests-cu13
+            test-deps: --extra torch-cu13 --extra cutile
           - runner-label: linux-amd64-gpu-l4-earliest-1
             gpu-name: l4
             artifact-name: build-artifact-ubuntu-x86_64-cuda12
@@ -827,7 +827,7 @@ jobs:
             gpu-name: l4-arm64
             artifact-name: build-artifact-ubuntu-aarch64-cuda13
             python-version: "3.14"
-            test-deps: --extra torch-cu13 --extra cutile --group tests-cu13
+            test-deps: --extra torch-cu13 --extra cutile
     container:
       image: ubuntu:24.04
       options: -u root --security-opt seccomp=unconfined --shm-size 16g

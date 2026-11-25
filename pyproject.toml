@@ -220,20 +220,6 @@ omit = [
     "__init__.pyi",
 ]
 
-[dependency-groups]
-# Test-time GPU dependencies of the CUDA 13 CI jobs, kept out of the extras so
-# they never reach users. Locked here rather than added with `uv run --with`
-# because cuTile Python looks for the pip tileiras only in the first
-# `nvidia.cu13` path entry. A `--with "jax[cuda13]"` overlay installs JAX's
-# nvidia-* wheels in a separate environment ahead of the project's, so cuTile
-# falls back to the system tileiras, and every foreign_call fails when that one
-# is missing or older than 13.5. Locking JAX alongside the `cutile` extra keeps
-# a single nvidia/cu13 tree.
-tests-cu13 = [
-    "jax[cuda13]>=0.5 ; sys_platform == 'linux'",
-    "rmm-cu13 ; sys_platform == 'linux'",
-]
-
 [tool.uv]
 managed = true
 required-environments = [
@@ -247,10 +233,6 @@ conflicts = [
     # cuTile is CUDA 13 only
     [
         { extra = "cutile" },
-        { extra = "torch-cu12" },
-    ],
-    [
-        { group = "tests-cu13" },
         { extra = "torch-cu12" },
     ],
 ]
