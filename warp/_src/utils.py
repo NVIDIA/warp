@@ -832,8 +832,8 @@ def array_sum(
     Args:
         values: Input array to sum. Its scalar type must be ``float32`` or ``float64``.
         out: Output array to store results. If ``None``, a new array is created.
-        value_count: Number of elements to process. Must not exceed the input size, or the selected axis length when
-            ``axis`` is specified. If ``None``, processes the entire reduction.
+        value_count: Number of elements to process. Must be non-negative and must not exceed the input size,
+            or the selected axis length when ``axis`` is specified. If ``None``, processes the entire reduction.
         axis: Axis along which to compute sum. Negative values count from the last dimension. If ``None``, computes
             sum of all elements.
 
@@ -843,8 +843,8 @@ def array_sum(
 
     Raises:
         IndexError: If ``axis`` is outside the valid range for ``values``.
-        RuntimeError: If ``value_count`` exceeds the reduction size, output array storage device or data type is
-            incompatible with input array, or an APIC-recorded call uses an unsupported count or memory layout.
+        RuntimeError: If ``value_count`` is negative or exceeds the reduction size, output array storage device or data
+            type is incompatible with input array, or an APIC-recorded call uses an unsupported count or memory layout.
         NotImplementedError: If a non-empty call during APIC recording omits
             ``out``. Also raised if any input or output array has a negative
             stride during APIC recording, including for a zero-count call, or a
@@ -856,6 +856,8 @@ def array_sum(
     max_count = values.size if axis is None else values.shape[axis]
     if value_count is None:
         value_count = max_count
+    elif value_count < 0:
+        raise RuntimeError(f"array_sum() does not support a negative count, got {value_count}")
     elif value_count > max_count:
         raise RuntimeError(f"array_sum() value_count must not exceed {max_count}, got {value_count}")
 
@@ -875,8 +877,6 @@ def array_sum(
 
     apic_capture = context._get_apic_capture_for_device(values.device)
     if apic_capture is not None:
-        if value_count < 0:
-            raise RuntimeError("APIC capture does not support array_sum() with a negative count")
         if value_count > _APIC_REDUCTION_INT_MAX:
             raise RuntimeError(
                 f"APIC capture does not support array_sum() with a count greater than {_APIC_REDUCTION_INT_MAX}"
@@ -991,8 +991,8 @@ def array_inner(
         a: First input array.
         b: Second input array. Must have the same shape and data type as ``a``.
         out: Output array to store results. If ``None``, a new array is created.
-        count: Number of elements to process. Must not exceed the input size, or the selected axis length when
-            ``axis`` is specified. If ``None``, processes the entire reduction.
+        count: Number of elements to process. Must be non-negative and must not exceed the input size,
+            or the selected axis length when ``axis`` is specified. If ``None``, processes the entire reduction.
         axis: Axis along which to compute inner product. Negative values count from the last dimension. If ``None``,
             computes a single inner product over the flattened arrays.
 
@@ -1003,8 +1003,8 @@ def array_inner(
     Raises:
         ValueError: If ``a`` and ``b`` have different shapes.
         IndexError: If ``axis`` is outside the valid range for ``a``.
-        RuntimeError: If ``count`` exceeds the reduction size, array storage devices or data types are incompatible,
-            or an APIC-recorded call uses an unsupported count or memory layout.
+        RuntimeError: If ``count`` is negative or exceeds the reduction size, array storage devices or data types are
+            incompatible, or an APIC-recorded call uses an unsupported count or memory layout.
         NotImplementedError: If a non-empty call during APIC recording omits
             ``out``. Also raised if any input or output array has a negative
             stride during APIC recording, including for a zero-count call, or a
@@ -1025,6 +1025,8 @@ def array_inner(
     max_count = a.size if axis is None else a.shape[axis]
     if count is None:
         count = max_count
+    elif count < 0:
+        raise RuntimeError(f"array_inner() does not support a negative count, got {count}")
     elif count > max_count:
         raise RuntimeError(f"array_inner() count must not exceed {max_count}, got {count}")
 
@@ -1052,8 +1054,6 @@ def array_inner(
 
     apic_capture = context._get_apic_capture_for_device(a.device)
     if apic_capture is not None:
-        if count < 0:
-            raise RuntimeError("APIC capture does not support array_inner() with a negative count")
         if count > _APIC_REDUCTION_INT_MAX:
             raise RuntimeError(
                 f"APIC capture does not support array_inner() with a count greater than {_APIC_REDUCTION_INT_MAX}"
