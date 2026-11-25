@@ -8,7 +8,9 @@
 
 import ast
 import enum
+import functools
 import importlib
+import importlib.util
 import inspect
 import json
 import operator
@@ -411,7 +413,7 @@ def _get_class_alias_doc(context, cls):
     if cls.__name__ == name:
         return None
 
-    return CONSTANT_DOCS_CACHE.get(name)
+    return find_constant_doc(context["fullname"])
 
 
 def _filter_class_members(context, cls):
@@ -682,7 +684,12 @@ def rewrite_wp_in_docstrings(app, what, name, obj, options, lines):
 
 
 def build_constant_docs_cache():
-    """Build a cache of constant docstrings from all warp._src modules."""
+    """Map each documented constant in ``warp._src`` to its docstring, keyed by its qualified name.
+
+    A key names the module that assigns the constant, such as
+    ``warp._src.fem.types.Coords``, so that constants with the same name in
+    different modules keep their own docstrings.
+    """
     out = {}
 
     for _, modname, _ in pkgutil.walk_packages(warp._src.__path__, prefix=warp._src.__name__ + "."):
@@ -708,14 +715,14 @@ def build_constant_docs_cache():
             if isinstance(node, ast.Assign):
                 for target in node.targets:
                     if isinstance(target, ast.Name):
-                        out[target.id] = docstring
+                        out[f"{modname}.{target.id}"] = docstring
                     elif isinstance(target, ast.Tuple):
                         for elt in target.elts:
                             if isinstance(elt, ast.Name):
-                                out[elt.id] = docstring
+                                out[f"{modname}.{elt.id}"] = docstring
             # Handle annotated assignments (ast.AnnAssign), e.g. `x: int = 1`
             elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
-                out[node.target.id] = docstring
+                out[f"{modname}.{node.target.id}"] = docstring
 
     return out
 
@@ -723,13 +730,77 @@ def build_constant_docs_cache():
 CONSTANT_DOCS_CACHE = build_constant_docs_cache()
 
 
+def _find_import_source(module_name, name):
+    """Return the ``(module, name)`` that ``module_name`` imports ``name`` from, or ``None``."""
+    module = importlib.import_module(module_name)
+    try:
+        tree = ast.parse(inspect.getsource(module))
+    except (OSError, TypeError):
+        return None
+
+    # The last import that binds the name wins, as at runtime.
+    for node in reversed(tree.body):
+        if not isinstance(node, ast.ImportFrom):
+            continue
+
+        source = importlib.util.resolve_name("." * node.level + (node.module or ""), module.__package__)
+        for alias in node.names:
+            if alias.name == "*":
+                source_module = importlib.import_module(source)
+                # Without ``__all__``, a star import binds every name that doesn't start with an underscore.
+                exported_names = getattr(source_module, "__all__", None)
+                if exported_names is None:
+                    exported_names = [x for x in vars(source_module) if not x.startswith("_")]
+
+                if name in exported_names:
+                    return source, name
+            elif (alias.asname or alias.name) == name:
+                return source, alias.name
+
+    return None
+
+
+@functools.cache
+def find_constant_doc(fullname):
+    """Return the docstring of the constant that a public name, such as ``warp.fem.Coords``, refers to.
+
+    Follows the imports from the public module to the ``warp._src`` module
+    that assigns the constant. Warns when the imports stop outside
+    ``warp._src`` while a ``warp._src`` constant with the same name has a
+    docstring, since the page would otherwise lose it without notice.
+    """
+    module_name, _, name = fullname.rpartition(".")
+    while (qualname := f"{module_name}.{name}") not in CONSTANT_DOCS_CACHE:
+        source = _find_import_source(module_name, name)
+        if source is None:
+            # Inside ``warp._src``, the imports stop where the constant is defined, so it has no docstring.
+            # Elsewhere, a re-export that they can't follow, such as ``FOO = _x.FOO``, hides the docstring.
+            if f"{module_name}.".startswith("warp._src."):
+                return None
+
+            if candidates := sorted(x for x in CONSTANT_DOCS_CACHE if x.rpartition(".")[2] == name):
+                _sphinx_logger.warning(
+                    "cannot find the docstring of %s: its imports don't lead to %s. "
+                    "Re-export it with `from <module> import %s as %s`.",
+                    fullname,
+                    " or ".join(candidates),
+                    name,
+                    fullname.rpartition(".")[2],
+                )
+            return None
+
+        module_name, name = source
+
+    return CONSTANT_DOCS_CACHE[qualname]
+
+
 def populate_reexported_docstrings(app, what, name, obj, options, lines):
     """Populate docstrings for re-exported module-level constants.
 
     When a constant is re-exported via `from module import X as X`, Sphinx's
-    autodoc cannot find its docstring. This function looks up the docstring
-    from the source module using string literals that follow constant
-    assignments.
+    autodoc cannot find its docstring. This function follows the imports from
+    the public name to the module that assigns the constant, and uses the
+    string literal that follows the assignment.
     """
     if what != "data":
         return
@@ -738,11 +809,8 @@ def populate_reexported_docstrings(app, what, name, obj, options, lines):
         # Already has a docstring, nothing to do
         return
 
-    # Extract the simple name from the full qualified name
-    simple_name = name.split(".")[-1]
-
-    if simple_name in CONSTANT_DOCS_CACHE:
-        lines.extend(CONSTANT_DOCS_CACHE[simple_name].splitlines())
+    if (docstring := find_constant_doc(name)) is not None:
+        lines.extend(docstring.splitlines())
 
 
 def rewrite_internal_module_paths(app, doctree, docname):
