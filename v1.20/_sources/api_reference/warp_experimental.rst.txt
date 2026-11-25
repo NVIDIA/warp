@@ -10,6 +10,7 @@ warp.experimental
    :hidden:
 
    warp_experimental_build
+   warp_experimental_cutile
 
 Additional Submodules
 ---------------------
@@ -17,3 +18,4 @@ Additional Submodules
 These modules must be explicitly imported (e.g., ``import warp.experimental.build``).
 
 - :mod:`warp.experimental.build`
+- :mod:`warp.experimental.cutile`
