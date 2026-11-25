@@ -2172,11 +2172,13 @@ CUDA_CALLABLE inline slice_t slice_adjust_indices(const slice_t& slice, int leng
 CUDA_CALLABLE inline int slice_get_length_unchecked(const slice_t& slice)
 {
     if (slice.step > 0 && slice.start < slice.stop) {
-        return 1 + (slice.stop - slice.start - 1) / slice.step;
+        const int64 span = static_cast<int64>(slice.stop) - static_cast<int64>(slice.start) - 1;
+        return static_cast<int>(1 + span / static_cast<int64>(slice.step));
     }
 
     if (slice.step < 0 && slice.start > slice.stop) {
-        return 1 + (slice.start - slice.stop - 1) / (-slice.step);
+        const int64 span = static_cast<int64>(slice.start) - static_cast<int64>(slice.stop) - 1;
+        return static_cast<int>(1 + span / (-static_cast<int64>(slice.step)));
     }
 
     return 0;

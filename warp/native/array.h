@@ -784,6 +784,33 @@ byte_offset_helper(array_t<T>& src, const slice_t (&slices)[sizeof...(Idxs)], in
 }
 
 
+CUDA_CALLABLE inline int slice_stride(int src_stride, int step, int length)
+{
+    if (step == 1) {
+        return src_stride;
+    }
+
+    const int64 stride = static_cast<int64>(src_stride) * static_cast<int64>(step);
+    if (stride >= static_cast<int64>(INT_MIN) && stride <= static_cast<int64>(INT_MAX)) {
+        return static_cast<int>(stride);
+    }
+
+    if (length <= 1) {
+        // Axes with at most one element never address a second element, so avoid
+        // overflowing int32 when the stepped byte stride exceeds its range.
+        return 0;
+    }
+
+#if defined(__CUDA_ARCH__)
+    printf("slice stride exceeds int32 range\n");
+    __trap();
+#else
+    _wp_assert("slice stride exceeds int32 range", __FILE__, unsigned(__LINE__));
+#endif
+    return 0;
+}
+
+
 template <typename T, typename... Slices>
 CUDA_CALLABLE inline array_t<T> view(array_t<T>& src, const Slices&... slice_args)
 {
@@ -824,8 +851,9 @@ CUDA_CALLABLE inline array_t<T> view(array_t<T>& src, const Slices&... slice_arg
     int dim = 0;
     for (; dim < slice_count; ++dim) {
         int idx = slice_idxs[dim];
-        out.shape[dim] = slice_get_length_unchecked(slices[idx]);
-        out.strides[dim] = src.strides[idx] * slices[idx].step;
+        const int length = slice_get_length_unchecked(slices[idx]);
+        out.shape[dim] = length;
+        out.strides[dim] = slice_stride(src.strides[idx], slices[idx].step, length);
     }
     for (; dim < slice_count + 4 - N; ++dim) {
         out.shape[dim] = src.shape[dim - slice_count + N];

@@ -4234,6 +4234,204 @@ def test_array_runtime_zero_step(test, device):
         test.assertNotEqual(result.returncode, 0)
 
 
+@wp.func_native("return view.strides[0];")
+def _array1d_byte_stride(view: wp.array[wp.float32]) -> int: ...
+
+
+@wp.func_native("return view.strides[dim];")
+def _array2d_byte_stride(view: wp.array2d[wp.float32], dim: int) -> int: ...
+
+
+@wp.kernel(module="unique")
+def _slice_large_step_kernel(
+    array: wp.array[wp.float32],
+    start: int,
+    stop: int,
+    step: int,
+    out_meta: wp.array[wp.int64],
+    out_val: wp.array[wp.float32],
+):
+    view = array[start:stop:step]
+    out_meta[0] = wp.int64(view.shape[0])
+    out_meta[1] = wp.int64(_array1d_byte_stride(view))
+    if view.shape[0] > 0:
+        out_val[0] = view[0]
+
+
+@wp.kernel(module="unique")
+def _slice_open_step_kernel(
+    array: wp.array[wp.float32],
+    step: int,
+    reverse_first: int,
+    out_meta: wp.array[wp.int64],
+    out_val: wp.array[wp.float32],
+):
+    if reverse_first != 0:
+        rev = array[::-1]
+        view = rev[::step]
+        out_meta[0] = wp.int64(view.shape[0])
+        out_meta[1] = wp.int64(_array1d_byte_stride(view))
+        if view.shape[0] > 0:
+            out_val[0] = view[0]
+    else:
+        view = array[::step]
+        out_meta[0] = wp.int64(view.shape[0])
+        out_meta[1] = wp.int64(_array1d_byte_stride(view))
+        if view.shape[0] > 0:
+            out_val[0] = view[0]
+
+
+@wp.kernel(module="unique")
+def _slice_literal_step2_kernel(array: wp.array[wp.float32], out_meta: wp.array[wp.int64]):
+    view = array[::2]
+    out_meta[0] = wp.int64(view.shape[0])
+    out_meta[1] = wp.int64(_array1d_byte_stride(view))
+
+
+@wp.kernel(module="unique")
+def _slice_literal_step3_kernel(array: wp.array[wp.float32], out_meta: wp.array[wp.int64]):
+    view = array[::3]
+    out_meta[0] = wp.int64(view.shape[0])
+    out_meta[1] = wp.int64(_array1d_byte_stride(view))
+
+
+@wp.kernel(module="unique")
+def _slice_full_step1_kernel(array: wp.array[wp.float32], out_meta: wp.array[wp.int64]):
+    view = array[:]
+    out_meta[0] = wp.int64(view.shape[0])
+    out_meta[1] = wp.int64(_array1d_byte_stride(view))
+
+
+@wp.kernel(module="unique")
+def _slice_2d_large_step_kernel(
+    array: wp.array2d[wp.float32],
+    step: int,
+    out_meta: wp.array[wp.int64],
+    out_vals: wp.array[wp.float32],
+):
+    view = array[:, ::step]
+    out_meta[0] = wp.int64(view.shape[0])
+    out_meta[1] = wp.int64(view.shape[1])
+    out_meta[2] = wp.int64(_array2d_byte_stride(view, 0))
+    out_meta[3] = wp.int64(_array2d_byte_stride(view, 1))
+    out_vals[0] = view[0, 0]
+    out_vals[1] = view[1, 0]
+
+
+def test_array_slice_stride_overflow_single_element(test, device):
+    """Verify that kernel slicing handles overflowing strides safely when at most one element exists."""
+    arr = wp.array([10.0, 20.0, 30.0, 40.0], dtype=wp.float32, device=device)
+    out_meta = wp.empty(2, dtype=wp.int64, device=device)
+    out_val = wp.empty(1, dtype=wp.float32, device=device)
+
+    # Open-ended slices with huge positive, negative, and INT_MIN steps, plus negative input stride.
+    open_cases = (
+        ("pos_singleton", 2**29, 0, [1, 0], 10.0),
+        ("neg_singleton", -(2**30), 0, [1, 0], 40.0),
+        ("int_min_step", -(2**31), 0, [1, 0], 40.0),
+        ("neg_input_stride_int_min", 2**29, 1, [1, -(2**31)], 40.0),
+        ("neg_input_stride_overflow", 2**30, 1, [1, 0], 40.0),
+    )
+    for name, step, reverse_first, expected_meta, expected_val in open_cases:
+        with test.subTest(name=name):
+            out_val.zero_()
+            wp.launch(
+                _slice_open_step_kernel,
+                dim=1,
+                inputs=[arr, step, reverse_first, out_meta, out_val],
+                device=device,
+            )
+            np.testing.assert_array_equal(out_meta.numpy(), np.array(expected_meta, dtype=np.int64))
+            test.assertEqual(float(out_val.numpy()[0]), expected_val)
+
+    # Explicit bounds: non-zero start, empty slice with huge step, and representable singleton step.
+    bound_cases = (
+        ("nonzero_start_singleton", 2, 4, 2**29, [1, 0], 30.0),
+        ("empty_slice_overflow_step", 1, 0, 2**29, [0, 0], 0.0),
+        ("representable_singleton_step", 1, 3, 2, [1, 8], 20.0),
+    )
+    for name, start, stop, step, expected_meta, expected_val in bound_cases:
+        with test.subTest(name=name):
+            out_val.zero_()
+            wp.launch(
+                _slice_large_step_kernel,
+                dim=1,
+                inputs=[arr, start, stop, step, out_meta, out_val],
+                device=device,
+            )
+            np.testing.assert_array_equal(out_meta.numpy(), np.array(expected_meta, dtype=np.int64))
+            if expected_meta[0] > 0:
+                test.assertEqual(float(out_val.numpy()[0]), expected_val)
+
+    # 2D array slicing with overflowing inner-axis step.
+    arr2d = wp.array([[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0]], dtype=wp.float32, device=device)
+    out_meta2d = wp.empty(4, dtype=wp.int64, device=device)
+    out_vals2d = wp.empty(2, dtype=wp.float32, device=device)
+    wp.launch(_slice_2d_large_step_kernel, dim=1, inputs=[arr2d, 2**29, out_meta2d, out_vals2d], device=device)
+    np.testing.assert_array_equal(out_meta2d.numpy(), np.array([2, 1, 16, 0], dtype=np.int64))
+    np.testing.assert_array_equal(out_vals2d.numpy(), np.array([1.0, 5.0], dtype=np.float32))
+
+    # Runtime descriptors with large strides: singleton literal step, step==1 with INT_MIN stride,
+    # and multi-element slice landing exactly on INT_MIN (-2**31).
+    backing = wp.array([7.0], dtype=wp.float32, device=device)
+    large_pos_singleton = wp.array(ptr=backing.ptr, dtype=wp.float32, shape=(2,), strides=(2**30,), device=device)
+    wp.launch(_slice_literal_step2_kernel, dim=1, inputs=[large_pos_singleton, out_meta], device=device)
+    np.testing.assert_array_equal(out_meta.numpy(), np.array([1, 0], dtype=np.int64))
+
+    int_min_stride = wp.array(ptr=backing.ptr, dtype=wp.float32, shape=(2,), strides=(-(2**31),), device=device)
+    wp.launch(_slice_full_step1_kernel, dim=1, inputs=[int_min_stride, out_meta], device=device)
+    np.testing.assert_array_equal(out_meta.numpy(), np.array([2, -(2**31)], dtype=np.int64))
+
+    neg_boundary = wp.array(ptr=backing.ptr, dtype=wp.float32, shape=(4,), strides=(-(2**30),), device=device)
+    wp.launch(_slice_literal_step2_kernel, dim=1, inputs=[neg_boundary, out_meta], device=device)
+    np.testing.assert_array_equal(out_meta.numpy(), np.array([2, -(2**31)], dtype=np.int64))
+
+
+def _trigger_runtime_stride_overflow(device_alias: str, case: str):
+    """Trigger a multi-element slice whose byte stride overflows int32."""
+    with wp.ScopedDevice(device_alias):
+        backing = wp.zeros(1, dtype=wp.float32)
+        out_meta = wp.empty(2, dtype=wp.int64)
+        if case == "literal_positive":
+            arr = wp.array(ptr=backing.ptr, dtype=wp.float32, shape=(3,), strides=(2**30,))
+            wp.launch(_slice_literal_step2_kernel, dim=1, inputs=[arr, out_meta])
+        elif case == "literal_negative":
+            arr = wp.array(ptr=backing.ptr, dtype=wp.float32, shape=(4,), strides=(-(2**30),))
+            wp.launch(_slice_literal_step3_kernel, dim=1, inputs=[arr, out_meta])
+        elif case == "dynamic_positive":
+            arr = wp.array(ptr=backing.ptr, dtype=wp.float32, shape=(3,), strides=(2**30,))
+            out_val = wp.empty(1, dtype=wp.float32)
+            wp.launch(_slice_open_step_kernel, dim=1, inputs=[arr, 2, 0, out_meta, out_val])
+        else:
+            raise ValueError(f"Unknown case: {case}")
+        wp.synchronize_device()
+
+
+def test_array_slice_stride_overflow_error(test, device):
+    """Verify that multi-element kernel slices with unrepresentable int32 strides fail."""
+    if sys.platform == "win32" and device.is_cuda:
+        test.skipTest(
+            "Skip on Windows because the intentional CUDA trap may destabilize release-qualification systems."
+        )
+
+    for case in ("literal_positive", "literal_negative", "dynamic_positive"):
+        with test.subTest(case=case):
+            result = run_python_subprocess(
+                "import sys; from warp.tests.test_array import _trigger_runtime_stride_overflow; "
+                "_trigger_runtime_stride_overflow(sys.argv[1], sys.argv[2])",
+                device.alias,
+                case,
+                timeout=120,
+                hide_gpu=device.is_cpu,
+            )
+            output = result.stdout + result.stderr
+            test.assertRegex(output, "slice stride exceeds int32 range")
+            if device.is_cuda:
+                test.assertRegex(output, "Warp CUDA error")
+            else:
+                test.assertNotEqual(result.returncode, 0)
+
+
 @wp.kernel
 def test_array3d_slicing_kernel(arr: wp.array3d[int]):
     sub = arr[-1:]
@@ -5080,6 +5278,18 @@ add_function_test(TestArray, "test_array3d_slicing", test_array3d_slicing, devic
 add_function_test(TestArray, "test_array4d_slicing", test_array4d_slicing, devices=devices)
 add_function_test(TestArray, "test_dynamic_array_slice", test_dynamic_array_slice, devices=devices)
 add_function_test(TestArray, "test_array_runtime_zero_step", test_array_runtime_zero_step, devices=devices)
+add_function_test(
+    TestArray,
+    "test_array_slice_stride_overflow_single_element",
+    test_array_slice_stride_overflow_single_element,
+    devices=devices,
+)
+add_function_test(
+    TestArray,
+    "test_array_slice_stride_overflow_error",
+    test_array_slice_stride_overflow_error,
+    devices=devices,
+)
 
 add_function_test(TestArray, "test_graph_fill_vecmat", test_graph_fill_vecmat, devices=cuda_devices)
 add_function_test(TestArray, "test_array_wide_access", test_array_wide_access, devices=devices)
