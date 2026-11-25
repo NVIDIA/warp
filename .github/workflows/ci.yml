@@ -803,34 +803,31 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # CUDA 13 rows install the cutile extra and the locked tests-cu13
+          # group (JAX, RMM) instead of `--with` overlays: cuTile Python finds
+          # the pip tileiras only in the first `nvidia.cu13` path entry, and an
+          # overlay environment puts JAX's nvidia-* wheels ahead of it. This
+          # matches the GitLab CUDA 13 test jobs.
           - runner-label: linux-amd64-gpu-h100-latest-1
             gpu-name: h100
             artifact-name: build-artifact-ubuntu-x86_64-cuda13
             python-version: "3.12"
-            torch-extra: torch-cu13
-            jax-extra: jax[cuda13]
-            rmm-args: ""
+            test-deps: --extra torch-cu13 --extra cutile --group tests-cu13
           - runner-label: linux-amd64-gpu-rtxpro6000-latest-1
             gpu-name: rtxpro6000
             artifact-name: build-artifact-ubuntu-x86_64-cuda13
             python-version: "3.12"
-            torch-extra: torch-cu13
-            jax-extra: jax[cuda13]
-            rmm-args: ""
+            test-deps: --extra torch-cu13 --extra cutile --group tests-cu13
           - runner-label: linux-amd64-gpu-l4-earliest-1
             gpu-name: l4
             artifact-name: build-artifact-ubuntu-x86_64-cuda12
             python-version: "3.12"
-            torch-extra: torch-cu12
-            jax-extra: jax[cuda12]
-            rmm-args: --with rmm-cu12
+            test-deps: --extra torch-cu12 --with "jax[cuda12]>=0.5" --with rmm-cu12
           - runner-label: linux-arm64-gpu-l4-latest-1
             gpu-name: l4-arm64
             artifact-name: build-artifact-ubuntu-aarch64-cuda13
             python-version: "3.14"
-            torch-extra: torch-cu13
-            jax-extra: jax[cuda13]
-            rmm-args: --with rmm-cu13
+            test-deps: --extra torch-cu13 --extra cutile --group tests-cu13
     container:
       image: ubuntu:24.04
       options: -u root --security-opt seccomp=unconfined --shm-size 16g
@@ -884,10 +881,10 @@ jobs:
         # Warp counterpart to nvidia-smi: dump the build, CUDA, driver, and device
         # snapshot into the log, then fail loudly if Warp enumerated no GPU (otherwise
         # the test suite silently falls back to CPU-only and still passes green).
-        run: uv run --extra dev --extra ${{ matrix.torch-extra }} --with "${{ matrix.jax-extra }}" ${{ matrix.rmm-args }} python -c "import warp as wp; wp.print_diagnostics(); assert wp.get_cuda_devices(), 'No CUDA device visible to Warp'"
+        run: uv run --locked --extra dev ${{ matrix.test-deps }} python -c "import warp as wp; wp.print_diagnostics(); assert wp.get_cuda_devices(), 'No CUDA device visible to Warp'"
 
       - name: Run Tests
-        run: uv run --extra dev --extra ${{ matrix.torch-extra }} --with "${{ matrix.jax-extra }}" ${{ matrix.rmm-args }} -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
+        run: uv run --locked --extra dev ${{ matrix.test-deps }} -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
 
       - name: Test Summary
         uses: test-summary/action@37b508cfee6d4d080eedd00b5bb240a6a784a6a5  # v2.6

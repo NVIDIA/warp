@@ -13,6 +13,16 @@
 #define BVH_SHARED_STACK 0
 #endif
 
+// Scratch-backed traversal stacks: the slab comes from caller-bound scratch
+// (bvh_bind_scratch_stacks) and is strided by the runtime block size.
+// Requires BVH_SHARED_STACK.
+#ifndef BVH_SCRATCH_STACK
+#define BVH_SCRATCH_STACK 0
+#endif
+#if BVH_SCRATCH_STACK && !BVH_SHARED_STACK
+#error "BVH_SCRATCH_STACK requires BVH_SHARED_STACK"
+#endif
+
 #define SAH_NUM_BUCKETS (16)
 #define USE_LOAD4
 #define BVH_QUERY_STACK_SIZE (32)
@@ -413,11 +423,51 @@ CUDA_CALLABLE inline int bvh_get_group_root(uint64_t id, int group_id)
 // so each level of the stack is stored contiguously
 // across the block
 struct bvh_stack_t {
+#if BVH_SCRATCH_STACK
+    int stride;
+    CUDA_CALLABLE inline int operator[](int depth) const { return ptr[depth * stride]; }
+    CUDA_CALLABLE inline int& operator[](int depth) { return ptr[depth * stride]; }
+#else
     CUDA_CALLABLE inline int operator[](int depth) const { return ptr[depth * WP_TILE_BLOCK_DIM]; }
     CUDA_CALLABLE inline int& operator[](int depth) { return ptr[depth * WP_TILE_BLOCK_DIM]; }
+#endif
 
     int* ptr;
 };
+
+#if BVH_SCRATCH_STACK
+// Per-thread traversal stacks served from caller-provided scratch instead of
+// static shared memory. The caller (a foreign-function wrapper) binds one slab
+// for BVH queries and one for mesh queries before any query runs, each
+// BVH_QUERY_STACK_SIZE * sizeof(int) * <max block size> bytes; every thread
+// uses its own column, strided by the block size. Passing nullptr for a
+// family leaves its current binding in place. Every thread performs the bind
+// itself; no barrier is used (thread-scope callers may not synchronize).
+CUDA_CALLABLE inline int*& bvh_scratch_stack_slab()
+{
+    __shared__ int* slab;
+    return slab;
+}
+
+CUDA_CALLABLE inline int*& mesh_scratch_stack_slab()
+{
+    __shared__ int* slab;
+    return slab;
+}
+
+CUDA_CALLABLE inline void bvh_bind_scratch_stacks(void* bvh_base, void* mesh_base)
+{
+    if (bvh_base)
+        bvh_scratch_stack_slab() = static_cast<int*>(bvh_base);
+    if (mesh_base)
+        mesh_scratch_stack_slab() = static_cast<int*>(mesh_base);
+}
+
+CUDA_CALLABLE inline int bvh_scratch_stack_stride()
+{
+    return static_cast<int>(blockDim.x) * static_cast<int>(blockDim.y) * static_cast<int>(blockDim.z);
+}
+#endif
 
 // Query kind, used two ways: as the compile-time tag instantiating bvh_query_test and
 // bvh_query_next_impl (selected at Warp codegen time via the distinct Python types
@@ -521,13 +571,18 @@ CUDA_CALLABLE inline bvh_query_t bvh_query(uint64_t id, const vec3& lower, const
     bvh_query_t query;
 
 #if BVH_SHARED_STACK
-    __shared__ int stack[BVH_QUERY_STACK_SIZE * WP_TILE_BLOCK_DIM];
     // threadIdx.x is only unique within a 1D block. Flatten the block coordinates
     // so external multidimensional launches still select one stack per thread.
     const int linear_thread_idx = static_cast<int>(threadIdx.x)
         + static_cast<int>(blockDim.x)
             * (static_cast<int>(threadIdx.y) + static_cast<int>(blockDim.y) * static_cast<int>(threadIdx.z));
+#if BVH_SCRATCH_STACK
+    query.stack.stride = bvh_scratch_stack_stride();
+    query.stack.ptr = &bvh_scratch_stack_slab()[linear_thread_idx];
+#else
+    __shared__ int stack[BVH_QUERY_STACK_SIZE * WP_TILE_BLOCK_DIM];
     query.stack.ptr = &stack[linear_thread_idx];
+#endif
 #endif
 
     query.bounds_nr = -1;

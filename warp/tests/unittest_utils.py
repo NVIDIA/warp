@@ -186,6 +186,37 @@ def get_test_devices(mode: str | None = None):
     return devices
 
 
+CUTILE_SKIP_REASON = "Requires cuda.tile_preview and a supported tileiras"
+"""Skip message shared by every test that needs the cuTile foreign-function toolchain."""
+
+
+@functools.cache
+def cutile_available() -> bool:
+    """Return True if ``cuda.tile`` and ``cuda.tile_preview`` are importable (no GPU or ``tileiras`` needed)."""
+    try:
+        return all(importlib.util.find_spec(m) is not None for m in ("cuda.tile", "cuda.tile_preview"))
+    except (ImportError, ValueError):
+        return False
+
+
+@functools.cache
+def cutile_toolchain_available() -> bool:
+    """Return True if ``cuda.tile_preview`` is importable and a supported ``tileiras`` is findable.
+
+    ``tileiras`` is resolved the way the bridge resolves it (``WARP_TILEIR_TOOLCHAIN``, the
+    ``nvidia-cuda-tileiras`` wheel, then ``PATH``) and must meet the bridge's release floor.
+    """
+    if not cutile_available():
+        return False
+    import warp._src.cutile as _cutile  # noqa: PLC0415
+
+    try:
+        _cutile._check_tileiras_release(_cutile._find_tileiras())
+    except RuntimeError:
+        return False
+    return True
+
+
 def get_cuda_test_devices(mode=None):
     devices = get_test_devices(mode=mode)
     return [d for d in devices if d.is_cuda]
