@@ -748,7 +748,9 @@ void bvh_create_device(
     BVH& bvh_device_on_host
 );
 void bvh_destroy_device(BVH& bvh);
-void bvh_refit_device(BVH& bvh);
+// live_leaf_count optionally points at the device-side descriptor's num_leaf_nodes; see
+// wp_bvh_refit_device(). Without it, the refit uses the host-side leaf count.
+void bvh_refit_device(BVH& bvh, const int* live_leaf_count = nullptr);
 // Copy a host-built BVH to the device. Reorders leaves to the front unless the
 // BVH is grouped or constructed by cuBQL (those layouts must be preserved).
 void copy_host_tree_to_device(void* context, BVH& bvh_host, BVH& bvh_device_on_host);

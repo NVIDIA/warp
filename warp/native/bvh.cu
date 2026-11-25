@@ -39,8 +39,12 @@ __global__ void memset_kernel(int* dest, int value, size_t n)
 // information is still valid the only thing worth mentioning is that when the parent leaf node is also a leaf node, we
 // need to recompute its bounds, since their child information are lost for a compact tree such as those from SAH or
 // Median constructor, there is no muted leaf nodes
+//
+// Read the device-side leaf count when available so a CUDA graph replay uses the current count
+// after an in-place rebuild.
 __global__ void bvh_refit_kernel(
-    int n,
+    int fallback_leaf_count,
+    const int* __restrict__ live_leaf_count,
     const int* __restrict__ parents,
     int* __restrict__ child_count,
     const int* __restrict__ primitive_indices,
@@ -52,7 +56,9 @@ __global__ void bvh_refit_kernel(
 {
     int index = blockDim.x * blockIdx.x + threadIdx.x;
 
-    if (index < n) {
+    const int leaf_count = live_leaf_count ? *live_leaf_count : fallback_leaf_count;
+
+    if (index < leaf_count) {
         bool leaf = node_lowers[index].b;
         int parent = parents[index];
 
@@ -204,10 +210,10 @@ __global__ void compute_morton_codes(
 
         vec3 local = cw_mul((center - grid_lower[0]), grid_inv_edges[0]);
 
-        // 10-bit Morton codes stored in lower 30bits (1024^3 effective resolution)
-        // Group stored in upper 32 bits
+        // The lower 30 bits store the Morton code (1024^3 effective resolution).
+        // Flip the group ID's sign bit so unsigned keys sort in signed group order.
         uint64_t morton_code = static_cast<uint64_t>(morton3<1024>(local[0], local[1], local[2]));
-        const uint64_t group = item_groups ? static_cast<uint32_t>(item_groups[index]) : 0u;
+        const uint64_t group = item_groups ? (static_cast<uint32_t>(item_groups[index]) ^ 0x80000000u) : 0u;
         const uint64_t key = (group << 32) | morton_code;
 
         indices[index] = index;
@@ -772,7 +778,7 @@ void bvh_destroy_device(BVH& bvh)
     bvh.root = NULL;
 }
 
-void bvh_refit_device(BVH& bvh)
+void bvh_refit_device(BVH& bvh, const int* live_leaf_count)
 {
     ContextGuard guard(bvh.context);
 
@@ -781,13 +787,30 @@ void bvh_refit_device(BVH& bvh)
         return;
     }
 
+    // With a device-side leaf count, launch enough threads for any tree an in-place rebuild can
+    // produce: an LBVH has num_items leaves, a top-down tree at most that many, and a cuBQL tree
+    // refits from every node. The kernel trims the launch to the live count.
+    // Not named num_threads: wp_launch_device() declares its own num_threads, which would shadow it
+    // in the kernel arguments.
+    const int launch_dim = live_leaf_count ? std::max(bvh.num_items, bvh.num_leaf_nodes) : bvh.num_leaf_nodes;
+
     // clear child counters
     wp_memset_device(WP_CURRENT_CONTEXT, bvh.node_counts, 0, sizeof(int) * bvh.max_nodes);
     wp_launch_device(
-        WP_CURRENT_CONTEXT, bvh_refit_kernel, bvh.num_leaf_nodes,
-        (bvh.num_leaf_nodes, bvh.node_parents, bvh.node_counts, bvh.primitive_indices, bvh.node_lowers, bvh.node_uppers,
-         bvh.item_lowers, bvh.item_uppers)
+        WP_CURRENT_CONTEXT, bvh_refit_kernel, launch_dim,
+        (launch_dim, live_leaf_count, bvh.node_parents, bvh.node_counts, bvh.primitive_indices, bvh.node_lowers,
+         bvh.node_uppers, bvh.item_lowers, bvh.item_uppers)
     );
+}
+
+// Writes the topology fields an in-place rebuild changes into the device-side descriptor. A kernel
+// captures its arguments by value, so unlike a copy from pageable host memory it is safe to record
+// in a CUDA graph.
+__global__ void bvh_set_topology_kernel(BVH* bvh, int num_leaf_nodes, int num_nodes, int constructor_type)
+{
+    bvh->num_leaf_nodes = num_leaf_nodes;
+    bvh->num_nodes = num_nodes;
+    bvh->constructor_type = constructor_type;
 }
 
 void bvh_rebuild_device(BVH& bvh)
@@ -802,6 +825,11 @@ void bvh_rebuild_device(BVH& bvh)
 
     LinearBVHBuilderGPU builder;
     builder.build(bvh, bvh.item_lowers, bvh.item_uppers, bvh.num_items, NULL, bvh.item_groups);
+
+    // The LBVH replaces any top-down tree in place. Its refit starts from every original leaf,
+    // including the ones packed into a larger leaf, so it needs one leaf slot per item.
+    bvh.num_leaf_nodes = bvh.num_items;
+    bvh.num_nodes = bvh.num_items > 0 ? 2 * bvh.num_items - 1 : 0;
     bvh.constructor_type = BVH_CONSTRUCTOR_LBVH;
 }
 
@@ -815,7 +843,9 @@ void wp_bvh_refit_device(uint64_t id)
     if (bvh_get_descriptor(id, bvh)) {
         ContextGuard guard(bvh.context);
 
-        wp::bvh_refit_device(bvh);
+        // Read the leaf count from the device-side descriptor, which an in-place rebuild updates in
+        // stream order, so graphs captured before a rebuild still refit the rebuilt tree.
+        wp::bvh_refit_device(bvh, &((wp::BVH*)id)->num_leaf_nodes);
     }
 }
 
@@ -825,9 +855,9 @@ void wp_bvh_rebuild_device(uint64_t id)
     if (bvh_get_descriptor(id, bvh)) {
         ContextGuard guard(bvh.context);
 
-        // A cuBQL rebuild reallocates the device buffers, so the BVH struct (pointers
-        // and sizes) changes; an in-place LBVH rebuild reuses its buffers, leaving the
-        // struct unchanged.
+        // A cuBQL rebuild reallocates the device buffers, so the whole BVH struct
+        // (pointers and sizes) changes. An in-place LBVH rebuild reuses the buffers but
+        // can change the topology fields, since it replaces SAH and median trees too.
         const bool was_cubql = (bvh.constructor_type == BVH_CONSTRUCTOR_CUBQL);
 
         wp::bvh_rebuild_device(bvh);
@@ -835,12 +865,17 @@ void wp_bvh_rebuild_device(uint64_t id)
         // Refresh the host-side descriptor in case any fields changed.
         wp::bvh_add_descriptor(id, bvh);
 
-        // Only the cuBQL path needs the device-side descriptor refreshed. The host->device
-        // copy of pageable memory is not CUDA-graph-capture safe, so we must skip it for the
-        // in-place LBVH rebuild to keep grouped/LBVH rebuilds capture-safe (its device struct
-        // is unchanged anyway).
         if (was_cubql) {
             wp_memcpy_h2d(WP_CURRENT_CONTEXT, (void*)id, &bvh, sizeof(wp::BVH));
+        } else {
+            // A host->device copy of pageable memory is not CUDA-graph-capture safe, so
+            // update the device-side descriptor with a kernel instead. Do it on every
+            // rebuild rather than only when the topology changes: the host descriptor
+            // changes at capture time, but the device tree only when the graph runs.
+            wp_launch_device(
+                WP_CURRENT_CONTEXT, wp::bvh_set_topology_kernel, 1,
+                ((wp::BVH*)id, bvh.num_leaf_nodes, bvh.num_nodes, bvh.constructor_type)
+            );
         }
     }
 }

@@ -6744,7 +6744,8 @@ class Bvh:
 
         Notes:
             - The native CUDA LBVH rebuild path is CUDA graph-capture safe: previously captured graphs
-              that include queries on this BVH remain valid after ``rebuild`` because buffers are reused.
+              that include queries or :meth:`refit` calls on this BVH remain valid after ``rebuild``
+              because buffers are reused, including for a BVH built with ``"sah"`` or ``"median"``.
               This guarantee does not apply to cuBQL rebuilds.
             - If you need a CPU top-down constructor (``"sah"``/``"median"``) for a GPU tree,
               create a new BVH via the class constructor instead.
