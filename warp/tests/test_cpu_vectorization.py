@@ -317,8 +317,8 @@ class TestCpuVectorization(unittest.TestCase):
         self.assertIn("_cpu_forward_dispatch(dim, _wp_args)", source)
         self.assertIn("_cpu_backward_dispatch(dim, _wp_args, _wp_adj_args)", source)
         self.assertIn("const bool wp_linear_contiguous = dim->coord_mult == 1", source)
-        self.assertIn("_wp_args->values.strides[0] == (int)sizeof(wp::float32)", source)
-        self.assertIn("_wp_adj_args->values.strides[0] == (int)sizeof(wp::float32)", source)
+        self.assertIn("_wp_args->var_values.strides[0] == (int)sizeof(wp::float32)", source)
+        self.assertIn("_wp_adj_args->var_values.strides[0] == (int)sizeof(wp::float32)", source)
 
     def test_cpu_template_capability_gating(self):
         module = cpu_simple_array_kernel.module

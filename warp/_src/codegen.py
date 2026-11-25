@@ -8561,7 +8561,7 @@ def codegen_func_forward(adj, func_type="kernel", device="cpu", grid_stride=Fals
         lines += ["// argument vars\n"]
 
         for var in adj.args:
-            lines += [f"{var.ctype()} {var.emit()} = _wp_args->{var.label};\n"]
+            lines += [f"{var.ctype()} {var.emit()} = _wp_args->{var.emit()};\n"]
 
     # primal vars
     lines += ["//---------\n"]
@@ -8619,10 +8619,10 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu", grid_stride=Fals
         lines += ["// argument vars\n"]
 
         for var in adj.args:
-            lines += [f"{var.ctype()} {var.emit()} = _wp_args->{var.label};\n"]
+            lines += [f"{var.ctype()} {var.emit()} = _wp_args->{var.emit()};\n"]
 
         for var in adj.args:
-            lines += [f"{var.ctype()} {var.emit_adj()} = _wp_adj_args->{var.label};\n"]
+            lines += [f"{var.ctype()} {var.emit_adj()} = _wp_adj_args->{var.emit()};\n"]
 
     # primal vars
     lines += ["//---------\n"]
@@ -9000,8 +9000,10 @@ def codegen_kernel(kernel, device, options):
     args_struct = ""
     if device == "cpu":
         args_struct = f"struct wp_args_{kernel.get_mangled_name()} {{\n"
+        # Field names use the emitted var_ names so that argument names that are
+        # C++ keywords or macros, such as `new` or `NAN`, stay valid (GH-2427).
         for i in adj.args:
-            args_struct += f"    {i.ctype()} {i.label};\n"
+            args_struct += f"    {i.ctype()} {i.emit()};\n"
         args_struct += "};\n"
 
     # Build line directive for function definition (subtract 1 to account for 1-indexing of AST line numbers)
@@ -9086,7 +9088,7 @@ def codegen_kernel(kernel, device, options):
         ]
         for arg in contiguous_args:
             dtype = Var.dtype_to_ctype(arg.type.dtype)
-            forward_lines.append(f"        wp_contiguous_args.{arg.label}.strides[0] = sizeof({dtype});")
+            forward_lines.append(f"        wp_contiguous_args.{arg.emit()}.strides[0] = sizeof({dtype});")
         forward_lines.extend(("        _wp_args = &wp_contiguous_args;", "    }"))
         forward_array_setup = "\n".join(forward_lines)
 
@@ -9100,8 +9102,8 @@ def codegen_kernel(kernel, device, options):
         ]
         for arg in contiguous_args:
             dtype = Var.dtype_to_ctype(arg.type.dtype)
-            backward_lines.append(f"        wp_contiguous_args.{arg.label}.strides[0] = sizeof({dtype});")
-            backward_lines.append(f"        wp_contiguous_adj_args.{arg.label}.strides[0] = sizeof({dtype});")
+            backward_lines.append(f"        wp_contiguous_args.{arg.emit()}.strides[0] = sizeof({dtype});")
+            backward_lines.append(f"        wp_contiguous_adj_args.{arg.emit()}.strides[0] = sizeof({dtype});")
         backward_lines.extend(
             (
                 "        _wp_args = &wp_contiguous_args;",
@@ -9275,9 +9277,9 @@ def codegen_module(kernel, device, options):
             backward_conditions = []
             for arg in contiguous_args:
                 dtype = Var.dtype_to_ctype(arg.type.dtype)
-                forward_conditions.append(f"_wp_args->{arg.label}.strides[0] == (int)sizeof({dtype})")
-                backward_conditions.append(f"_wp_args->{arg.label}.strides[0] == (int)sizeof({dtype})")
-                backward_conditions.append(f"_wp_adj_args->{arg.label}.strides[0] == (int)sizeof({dtype})")
+                forward_conditions.append(f"_wp_args->{arg.emit()}.strides[0] == (int)sizeof({dtype})")
+                backward_conditions.append(f"_wp_args->{arg.emit()}.strides[0] == (int)sizeof({dtype})")
+                backward_conditions.append(f"_wp_adj_args->{arg.emit()}.strides[0] == (int)sizeof({dtype})")
 
             # Read independent packed stride checks eagerly. A short-circuit chain can
             # make LLVM classify the contiguous task loop as cold and prevent inlining.
