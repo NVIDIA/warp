@@ -222,6 +222,9 @@ omit = [
 
 [tool.uv]
 managed = true
+constraint-dependencies = [
+    "python-dateutil<3",
+]
 required-environments = [
     "sys_platform == 'win32' and platform_machine == 'AMD64'",
 ]
