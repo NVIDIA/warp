@@ -815,6 +815,15 @@ class Function:
         return call_builtin_from_desc(desc, call_args)
 
     def build(self, builder: ModuleBuilder | None, default_builder_options=None):
+        # In-place returns require an inferred type and the generated calling convention.
+        # Native snippets and custom gradients or replays have their own signatures.
+        self.adj.allow_in_place_return = (
+            "return" not in self.adj.arg_types
+            and self.native_snippet is None
+            and self.custom_replay_func is None
+            and not self.adj.skip_forward_codegen
+            and not self.adj.skip_reverse_codegen
+        )
         self.adj.build(builder, default_builder_options)
 
         # complete the function return type after we have analyzed it (inferred from return statement in ast)

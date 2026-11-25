@@ -584,6 +584,136 @@ def test_tile_function_returned_tile_reserves_shared_memory(test, device):
         test.assertEqual(hooks.backward_smem_bytes, expected_forward_bytes * 2)
 
 
+RETURN_TILE_DIM = 16
+RETURN_BLOCK_DIM = 64
+
+
+@wp.func
+def load_shared(a: wp.array2d[float]):
+    return wp.tile_load(a, shape=(RETURN_TILE_DIM, RETURN_TILE_DIM), storage="shared")
+
+
+@wp.kernel
+def shared_return_kernel(a: wp.array2d[float], out: wp.array2d[float]):
+    wp.tile_store(out, load_shared(a))
+
+
+@wp.func
+def load_shared_with_replay(a: wp.array2d[float]):
+    return wp.tile_load(a, shape=(RETURN_TILE_DIM, RETURN_TILE_DIM), storage="shared")
+
+
+@wp.func_replay(load_shared_with_replay)
+def replay_load_shared_with_replay(a: wp.array2d[float]):
+    return wp.tile_load(a, shape=(RETURN_TILE_DIM, RETURN_TILE_DIM), storage="shared")
+
+
+@wp.kernel
+def shared_return_replay_kernel(a: wp.array2d[float], out: wp.array2d[float]):
+    wp.tile_store(out, load_shared_with_replay(a))
+
+
+def test_tile_function_shared_return_uses_caller_tile(test, device):
+    """Check the shared-memory footprint, output, and gradient of a 16x16 tile load helper."""
+    a_np = np.arange(RETURN_TILE_DIM**2, dtype=np.float32).reshape(RETURN_TILE_DIM, RETURN_TILE_DIM)
+    a = wp.array(a_np, device=device, requires_grad=True)
+    out = wp.empty_like(a, requires_grad=True)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(shared_return_kernel, dim=1, inputs=[a], outputs=[out], block_dim=32, device=device)
+
+    np.testing.assert_array_equal(out.numpy(), a_np)
+    tape.backward(grads={out: wp.full_like(out, 2.0)})
+    np.testing.assert_array_equal(a.grad.numpy(), np.full_like(a_np, 2.0))
+
+    if wp.get_device(device).is_cuda:
+        hooks = shared_return_kernel.module.load(device, block_dim=32).get_kernel_hooks(shared_return_kernel)
+        test.assertEqual(hooks.forward_smem_bytes, 1024)
+        test.assertEqual(hooks.backward_smem_bytes, 2048)
+
+
+def test_tile_function_shared_return_with_custom_replay(test, device):
+    """Differentiate a function with a custom replay that returns a shared tile."""
+    DIM = RETURN_TILE_DIM
+    a_np = np.random.default_rng(42).standard_normal((DIM, DIM)).astype(np.float32)
+    a = wp.array(a_np, device=device, requires_grad=True)
+    out = wp.zeros((DIM, DIM), dtype=float, device=device, requires_grad=True)
+
+    with wp.Tape() as tape:
+        wp.launch_tiled(
+            shared_return_replay_kernel, dim=[1], inputs=[a], outputs=[out], block_dim=RETURN_BLOCK_DIM, device=device
+        )
+
+    np.testing.assert_allclose(out.numpy(), a_np)
+
+    tape.backward(grads={out: wp.ones_like(out)})
+    np.testing.assert_allclose(a.grad.numpy(), np.ones((DIM, DIM)))
+
+
+def test_tile_function_divergent_shared_return(test, device):
+    """Select between shared tiles per lane and copy the result after the call."""
+    if run_test_in_subprocess(test, timeout=60):
+        return
+
+    @wp.func(inline=False)
+    def choose(lane: int, counts: wp.array[int]):
+        a = wp.tile_full(64, 1.0, storage="shared")
+        b = wp.tile_full(64, 2.0, storage="shared")
+        if lane % 2 == 0:
+            wp.atomic_add(counts, 0, 1)
+            return a
+        wp.atomic_add(counts, 1, 1)
+        return b
+
+    @wp.kernel(enable_backward=False, module="unique")
+    def compute(counts: wp.array[int], out: wp.array[float]):
+        _, lane = wp.tid()
+        wp.tile_store(out, choose(lane, counts))
+
+    counts = wp.zeros(2, dtype=int, device=device)
+    out = wp.zeros(64, dtype=float, device=device)
+    wp.launch_tiled(compute, dim=1, inputs=[counts], outputs=[out], block_dim=64, device=device)
+    np.testing.assert_array_equal(out.numpy(), np.arange(64) % 2 + 1)
+    np.testing.assert_array_equal(counts.numpy(), [32, 32])
+
+
+def test_tile_function_shared_return_scratch_reuse(test, device):
+    """Complete reads from the callee's scratch before the next call reuses it."""
+
+    @wp.func(inline=False)
+    def make_tile(reads: wp.array[float], indices: wp.array[int], lane: int, n: int):
+        scratch = wp.tile_full(64, 1.0, storage="shared")
+        result = wp.tile_zeros(64, dtype=float, storage="shared")
+        idx = int(0)
+        # Give the second warp extra work before it reads the shared value.
+        if lane >= 32:
+            for _ in range(n):
+                idx = indices[idx]
+        reads[lane] = scratch[idx]
+        return result
+
+    @wp.func(inline=False)
+    def reuse_scratch(counts: wp.array[int], lane: int):
+        stack = wp.tile_stack(64, dtype=float)
+        counts[lane] = wp.tile_stack_count(stack)
+
+    @wp.kernel(enable_backward=False, module="unique")
+    def compute(reads: wp.array[float], indices: wp.array[int], n: int, counts: wp.array[int], out: wp.array[float]):
+        _, lane = wp.tid()
+        tile = make_tile(reads, indices, lane, n)
+        reuse_scratch(counts, lane)
+        wp.tile_store(out, tile)
+
+    reads = wp.zeros(64, dtype=float, device=device)
+    indices = wp.zeros(64, dtype=int, device=device)
+    counts = wp.full(64, -1, dtype=int, device=device)
+    out = wp.empty(64, dtype=float, device=device)
+    wp.launch_tiled(compute, dim=1, inputs=[reads, indices, 500, counts], outputs=[out], block_dim=64, device=device)
+    np.testing.assert_array_equal(reads.numpy(), np.ones(64))
+    np.testing.assert_array_equal(counts.numpy(), np.zeros(64))
+    np.testing.assert_array_equal(out.numpy(), np.zeros(64))
+
+
 def round_up(a, b):
     return b * ((a + b - 1) // b)
 
@@ -1392,6 +1522,7 @@ class TestTileSharedMemoryMessages(unittest.TestCase):
 
 
 devices = get_cuda_test_devices()
+all_devices = get_test_devices()
 
 
 class TestTileSharedMemory(unittest.TestCase):
@@ -1459,6 +1590,31 @@ add_function_test(
     "test_tile_function_returned_tile_reserves_shared_memory",
     test_tile_function_returned_tile_reserves_shared_memory,
     devices=devices,
+)
+add_function_test(
+    TestTileSharedMemory,
+    "test_tile_function_shared_return_uses_caller_tile",
+    test_tile_function_shared_return_uses_caller_tile,
+    devices=all_devices,
+)
+add_function_test(
+    TestTileSharedMemory,
+    "test_tile_function_shared_return_with_custom_replay",
+    test_tile_function_shared_return_with_custom_replay,
+    devices=all_devices,
+)
+add_function_test(
+    TestTileSharedMemory,
+    "test_tile_function_divergent_shared_return",
+    test_tile_function_divergent_shared_return,
+    devices=devices,
+)
+add_function_test(
+    TestTileSharedMemory,
+    "test_tile_function_shared_return_scratch_reuse",
+    test_tile_function_shared_return_scratch_reuse,
+    devices=all_devices,
+    enable_cpu_blocks=True,
 )
 add_function_test(TestTileSharedMemory, "test_tile_shared_non_aligned", test_tile_shared_non_aligned, devices=devices)
 add_function_test(
