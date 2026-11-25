@@ -309,6 +309,25 @@ windows-x86_64 docs:
     - !reference [.snippets, define-powershell-GetTime]
     - !reference [.snippets, powershell-section-start-install-deps]
     - !reference [.snippets, install-uv-windows]
+    # PowerShell version of fetch-intersphinx-fallback (.gitlab/ci/common.yml),
+    # with the same inventory names. It calls curl.exe because Windows
+    # PowerShell aliases curl to Invoke-WebRequest. Test-Path guards
+    # Remove-Item: a failed Remove-Item leaves $? false, and the runner treats
+    # that as a failed command.
+    - |
+      $env:WARP_INTERSPHINX_FALLBACK_DIR = "$env:CI_PROJECT_DIR\.cache\intersphinx"
+      New-Item -ItemType Directory -Force -Path $env:WARP_INTERSPHINX_FALLBACK_DIR | Out-Null
+      foreach ($name in "jax", "numpy", "python", "pytorch") {
+        $inventory = "$env:WARP_INTERSPHINX_FALLBACK_DIR\$name.inv"
+        curl.exe --fail --silent --show-error --location --retry 2 --max-time 10 `
+          --header "JOB-TOKEN: $env:CI_JOB_TOKEN" `
+          --output $inventory `
+          "$env:CI_API_V4_URL/projects/$env:CI_PROJECT_ID/packages/generic/intersphinx-inventories/latest/$name.inv"
+        if ($LASTEXITCODE -ne 0) {
+          Write-Output "No cached $name inventory; building without a fallback for it."
+          if (Test-Path $inventory) { Remove-Item -Force $inventory }
+        }
+      }
     - !reference [.snippets, powershell-section-end-install-deps]
   script:
     - |

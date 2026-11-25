@@ -127,7 +127,8 @@ default:
   # upstream docs site is slow or down (see WARP_INTERSPHINX_FALLBACK_DIR in
   # docs/conf.py; `refresh intersphinx inventories` uploads them). Best effort:
   # a missing file only drops that project's fallback. The names must match
-  # _intersphinx_mapping in docs/conf.py.
+  # _intersphinx_mapping in docs/conf.py, here and in the PowerShell copy in
+  # the `windows-x86_64 docs` job.
   fetch-intersphinx-fallback:
     - |
       export WARP_INTERSPHINX_FALLBACK_DIR="$CI_PROJECT_DIR/.cache/intersphinx"
