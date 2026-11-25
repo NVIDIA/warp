@@ -1089,6 +1089,27 @@ def test_segmented_sort_pairs_no_segments(test, device):
     np.testing.assert_array_equal(values.numpy(), np.array((20, 10)))
 
 
+def test_radix_sort_pairs_invalid_count(test, device):
+    """Reject invalid counts even if the bit range would otherwise be a no-op."""
+    keys = wp.array([3, 1, 2, 0, 0, 0], dtype=wp.int32, device=device)
+    values = wp.array([30, 10, 20, 0, 0, 0], dtype=wp.int32, device=device)
+    for count, error, message in (
+        (-1, ValueError, "non-negative"),
+        (1.5, TypeError, "integer"),
+        (True, TypeError, "integer"),
+        (1 << 31, ValueError, "must not exceed"),
+    ):
+        with test.subTest(count=count):
+            with test.assertRaisesRegex(error, message):
+                wp.utils.radix_sort_pairs(keys, values, count, begin_bit=0, end_bit=0)
+    np.testing.assert_array_equal(keys.numpy(), [3, 1, 2, 0, 0, 0])
+    np.testing.assert_array_equal(values.numpy(), [30, 10, 20, 0, 0, 0])
+
+    wp.utils.radix_sort_pairs(keys, values, np.int64(3))
+    np.testing.assert_array_equal(keys.numpy()[:3], [1, 2, 3])
+    np.testing.assert_array_equal(values.numpy()[:3], [10, 20, 30])
+
+
 def test_radix_sort_pairs_error_insufficient_storage(test, device):
     keyTypes = [int, wp.uint32, wp.float32, wp.int64, wp.uint64, wp.float64]
 
@@ -2040,6 +2061,9 @@ add_function_test(
 )
 add_function_test(TestUtils, "test_radix_sort_pairs_signed_keys", test_radix_sort_pairs_signed_keys, devices=devices)
 add_function_test(TestUtils, "test_radix_sort_pairs_bit_range", test_radix_sort_pairs_bit_range, devices=devices)
+add_function_test(
+    TestUtils, "test_radix_sort_pairs_invalid_count", test_radix_sort_pairs_invalid_count, devices=devices
+)
 add_function_test(TestUtils, "test_radix_sort_pairs_value_types", test_radix_sort_pairs_value_types, devices=devices)
 add_function_test(
     TestUtils,
