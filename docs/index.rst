@@ -230,6 +230,26 @@ warp/examples/tile
       - mcgp
       -
 
+warp/examples/interop
+^^^^^^^^^^^^^^^^^^^^^
+
+The cuTile example also needs the ``cutile`` extra (``pip install "warp-lang[examples,cutile]"``)
+and an Ampere or newer GPU.
+
+.. list-table::
+    :widths: 25 25 25 25
+    :class: gallery
+
+    * - .. image:: ./img/examples/interop_cutile_neural_sdf.png
+            :target: https://github.com/NVIDIA/warp/blob/main/warp/examples/interop/example_cutile_neural_sdf.py
+      -
+      -
+      -
+    * - cutile neural sdf
+      -
+      -
+      -
+
 .. toctree::
     :maxdepth: 2
     :caption: User Guide

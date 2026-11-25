@@ -2101,8 +2101,13 @@ struct mesh_query_aabb_t {
 // queries would exceed the shared-memory budget.
 CUDA_CALLABLE inline int* mesh_query_shared_stack()
 {
+#if BVH_SCRATCH_STACK
+    // separate from the BVH query slab, like the static stacks below
+    return mesh_scratch_stack_slab();
+#else
     __shared__ int stack[BVH_QUERY_STACK_SIZE * WP_TILE_BLOCK_DIM];
     return stack;
+#endif
 }
 #endif
 
@@ -2128,6 +2133,9 @@ CUDA_CALLABLE inline mesh_query_aabb_t mesh_query_impl(uint64_t id, const vec3& 
         + static_cast<int>(blockDim.x)
             * (static_cast<int>(threadIdx.y) + static_cast<int>(blockDim.y) * static_cast<int>(threadIdx.z));
     query.stack.ptr = &mesh_query_shared_stack()[linear_thread_idx];
+#if BVH_SCRATCH_STACK
+    query.stack.stride = bvh_scratch_stack_stride();
+#endif
 #endif
 
     query.stack[0] = *mesh.bvh.root;

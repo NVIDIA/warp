@@ -4949,9 +4949,15 @@ size_t wp_cuda_compile_program(
     int* ltoir_input_types
 )
 {
-    // use file extension to determine whether to output PTX or CUBIN
+    // use file extension to determine whether to output PTX, raw LTOIR, or CUBIN
     const char* output_ext = strrchr(output_path, '.');
     bool use_ptx = output_ext && strcmp(output_ext + 1, "ptx") == 0;
+    bool use_ltoir = output_ext && strcmp(output_ext + 1, "ltoir") == 0;
+
+    if (use_ltoir && num_ltoirs > 0) {
+        fprintf(stderr, "Warp error: raw LTOIR output cannot be combined with external link inputs\n");
+        return size_t(-1);
+    }
     const bool print_debug = (std::getenv("WARP_DEBUG") != nullptr);
 
     // check include dir path len (path + option)
@@ -5027,7 +5033,7 @@ size_t wp_cuda_compile_program(
         opts.push_back(stored_options.back().c_str());
     }
 
-    if (num_ltoirs > 0) {
+    if (num_ltoirs > 0 || use_ltoir) {
         opts.push_back("-dlto");
         opts.push_back("--relocatable-device-code=true");
     }
@@ -5089,7 +5095,13 @@ size_t wp_cuda_compile_program(
     nvrtcResult (*get_output_size)(nvrtcProgram, size_t*);
     nvrtcResult (*get_output_data)(nvrtcProgram, char*);
     const char* output_mode;
-    if (num_ltoirs > 0) {
+    if (use_ltoir) {
+        // Raw LTOIR artifact (e.g. a link object for an external device linker
+        // such as tileiras); plain NVRTC, no nvJitLink step.
+        get_output_size = nvrtcGetLTOIRSize;
+        get_output_data = nvrtcGetLTOIR;
+        output_mode = "wb";
+    } else if (num_ltoirs > 0) {
 #if WP_ENABLE_MATHDX
         get_output_size = nvrtcGetLTOIRSize;
         get_output_data = nvrtcGetLTOIR;

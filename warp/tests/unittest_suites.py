@@ -152,6 +152,11 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.geometry.test_volume import TestVolume
     from warp.tests.geometry.test_volume_validation import TestVolumeValidation
     from warp.tests.geometry.test_volume_write import TestVolumeWrite
+    from warp.tests.interop.test_cutile import (
+        TestCutileDeclaration,
+        TestCutileHelpers,
+        TestCutileKernels,
+    )
     from warp.tests.interop.test_dlpack import TestDLPack
     from warp.tests.interop.test_function_dispatch_interop import TestFunctionDispatchInterop
     from warp.tests.interop.test_jax import TestJax
@@ -213,6 +218,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.test_examples import (
         TestCoreExamples,
         TestGeometryExamples,
+        TestInteropExamples,
         TestOptimExamples,
     )
     from warp.tests.test_external_build import TestExternalBuild
@@ -382,6 +388,9 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestCudaArchSuffix,
         TestCudaProfiler,
         TestCustomAllocator,
+        TestCutileDeclaration,
+        TestCutileHelpers,
+        TestCutileKernels,
         TestDelaunay,
         TestDense,
         TestDeterministicBackward,
@@ -396,6 +405,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestExternalBuild,
         TestCoreExamples,
         TestGeometryExamples,
+        TestInteropExamples,
         TestOptimExamples,
         TestFactoryStyleArrayAnnotations,
         TestFabricArray,
@@ -1114,6 +1124,7 @@ def llvm_cuda_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoade
         "warp.tests.test_composite_component_adjoint.TestCompositeComponentAdjoint": [no_atomic_bitwise],
         "warp.tests.test_examples.TestCoreExamples": [child_process],
         "warp.tests.test_examples.TestGeometryExamples": [child_process],
+        "warp.tests.test_examples.TestInteropExamples": [child_process],
         "warp.tests.test_examples.TestOptimExamples": [child_process],
         "warp.tests.test_examples.TestTileExamples": [child_process],
         "warp.tests.test_fast_math.TestFastMath": [fast_math],

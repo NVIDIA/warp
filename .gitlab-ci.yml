@@ -493,7 +493,7 @@ linux-aarch64 cu13 test:
     - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-aarch64-binaries]
   script:
-    - uv run --extra dev --with "jax[cuda13]>=0.5" --with rmm-cu13 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
+    - uv run --locked --extra dev --extra cutile --group tests-cu13 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
 linux-aarch64 cu12 test orin:
   needs: [linux-aarch64 cu12 build]
@@ -575,6 +575,7 @@ linux-aarch64 cu13 test dgx spark:
     - uv sync --extra dev
     - !reference [.snippets, section-end-install-deps]
   script:
+    # the cuTile interop tests run in the locked CUDA 13 jobs above; this unlocked smoke job keeps the default extras
     - uv run --extra dev -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast
   tags:
     - os/linux
@@ -615,7 +616,7 @@ linux-x86_64 cu13 test:
     - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-x86_64-binaries]
   script:
-    - uv run --extra dev --extra torch-cu13 --with "jax[cuda13]>=0.5" --with rmm-cu13 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
+    - uv run --locked --extra dev --extra torch-cu13 --extra cutile --group tests-cu13 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
 # A temporary job for testing on Blackwell until more runners are available
 linux-x86_64 cu13 blackwell test:
@@ -629,7 +630,7 @@ linux-x86_64 cu13 blackwell test:
     - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-x86_64-binaries]
   script:
-    - uv run --extra dev --extra torch-cu13 --with "jax[cuda13]>=0.5" --with rmm-cu13 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
+    - uv run --locked --extra dev --extra torch-cu13 --extra cutile --group tests-cu13 -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
 linux-x86_64 cu13 free-threaded test:
   stage: test
@@ -759,7 +760,9 @@ windows-x86_64 cu13 test:
   script:
     - |
       $env:PATH = "$env:CI_PROJECT_DIR\_uv;$env:PATH"
-      uv run --extra dev --extra torch-cu13 --with "jax>=0.5" -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
+      # the tests-cu13 group is Linux-only (jax[cuda13] has no Windows wheels); CPU JAX pulls no
+      # nvidia-* wheels into the overlay, so it does not split the nvidia.cu13 namespace
+      uv run --locked --extra dev --extra torch-cu13 --extra cutile --group tests-cu13 --with "jax>=0.5" -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect --failfast
 
 # Exercise the omniblue KubeVirt development pool without replacing the generic
 # Windows GPU jobs that cover the existing A40/L40 fleet.
