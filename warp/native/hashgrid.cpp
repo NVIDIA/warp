@@ -85,6 +85,9 @@ void hash_grid_rebuild_device(
     const HashGrid_t<Type>& grid, const wp::array_t<vec_t<3, Type>>& points, const wp::array_t<int>* groups
 );
 
+// implemented in hashgrid.cu; writes the device-side descriptor at `id` safely under CUDA graph capture
+template <typename Type> void hash_grid_store_descriptor_device(uint64_t id, const HashGrid_t<Type>& grid);
+
 }  // namespace wp
 
 
@@ -239,9 +242,16 @@ template <typename Type> uint64_t hash_grid_create_device_impl(void* context, in
 
     HashGrid_t<Type>* grid_device
         = (HashGrid_t<Type>*)(wp_alloc_device(WP_CURRENT_CONTEXT, sizeof(HashGrid_t<Type>), tag));
-    wp_memcpy_h2d(WP_CURRENT_CONTEXT, grid_device, &grid, sizeof(HashGrid_t<Type>));
+
+    // the descriptor store below writes through grid_device, so stop before it if the allocation failed
+    if (!grid_device) {
+        wp_free_device(WP_CURRENT_CONTEXT, grid.cell_starts);
+        wp_free_device(WP_CURRENT_CONTEXT, grid.cell_ends);
+        return 0;
+    }
 
     uint64_t grid_id = (uint64_t)(grid_device);
+    hash_grid_store_descriptor_device(grid_id, grid);
     hash_grid_add_descriptor(grid_id, grid);
 
     return grid_id;
@@ -306,15 +316,13 @@ template <typename Type> void hash_grid_reserve_device_impl(uint64_t id, int num
         // inside hash_grid_update_device_impl(), but since
         // reserve can be called from Python we need to make
         // sure it is consistent
-        wp_memcpy_h2d(WP_CURRENT_CONTEXT, (HashGrid_t<Type>*)id, &grid, sizeof(HashGrid_t<Type>));
+        hash_grid_store_descriptor_device(id, grid);
 
         // update host side grid descriptor
         hash_grid_add_descriptor(id, grid);
     }
 }
 
-// Note: For device update, we use a static local variable for CUDA graph compatibility.
-// We need separate static variables for each type to avoid aliasing issues.
 template <typename Type>
 void hash_grid_update_device_impl(
     uint64_t id, Type cell_width, const wp::array_t<vec_t<3, Type>>* points, const wp::array_t<int>* groups
@@ -323,10 +331,7 @@ void hash_grid_update_device_impl(
     // array dtypes, shapes, and devices are validated by HashGrid.build() before reaching native code
     const int num_points = points->shape[0];
 
-    // host grid must be static so that we can
-    // perform host->device memcpy from this variable
-    // and have it safely recorded inside CUDA graphs
-    static HashGrid_t<Type> grid;
+    HashGrid_t<Type> grid;
 
     if (hash_grid_get_descriptor(id, grid)) {
         hash_grid_reserve_device_impl<Type>(id, num_points, groups != nullptr);
@@ -345,7 +350,7 @@ void hash_grid_update_device_impl(
         hash_grid_rebuild_device(grid, *points, groups);
 
         // update device side grid descriptor
-        wp_memcpy_h2d(WP_CURRENT_CONTEXT, (HashGrid_t<Type>*)id, &grid, sizeof(HashGrid_t<Type>));
+        hash_grid_store_descriptor_device(id, grid);
 
         // update host side grid descriptor
         hash_grid_add_descriptor(id, grid);
@@ -555,6 +560,12 @@ hash_grid_rebuild_device<float>(const HashGrid_t<float>&, const wp::array_t<vec_
 template void hash_grid_rebuild_device<double>(
     const HashGrid_t<double>&, const wp::array_t<vec_t<3, double>>&, const wp::array_t<int>*
 );
+
+template <typename Type> void hash_grid_store_descriptor_device(uint64_t id, const HashGrid_t<Type>& grid) { }
+
+template void hash_grid_store_descriptor_device<half>(uint64_t, const HashGrid_t<half>&);
+template void hash_grid_store_descriptor_device<float>(uint64_t, const HashGrid_t<float>&);
+template void hash_grid_store_descriptor_device<double>(uint64_t, const HashGrid_t<double>&);
 
 }  // namespace wp
 
