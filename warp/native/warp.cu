@@ -26,6 +26,7 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <iterator>
 #include <list>
 #include <map>
@@ -176,6 +177,7 @@ struct GraphDestroyCallbackInfo {
     void* context = NULL;  // graph CUDA context
     std::vector<void*> unfreed_allocs;  // graph allocations not freed by the graph
     std::vector<FreeInfo> tmp_allocs;  // temporary allocations owned by the graph (e.g., staged array fill values)
+    uint64_t external_token = 0;  // token for Python-retained external capture Graph
 };
 
 // Information for a graph allocation.
@@ -228,8 +230,10 @@ static std::vector<ReleaseInfo> g_deferred_releases;
 static std::mutex g_deferred_releases_mutex;
 
 // Data from on_graph_destroy() callbacks that run on a different thread.
-static std::vector<GraphDestroyCallbackInfo*> g_deferred_graph_destroy_list;
 static std::mutex g_graph_destroy_mutex;
+static std::vector<GraphDestroyCallbackInfo*> g_deferred_graph_destroy_list;
+static std::atomic<uint64_t> g_next_external_capture_token { 1 };
+static std::vector<uint64_t> g_destroyed_external_captures;
 
 
 void wp_cuda_set_context_restore_policy(bool always_restore) { ContextGuard::always_restore = always_restore; }
@@ -712,8 +716,22 @@ static int run_deferred_actions(void* context = NULL)
 static void CUDART_CB on_graph_destroy(void* user_data)
 {
     if (user_data) {
-        std::lock_guard<std::mutex> lock(g_graph_destroy_mutex);
-        g_deferred_graph_destroy_list.push_back(static_cast<GraphDestroyCallbackInfo*>(user_data));
+        GraphDestroyCallbackInfo* graph_info = static_cast<GraphDestroyCallbackInfo*>(user_data);
+        bool delete_now = false;
+        {
+            std::lock_guard<std::mutex> lock(g_graph_destroy_mutex);
+            if (graph_info->external_token != 0) {
+                g_destroyed_external_captures.push_back(graph_info->external_token);
+            }
+            if (!graph_info->unfreed_allocs.empty() || !graph_info->tmp_allocs.empty()) {
+                g_deferred_graph_destroy_list.push_back(graph_info);
+            } else {
+                delete_now = true;
+            }
+        }
+        if (delete_now) {
+            delete graph_info;
+        }
     }
 }
 
@@ -3779,6 +3797,69 @@ bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret)
         *graph_ret = graph;
 
     return true;
+}
+
+uint64_t wp_cuda_graph_retain_external_capture(void* context, void* stream)
+{
+    ContextGuard guard(context);
+
+    CUstream cuda_stream = static_cast<CUstream>(stream);
+    cudaGraph_t graph = get_capture_graph(cuda_stream);
+    if (!graph) {
+        wp::set_error_string("Warp error: stream is not capturing a valid CUDA graph");
+        return 0;
+    }
+
+    uint64_t token = g_next_external_capture_token.fetch_add(1, std::memory_order_relaxed);
+
+    GraphDestroyCallbackInfo* graph_info = new GraphDestroyCallbackInfo;
+    graph_info->context = context ? context : get_current_context();
+    graph_info->external_token = token;
+
+    cudaUserObject_t user_object = NULL;
+    if (!check_cuda(
+            cudaUserObjectCreate(&user_object, graph_info, on_graph_destroy, 1, cudaUserObjectNoDestructorSync)
+        )) {
+        delete graph_info;
+        return 0;
+    }
+    if (!check_cuda(cudaGraphRetainUserObject(graph, user_object, 1, cudaGraphUserObjectMove))) {
+        graph_info->external_token = 0;
+        cudaUserObjectRelease(user_object, 1);
+        return 0;
+    }
+
+    if (get_capture_graph(cuda_stream) != graph) {
+        wp::set_error_string("Warp error: CUDA graph capture was invalidated while retaining external capture");
+        return 0;
+    }
+
+    return token;
+}
+
+size_t wp_cuda_pop_destroyed_external_captures(uint64_t* tokens_out, size_t max_count)
+{
+    std::lock_guard<std::mutex> lock(g_graph_destroy_mutex);
+    if (!tokens_out || max_count == 0)
+        return g_destroyed_external_captures.size();
+
+    size_t count = std::min(max_count, g_destroyed_external_captures.size());
+    if (count == 0)
+        return 0;
+
+    size_t start = g_destroyed_external_captures.size() - count;
+    for (size_t i = 0; i < count; ++i) {
+        tokens_out[i] = g_destroyed_external_captures[start + i];
+    }
+    g_destroyed_external_captures.resize(start);
+    return count;
+}
+
+int wp_cuda_run_deferred_actions(void* context)
+{
+    if (!g_captures.empty())
+        return -1;
+    return run_deferred_actions(context);
 }
 
 bool wp_capture_debug_dot_print(void* graph, const char* path, uint32_t flags)

@@ -811,6 +811,9 @@ WP_API float wp_cuda_event_elapsed_time(void* start_event, void* end_event);
 
 WP_API bool wp_cuda_graph_begin_capture(void* context, void* stream, int external, int mode);
 WP_API bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret);
+WP_API uint64_t wp_cuda_graph_retain_external_capture(void* context, void* stream);
+WP_API size_t wp_cuda_pop_destroyed_external_captures(uint64_t* tokens_out, size_t max_count);
+WP_API int wp_cuda_run_deferred_actions(void* context);
 WP_API bool wp_cuda_graph_create_exec(void* context, void* stream, void* graph, void** graph_exec_ret);
 WP_API bool wp_cuda_graph_launch(void* graph, void* stream);
 WP_API bool wp_cuda_graph_destroy(void* context, void* graph);

@@ -3,14 +3,18 @@
 
 import concurrent.futures
 import contextlib
+import ctypes
+import gc
 import io
 import os
 import socket
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 import warnings
+import weakref
 from functools import cache, partial
 from typing import Any
 from unittest import mock
@@ -1405,6 +1409,227 @@ def test_ffi_jax_callable_graph_replay_skips_module_load(test, device):
                         jax.block_until_ready(y)
 
                 assert_np_equal(np.asarray(y), 2.0 * np.arange(32, dtype=np.float32))
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
+def test_ffi_jax_callable_multiple_external_captures_retain_modules(test, device):
+    """Verify multiple external CUDA captures on one FFI descriptor retain modules until graph destroy."""
+    try:
+        cuda_driver = ctypes.WinDLL("nvcuda.dll") if sys.platform == "win32" else ctypes.CDLL("libcuda.so.1")
+    except OSError:
+        test.skipTest("CUDA driver library is unavailable")
+
+    jax = _import_jax()
+    jp = _import_jax_numpy()
+    jax_device = wp.device_to_jax(device)
+
+    cuda_driver.cuStreamBeginCapture_v2.argtypes = [ctypes.c_void_p, ctypes.c_int]
+    cuda_driver.cuStreamEndCapture.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p)]
+    cuda_driver.cuGraphInstantiateWithFlags.argtypes = [
+        ctypes.POINTER(ctypes.c_void_p),
+        ctypes.c_void_p,
+        ctypes.c_ulonglong,
+    ]
+    cuda_driver.cuGraphLaunch.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+    cuda_driver.cuGraphExecDestroy.argtypes = [ctypes.c_void_p]
+    cuda_driver.cuGraphDestroy.argtypes = [ctypes.c_void_p]
+
+    @wp.kernel(module="unique")
+    def ffi_ext_double_kernel(a: wp.array[float], b: wp.array[float]):
+        i = wp.tid()
+        b[i] = 2.0 * a[i]
+
+    def ffi_ext_double(a: wp.array[float], b: wp.array[float]):
+        wp.launch(ffi_ext_double_kernel, dim=a.shape, inputs=[a], outputs=[b])
+
+    from warp._src.jax.xla_ffi import (  # noqa: PLC0415
+        XLA_FFI_CallFrame,
+        XLA_FFI_Error_Code,
+        XLA_FFI_Extension_Type,
+        XLA_FFI_Metadata_Extension,
+        create_ffi_error,
+        get_stream_from_callframe,
+    )
+
+    callback_type = ctypes.CFUNCTYPE(ctypes.c_void_p, ctypes.POINTER(XLA_FFI_CallFrame))
+    kept_callbacks = []
+
+    def _register_raw_cuda_target(name, fn):
+        def _handler(call_frame):
+            try:
+                ext = call_frame.contents.extension_start
+                if ext and ext.contents.type == XLA_FFI_Extension_Type.Metadata:
+                    meta = ctypes.cast(ext, ctypes.POINTER(XLA_FFI_Metadata_Extension)).contents.metadata.contents
+                    meta.api_version.major_version = 0
+                    meta.api_version.minor_version = 1
+                    return None
+                fn(get_stream_from_callframe(call_frame.contents))
+                return None
+            except Exception as e:
+                return create_ffi_error(
+                    call_frame.contents.api,
+                    XLA_FFI_Error_Code.UNKNOWN,
+                    f"Raw FFI callback error: {type(e).__name__}: {e}",
+                )
+
+        cb = callback_type(_handler)
+        kept_callbacks.append(cb)
+        jax.ffi.register_ffi_target(name, jax.ffi.pycapsule(ctypes.cast(cb, ctypes.c_void_p).value), platform="CUDA")
+
+    module = ffi_ext_double_kernel.module
+    ext_stream = None
+    captured_graphs = []
+
+    def _begin_ext(cuda_stream):
+        nonlocal ext_stream
+        with wp.ScopedDevice(device):
+            ext_stream = ctypes.c_void_p(cuda_stream)
+            # CU_STREAM_CAPTURE_MODE_RELAXED = 2 so cleanup can end an aborted capture from the test thread
+            test.assertEqual(cuda_driver.cuStreamBeginCapture_v2(ext_stream, 2), 0)
+
+    def _end_ext(cuda_stream):
+        with wp.ScopedDevice(device):
+            stream_ptr = ctypes.c_void_p(cuda_stream)
+            entry = [ctypes.c_void_p(), ctypes.c_void_p()]
+            test.assertEqual(cuda_driver.cuStreamEndCapture(stream_ptr, ctypes.byref(entry[0])), 0)
+            captured_graphs.append(entry)
+            test.assertEqual(cuda_driver.cuGraphInstantiateWithFlags(ctypes.byref(entry[1]), entry[0], 0), 0)
+            test.assertEqual(cuda_driver.cuGraphLaunch(entry[1], stream_ptr), 0)
+
+    begin_name = f"test_multi_ext_begin_{device.ordinal}_{id(test)}"
+    end_name = f"test_multi_ext_end_{device.ordinal}_{id(test)}"
+    _register_raw_cuda_target(begin_name, _begin_ext)
+    _register_raw_cuda_target(end_name, _end_ext)
+
+    shape_spec = jax.ShapeDtypeStruct((8,), jp.float32)
+    begin_call = jax.ffi.ffi_call(begin_name, shape_spec, input_output_aliases={0: 0}, has_side_effect=True)
+    end_call = jax.ffi.ffi_call(end_name, shape_spec, input_output_aliases={0: 0}, has_side_effect=True)
+    ext_cb = wp.jax_callable(
+        ffi_ext_double,
+        graph_mode=wp.JaxCallableGraphMode.JAX,
+        module_preload_mode=wp.JaxModulePreloadMode.NONE,
+        has_side_effect=True,
+    )
+    run_ext = jax.jit(lambda x: (b := begin_call(x), end_call(ext_cb(b)[0])))
+
+    # Keep input/output JAX arrays alive so both captured graphs can be replayed directly.
+    retained_arrays = []
+
+    def _wait_for_release(ref):
+        # on_graph_destroy arrives asynchronously on a CUDA driver thread
+        deadline = time.monotonic() + 10.0
+        while True:
+            wp.synchronize_device(device)
+            gc.collect()
+            if ref() is None:
+                return
+            if time.monotonic() > deadline:
+                test.fail("external capture ModuleExec was not released after graph destruction")
+            time.sleep(0.01)
+
+    try:
+        with jax.default_device(jax_device):
+            # First external capture with exec1
+            wp.load_module(module=module, device=device)
+            exec1 = module.execs[(device.context, module.options["block_dim"])]
+            exec1_ref = weakref.ref(exec1)
+            del exec1
+
+            val1 = np.arange(8, dtype=np.float32) + 1.0
+            in1 = jax.device_put(val1, jax_device)
+            buf1, out1 = run_ext(in1)
+            retained_arrays.extend((in1, buf1, out1))
+            assert_np_equal(np.asarray(out1), val1 * 2.0)
+
+            module.unload()
+            gc.collect()
+            test.assertIsNotNone(exec1_ref())
+
+            # Second external capture on the same call descriptor with exec2
+            wp.load_module(module=module, device=device)
+            exec2 = module.execs[(device.context, module.options["block_dim"])]
+            exec2_ref = weakref.ref(exec2)
+            del exec2
+
+            val2 = np.arange(8, dtype=np.float32) + 20.0
+            in2 = jax.device_put(val2, jax_device)
+            buf2, out2 = run_ext(in2)
+            retained_arrays.extend((in2, buf2, out2))
+            assert_np_equal(np.asarray(out2), val2 * 2.0)
+
+            module.unload()
+            gc.collect()
+            # Both external captures must keep their ModuleExecs alive simultaneously.
+            test.assertIsNotNone(exec1_ref())
+            test.assertIsNotNone(exec2_ref())
+
+            # Reset both output buffers and replay both captured graphs after unloading the module.
+            test.assertEqual(len(captured_graphs), 2)
+            out1_wp = wp.from_jax(out1)
+            out2_wp = wp.from_jax(out2)
+            with wp.ScopedDevice(device):
+                replay_stream = wp.Stream(device)
+                replay_stream_ptr = ctypes.c_void_p(replay_stream.cuda_stream)
+                with wp.ScopedStream(replay_stream, sync_enter=False):
+                    out1_wp.zero_()
+                    out2_wp.zero_()
+                wp.synchronize_device(device)
+                assert_np_equal(out1_wp.numpy(), np.zeros_like(val1))
+                assert_np_equal(out2_wp.numpy(), np.zeros_like(val2))
+
+                test.assertEqual(cuda_driver.cuGraphLaunch(captured_graphs[0][1], replay_stream_ptr), 0)
+                test.assertEqual(cuda_driver.cuGraphLaunch(captured_graphs[1][1], replay_stream_ptr), 0)
+                wp.synchronize_device(device)
+            assert_np_equal(out1_wp.numpy(), val1 * 2.0)
+            assert_np_equal(out2_wp.numpy(), val2 * 2.0)
+
+            # Destroying graph 1 releases exec1 while keeping exec2 alive.
+            with wp.ScopedDevice(device):
+                test.assertEqual(cuda_driver.cuGraphExecDestroy(captured_graphs[0][1]), 0)
+                captured_graphs[0][1] = ctypes.c_void_p()
+                test.assertEqual(cuda_driver.cuGraphDestroy(captured_graphs[0][0]), 0)
+                captured_graphs[0][0] = ctypes.c_void_p()
+            _wait_for_release(exec1_ref)
+            test.assertIsNotNone(exec2_ref())
+
+            # Destroying graph 2's source CUgraph while keeping its executable alive retains exec2.
+            with wp.ScopedDevice(device):
+                test.assertEqual(cuda_driver.cuGraphDestroy(captured_graphs[1][0]), 0)
+                captured_graphs[1][0] = ctypes.c_void_p()
+                with wp.ScopedStream(replay_stream, sync_enter=False):
+                    out2_wp.zero_()
+            wp.synchronize_device(device)
+            gc.collect()
+            test.assertIsNotNone(exec2_ref())
+            assert_np_equal(out2_wp.numpy(), np.zeros_like(val2))
+
+            with wp.ScopedDevice(device):
+                test.assertEqual(cuda_driver.cuGraphLaunch(captured_graphs[1][1], replay_stream_ptr), 0)
+                wp.synchronize_device(device)
+            assert_np_equal(out2_wp.numpy(), val2 * 2.0)
+
+            # Destroying graph 2's executable releases exec2.
+            with wp.ScopedDevice(device):
+                test.assertEqual(cuda_driver.cuGraphExecDestroy(captured_graphs[1][1]), 0)
+                captured_graphs[1][1] = ctypes.c_void_p()
+            _wait_for_release(exec2_ref)
+    finally:
+        with wp.ScopedDevice(device):
+            try:
+                if ext_stream is not None and wp._src.context.runtime.core.wp_cuda_stream_is_capturing(
+                    ext_stream.value
+                ):
+                    aborted_graph = ctypes.c_void_p()
+                    cuda_driver.cuStreamEndCapture(ext_stream, ctypes.byref(aborted_graph))
+                    if aborted_graph:
+                        cuda_driver.cuGraphDestroy(aborted_graph)
+                wp.synchronize_device(device)
+            finally:
+                for graph, graph_exec in captured_graphs:
+                    if graph_exec:
+                        cuda_driver.cuGraphExecDestroy(graph_exec)
+                    if graph:
+                        cuda_driver.cuGraphDestroy(graph)
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
@@ -3342,6 +3567,7 @@ else:
         cuda_only_jax_tests = (
             test_ffi_jax_callable_graph_cache,
             test_ffi_jax_callable_graph_replay_skips_module_load,
+            test_ffi_jax_callable_multiple_external_captures_retain_modules,
             test_ffi_jax_cuda_requires_cuda_support,
         )
         for test_func in cuda_only_jax_tests:

@@ -10,6 +10,7 @@ import gc
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -1479,6 +1480,289 @@ def test_cuda_graph_topo_alloc_free_serializes_dependent_streams_only(test, devi
         assert _nodes_independent(node7, node8)
 
 
+def test_cuda_external_capture_retains_modules_until_graph_destroy(test, device):
+    """Verify external CUDA captures retain ModuleExecs until CUDA destroys each enclosing graph."""
+    try:
+        cuda_driver = ctypes.WinDLL("nvcuda.dll") if sys.platform == "win32" else ctypes.CDLL("libcuda.so.1")
+    except OSError:
+        test.skipTest("CUDA driver library is unavailable")
+
+    cuda_driver.cuStreamBeginCapture_v2.argtypes = [ctypes.c_void_p, ctypes.c_int]
+    cuda_driver.cuStreamEndCapture.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p)]
+    cuda_driver.cuStreamSynchronize.argtypes = [ctypes.c_void_p]
+    cuda_driver.cuGraphInstantiateWithFlags.argtypes = [
+        ctypes.POINTER(ctypes.c_void_p),
+        ctypes.c_void_p,
+        ctypes.c_ulonglong,
+    ]
+    cuda_driver.cuGraphLaunch.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+    cuda_driver.cuGraphExecDestroy.argtypes = [ctypes.c_void_p]
+    cuda_driver.cuGraphDestroy.argtypes = [ctypes.c_void_p]
+
+    @wp.kernel(module="unique")
+    def ext_scale_kernel(src: wp.array[float], dst: wp.array[float], factor: float):
+        i = wp.tid()
+        dst[i] = src[i] * factor
+
+    @wp.kernel(module="unique")
+    def ext_scale_kernel_b(src: wp.array[float], dst: wp.array[float], factor: float):
+        i = wp.tid()
+        dst[i] = src[i] * factor
+
+    @wp.kernel(module="unique")
+    def unrelated_kernel(dst: wp.array[float]):
+        i = wp.tid()
+        dst[i] = 0.0
+
+    module = ext_scale_kernel.module
+    module_b = ext_scale_kernel_b.module
+    unrelated_module = unrelated_kernel.module
+    stream = wp.Stream(device)
+    stream_ptr = ctypes.c_void_p(stream.cuda_stream)
+    with wp.ScopedStream(stream, sync_enter=False):
+        src = wp.array(np.arange(16, dtype=np.float32), device=device)
+        out1 = wp.zeros(16, dtype=float, device=device)
+        out2 = wp.zeros(16, dtype=float, device=device)
+        out3 = wp.zeros(16, dtype=float, device=device)
+
+    graph1 = ctypes.c_void_p()
+    graph_exec1 = ctypes.c_void_p()
+    graph2 = ctypes.c_void_p()
+    graph_exec2 = ctypes.c_void_p()
+    graph_tl = ctypes.c_void_p()
+    graph_exec_tl = ctypes.c_void_p()
+    aborted_graph = ctypes.c_void_p()
+    invalid_graph = ctypes.c_void_p()
+    loop_graph = ctypes.c_void_p()
+
+    def _wait_for_release(ref):
+        # on_graph_destroy arrives asynchronously on a CUDA driver thread
+        deadline = time.monotonic() + 10.0
+        while True:
+            wp.synchronize_device(device)
+            gc.collect()
+            if ref() is None:
+                return
+            if time.monotonic() > deadline:
+                test.fail("external capture ModuleExec was not released after graph destruction")
+            time.sleep(0.01)
+
+    def _wait_for_pending_increase(before_count):
+        deadline = time.monotonic() + 10.0
+        while True:
+            if wp._src.context.runtime.core.wp_cuda_pop_destroyed_external_captures(None, 0) > before_count:
+                return
+            if time.monotonic() > deadline:
+                test.fail("external capture destruction notification did not arrive before deadline")
+            time.sleep(0.01)
+
+    try:
+        with wp.ScopedDevice(device):
+            # Capture 1: single Warp external capture
+            wp.load_module(module=module, device=device)
+            exec1 = module.execs[(device.context, module.options["block_dim"])]
+            exec1_ref = weakref.ref(exec1)
+            del exec1
+
+            # CU_STREAM_CAPTURE_MODE_RELAXED = 2
+            test.assertEqual(cuda_driver.cuStreamBeginCapture_v2(stream_ptr, 2), 0)
+            with wp.ScopedCapture(stream=stream, external=True):
+                wp.launch(ext_scale_kernel, dim=16, inputs=[src, out1, 2.0], stream=stream)
+            test.assertEqual(cuda_driver.cuStreamEndCapture(stream_ptr, ctypes.byref(graph1)), 0)
+            test.assertEqual(cuda_driver.cuGraphInstantiateWithFlags(ctypes.byref(graph_exec1), graph1, 0), 0)
+
+            module.unload()
+            gc.collect()
+            test.assertIsNotNone(exec1_ref())
+
+            # Capture 2: two Warp external captures from distinct modules inside one enclosing graph
+            wp.load_module(module=module, device=device)
+            exec2 = module.execs[(device.context, module.options["block_dim"])]
+            exec2_ref = weakref.ref(exec2)
+            del exec2
+
+            wp.load_module(module=module_b, device=device)
+            exec2b = module_b.execs[(device.context, module_b.options["block_dim"])]
+            exec2b_ref = weakref.ref(exec2b)
+            del exec2b
+
+            test.assertEqual(cuda_driver.cuStreamBeginCapture_v2(stream_ptr, 2), 0)
+            with wp.ScopedCapture(stream=stream, external=True):
+                wp.launch(ext_scale_kernel, dim=16, inputs=[src, out2, 3.0], stream=stream)
+            with wp.ScopedCapture(stream=stream, external=True):
+                wp.launch(ext_scale_kernel_b, dim=16, inputs=[out2, out2, 2.0], stream=stream)
+            test.assertEqual(cuda_driver.cuStreamEndCapture(stream_ptr, ctypes.byref(graph2)), 0)
+            test.assertEqual(cuda_driver.cuGraphInstantiateWithFlags(ctypes.byref(graph_exec2), graph2, 0), 0)
+
+            module.unload()
+            module_b.unload()
+            gc.collect()
+            test.assertIsNotNone(exec1_ref())
+            test.assertIsNotNone(exec2_ref())
+            test.assertIsNotNone(exec2b_ref())
+
+            # Both graphs still execute with their own retained CUDA modules after module.unload()
+            test.assertEqual(cuda_driver.cuGraphLaunch(graph_exec1, stream_ptr), 0)
+            test.assertEqual(cuda_driver.cuGraphLaunch(graph_exec2, stream_ptr), 0)
+            wp.synchronize_device(device)
+            assert_np_equal(out1.numpy(), np.arange(16, dtype=np.float32) * 2.0)
+            assert_np_equal(out2.numpy(), np.arange(16, dtype=np.float32) * 6.0)
+
+            # Destroying graph 1 without draining first must not invalidate a subsequent
+            # THREAD_LOCAL external capture (including an unrelated Module.unload() while capturing).
+            pending_before = wp._src.context.runtime.core.wp_cuda_pop_destroyed_external_captures(None, 0)
+            test.assertEqual(cuda_driver.cuGraphExecDestroy(graph_exec1), 0)
+            graph_exec1 = ctypes.c_void_p()
+            test.assertEqual(cuda_driver.cuGraphDestroy(graph1), 0)
+            graph1 = ctypes.c_void_p()
+
+            _wait_for_pending_increase(pending_before)
+
+            wp.load_module(module=module, device=device)
+            # CU_STREAM_CAPTURE_MODE_THREAD_LOCAL = 1
+            test.assertEqual(cuda_driver.cuStreamBeginCapture_v2(stream_ptr, 1), 0)
+            # Calling unload() on an unloaded module performs no CUDA calls on its own, so it
+            # must not drain retired external captures or trigger cuModuleUnload during capture.
+            test.assertEqual(unrelated_module.execs, {})
+            unrelated_module.unload()
+            test.assertGreater(
+                wp._src.context.runtime.core.wp_cuda_pop_destroyed_external_captures(None, 0), pending_before
+            )
+            with wp.ScopedCapture(stream=stream, external=True):
+                pass
+            with wp.ScopedCapture(stream=stream, external=True):
+                wp.launch(ext_scale_kernel, dim=16, inputs=[src, out3, 4.0], stream=stream)
+            test.assertEqual(cuda_driver.cuStreamEndCapture(stream_ptr, ctypes.byref(graph_tl)), 0)
+            # Graph 1's retired token was drained safely during the THREAD_LOCAL capture, deferring
+            # its native module unload until a capture-safe flush runs.
+            test.assertIn(device.context, wp._src.context.runtime._deferred_external_release_contexts)
+            wp._src.context.runtime._release_destroyed_external_captures(device.context)
+            test.assertNotIn(device.context, wp._src.context.runtime._deferred_external_release_contexts)
+
+            test.assertEqual(cuda_driver.cuGraphInstantiateWithFlags(ctypes.byref(graph_exec_tl), graph_tl, 0), 0)
+            test.assertEqual(cuda_driver.cuGraphLaunch(graph_exec_tl, stream_ptr), 0)
+            wp.synchronize_device(device)
+            assert_np_equal(out3.numpy(), np.arange(16, dtype=np.float32) * 4.0)
+
+            pending_before_tl = wp._src.context.runtime.core.wp_cuda_pop_destroyed_external_captures(None, 0)
+            test.assertEqual(cuda_driver.cuGraphExecDestroy(graph_exec_tl), 0)
+            graph_exec_tl = ctypes.c_void_p()
+            test.assertEqual(cuda_driver.cuGraphDestroy(graph_tl), 0)
+            graph_tl = ctypes.c_void_p()
+            _wait_for_pending_increase(pending_before_tl)
+            wp.synchronize_device(device)
+
+            # Graph 1's exec1 is released while both executables in graph 2 remain alive.
+            _wait_for_release(exec1_ref)
+            test.assertIsNotNone(exec2_ref())
+            test.assertIsNotNone(exec2b_ref())
+
+            # Destroying graph 2's source CUgraph while keeping graph_exec2 alive must retain both.
+            test.assertEqual(cuda_driver.cuGraphDestroy(graph2), 0)
+            graph2 = ctypes.c_void_p()
+            module.unload()
+            module_b.unload()
+            wp.synchronize_device(device)
+            gc.collect()
+            test.assertIsNotNone(exec2_ref())
+            test.assertIsNotNone(exec2b_ref())
+
+            # Surviving graph_exec2 remains launchable and produces fresh output.
+            with wp.ScopedStream(stream, sync_enter=False):
+                out2.zero_()
+            test.assertEqual(cuda_driver.cuGraphLaunch(graph_exec2, stream_ptr), 0)
+            wp.synchronize_device(device)
+            assert_np_equal(out2.numpy(), np.arange(16, dtype=np.float32) * 6.0)
+
+            # Destroying the surviving executable releases both executables retained in graph 2.
+            test.assertEqual(cuda_driver.cuGraphExecDestroy(graph_exec2), 0)
+            graph_exec2 = ctypes.c_void_p()
+            _wait_for_release(exec2_ref)
+            _wait_for_release(exec2b_ref)
+
+            # A discarded (uninstantiated) external capture must not leak its retained ModuleExec.
+            module.unload()
+            wp.load_module(module=module, device=device)
+            exec3 = module.execs[(device.context, module.options["block_dim"])]
+            exec3_ref = weakref.ref(exec3)
+            del exec3
+
+            test.assertEqual(cuda_driver.cuStreamBeginCapture_v2(stream_ptr, 2), 0)
+            with wp.ScopedCapture(stream=stream, external=True):
+                wp.launch(ext_scale_kernel, dim=16, inputs=[src, out3, 5.0], stream=stream)
+            # End and immediately destroy the uninstantiated graph (as happens when capture is discarded).
+            test.assertEqual(cuda_driver.cuStreamEndCapture(stream_ptr, ctypes.byref(aborted_graph)), 0)
+            test.assertEqual(cuda_driver.cuGraphDestroy(aborted_graph), 0)
+            aborted_graph = ctypes.c_void_p()
+
+            module.unload()
+            _wait_for_release(exec3_ref)
+
+            # An invalidated external capture (where cuStreamEndCapture fails with a NULL graph)
+            # must also release its retained ModuleExec.
+            wp.load_module(module=module, device=device)
+            exec4 = module.execs[(device.context, module.options["block_dim"])]
+            exec4_ref = weakref.ref(exec4)
+            del exec4
+
+            test.assertEqual(cuda_driver.cuStreamBeginCapture_v2(stream_ptr, 1), 0)
+            with wp.ScopedCapture(stream=stream, external=True):
+                wp.launch(ext_scale_kernel, dim=16, inputs=[src, out3, 7.0], stream=stream)
+            # Synchronizing a capturing stream invalidates the capture (CUDA_ERROR_STREAM_CAPTURE_UNSUPPORTED = 900).
+            test.assertNotEqual(cuda_driver.cuStreamSynchronize(stream_ptr), 0)
+            # Ending an invalidated capture fails (CUDA_ERROR_STREAM_CAPTURE_INVALIDATED = 901) with a NULL graph.
+            test.assertNotEqual(cuda_driver.cuStreamEndCapture(stream_ptr, ctypes.byref(invalid_graph)), 0)
+            test.assertFalse(invalid_graph)
+
+            module.unload()
+            _wait_for_release(exec4_ref)
+
+            # External-capture-only workloads that never call wp.synchronize*() still drain
+            # retired entries on subsequent external captures without unbounded registry growth.
+            wp.load_module(module=module, device=device)
+            baseline_retained = len(wp._src.context.runtime._external_captures)
+            for _ in range(5):
+                test.assertEqual(cuda_driver.cuStreamBeginCapture_v2(stream_ptr, 1), 0)
+                with wp.ScopedCapture(stream=stream, external=True):
+                    wp.launch(ext_scale_kernel, dim=16, inputs=[src, out3, 1.0], stream=stream)
+                test.assertEqual(cuda_driver.cuStreamEndCapture(stream_ptr, ctypes.byref(loop_graph)), 0)
+                pending_before = wp._src.context.runtime.core.wp_cuda_pop_destroyed_external_captures(None, 0)
+                test.assertEqual(cuda_driver.cuGraphDestroy(loop_graph), 0)
+                loop_graph = ctypes.c_void_p()
+                _wait_for_pending_increase(pending_before)
+            test.assertLessEqual(len(wp._src.context.runtime._external_captures), baseline_retained + 1)
+            wp.synchronize_device(device)
+            test.assertEqual(len(wp._src.context.runtime._external_captures), baseline_retained)
+    finally:
+        with wp.ScopedDevice(device):
+            destroyed_handles = False
+            try:
+                if wp._src.context.runtime.core.wp_cuda_stream_is_capturing(stream_ptr.value):
+                    cleanup_graph = ctypes.c_void_p()
+                    cuda_driver.cuStreamEndCapture(stream_ptr, ctypes.byref(cleanup_graph))
+                    destroyed_handles = True
+                    if cleanup_graph:
+                        cuda_driver.cuGraphDestroy(cleanup_graph)
+                wp.synchronize_device(device)
+            finally:
+                for handle in (graph_exec1, graph_exec2, graph_exec_tl):
+                    if handle:
+                        cuda_driver.cuGraphExecDestroy(handle)
+                        destroyed_handles = True
+                for handle in (graph1, graph2, graph_tl, aborted_graph, invalid_graph, loop_graph):
+                    if handle:
+                        cuda_driver.cuGraphDestroy(handle)
+                        destroyed_handles = True
+                if destroyed_handles:
+                    deadline = time.monotonic() + 2.0
+                    while wp._src.context.runtime._external_captures and time.monotonic() < deadline:
+                        wp._src.context.runtime._release_destroyed_external_captures(device.context)
+                        gc.collect()
+                        if not wp._src.context.runtime._external_captures:
+                            break
+                        time.sleep(0.01)
+
+
 devices = get_test_devices()
 devices_with_cuda_graph_module_load = get_test_devices_with_cuda_graph_module_load()
 devices_with_graph_capture_allocation_and_cuda_graph_module_load = (
@@ -1563,6 +1847,12 @@ add_function_test(
     "test_cuda_capture_apic_disabled_does_not_retain_caller",
     test_cuda_capture_apic_disabled_does_not_retain_caller,
     devices=cuda_devices,
+)
+add_function_test(
+    TestGraph,
+    "test_cuda_external_capture_retains_modules_until_graph_destroy",
+    test_cuda_external_capture_retains_modules_until_graph_destroy,
+    devices=get_selected_cuda_test_devices(),
 )
 add_function_test(
     TestGraph,
