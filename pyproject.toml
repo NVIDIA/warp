@@ -67,6 +67,23 @@ torch-cu13 = [
     "warp-lang[examples]",
     "torch>=2.9.0",
 ]
+cutile = [
+    # experimental cuTile interop (warp.experimental.cutile): cuTile Python, the tile_preview
+    # foreign-call package, and the tileiras compiler; no macOS wheels.
+    # The compiler wheels are listed directly rather than through cuda-tile[tileiras]: that
+    # extra pulls the cuda-toolkit metapackage, which pins the CUDA runtime and NVRTC wheels
+    # at 13.5 and cannot coexist with PyTorch's CUDA 13 wheels (pinned at 13.0), while the
+    # compiler wheels leave the runtime unpinned. nvidia-cuda-nvcc depends on nvidia-cuda-crt
+    # without a version, so the crt pin keeps it on the 13.5 release once 13.6 ships; the
+    # nvJitLink floor is what cuda-toolkit[tileiras] 13.5 requires.
+    "cuda-tile>=1.8.1 ; sys_platform != 'darwin'",
+    "cuda-tile-preview>=1.8.1 ; sys_platform != 'darwin'",
+    "nvidia-cuda-tileiras>=13.5,<13.6 ; sys_platform != 'darwin'",
+    "nvidia-cuda-nvcc>=13.5,<13.6 ; sys_platform != 'darwin'",
+    "nvidia-nvvm>=13.5,<13.6 ; sys_platform != 'darwin'",
+    "nvidia-nvjitlink>=13.5,<14 ; sys_platform != 'darwin'",
+    "nvidia-cuda-crt>=13.5,<13.6 ; sys_platform != 'darwin'",
+]
 dev = [
     "warp-lang[examples]",
     "warp-lang[docs]",
@@ -203,6 +220,20 @@ omit = [
     "__init__.pyi",
 ]
 
+[dependency-groups]
+# Test-time GPU dependencies of the CUDA 13 CI jobs, kept out of the extras so
+# they never reach users. Locked here rather than added with `uv run --with`
+# because cuTile Python looks for the pip tileiras only in the first
+# `nvidia.cu13` path entry. A `--with "jax[cuda13]"` overlay installs JAX's
+# nvidia-* wheels in a separate environment ahead of the project's, so cuTile
+# falls back to the system tileiras, and every foreign_call fails when that one
+# is missing or older than 13.5. Locking JAX alongside the `cutile` extra keeps
+# a single nvidia/cu13 tree.
+tests-cu13 = [
+    "jax[cuda13]>=0.5 ; sys_platform == 'linux'",
+    "rmm-cu13 ; sys_platform == 'linux'",
+]
+
 [tool.uv]
 managed = true
 required-environments = [
@@ -212,6 +243,15 @@ conflicts = [
     [
         { extra = "torch-cu12" },
         { extra = "torch-cu13" },
+    ],
+    # cuTile is CUDA 13 only
+    [
+        { extra = "cutile" },
+        { extra = "torch-cu12" },
+    ],
+    [
+        { group = "tests-cu13" },
+        { extra = "torch-cu12" },
     ],
 ]
 

@@ -269,6 +269,25 @@ python -m warp.examples.browse
     </tbody>
 </table>
 
+### warp/examples/interop
+
+<table>
+    <tbody>
+        <tr>
+            <td width="25%"><a href="https://github.com/NVIDIA/warp/blob/main/warp/examples/interop/example_cutile_neural_sdf.py"><img src="https://media.githubusercontent.com/media/NVIDIA/warp/refs/heads/main/docs/img/examples/interop_cutile_neural_sdf.png"></a></td>
+            <td width="25%"></td>
+            <td width="25%"></td>
+            <td width="25%"></td>
+        </tr>
+        <tr>
+            <td align="center">cutile neural sdf</td>
+            <td align="center"></td>
+            <td align="center"></td>
+            <td align="center"></td>
+        </tr>
+    </tbody>
+</table>
+
 ## Learn More
 
 Please see the following resources for additional background on Warp:
@@ -324,6 +343,26 @@ provided "AS IS", without warranty of any kind. The author makes no representati
 regarding any retrieved materials, and assumes no liability for any losses, damages, liabilities or
 legal consequences from your use or inability to use this software or any retrieved materials. Use
 this software and the retrieved materials at your own risk.
+
+### Optional cuTile Dependencies
+
+The experimental cuTile interoperability module (`warp.experimental.cutile`) relies on optional
+dependencies that are not bundled in Warp's wheels or source distribution. Users install them
+explicitly through pip, either individually or through the `warp-lang[cutile]` extra. Pip handles
+the installation; Warp uses the installed packages and tools without downloading or installing
+them itself.
+
+The cuTile packages themselves, [cuda-tile](https://pypi.org/project/cuda-tile/) and
+[cuda-tile-preview](https://pypi.org/project/cuda-tile-preview/), are open source (Apache-2.0).
+They depend on the following NVIDIA proprietary CUDA Toolkit components, which are governed by the
+[NVIDIA Software License Agreement and CUDA Supplement](https://github.com/NVIDIA/warp/blob/main/licenses/cuda-LICENSE.txt):
+
+- [nvidia-cuda-crt](https://pypi.org/project/nvidia-cuda-crt/)
+- [nvidia-cuda-nvcc](https://pypi.org/project/nvidia-cuda-nvcc/)
+- [nvidia-cuda-runtime](https://pypi.org/project/nvidia-cuda-runtime/)
+- [nvidia-cuda-tileiras](https://pypi.org/project/nvidia-cuda-tileiras/)
+- [nvidia-nvjitlink](https://pypi.org/project/nvidia-nvjitlink/)
+- [nvidia-nvvm](https://pypi.org/project/nvidia-nvvm/)
 
 ## Publications & Citation
 

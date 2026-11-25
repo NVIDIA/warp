@@ -1242,14 +1242,29 @@ private:
 #endif
 #endif
 
+#if defined(__CUDA_ARCH__) && defined(WP_TILE_EXTERNAL_SHARED_STORAGE)
+    // External shared-storage mode: the per-thread offset slots and the
+    // dynamic area live in a caller-provided buffer bound by
+    // bind_external_smem(); only this pointer slot is static shared memory.
+    static inline CUDA_CALLABLE char*& get_external_smem_base()
+    {
+        __shared__ char* external_smem_base;
+        return external_smem_base;
+    }
+#endif
+
     // we maintain a per-thread offset into dynamic
     // shared memory that allows us to keep track of
     // current use across dynamic function calls
     static inline CUDA_CALLABLE unsigned int* get_smem_base()
     {
 #if defined(__CUDA_ARCH__)
+#if defined(WP_TILE_EXTERNAL_SHARED_STORAGE)
+        return reinterpret_cast<unsigned int*>(get_external_smem_base());
+#else
         __shared__ unsigned int smem_base[WP_TILE_BLOCK_DIM];
         return smem_base;
+#endif
 #elif defined(WP_ENABLE_TILES_IN_STACK_MEMORY)
         return shared_tile_storage->smem_base;
 #else
@@ -1261,8 +1276,12 @@ private:
     static inline CUDA_CALLABLE char* get_dynamic_smem_base()
     {
 #if defined(__CUDA_ARCH__)
+#if defined(WP_TILE_EXTERNAL_SHARED_STORAGE)
+        return get_external_smem_base() + WP_TILE_BLOCK_DIM * sizeof(unsigned int);
+#else
         extern __shared__ char dynamic_smem_base[];
         return dynamic_smem_base;
+#endif
 #elif defined(WP_ENABLE_TILES_IN_STACK_MEMORY)
         return shared_tile_storage->dynamic_smem_base;
 #else
@@ -1325,6 +1344,27 @@ public:
         }
 #endif
     }
+
+#if defined(__CUDA_ARCH__) && defined(WP_TILE_EXTERNAL_SHARED_STORAGE)
+    // Bind tile shared storage to an external shared-memory buffer and reset
+    // the per-thread allocation offsets. The buffer layout is
+    // [WP_TILE_BLOCK_DIM * sizeof(unsigned int) offset slots | dynamic area],
+    // at least 16-byte aligned, with WP_TILE_BLOCK_DIM a multiple of 4. All
+    // WP_TILE_BLOCK_DIM threads of a WP_TILE_BLOCK_DIM x 1 x 1 block must call
+    // this together before any shared tile allocation.
+    static inline CUDA_CALLABLE void bind_external_smem(void* base)
+    {
+        // Wait for all threads to finish using the previous buffer before rebinding.
+        WP_TILE_SYNC();
+
+        if (WP_TILE_THREAD_IDX == 0)
+            get_external_smem_base() = (char*)base;
+
+        WP_TILE_SYNC();
+
+        init();
+    }
+#endif
 
     static inline CUDA_CALLABLE void check()
     {

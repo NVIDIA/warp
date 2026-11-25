@@ -7800,13 +7800,16 @@ static CUDA_CALLABLE void adj_{name}({reverse_args})
 {{
 {reverse_body}}}
 
-// Required when compiling adjoints.
-CUDA_CALLABLE {name} add(const {name}& a, const {name}& b)
+// Required when compiling adjoints. Struct helpers are static: a generated
+// struct may be instantiated in more than one translation unit that is later
+// linked into one program (e.g. two Warp foreign functions sharing a struct),
+// so they must not be strong external symbols.
+static CUDA_CALLABLE {name} add(const {name}& a, const {name}& b)
 {{
 {add_body}
 }}
 
-CUDA_CALLABLE void adj_atomic_add({name}* p, {name} t)
+static CUDA_CALLABLE void adj_atomic_add({name}* p, {name} t)
 {{
 {atomic_add_body}}}
 
@@ -7831,38 +7834,38 @@ tile_struct_member_ops_template = """
 tile_struct_helpers_template = """
 // Required by tile templates. The overloads are found by ADL when tile.h is
 // instantiated with a generated struct type.
-CUDA_CALLABLE void adj_add(const {name}& a, const {name}& b, {name}& adj_a, {name}& adj_b, const {name}& adj_ret)
+static CUDA_CALLABLE void adj_add(const {name}& a, const {name}& b, {name}& adj_a, {name}& adj_b, const {name}& adj_ret)
 {{
     adj_a += adj_ret;
     adj_b += adj_ret;
 }}
 
-CUDA_CALLABLE {name} sub(const {name}& a, const {name}& b)
+static CUDA_CALLABLE {name} sub(const {name}& a, const {name}& b)
 {{
     {name} ret = a;
     ret -= b;
     return ret;
 }}
 
-CUDA_CALLABLE void adj_sub(const {name}& a, const {name}& b, {name}& adj_a, {name}& adj_b, const {name}& adj_ret)
+static CUDA_CALLABLE void adj_sub(const {name}& a, const {name}& b, {name}& adj_a, {name}& adj_b, const {name}& adj_ret)
 {{
     adj_a += adj_ret;
     adj_b -= adj_ret;
 }}
 
-CUDA_CALLABLE {name} atomic_add({name}* p, {name} t)
+static CUDA_CALLABLE {name} atomic_add({name}* p, {name} t)
 {{
     {name} old {{}};
 {atomic_add_forward_body}
     return old;
 }}
 
-CUDA_CALLABLE {name} tile_atomic_add_value({name}* p, {name} t)
+static CUDA_CALLABLE {name} tile_atomic_add_value({name}* p, {name} t)
 {{
     return atomic_add(p, t);
 }}
 
-CUDA_CALLABLE {name} tile_adj_atomic_add_value({name}* p, {name} t)
+static CUDA_CALLABLE {name} tile_adj_atomic_add_value({name}* p, {name} t)
 {{
     // Tile adjoint struct atomics accumulate only for side effects; callers
     // currently ignore the returned old value, so avoid a second atomic here.
@@ -7872,14 +7875,14 @@ CUDA_CALLABLE {name} tile_adj_atomic_add_value({name}* p, {name} t)
 }}
 
 #if defined(__CUDA_ARCH__)
-CUDA_CALLABLE {name} warp_shuffle_down({name} val, int offset, int mask)
+static CUDA_CALLABLE {name} warp_shuffle_down({name} val, int offset, int mask)
 {{
     {name} ret {{}};
 {shuffle_down_body}
     return ret;
 }}
 
-CUDA_CALLABLE {name} warp_shuffle_xor({name} val, int lane_mask)
+static CUDA_CALLABLE {name} warp_shuffle_xor({name} val, int lane_mask)
 {{
     {name} ret {{}};
 {shuffle_xor_body}
