@@ -404,6 +404,7 @@
 <li class="toctree-l2"><a class="reference internal" href="user_guide/interoperability/pytorch.html">PyTorch Interoperability</a></li>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/interoperability/jax.html">JAX Interoperability</a></li>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/interoperability/array_function_overrides.html">Array Function Overrides</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/interoperability/cutile.html">cuTile Python Interoperability</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="user_guide/execution_and_performance.html">Execution and Performance</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -627,6 +628,8 @@
       <li><a href="api_reference/_generated/warp.utils.array_cast.html#warp.utils.array_cast">array_cast() (in module warp.utils)</a>
 </li>
       <li><a href="api_reference/_generated/warp.utils.array_inner.html#warp.utils.array_inner">array_inner() (in module warp.utils)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.experimental.cutile.array_pointer_args.html#warp.experimental.cutile.array_pointer_args">array_pointer_args() (in module warp.experimental.cutile)</a>
 </li>
       <li><a href="api_reference/_generated/warp.utils.array_scan.html#warp.utils.array_scan">array_scan() (in module warp.utils)</a>
 </li>
@@ -1970,6 +1973,8 @@
 </li>
       <li><a href="api_reference/_generated/warp.fem.AdaptiveNanogrid.html#warp.fem.AdaptiveNanogrid.encode_axis_and_level">encode_axis_and_level (warp.fem.AdaptiveNanogrid attribute)</a>
 </li>
+      <li><a href="api_reference/_generated/warp.experimental.cutile.encode_struct.html#warp.experimental.cutile.encode_struct">encode_struct() (in module warp.experimental.cutile)</a>
+</li>
       <li><a href="api_reference/_generated/warp.render.OpenGLRenderer.html#warp.render.OpenGLRenderer.end_frame">end_frame() (warp.render.OpenGLRenderer method)</a>
 
       <ul>
@@ -2049,6 +2054,8 @@
       <li><a href="api_reference/_generated/warp.fem.ExplicitGeometryPartition.html#warp.fem.ExplicitGeometryPartition">ExplicitGeometryPartition (class in warp.fem)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.ExplicitQuadrature.html#warp.fem.ExplicitQuadrature">ExplicitQuadrature (class in warp.fem)</a>
+</li>
+      <li><a href="api_reference/_generated/warp.experimental.cutile.export_func.html#warp.experimental.cutile.export_func">export_func() (in module warp.experimental.cutile)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.Grid2D.html#warp.fem.Grid2D.extents">extents (warp.fem.Grid2D property)</a>
 
@@ -3448,10 +3455,10 @@
 </li>
       <li><a href="api_reference/_generated/warp.fem.make_polynomial_space.html#warp.fem.make_polynomial_space">make_polynomial_space() (in module warp.fem)</a>
 </li>
-  </ul></td>
-  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.fem.make_restriction.html#warp.fem.make_restriction">make_restriction() (in module warp.fem)</a>
 </li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
       <li><a href="api_reference/_generated/warp.fem.make_space_partition.html#warp.fem.make_space_partition">make_space_partition() (in module warp.fem)</a>
 </li>
       <li><a href="api_reference/_generated/warp.fem.make_space_restriction.html#warp.fem.make_space_restriction">make_space_restriction() (in module warp.fem)</a>
@@ -3717,6 +3724,8 @@
         <li><a href="api_reference/warp_experimental.html#module-warp.experimental">warp.experimental</a>
 </li>
         <li><a href="api_reference/warp_experimental_build.html#module-warp.experimental.build">warp.experimental.build</a>
+</li>
+        <li><a href="api_reference/warp_experimental_cutile.html#module-warp.experimental.cutile">warp.experimental.cutile</a>
 </li>
         <li><a href="api_reference/warp_fem.html#module-warp.fem">warp.fem</a>
 </li>
@@ -6228,6 +6237,13 @@
 
       <ul>
         <li><a href="api_reference/warp_experimental_build.html#module-warp.experimental.build">module</a>
+</li>
+      </ul></li>
+      <li>
+    warp.experimental.cutile
+
+      <ul>
+        <li><a href="api_reference/warp_experimental_cutile.html#module-warp.experimental.cutile">module</a>
 </li>
       </ul></li>
       <li>

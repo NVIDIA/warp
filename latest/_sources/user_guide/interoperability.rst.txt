@@ -14,6 +14,8 @@ Guides in this section
   array subclasses and wrappers intercept supported Warp host APIs, such as
   :func:`wp.launch <warp.launch>` and :func:`wp.copy <warp.copy>`, through
   ``__warp_function__``.
+* :doc:`cuTile Python <interoperability/cutile>`: Call Warp functions from
+  kernels written in cuTile Python through an experimental foreign-function bridge.
 
 Quick Reference
 ---------------
@@ -55,6 +57,7 @@ For full framework coverage, see:
 
 * :doc:`interoperability/pytorch`
 * :doc:`interoperability/jax`
+* :doc:`interoperability/cutile`
 
 Paddle is documented inline below. NumPy, CuPy, Numba, and DLPack interop is protocol-level and covered in the sections that follow.
 
@@ -376,3 +379,4 @@ The framework-specific converters (:func:`warp.to_torch`, :func:`warp.to_paddle`
    interoperability/pytorch
    interoperability/jax
    interoperability/array_function_overrides
+   interoperability/cutile

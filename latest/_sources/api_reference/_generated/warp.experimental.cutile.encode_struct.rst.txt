@@ -1,0 +1,6 @@
+﻿warp.experimental.cutile.encode\_struct
+=======================================
+
+.. currentmodule:: warp.experimental.cutile
+
+.. autofunction:: encode_struct

@@ -1,0 +1,1420 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>cuTile Python Interoperability &#8212; Warp 1.21.0.dev0</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=75c7c72ae941e8b558d8" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=75c7c72ae941e8b558d8" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/nvidia-sphinx-theme.css?v=933278ad" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css?v=ca94f457" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../_static/scripts/fontawesome.js?digest=75c7c72ae941e8b558d8"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=75c7c72ae941e8b558d8" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=75c7c72ae941e8b558d8" />
+
+
+
+    <script src="../../_static/documentation_options.js?v=6078d90f"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=fd10adb8"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/interoperability/cutile';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.24.0';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://nvidia.github.io/warp/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'latest';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            true;
+        </script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <script src="../../_static/copy-page-source.js?v=f9064be3"></script>
+
+    <link rel="icon" href="../../_static/favicon.png"/>
+
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Execution and Performance" href="../execution_and_performance.html" />
+    <link rel="prev" title="Array Function Overrides" href="array_function_overrides.html" />
+
+
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="color-scheme" content="light dark"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="1.21.0.dev0" />
+  
+    
+    <script src="../../_static/searchtools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../searchindex.js"></script>
+  
+
+
+  </head>
+
+  <body data-default-mode="">
+
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button type="button" class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation" aria-expanded="false" aria-controls="pst-primary-sidebar-modal">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.21.0.dev0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.21.0.dev0 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.21.0.dev0</p>
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+
+
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button type="button" class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page" aria-expanded="false" aria-controls="pst-secondary-sidebar-modal">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal" tabindex="-1"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../_static/nvidia-logo-horiz-rgb-blk-for-screen.svg" class="logo__image only-light" alt="Warp 1.21.0.dev0 - Home"/>
+    <img src="../../_static/nvidia-logo-horiz-rgb-wht-for-screen.svg" class="logo__image only-dark pst-js-only" alt="Warp 1.21.0.dev0 - Home"/>
+  
+  
+    <p class="title logo__title">Warp 1.21.0.dev0</p>
+  
+</a>
+
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+
+
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/NVIDIA/warp" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/warp-lang" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Table of Contents">
+  <p class="bd-links__title" role="heading" aria-level="1">Table of Contents</p>
+  <div class="bd-toc-item navbar-nav"><p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../compatibility.html">Compatibility &amp; Support</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../basics.html">Basics</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../runtime.html">Runtime</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../differentiability.html">Differentiability</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../forward_mode_jets.html">Forward-Mode Jets</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../programming_model.html">Programming Model</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../programming_model/generics.html">Generics</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../programming_model/tiles.html">Tiles</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../programming_model/code_generation.html">Code Generation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../programming_model/cpp_cuda_workflows.html">C++ and CUDA Workflows</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="../interoperability.html">Interoperability</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="pytorch.html">PyTorch Interoperability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jax.html">JAX Interoperability</a></li>
+<li class="toctree-l2"><a class="reference internal" href="array_function_overrides.html">Array Function Overrides</a></li>
+<li class="toctree-l2 current active"><a aria-current="page" class="current reference internal" href="#">cuTile Python Interoperability</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../execution_and_performance.html">Execution and Performance</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../execution_and_performance/concurrency.html">Concurrency</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../execution_and_performance/memory_management.html">Memory Allocation and Access</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../execution_and_performance/profiling.html">Profiling</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../execution_and_performance/deterministic_execution.html">Deterministic Execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../execution_and_performance/reducing_compilation_and_startup_time.html">Reducing Compilation and Startup Time</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1"><a class="reference internal" href="../configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../debugging.html">Debugging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../limitations.html">Limitations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">FAQ</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Language Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../language_reference/builtins.html">Built-Ins</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp.html">warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_autograd.html">warp.autograd</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_config.html">warp.config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_experimental.html">warp.experimental</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_fem.html">warp.fem</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_geometry.html">warp.geometry</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_optim.html">warp.optim</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_render.html">warp.render</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_sparse.html">warp.sparse</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_types.html">warp.types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api_reference/warp_utils.html">warp.utils</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Domain Modules</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../domain_modules/sparse.html">Sparse Matrices</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../domain_modules/fem.html">FEM Toolkit</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../domain_modules/render.html">Rendering</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Project</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../project/contribution_guide.html">Contributing to Warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../project/publications.html">Publications using Warp</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../project/changelog.html">Changelog</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-house"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../interoperability.html" class="nav-link">Interoperability</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">cuTile Python Interoperability</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+
+
+<div class="d-flex justify-content-end w-100">
+  <div class="btn-group copy-page-source pst-js-only" data-page-source-control role="group" aria-label="Page source">
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary"
+      data-copy-page-source
+      data-page-source-url="../../_sources/user_guide/interoperability/cutile.rst.txt"
+      disabled
+    >
+      <i class="fa-solid fa-copy" aria-hidden="true"></i>
+      <span data-copy-page-source-label>Copy source</span>
+    </button>
+    <button
+      type="button"
+      class="btn btn-sm btn-outline-secondary dropdown-toggle dropdown-toggle-split"
+      data-bs-toggle="dropdown"
+      aria-expanded="false"
+    >
+      <span class="visually-hidden">Page source options</span>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+      <li>
+        <a class="dropdown-item" href="../../_sources/user_guide/interoperability/cutile.rst.txt">
+          <i class="fa-solid fa-file-code" aria-hidden="true"></i>
+          View source
+        </a>
+      </li>
+    </ul>
+    <span class="visually-hidden" role="status" aria-live="polite" data-copy-page-source-status></span>
+  </div>
+  <noscript>
+    <a href="../../_sources/user_guide/interoperability/cutile.rst.txt">
+      <i class="fa-solid fa-file-code" aria-hidden="true"></i> View source
+    </a>
+  </noscript>
+</div>
+</div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="cutile-python-interoperability">
+<span id="cutile-interop"></span><h1>cuTile Python Interoperability<a class="headerlink" href="#cutile-python-interoperability" title="Link to this heading">#</a></h1>
+<section id="introduction">
+<h2>Introduction<a class="headerlink" href="#introduction" title="Link to this heading">#</a></h2>
+<p>Warp can export user-defined <code class="docutils literal notranslate"><span class="pre">&#64;wp.func</span></code> functions as <a class="reference external" href="https://docs.nvidia.com/cuda/cutile-python/">cuTile</a>
+foreign functions, so that kernels written in cuTile Python can call Warp SIMT code.
+An exported function can use Warp’s geometry queries, volume sampling, noise,
+and the rest of the builtin library, subject to the restrictions in
+<a class="reference internal" href="#supported-types-and-limitations">Supported Types and Limitations</a>. The call contract is derived from the
+function’s signature.</p>
+<p>Typical uses are tile programs that need a per-element operation cuTile has no
+equivalent for: querying geometry (signed distances, ray casts, closest points)
+from inside a tile kernel, sampling volumes or procedural noise as network inputs,
+or generating training labels (e.g. signed distances to a mesh).</p>
+<p>The entry point is <a class="reference internal" href="../../api_reference/_generated/warp.experimental.cutile.export_func.html#warp.experimental.cutile.export_func" title="warp.experimental.cutile.export_func"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.experimental.cutile.export_func()</span></code></a>: it packages
+a <code class="docutils literal notranslate"><span class="pre">&#64;wp.func</span></code> once as a <code class="docutils literal notranslate"><span class="pre">.tilelib</span></code> (the foreign-function library format
+that <code class="docutils literal notranslate"><span class="pre">tileiras</span></code> packs and links), and the returned object is called directly
+inside <code class="docutils literal notranslate"><span class="pre">&#64;ct.kernel</span></code> bodies. See the
+<a class="reference internal" href="../../api_reference/warp_experimental_cutile.html"><span class="doc">API reference</span></a> for the full
+signatures.</p>
+<div class="admonition-experimental admonition">
+<p class="admonition-title">Experimental</p>
+<p>The cuTile interop API is experimental and subject to change without a formal
+deprecation cycle; it builds on cuTile preview interfaces that may change
+between CUDA Toolkit and cuTile Python releases. It is GPU-only.</p>
+</div>
+</section>
+<section id="requirements">
+<h2>Requirements<a class="headerlink" href="#requirements" title="Link to this heading">#</a></h2>
+<p>On a machine with a supported GPU and driver, a complete setup is one command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="s2">"warp-lang[cutile]"</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">cutile</span></code> extra pulls in cuTile Python and <code class="docutils literal notranslate"><span class="pre">tileiras</span></code> alongside Warp’s
+CUDA 13 wheel; nothing else has to be on
+<code class="docutils literal notranslate"><span class="pre">PATH</span></code>. The remainder of this section explains each requirement and the
+alternatives.</p>
+<ul class="simple">
+<li><p>A CUDA device supported by cuTile Python (see the
+<a class="reference external" href="https://docs.nvidia.com/cuda/cutile-python/">cuTile documentation</a> for
+supported architectures).</p></li>
+<li><p>The cuTile Python packages: <code class="docutils literal notranslate"><span class="pre">cuda-tile</span></code> 1.8.1 or later and its companion
+<code class="docutils literal notranslate"><span class="pre">cuda-tile-preview</span></code>, which provides the <code class="docutils literal notranslate"><span class="pre">cuda.tile_preview.foreign_call</span></code>
+preview feature this path is built on.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">tileiras</span></code> from CUDA Toolkit 13.5, the Tile IR assembler and linker
+that packs and links the <code class="docutils literal notranslate"><span class="pre">.tilelib</span></code> files Warp produces. The <code class="docutils literal notranslate"><span class="pre">cutile</span></code>
+extra installs it in the Python environment through the
+<code class="docutils literal notranslate"><span class="pre">nvidia-cuda-tileiras</span></code> wheel and its <code class="docutils literal notranslate"><span class="pre">nvidia-cuda-nvcc</span></code>,
+<code class="docutils literal notranslate"><span class="pre">nvidia-nvvm</span></code>, <code class="docutils literal notranslate"><span class="pre">nvidia-nvjitlink</span></code>, and <code class="docutils literal notranslate"><span class="pre">nvidia-cuda-crt</span></code> companions;
+otherwise put the 13.5 toolkit’s <code class="docutils literal notranslate"><span class="pre">bin</span></code> directory first on <code class="docutils literal notranslate"><span class="pre">PATH</span></code>. It
+is needed at runtime, not only at install time, because
+<a class="reference internal" href="../../api_reference/_generated/warp.experimental.cutile.export_func.html#warp.experimental.cutile.export_func" title="warp.experimental.cutile.export_func"><code class="xref py py-func docutils literal notranslate"><span class="pre">export_func()</span></code></a> packages functions when it
+is called (see <a class="reference internal" href="#compilation-and-caching">Compilation and Caching</a>).</p></li>
+</ul>
+<p>The feature is available on Linux (x86-64 and aarch64) and Windows (x86-64 and
+experimental Arm64), the platforms the cuTile packages ship wheels for, with
+Warp’s CUDA 13 wheel; it is not available on macOS. The driver only has to
+support the cuTile packages installed (see the cuTile documentation), not a
+particular toolkit version. No extra Warp build steps are needed; the feature
+is part of the standard Warp installation.</p>
+</section>
+<section id="quick-start">
+<h2>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading">#</a></h2>
+<p>The following example evaluates the signed distance to a
+<a class="reference internal" href="../../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a> inside a cuTile kernel—a BVH closest-point query that cuTile
+cannot express natively—and checks the result against a plain <a class="reference internal" href="../../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.launch()</span></code></a>
+of the same function:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">cuda.tile</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ct</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp.experimental.cutile</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wpct</span>
+
+<span class="n">TILE</span> <span class="o">=</span> <span class="mi">128</span>  <span class="c1"># tile length per call</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">mesh_sdf</span><span class="p">(</span><span class="n">mesh_id</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">handle</span><span class="p">,</span> <span class="n">p</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="n">q</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">mesh_query_point_sign_normal</span><span class="p">(</span><span class="n">mesh_id</span><span class="p">,</span> <span class="n">p</span><span class="p">,</span> <span class="mf">1.0e6</span><span class="p">)</span>
+    <span class="n">cp</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">mesh_eval_position</span><span class="p">(</span><span class="n">mesh_id</span><span class="p">,</span> <span class="n">q</span><span class="o">.</span><span class="n">face</span><span class="p">,</span> <span class="n">q</span><span class="o">.</span><span class="n">u</span><span class="p">,</span> <span class="n">q</span><span class="o">.</span><span class="n">v</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">q</span><span class="o">.</span><span class="n">sign</span> <span class="o">*</span> <span class="n">wp</span><span class="o">.</span><span class="n">length</span><span class="p">(</span><span class="n">p</span> <span class="o">-</span> <span class="n">cp</span><span class="p">)</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">sdf_reference</span><span class="p">(</span><span class="n">mesh_id</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">handle</span><span class="p">,</span> <span class="n">queries</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span> <span class="n">out</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">]):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">out</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">mesh_sdf</span><span class="p">(</span><span class="n">mesh_id</span><span class="p">,</span> <span class="n">queries</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+
+<span class="c1"># package the Warp function as a cuTile foreign function (JIT compiled, cached)</span>
+<span class="n">wp_sdf</span> <span class="o">=</span> <span class="n">wpct</span><span class="o">.</span><span class="n">export_func</span><span class="p">(</span><span class="n">mesh_sdf</span><span class="p">)</span>
+
+
+<span class="nd">@ct</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">num_worker_warps</span><span class="o">=</span><span class="n">TILE</span> <span class="o">//</span> <span class="mi">32</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">sdf_kernel</span><span class="p">(</span><span class="n">mesh_id</span><span class="p">:</span> <span class="n">ct</span><span class="o">.</span><span class="n">Constant</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">points</span><span class="p">,</span> <span class="n">out</span><span class="p">):</span>
+    <span class="n">bid</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">bid</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="p">(</span><span class="n">bid</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE</span><span class="p">,</span> <span class="mi">4</span><span class="p">)),</span> <span class="p">(</span><span class="n">TILE</span> <span class="o">*</span> <span class="mi">4</span><span class="p">,))</span>  <span class="c1"># vec3 padded to 4</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">wp_sdf</span><span class="p">(</span><span class="n">mesh_id</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>  <span class="c1"># one query per tile element; mesh_id is shared by all of them</span>
+    <span class="n">ct</span><span class="o">.</span><span class="n">store</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="p">(</span><span class="n">bid</span><span class="p">,),</span> <span class="n">d</span><span class="p">)</span>
+
+
+<span class="c1"># a random triangle-soup mesh, built by the Warp host runtime</span>
+<span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+<span class="n">num_tris</span> <span class="o">=</span> <span class="mi">500</span>
+<span class="n">centers</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="p">(</span><span class="n">num_tris</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="n">offsets</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="o">-</span><span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="p">(</span><span class="n">num_tris</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="n">tri_points</span> <span class="o">=</span> <span class="p">(</span><span class="n">centers</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span> <span class="o">+</span> <span class="n">offsets</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+<span class="n">mesh</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Mesh</span><span class="p">(</span>
+    <span class="n">points</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">tri_points</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">),</span>
+    <span class="n">indices</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">num_tris</span> <span class="o">*</span> <span class="mi">3</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">),</span>
+<span class="p">)</span>
+
+<span class="n">num_points</span> <span class="o">=</span> <span class="mi">1024</span>  <span class="c1"># must be a multiple of TILE</span>
+<span class="n">q_np</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="p">(</span><span class="n">num_points</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="n">q_pad</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">num_points</span><span class="p">,</span> <span class="mi">4</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="n">q_pad</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span class="n">q_np</span>  <span class="c1"># pad xyz to the power-of-two width 4</span>
+
+<span class="n">points</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">q_pad</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">num_points</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+<span class="c1"># ct.launch accepts an integer CUDA stream handle and Warp arrays directly</span>
+<span class="c1"># (via __cuda_array_interface__). No synchronization is needed: the kernel</span>
+<span class="c1"># runs on Warp's stream, so later Warp work is ordered after it, and the</span>
+<span class="c1"># .numpy() reads below synchronize implicitly.</span>
+<span class="n">ct</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">get_stream</span><span class="p">()</span><span class="o">.</span><span class="n">cuda_stream</span><span class="p">,</span>
+    <span class="p">(</span><span class="n">num_points</span> <span class="o">//</span> <span class="n">TILE</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+    <span class="n">sdf_kernel</span><span class="p">,</span>
+    <span class="p">(</span><span class="n">mesh</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">points</span><span class="p">,</span> <span class="n">out</span><span class="p">),</span>
+<span class="p">)</span>
+
+<span class="c1"># compare with a plain Warp launch of the same function</span>
+<span class="n">reference</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">num_points</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">sdf_reference</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">num_points</span><span class="p">,</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">mesh</span><span class="o">.</span><span class="n">id</span><span class="p">,</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">q_np</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">),</span> <span class="n">reference</span><span class="p">])</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"max |cuTile - Warp|:"</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">out</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span> <span class="o">-</span> <span class="n">reference</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span><span class="o">.</span><span class="n">max</span><span class="p">())</span>
+</pre></div>
+</div>
+</section>
+<section id="calling-convention">
+<h2>Calling Convention<a class="headerlink" href="#calling-convention" title="Link to this heading">#</a></h2>
+<p>A cuTile kernel is written in terms of whole tiles: there is no thread index,
+and an operation like <code class="docutils literal notranslate"><span class="pre">ct.load</span></code> or <code class="docutils literal notranslate"><span class="pre">ct.mma</span></code> acts on a tile as one value,
+with <code class="docutils literal notranslate"><span class="pre">tileiras</span></code> deciding how the kernel’s worker threads carry it out. A Warp
+function is the opposite kind of code—SIMT, written for one thread operating on
+one scalar, vector, or struct. The bridge connects the two by treating a tile as
+a batch of per-thread work: calling the packaged function on tiles of <code class="docutils literal notranslate"><span class="pre">N</span></code>
+elements runs the Warp function <code class="docutils literal notranslate"><span class="pre">N</span></code> times, once per element, each run on one
+of the kernel’s worker threads with that element’s values as its arguments, and
+the <code class="docutils literal notranslate"><span class="pre">N</span></code> results come back as one tile. From the kernel’s point of view it is
+just another tile operation; from the Warp function’s point of view it is an
+ordinary per-thread call.</p>
+<p>Calling <code class="docutils literal notranslate"><span class="pre">export_func</span></code> on a function is its <em>declaration</em>: the call packages
+the function and fixes everything the kernel side needs to know about it.
+Inside a cuTile kernel, the packaged function is called with <strong>one argument per
+Warp parameter</strong> and returns one tile. Three ideas cover the whole convention;
+the snippets below use this function, with <code class="docutils literal notranslate"><span class="pre">f</span></code> the object
+<code class="docutils literal notranslate"><span class="pre">export_func</span></code> returns and <code class="docutils literal notranslate"><span class="pre">bid</span></code> the block index:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">blend</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">scale</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="n">wp</span><span class="o">.</span><span class="n">length</span><span class="p">(</span><span class="n">v</span><span class="p">))</span> <span class="o">*</span> <span class="n">scale</span>
+
+
+<span class="n">f</span> <span class="o">=</span> <span class="n">wpct</span><span class="o">.</span><span class="n">export_func</span><span class="p">(</span><span class="n">blend</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Tile length.</strong> The tile length, written <code class="docutils literal notranslate"><span class="pre">TILE</span></code> throughout this section, is
+the number of elements in the tiles you pass to the call—and therefore the
+number of times the Warp function runs. You do not fix it when you declare
+the function: any power of two from 32 to 1024 works (see <a class="reference internal" href="#when-to-set-num-worker-warps">When to Set
+num_worker_warps</a> for the cases that pin or bound it). It is also independent of
+the kernel’s <code class="docutils literal notranslate"><span class="pre">num_worker_warps</span></code>: cuTile schedules the invocations onto the
+worker threads the kernel has, whether that is fewer or more than the tile
+length.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">x</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="p">(</span><span class="n">bid</span><span class="p">,),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">128</span><span class="p">,))</span>  <span class="c1"># a tile of 128 values ...</span>
+<span class="n">r</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">)</span>                       <span class="c1"># ... runs blend 128 times</span>
+<span class="c1"># another call site may use another length, even in the same kernel</span>
+<span class="c1"># (v and v32 are the matching (128 * 4,) and (32 * 4,) vector tiles)</span>
+<span class="n">r2</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="p">(</span><span class="n">bid</span><span class="p">,),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">32</span><span class="p">,)),</span> <span class="n">v32</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">)</span>
+</pre></div>
+</div>
+<p><strong>Operands.</strong> Each argument is either <strong>per-invocation</strong> or <strong>shared</strong>, and
+the call tells the two apart by what you pass. A per-invocation argument is a
+rank-1 tile with one value per invocation: shape <code class="docutils literal notranslate"><span class="pre">(TILE,)</span></code> for a scalar, or
+<code class="docutils literal notranslate"><span class="pre">(TILE</span> <span class="pre">*</span> <span class="pre">width,)</span></code> for a vector, matrix, quaternion, or transform, where
+<code class="docutils literal notranslate"><span class="pre">width</span></code> is the component count rounded up to a power of two (<code class="docutils literal notranslate"><span class="pre">wp.vec3</span></code>
+becomes 4). Every per-invocation argument in one call must describe the same
+number of invocations, so their tiles share <code class="docutils literal notranslate"><span class="pre">TILE</span></code>; a mismatch is reported
+when the kernel is traced. A shared argument is one value that every
+invocation reads: a plain Python number or runtime kernel parameter for a
+scalar (typically a <code class="docutils literal notranslate"><span class="pre">ct.Constant</span></code> kernel parameter or a literal, as with
+<code class="docutils literal notranslate"><span class="pre">mesh_id</span></code> in the Quick Start), or one <code class="docutils literal notranslate"><span class="pre">(width,)</span></code> tile for a vector,
+matrix, or struct. Arrays are always shared; structs and opaque ids usually
+are. The table below gives the recipe for each parameter type.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">x</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="p">(</span><span class="n">bid</span><span class="p">,),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE</span><span class="p">,))</span>                               <span class="c1"># scalar: (TILE,)</span>
+<span class="n">v</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">vs</span><span class="p">,</span> <span class="p">(</span><span class="n">bid</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE</span><span class="p">,</span> <span class="mi">4</span><span class="p">)),</span> <span class="p">(</span><span class="n">TILE</span> <span class="o">*</span> <span class="mi">4</span><span class="p">,))</span>  <span class="c1"># vec3: (TILE * 4,), width 4</span>
+<span class="n">r</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">)</span>                                                     <span class="c1"># shared scale: one plain value</span>
+</pre></div>
+</div>
+<p>Arguments are passed positionally or by Warp parameter name. Call-site
+mistakes—a wrong rank, tile length, or element type, or a value of the wrong
+kind—are reported when cuTile traces the kernel, as a
+<code class="docutils literal notranslate"><span class="pre">StaticAssertionError</span></code> that names the function and the parameter.</p>
+<p><strong>Return value.</strong> One tile: <code class="docutils literal notranslate"><span class="pre">(TILE,)</span></code> for a scalar, <code class="docutils literal notranslate"><span class="pre">(TILE</span> <span class="pre">*</span> <span class="pre">width,)</span></code> for a
+vector or matrix with the same <code class="docutils literal notranslate"><span class="pre">width</span></code> rule, and for a struct an <code class="docutils literal notranslate"><span class="pre">int32</span></code>
+tile of shape <code class="docutils literal notranslate"><span class="pre">(TILE</span> <span class="pre">*</span> <span class="pre">width,)</span></code> where <code class="docutils literal notranslate"><span class="pre">width</span></code> is the length of the array
+<a class="reference internal" href="../../api_reference/_generated/warp.experimental.cutile.encode_struct.html#warp.experimental.cutile.encode_struct" title="warp.experimental.cutile.encode_struct"><code class="xref py py-func docutils literal notranslate"><span class="pre">encode_struct</span></code></a> returns for
+an instance; each invocation’s leading <code class="docutils literal notranslate"><span class="pre">sizeof(struct)</span></code> bytes are the
+struct’s in-memory representation and the trailing lanes are zero.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">r</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mf">2.5</span><span class="p">)</span>              <span class="c1"># float return: a (TILE,) tile (arguments may be named)</span>
+<span class="n">ct</span><span class="o">.</span><span class="n">store</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="p">(</span><span class="n">bid</span><span class="p">,),</span> <span class="n">r</span><span class="p">)</span>
+
+<span class="n">n</span> <span class="o">=</span> <span class="n">g</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>                            <span class="c1"># g returns wp.vec3: a (TILE * 4,) tile ...</span>
+<span class="n">ct</span><span class="o">.</span><span class="n">store</span><span class="p">(</span><span class="n">normals</span><span class="p">,</span> <span class="p">(</span><span class="n">bid</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">ct</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="p">(</span><span class="n">TILE</span><span class="p">,</span> <span class="mi">4</span><span class="p">)))</span>  <span class="c1"># ... viewed as (TILE, 4)</span>
+</pre></div>
+</div>
+<section id="operands-by-parameter-type">
+<h3>Operands by Parameter Type<a class="headerlink" href="#operands-by-parameter-type" title="Link to this heading">#</a></h3>
+<p>In the table’s snippets, <code class="docutils literal notranslate"><span class="pre">wpct</span></code> is the <code class="docutils literal notranslate"><span class="pre">warp.experimental.cutile</span></code> module and
+<code class="docutils literal notranslate"><span class="pre">f</span></code> stands for a declaration whose single parameter has the row’s type.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<colgroup>
+<col style="width: 22.0%" />
+<col style="width: 30.0%" />
+<col style="width: 48.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Warp parameter type</p></th>
+<th class="head"><p>What to pass</p></th>
+<th class="head"><p>Example</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Scalar (<code class="docutils literal notranslate"><span class="pre">int8</span></code> … <code class="docutils literal notranslate"><span class="pre">uint64</span></code>, <code class="docutils literal notranslate"><span class="pre">float32</span></code>, <code class="docutils literal notranslate"><span class="pre">float64</span></code>)</p></td>
+<td><p>A <code class="docutils literal notranslate"><span class="pre">(TILE,)</span></code> tile, or a plain number to share one value</p></td>
+<td><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">x_t</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="p">(</span><span class="n">bid</span><span class="p">,),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE</span><span class="p">,))</span>
+<span class="n">r</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">x_t</span><span class="p">)</span>
+</pre></div>
+</div>
+</td>
+</tr>
+<tr class="row-odd"><td><p>Vector / matrix / quaternion / transform</p></td>
+<td><p>A flat <code class="docutils literal notranslate"><span class="pre">(TILE</span> <span class="pre">*</span> <span class="pre">width,)</span></code> tile, or a <code class="docutils literal notranslate"><span class="pre">(width,)</span></code> tile to share one value</p></td>
+<td><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">v</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">vs</span><span class="p">,</span> <span class="p">(</span><span class="n">bid</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+<span class="n">r</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="p">(</span><span class="n">TILE</span> <span class="o">*</span> <span class="mi">4</span><span class="p">,)))</span>
+</pre></div>
+</div>
+</td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">&#64;wp.struct</span></code> struct</p></td>
+<td><p>An <code class="docutils literal notranslate"><span class="pre">int32</span></code> tile of the padded struct bytes: <code class="docutils literal notranslate"><span class="pre">(WORDS,)</span></code> to share
+one struct (the usual case), <code class="docutils literal notranslate"><span class="pre">(TILE</span> <span class="pre">*</span> <span class="pre">WORDS,)</span></code> per invocation</p></td>
+<td><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># host</span>
+<span class="n">blob</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">wpct</span><span class="o">.</span><span class="n">encode_struct</span><span class="p">(</span><span class="n">p</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
+<span class="c1"># kernel: WORDS is len(blob), the int32 word count</span>
+<span class="n">r</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">blob</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">WORDS</span><span class="p">,)))</span>
+</pre></div>
+</div>
+</td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">wp.array</span></code></p></td>
+<td><p>A <code class="docutils literal notranslate"><span class="pre">(address,</span> <span class="pre">size,</span> <span class="pre">...)</span></code> tuple of plain values; always shared
+(see below)</p></td>
+<td><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># host: unpack address + sizes</span>
+<span class="n">ct</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span>
+    <span class="o">...</span><span class="p">,</span> <span class="p">(</span><span class="o">*</span><span class="n">wpct</span><span class="o">.</span><span class="n">array_pointer_args</span><span class="p">(</span><span class="n">arr</span><span class="p">),</span> <span class="o">...</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="c1"># kernel: ptr and length are ct.Constant[int] params</span>
+<span class="n">r</span> <span class="o">=</span> <span class="n">f</span><span class="p">((</span><span class="n">ptr</span><span class="p">,</span> <span class="n">length</span><span class="p">))</span>
+</pre></div>
+</div>
+</td>
+</tr>
+<tr class="row-even"><td><p>Opaque ids (<code class="docutils literal notranslate"><span class="pre">wp.handle</span></code> mesh, BVH, hash-grid, and volume ids)</p></td>
+<td><p>The id as a plain value, shared</p></td>
+<td><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># mesh.id passed in as a kernel constant</span>
+<span class="n">r</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">mesh_id</span><span class="p">)</span>
+</pre></div>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>All tiles are rank-1: multi-dimensional data is flattened at the call site with
+<code class="docutils literal notranslate"><span class="pre">ct.reshape</span></code>, as in the vector recipe above, and host data for vectors and
+matrices is stored padded to <code class="docutils literal notranslate"><span class="pre">width</span></code>. Opaque ids must come from objects the
+Warp host runtime created (e.g. <a class="reference internal" href="../../api_reference/_generated/warp.Mesh.html#warp.Mesh" title="warp.Mesh"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Mesh</span></code></a>). When loading 64-bit ids
+or pointers from an array yourself, load them as <code class="docutils literal notranslate"><span class="pre">int64</span></code> tiles—Tile IR has no
+unsigned dtypes, and the bits pass through unchanged.</p>
+<p>Ids and array addresses passed as plain values must be <code class="docutils literal notranslate"><span class="pre">ct.Constant[int]</span></code>
+kernel parameters: cuTile’s runtime scalar parameters are 32-bit. A constant
+specializes the kernel, so every distinct id or address compiles a separate
+cuTile kernel variant (a fraction of a second each, cached by cuTile); reuse
+arrays across launches where you can. Small shared scalars such as a count
+or a weight may be ordinary runtime parameters.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>For vector, matrix, quaternion, and transform operands, get the
+<code class="docutils literal notranslate"><span class="pre">width</span></code> factor right. A <code class="docutils literal notranslate"><span class="pre">wp.vec3</span></code> operand for <code class="docutils literal notranslate"><span class="pre">TILE</span> <span class="pre">=</span> <span class="pre">128</span></code> must be a
+<code class="docutils literal notranslate"><span class="pre">(512,)</span></code> tile (128 × 4). Pass a <code class="docutils literal notranslate"><span class="pre">(128,)</span></code> tile by mistake and it is read
+as 32 invocations of 4 components each—128 = 32 × 4—so, unless a scalar
+operand fixes <code class="docutils literal notranslate"><span class="pre">TILE</span></code> at 128, the call silently runs 32 times. Lengths that
+are not a declared tile length times <code class="docutils literal notranslate"><span class="pre">width</span></code> fail loudly.</p>
+</div>
+<p>Arrays deserve a fuller example. A <code class="docutils literal notranslate"><span class="pre">wp.array</span></code> parameter is not copied into a
+tile: the kernel hands the Warp function the array’s address and sizes as one
+tuple, and the function accesses the array’s memory in place—reads, writes, and
+atomics all work. Multidimensional arrays follow the same pattern with one more
+size value per dimension (a <code class="docutils literal notranslate"><span class="pre">wp.array2d</span></code> parameter takes <code class="docutils literal notranslate"><span class="pre">(ptr,</span> <span class="pre">rows,</span> <span class="pre">cols)</span></code>).
+On the host, <a class="reference internal" href="../../api_reference/_generated/warp.experimental.cutile.array_pointer_args.html#warp.experimental.cutile.array_pointer_args" title="warp.experimental.cutile.array_pointer_args"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.experimental.cutile.array_pointer_args()</span></code></a> supplies the
+address and size values:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">gather_scale</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">i</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">scale</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">scale</span>
+
+
+<span class="n">d_gather</span> <span class="o">=</span> <span class="n">wpct</span><span class="o">.</span><span class="n">export_func</span><span class="p">(</span><span class="n">gather_scale</span><span class="p">)</span>
+
+
+<span class="nd">@ct</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">num_worker_warps</span><span class="o">=</span><span class="n">TILE</span> <span class="o">//</span> <span class="mi">32</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">k_gather</span><span class="p">(</span><span class="n">ptr</span><span class="p">:</span> <span class="n">ct</span><span class="o">.</span><span class="n">Constant</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">length</span><span class="p">:</span> <span class="n">ct</span><span class="o">.</span><span class="n">Constant</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">idxs</span><span class="p">,</span> <span class="n">out</span><span class="p">):</span>
+    <span class="n">i_t</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">idxs</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE</span><span class="p">,))</span>  <span class="c1"># per-thread index</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">d_gather</span><span class="p">((</span><span class="n">ptr</span><span class="p">,</span> <span class="n">length</span><span class="p">),</span> <span class="n">i_t</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">)</span>     <span class="c1"># r[t] == data[idxs[t]] * 2.5</span>
+    <span class="n">ct</span><span class="o">.</span><span class="n">store</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,),</span> <span class="n">r</span><span class="p">)</span>
+
+
+<span class="c1"># host side: data, idxs, out are wp.array objects; unpack data into</span>
+<span class="c1"># its address and length operands</span>
+<span class="n">ct</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">get_stream</span><span class="p">()</span><span class="o">.</span><span class="n">cuda_stream</span><span class="p">,</span>
+    <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
+    <span class="n">k_gather</span><span class="p">,</span>
+    <span class="p">(</span><span class="o">*</span><span class="n">wpct</span><span class="o">.</span><span class="n">array_pointer_args</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">idxs</span><span class="p">,</span> <span class="n">out</span><span class="p">),</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="when-to-set-num-worker-warps">
+<h3>When to Set <code class="docutils literal notranslate"><span class="pre">num_worker_warps</span></code><a class="headerlink" href="#when-to-set-num-worker-warps" title="Link to this heading">#</a></h3>
+<p>A declaration with the default <code class="docutils literal notranslate"><span class="pre">scope=&quot;thread&quot;</span></code> is built for every
+power-of-two tile length from 32 to 1024 at once, so call sites choose the
+length through the tiles they pass, and <code class="docutils literal notranslate"><span class="pre">num_worker_warps</span></code> (default 4, the
+same quantity as the calling kernel’s <code class="docutils literal notranslate"><span class="pre">&#64;ct.kernel(num_worker_warps=...)</span></code>)
+can normally be left out. Three cases need it:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<colgroup>
+<col style="width: 40.0%" />
+<col style="width: 60.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>Case</p></th>
+<th class="head"><p>What <code class="docutils literal notranslate"><span class="pre">num_worker_warps</span></code> does</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>A call passes only shared values, so no tile carries a length</p></td>
+<td><p>Sets how many invocations that call runs; it returns a
+<code class="docutils literal notranslate"><span class="pre">(num_worker_warps</span> <span class="pre">*</span> <span class="pre">32,)</span></code> tile</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">scope=&quot;block&quot;</span></code> (see <a class="reference internal" href="#block-cooperative-functions">Block-Cooperative Functions</a>)</p></td>
+<td><p>Pins the block size baked into the cooperative code; must equal the
+calling kernel’s <code class="docutils literal notranslate"><span class="pre">num_worker_warps</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Iterator geometry queries in kernels with more than 8 worker warps (see
+<a class="reference internal" href="#geometry-queries">Geometry Queries</a>)</p></td>
+<td><p>Sizes the traversal stacks; must be at least the calling kernel’s
+<code class="docutils literal notranslate"><span class="pre">num_worker_warps</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>At block scope the declaration is built for that single length, and a kernel
+whose <code class="docutils literal notranslate"><span class="pre">num_worker_warps</span></code> differs from the declaration’s fails to compile
+(<code class="docutils literal notranslate"><span class="pre">CompilerExecutionError</span></code> from <code class="docutils literal notranslate"><span class="pre">tileiras</span></code>), so keep the two in sync.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># called with two plain numbers, no operand carries a length: the call runs 2 * 32 invocations</span>
+<span class="n">d_sum</span> <span class="o">=</span> <span class="n">wpct</span><span class="o">.</span><span class="n">export_func</span><span class="p">(</span><span class="n">add_scalars</span><span class="p">,</span> <span class="n">num_worker_warps</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+<span class="c1"># block scope: num_worker_warps must equal the calling kernel's</span>
+<span class="n">d_block</span> <span class="o">=</span> <span class="n">wpct</span><span class="o">.</span><span class="n">export_func</span><span class="p">(</span><span class="n">block_sum</span><span class="p">,</span> <span class="n">num_worker_warps</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s2">"block"</span><span class="p">)</span>
+
+<span class="nd">@ct</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">num_worker_warps</span><span class="o">=</span><span class="mi">128</span> <span class="o">//</span> <span class="mi">32</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">kernel</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="n">out</span><span class="p">):</span>
+    <span class="n">ct</span><span class="o">.</span><span class="n">store</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,),</span> <span class="n">d_block</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">128</span><span class="p">,))))</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="block-cooperative-functions">
+<h2>Block-Cooperative Functions<a class="headerlink" href="#block-cooperative-functions" title="Link to this heading">#</a></h2>
+<p>By default (<code class="docutils literal notranslate"><span class="pre">scope=&quot;thread&quot;</span></code>), each call performs one independent invocation
+of the Warp function per tile element. cuTile may run several invocations on
+one thread in turn or leave threads idle, so no two invocations are guaranteed
+to execute together, and the function must not synchronize across threads.
+Passing <code class="docutils literal notranslate"><span class="pre">scope=&quot;block&quot;</span></code> instead runs a <strong>single cooperative invocation
+per thread block (CTA) in which all worker threads participate</strong>. Operands are
+distributed exactly as at thread scope—each participating thread receives its
+own slice—but the threads may now cooperate, which allows Warp’s
+block-cooperative tile builtins (<code class="docutils literal notranslate"><span class="pre">wp.tile_load</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.tile_sum</span></code>, …) inside
+the function. The shared memory those builtins need is allocated by
+<code class="docutils literal notranslate"><span class="pre">tileiras</span></code> automatically, and functions that require it are rejected at
+<code class="docutils literal notranslate"><span class="pre">scope=&quot;thread&quot;</span></code> with an error message pointing to <code class="docutils literal notranslate"><span class="pre">scope=&quot;block&quot;</span></code>.</p>
+<p>Warp tiles and cuTile tiles are distinct: a cuTile tile never crosses the
+boundary as an object. A Warp function builds its own tiles, most directly by
+loading them cooperatively from a <code class="docutils literal notranslate"><span class="pre">wp.array</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">array_block_sum</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">start</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_load</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="n">TILE</span><span class="p">,</span> <span class="n">offset</span><span class="o">=</span><span class="n">start</span><span class="p">)</span>  <span class="c1"># cooperative load</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tile_sum</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>                                <span class="c1"># block-wide reduction</span>
+    <span class="k">return</span> <span class="n">s</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+
+<span class="n">d_sum</span> <span class="o">=</span> <span class="n">wpct</span><span class="o">.</span><span class="n">export_func</span><span class="p">(</span>
+    <span class="n">array_block_sum</span><span class="p">,</span> <span class="n">num_worker_warps</span><span class="o">=</span><span class="n">TILE</span> <span class="o">//</span> <span class="mi">32</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s2">"block"</span>
+<span class="p">)</span>
+
+
+<span class="nd">@ct</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">num_worker_warps</span><span class="o">=</span><span class="n">TILE</span> <span class="o">//</span> <span class="mi">32</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">kernel</span><span class="p">(</span><span class="n">ptr</span><span class="p">:</span> <span class="n">ct</span><span class="o">.</span><span class="n">Constant</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">length</span><span class="p">:</span> <span class="n">ct</span><span class="o">.</span><span class="n">Constant</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">start</span><span class="p">:</span> <span class="n">ct</span><span class="o">.</span><span class="n">Constant</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">out</span><span class="p">):</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">d_sum</span><span class="p">((</span><span class="n">ptr</span><span class="p">,</span> <span class="n">length</span><span class="p">),</span> <span class="n">start</span><span class="p">)</span>  <span class="c1"># every element of r holds the sum</span>
+    <span class="n">ct</span><span class="o">.</span><span class="n">store</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,),</span> <span class="n">r</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The return value is still a tile of shape <code class="docutils literal notranslate"><span class="pre">(TILE,)</span></code>: each participating
+thread writes its own copy of the return value—here the block-wide sum, so every
+element holds the same value.</p>
+<p>Per-thread operand values can also feed cooperative operations: inside a
+block-scope function, <code class="docutils literal notranslate"><span class="pre">wp.tile(x)</span></code> gathers each participating thread’s <code class="docutils literal notranslate"><span class="pre">x</span></code>
+into one Warp tile, which is how data passed as ordinary per-thread tile
+operands enters a block-wide computation.</p>
+</section>
+<section id="geometry-queries">
+<h2>Geometry Queries<a class="headerlink" href="#geometry-queries" title="Link to this heading">#</a></h2>
+<p>Warp’s mesh, BVH, hash-grid, and volume queries work inside foreign functions
+without any special handling at the call site—the Quick Start’s
+<code class="docutils literal notranslate"><span class="pre">wp.mesh_query_point_sign_normal</span></code> is one. Two kinds need a little more.</p>
+<p><strong>Iterator queries</strong> (<code class="docutils literal notranslate"><span class="pre">wp.mesh_query_aabb</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.mesh_query_sphere</span></code>,
+<code class="docutils literal notranslate"><span class="pre">wp.bvh_query_*</span></code>) keep per-thread traversal stacks in shared memory, sized
+for a block of 8 worker warps by default. A kernel with more worker warps
+needs the function declared with at least its <code class="docutils literal notranslate"><span class="pre">num_worker_warps</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">aabb_count</span><span class="p">(</span><span class="n">mesh</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">handle</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+    <span class="n">h</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">)</span>
+    <span class="n">q</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">mesh_query_aabb</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">x</span> <span class="o">-</span> <span class="n">h</span><span class="p">,</span> <span class="n">x</span> <span class="o">+</span> <span class="n">h</span><span class="p">)</span>
+    <span class="n">n</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)</span>
+    <span class="n">face</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="k">while</span> <span class="n">wp</span><span class="o">.</span><span class="n">mesh_query_aabb_next</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">face</span><span class="p">):</span>
+        <span class="n">n</span> <span class="o">+=</span> <span class="mf">1.0</span>
+    <span class="k">return</span> <span class="n">n</span>
+
+
+<span class="n">d_count</span> <span class="o">=</span> <span class="n">wpct</span><span class="o">.</span><span class="n">export_func</span><span class="p">(</span><span class="n">aabb_count</span><span class="p">)</span>  <span class="c1"># kernels of up to 8 warps</span>
+<span class="n">d_count_16</span> <span class="o">=</span> <span class="n">wpct</span><span class="o">.</span><span class="n">export_func</span><span class="p">(</span><span class="n">aabb_count</span><span class="p">,</span> <span class="n">num_worker_warps</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>  <span class="c1"># 16-warp kernels</span>
+
+
+<span class="nd">@ct</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">num_worker_warps</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">kernel</span><span class="p">(</span><span class="n">mesh_id</span><span class="p">:</span> <span class="n">ct</span><span class="o">.</span><span class="n">Constant</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">pts</span><span class="p">,</span> <span class="n">out</span><span class="p">):</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">pts</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">512</span><span class="p">,</span> <span class="mi">4</span><span class="p">)),</span> <span class="p">(</span><span class="mi">512</span> <span class="o">*</span> <span class="mi">4</span><span class="p">,))</span>
+    <span class="n">ct</span><span class="o">.</span><span class="n">store</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,),</span> <span class="n">d_count_16</span><span class="p">(</span><span class="n">mesh_id</span><span class="p">,</span> <span class="n">p</span><span class="p">))</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">num_worker_warps</span></code> is a lower bound on the kernel’s compiled block, which
+can be larger; a block that exceeds the declared capacity traps. This is a
+known limitation of thread-scope iterator queries. A trap is a sticky device
+fault: the launch fails with a CUDA error (typically <code class="docutils literal notranslate"><span class="pre">an</span> <span class="pre">illegal</span> <span class="pre">instruction</span>
+<span class="pre">was</span> <span class="pre">encountered</span></code>), the CUDA context is unusable afterwards, and the process
+has to be restarted, so treat it as a programming error to fix, not a
+condition to catch; the fix is to declare a larger <code class="docutils literal notranslate"><span class="pre">num_worker_warps</span></code>. The
+cost is 128 bytes per thread per query family (mesh or BVH), so a 32-warp
+block needs 128 KiB per family; a declaration whose scratch would exceed the
+GPU’s per-block shared memory is rejected when the function is declared. Mesh
+and BVH queries use separate stacks, so nesting one inside the other is safe.
+At <code class="docutils literal notranslate"><span class="pre">scope=&quot;block&quot;</span></code> the stacks are sized to the pinned block exactly.</p>
+<p><strong>Block-cooperative tiled queries</strong> (<code class="docutils literal notranslate"><span class="pre">wp.tile_mesh_query_*</span></code>,
+<code class="docutils literal notranslate"><span class="pre">wp.tile_bvh_query_*</span></code>) traverse with the whole block and keep block-sized
+result buffers in static shared memory, so they are accepted only at
+<code class="docutils literal notranslate"><span class="pre">scope=&quot;block&quot;</span></code>; that memory is in addition to what cuTile plans for the
+kernel.</p>
+</section>
+<section id="supported-types-and-limitations">
+<h2>Supported Types and Limitations<a class="headerlink" href="#supported-types-and-limitations" title="Link to this heading">#</a></h2>
+<p>Supported parameter types are scalars, vectors, matrices, quaternions,
+transforms, structs, and contiguous <code class="docutils literal notranslate"><span class="pre">wp.array</span></code> values, with <code class="docutils literal notranslate"><span class="pre">float16</span></code>,
+<code class="docutils literal notranslate"><span class="pre">bfloat16</span></code>, and <code class="docutils literal notranslate"><span class="pre">bool</span></code> excepted; the return value is exactly one scalar,
+vector, matrix, quaternion, transform, or struct. Within those types the
+function body may call any Warp builtin, with two qualifications: the
+block-cooperative tile builtins need <code class="docutils literal notranslate"><span class="pre">scope=&quot;block&quot;</span></code> (see <a class="reference internal" href="#block-cooperative-functions">Block-Cooperative
+Functions</a>), and the MathDx-accelerated tile builtins (<code class="docutils literal notranslate"><span class="pre">wp.tile_matmul</span></code>,
+<code class="docutils literal notranslate"><span class="pre">wp.tile_fft</span></code>, <code class="docutils literal notranslate"><span class="pre">wp.tile_cholesky</span></code>, …) compile to Warp’s portable
+implementations rather than the MathDx device libraries.</p>
+<p>Not currently supported:</p>
+<ul class="simple">
+<li><p>Tile-typed parameters (only cuTile’s own tiles cross the boundary, carrying the
+scalar/vector/struct/array operands above).</p></li>
+<li><p>Stateful query objects across calls (e.g. <code class="docutils literal notranslate"><span class="pre">wp.mesh_query_aabb</span></code> iterators): the
+whole query loop must live inside a single <code class="docutils literal notranslate"><span class="pre">&#64;wp.func</span></code> call.</p></li>
+<li><p>Functions with more than one overload, including generic (<code class="docutils literal notranslate"><span class="pre">Any</span></code>-typed)
+parameters: the declaration needs a single concrete signature.</p></li>
+<li><p>Default parameter values: a function with defaults is rejected at
+declaration; every parameter is passed at the call site.</p></li>
+<li><p>Non-contiguous or indexed arrays; arrays as return values.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">float16</span></code>, <code class="docutils literal notranslate"><span class="pre">bfloat16</span></code>, and <code class="docutils literal notranslate"><span class="pre">bool</span></code> element types, as scalars or inside
+vectors and matrices.</p></li>
+<li><p>Anything other than exactly one return value: a function that returns nothing
+is rejected at declaration time (see the note below for side-effect-only
+functions), and multiple return values are not supported.</p></li>
+<li><p>Automatic differentiation: the exported function is forward-only, and cuTile has
+no autodiff to drive adjoints. Explicit <code class="docutils literal notranslate"><span class="pre">wp.grad()</span></code> calls inside the function
+do work, since they are part of its forward computation.</p></li>
+<li><p>API capture (APIC) save/load: <code class="docutils literal notranslate"><span class="pre">ct.launch()</span></code> is not a Warp API call, so a
+cuTile kernel that calls Warp functions is not recorded into a <code class="docutils literal notranslate"><span class="pre">.wrp</span></code>
+capture and a saved/loaded replay omits it silently.</p></li>
+<li><p>Wide shared operands: sharing a value costs nothing for operands of up to
+64 <code class="docutils literal notranslate"><span class="pre">int32</span></code> words (<code class="docutils literal notranslate"><span class="pre">mat44</span></code>, 6x6 matrices, structs of up to 16 <code class="docutils literal notranslate"><span class="pre">vec4</span></code>
+fields). Wider shared operands can run several times slower at small tile
+lengths; keep shared structs small, or pass large data as an array.</p></li>
+<li><p>Recoverable reporting of an oversized block: a kernel whose block is larger
+than a thread-scope declaration’s iterator-query stacks support stops with a
+device trap rather than a Python error (see <a class="reference internal" href="#geometry-queries">Geometry Queries</a>).</p></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Compilation through <code class="docutils literal notranslate"><span class="pre">tileiras</span></code> never removes a foreign call, even one whose
+result is not used, because it assumes the call may read or write memory.
+A function called only for its side effects (for example, <code class="docutils literal notranslate"><span class="pre">wp.atomic_add()</span></code>
+into a <code class="docutils literal notranslate"><span class="pre">wp.array</span></code>) therefore runs even if its returned tile is dropped.
+The bridge still requires a return value, so give such a function a dummy
+scalar return.</p>
+</div>
+</section>
+<section id="compilation-and-caching">
+<h2>Compilation and Caching<a class="headerlink" href="#compilation-and-caching" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">export_func</span></code> compiles and packages the function <strong>when it is called</strong>
+(at declaration, not when the kernel is traced or launched), on the machine it
+runs on—the same just-in-time model as Warp kernels. Expect roughly a second of
+one-time cost per function the first time; results are cached on disk in the
+Warp kernel cache, so later declarations of the same function—including in new
+processes—are effectively free. A thread-scope build covers all supported
+tile lengths at once; the two scopes, distinct <code class="docutils literal notranslate"><span class="pre">num_worker_warps</span></code> values
+for block-scope functions and for query functions sized above 8 warps, and
+each target architecture are separate builds.</p>
+<p>The function is compiled with its own Warp module’s build options—<code class="docutils literal notranslate"><span class="pre">mode</span></code>,
+<code class="docutils literal notranslate"><span class="pre">optimization_level</span></code>, <code class="docutils literal notranslate"><span class="pre">fast_math</span></code>, <code class="docutils literal notranslate"><span class="pre">lineinfo</span></code>, and the
+<code class="docutils literal notranslate"><span class="pre">extra_build_options</span></code> preamble, include directories, and build dependencies (set with
+<a class="reference internal" href="../../api_reference/_generated/warp.set_module_options.html#warp.set_module_options" title="warp.set_module_options"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.set_module_options()</span></code></a>)—and the global <code class="docutils literal notranslate"><span class="pre">warp.config.verify_fp</span></code>, so it
+computes what the same <code class="docutils literal notranslate"><span class="pre">&#64;wp.func</span></code> computes under <a class="reference internal" href="../../api_reference/_generated/warp.launch_function.html#warp.launch" title="warp.launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.launch()</span></code></a>, including
+through <code class="docutils literal notranslate"><span class="pre">wp.func_native</span></code> dependencies that rely on the preamble. Geometry
+queries and tile builtins are recognized only in Warp code and in
+<code class="docutils literal notranslate"><span class="pre">wp.func_native</span></code> snippet text. A call inside a header that a snippet
+includes is not seen, and the shared memory it needs is not reserved, so keep
+such calls in the Warp function or in the snippet itself. The
+declaration targets the architecture of <code class="docutils literal notranslate"><span class="pre">device</span></code>, which defaults to the
+current Warp device (<a class="reference internal" href="../../api_reference/_generated/warp.get_device.html#warp.get_device" title="warp.get_device"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.get_device()</span></code></a>). Two options do not carry over
+fully. <code class="docutils literal notranslate"><span class="pre">fuse_fp=False</span></code> is forwarded but not guaranteed, with a warning:
+floating-point contraction is decided when <code class="docutils literal notranslate"><span class="pre">tileiras</span></code> link-time-optimizes the
+calling kernel, outside Warp’s control. Exported functions do not honor
+deterministic mode (<code class="docutils literal notranslate"><span class="pre">deterministic</span></code>).</p>
+<p>The generated CUDA C++ for each function is kept beside its compiled code in
+the <code class="docutils literal notranslate"><span class="pre">cutile/</span></code> directory of the kernel cache, like the sources Warp keeps for
+its kernel modules, for inspection.</p>
+<p>The cache is keyed on content: changing the function, its Warp version, its
+module build options, or the toolchain automatically triggers recompilation, so
+stale artifacts are never reused and no manual invalidation is needed. Two
+caveats: if you edit Warp’s native headers or replace the <code class="docutils literal notranslate"><span class="pre">tileiras</span></code>
+toolchain while a process is running, restart it before declaring functions
+again; and moving a function’s source file to another path causes a rebuild.
+<a class="reference internal" href="../../api_reference/_generated/warp.clear_kernel_cache.html#warp.clear_kernel_cache" title="warp.clear_kernel_cache"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.clear_kernel_cache()</span></code></a>
+removes the cached artifacts along with Warp’s other kernel-cache contents;
+a previously packaged function then reports its missing <code class="docutils literal notranslate"><span class="pre">.tilelib</span></code> when a
+new kernel traces it, and must be declared again.</p>
+</section>
+<section id="cuda-graph-capture">
+<h2>CUDA Graph Capture<a class="headerlink" href="#cuda-graph-capture" title="Link to this heading">#</a></h2>
+<p>A <code class="docutils literal notranslate"><span class="pre">ct.launch()</span></code> on Warp’s stream is recorded by <a class="reference internal" href="../../api_reference/_generated/warp.capture_begin.html#warp.capture_begin" title="warp.capture_begin"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.capture_begin()</span></code></a> /
+<a class="reference internal" href="../../api_reference/_generated/warp.capture_end.html#warp.capture_end" title="warp.capture_end"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.capture_end()</span></code></a> (or <a class="reference internal" href="../../api_reference/_generated/warp.ScopedCapture.html#warp.ScopedCapture" title="warp.ScopedCapture"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.ScopedCapture</span></code></a>) like any other
+stream-ordered work, and the graph replays with <a class="reference internal" href="../../api_reference/_generated/warp.capture_launch.html#warp.capture_launch" title="warp.capture_launch"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.capture_launch()</span></code></a>.
+The kernel may be compiled during capture; no warm-up launch is needed.</p>
+<p>Keep the <code class="docutils literal notranslate"><span class="pre">&#64;ct.kernel</span></code> object alive for as long as the graph is replayed. The
+graph refers to the kernel’s device code but does not keep the kernel object
+alive; once that object is garbage collected, replaying the graph crashes the
+process with a segmentation fault rather than a Python exception. A helper
+that defines the kernel locally must therefore return the kernel along with
+the graph (the foreign function object itself does not need to outlive the
+graph):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">wp_scale_add</span> <span class="o">=</span> <span class="n">wpct</span><span class="o">.</span><span class="n">export_func</span><span class="p">(</span><span class="n">scale_add</span><span class="p">)</span>  <span class="c1"># scale_add: a @wp.func of two floats</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">build_graph</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">,</span> <span class="n">out</span><span class="p">):</span>
+    <span class="nd">@ct</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">num_worker_warps</span><span class="o">=</span><span class="n">TILE</span> <span class="o">//</span> <span class="mi">32</span><span class="p">)</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">kernel</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">,</span> <span class="n">out</span><span class="p">):</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE</span><span class="p">,))</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">ys</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE</span><span class="p">,))</span>
+        <span class="n">ct</span><span class="o">.</span><span class="n">store</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,),</span> <span class="n">wp_scale_add</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">))</span>
+
+    <span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedCapture</span><span class="p">()</span> <span class="k">as</span> <span class="n">capture</span><span class="p">:</span>
+        <span class="n">ct</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">get_stream</span><span class="p">()</span><span class="o">.</span><span class="n">cuda_stream</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">kernel</span><span class="p">,</span> <span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">,</span> <span class="n">out</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">capture</span><span class="o">.</span><span class="n">graph</span><span class="p">,</span> <span class="n">kernel</span>  <span class="c1"># the kernel must outlive the graph</span>
+
+
+<span class="n">graph</span><span class="p">,</span> <span class="n">kernel</span> <span class="o">=</span> <span class="n">build_graph</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">,</span> <span class="n">out</span><span class="p">)</span>
+<span class="n">wp</span><span class="o">.</span><span class="n">capture_launch</span><span class="p">(</span><span class="n">graph</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="troubleshooting">
+<h2>Troubleshooting<a class="headerlink" href="#troubleshooting" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">ImportError:</span> <span class="pre">cuTile</span> <span class="pre">Python</span> <span class="pre">is</span> <span class="pre">required</span> <span class="pre">for</span> <span class="pre">warp.experimental.cutile</span></code> (or
+<code class="docutils literal notranslate"><span class="pre">the</span> <span class="pre">installed</span> <span class="pre">cuda-tile-preview</span> <span class="pre">lacks</span> <span class="pre">the</span> <span class="pre">Tilelib/foreign_call</span> <span class="pre">API</span></code>)—the
+cuTile packages are missing or older than 1.8.1:
+<code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">-U</span> <span class="pre">&quot;warp-lang[cutile]&quot;</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">StaticAssertionError:</span> <span class="pre">...</span> <span class="pre">&lt;function&gt;():</span> <span class="pre">parameter</span> <span class="pre">'&lt;name&gt;'</span> <span class="pre">...</span></code> while
+cuTile traces the kernel—the bridge checked the call site: the message
+names the parameter and says what it expected (a rank-1 tile, a tile
+length among the declared ones, a matching element type, a plain number
+or <code class="docutils literal notranslate"><span class="pre">(width,)</span></code> tile for a shared value, or an <code class="docutils literal notranslate"><span class="pre">array_pointer_args()</span></code>
+tuple for an array).</p></li>
+<li><p>Wrong values in vector lanes—the input tile was not padded: a <code class="docutils literal notranslate"><span class="pre">wp.vec3</span></code>
+consumes 4 elements per invocation, with the fourth ignored. Store host
+vectors padded to <code class="docutils literal notranslate"><span class="pre">width</span></code> and load them as <code class="docutils literal notranslate"><span class="pre">(TILE,</span> <span class="pre">width)</span></code> before
+flattening with <code class="docutils literal notranslate"><span class="pre">ct.reshape</span></code> (see the note under <a class="reference internal" href="#operands-by-parameter-type">Operands by Parameter
+Type</a>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">uses</span> <span class="pre">a</span> <span class="pre">block-cooperative</span> <span class="pre">tiled</span> <span class="pre">query</span> <span class="pre">builtin</span> <span class="pre">...</span> <span class="pre">call</span> <span class="pre">export_func</span> <span class="pre">with</span> <span class="pre">scope=&quot;block&quot;</span></code>
+(likewise <code class="docutils literal notranslate"><span class="pre">requires</span> <span class="pre">N</span> <span class="pre">bytes</span> <span class="pre">of</span> <span class="pre">block-shared</span> <span class="pre">memory</span></code>)—the function uses
+Warp tile builtins or tiled queries, which need the whole block; declare it
+with <code class="docutils literal notranslate"><span class="pre">scope=&quot;block&quot;</span></code> (see <a class="reference internal" href="#block-cooperative-functions">Block-Cooperative Functions</a>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">RuntimeError:</span> <span class="pre">Device</span> <span class="pre">functions</span> <span class="pre">can</span> <span class="pre">only</span> <span class="pre">be</span> <span class="pre">called</span> <span class="pre">from</span> <span class="pre">device</span> <span class="pre">code.</span></code>—the
+packaged function was called from host Python; it can only be called inside
+a <code class="docutils literal notranslate"><span class="pre">&#64;ct.kernel</span></code> body.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">an</span> <span class="pre">illegal</span> <span class="pre">instruction</span> <span class="pre">was</span> <span class="pre">encountered</span></code> (or another sticky CUDA error)
+right after a kernel that calls a foreign function—the wrapper trapped: the
+kernel’s compiled block is larger than the declaration’s <code class="docutils literal notranslate"><span class="pre">num_worker_warps</span></code>
+supports for iterator geometry queries (the compiler may add warps beyond
+the kernel’s <code class="docutils literal notranslate"><span class="pre">num_worker_warps</span></code>). Declare a larger <code class="docutils literal notranslate"><span class="pre">num_worker_warps</span></code>
+and restart the process.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CompilerExecutionError</span></code> from <code class="docutils literal notranslate"><span class="pre">tileiras</span></code> while the kernel compiles
+(<code class="docutils literal notranslate"><span class="pre">expected</span> <span class="pre">tensor_view</span> <span class="pre">rank</span> <span class="pre">and</span> <span class="pre">tile</span> <span class="pre">rank</span> <span class="pre">to</span> <span class="pre">match</span></code> or similar)—the bridge
+checks operand shapes at trace time, so look at the kernel’s own tile
+operations around the call: a vector or matrix result is a flat
+<code class="docutils literal notranslate"><span class="pre">(TILE</span> <span class="pre">*</span> <span class="pre">width,)</span></code> tile and must be reshaped (<code class="docutils literal notranslate"><span class="pre">ct.reshape(n,</span> <span class="pre">(TILE,</span> <span class="pre">4))</span></code>)
+before a 2-D <code class="docutils literal notranslate"><span class="pre">ct.store</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">CompilerExecutionError</span></code> reporting only <code class="docutils literal notranslate"><span class="pre">failed</span> <span class="pre">to</span> <span class="pre">compile</span> <span class="pre">Tile</span> <span class="pre">IR</span>
+<span class="pre">program</span></code> for a kernel that calls a <code class="docutils literal notranslate"><span class="pre">scope=&quot;block&quot;</span></code> function—the kernel’s
+<code class="docutils literal notranslate"><span class="pre">num_worker_warps</span></code> differs from the declaration’s.
+<code class="docutils literal notranslate"><span class="pre">tileiras</span></code> rejects the mismatch when it compiles the kernel but prints no
+reason; fix one of the two values.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">needs</span> <span class="pre">N</span> <span class="pre">bytes</span> <span class="pre">of</span> <span class="pre">compiler</span> <span class="pre">scratch</span> <span class="pre">...</span> <span class="pre">allows</span> <span class="pre">at</span> <span class="pre">most</span> <span class="pre">M</span> <span class="pre">bytes</span></code>—the
+traversal-stack scratch for the declared <code class="docutils literal notranslate"><span class="pre">num_worker_warps</span></code> exceeds the
+GPU’s per-block shared memory; declare fewer warps or split the
+mesh and BVH queries across functions (see <a class="reference internal" href="#geometry-queries">Geometry Queries</a>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">'tileiras'</span> <span class="pre">not</span> <span class="pre">found</span></code>—install the <code class="docutils literal notranslate"><span class="pre">warp-lang[cutile]</span></code> pip extra, or
+add the CUDA Toolkit 13.5 <code class="docutils literal notranslate"><span class="pre">bin</span></code> directory to <code class="docutils literal notranslate"><span class="pre">PATH</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">...</span> <span class="pre">is</span> <span class="pre">the</span> <span class="pre">CUDA</span> <span class="pre">Toolkit</span> <span class="pre">13.4</span> <span class="pre">tileiras;</span> <span class="pre">the</span> <span class="pre">cuTile</span> <span class="pre">bridge</span> <span class="pre">requires</span> <span class="pre">the</span> <span class="pre">13.5</span> <span class="pre">tileiras</span></code>—another
+toolkit’s <code class="docutils literal notranslate"><span class="pre">tileiras</span></code> was found first; install <code class="docutils literal notranslate"><span class="pre">warp-lang[cutile]</span></code> or put
+the 13.5 toolkit’s <code class="docutils literal notranslate"><span class="pre">bin</span></code> directory ahead of other CUDA installs on
+<code class="docutils literal notranslate"><span class="pre">PATH</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">foreign_call</span> <span class="pre">requires</span> <span class="pre">tileiras</span> <span class="pre">13.5</span> <span class="pre">or</span> <span class="pre">later.</span> <span class="pre">Current</span> <span class="pre">version</span> <span class="pre">is</span> <span class="pre">&lt;older&gt;</span></code>
+although a 13.5 toolchain is installed—cuTile probes <code class="docutils literal notranslate"><span class="pre">tileiras</span></code> and the
+probe failed, usually because <code class="docutils literal notranslate"><span class="pre">tileiras</span></code> found an older <code class="docutils literal notranslate"><span class="pre">ptxas</span></code> on
+<code class="docutils literal notranslate"><span class="pre">PATH</span></code> (<code class="docutils literal notranslate"><span class="pre">Unsupported</span> <span class="pre">.version</span></code> in the underlying error). Put the 13.5
+toolkit’s <code class="docutils literal notranslate"><span class="pre">bin</span></code> directory ahead of other CUDA installs on <code class="docutils literal notranslate"><span class="pre">PATH</span></code>.</p></li>
+</ul>
+</section>
+<section id="example">
+<h2>Example<a class="headerlink" href="#example" title="Link to this heading">#</a></h2>
+<p>A complete runnable example lives in <code class="docutils literal notranslate"><span class="pre">warp/examples/interop/</span></code>:</p>
+<a class="reference external image-reference" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/interop/example_cutile_neural_sdf.py"><img alt="../../_images/interop_cutile_neural_sdf.png" class="align-right" src="../../_images/interop_cutile_neural_sdf.png" style="width: 200px;" />
+</a>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">example_cutile_neural_sdf.py</span></code>: trains a DeepSDF-style neural signed-distance
+field of the Stanford bunny with a fused Warp + cuTile kernel. A single launch
+per training iteration produces the ground-truth labels (Warp’s signed mesh
+query), the MLP forward pass (cuTile tensor-core matmuls), the hidden
+activations, and the loss; further cuTile kernels back-propagate through the
+stored activations and Warp’s Adam optimizer updates the weights, so training
+never leaves the GPU.</p></li>
+</ul>
+<p>It needs the <code class="docutils literal notranslate"><span class="pre">cutile</span></code> and <code class="docutils literal notranslate"><span class="pre">examples</span></code> extras (the latter for the USD bunny
+asset and the rendered output):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="s2">"warp-lang[cutile,examples]"</span>
+<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">warp</span><span class="o">.</span><span class="n">examples</span><span class="o">.</span><span class="n">interop</span><span class="o">.</span><span class="n">example_cutile_neural_sdf</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="array_function_overrides.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Array Function Overrides</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="../execution_and_performance.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Execution and Performance</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+
+
+              
+                <dialog id="pst-secondary-sidebar-modal" tabindex="-1"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#introduction">Introduction</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#requirements">Requirements</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quick-start">Quick Start</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#calling-convention">Calling Convention</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#operands-by-parameter-type">Operands by Parameter Type</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#when-to-set-num-worker-warps">When to Set <code class="docutils literal notranslate"><span class="pre">num_worker_warps</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#block-cooperative-functions">Block-Cooperative Functions</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#geometry-queries">Geometry Queries</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#supported-types-and-limitations">Supported Types and Limitations</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#compilation-and-caching">Compilation and Caching</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cuda-graph-capture">CUDA Graph Capture</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#troubleshooting">Troubleshooting</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#example">Example</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  
+  <div class="tocsection editthispage">
+    <a href="https://github.com/NVIDIA/warp/edit/main/docs/user_guide/interoperability/cutile.rst">
+      <i class="fa-solid fa-pencil"></i>
+      
+      
+        
+          Edit on GitHub
+        
+      
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=75c7c72ae941e8b558d8"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=75c7c72ae941e8b558d8"></script>
+
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+<a class="footer-brand logo" href="https://www.nvidia.com">
+  <img src="../../_static/nvidia-logo-horiz-rgb-1c-blk-for-screen.svg" class="logo__image only-light" alt="NVIDIA"/>
+  <img src="../../_static/nvidia-logo-horiz-rgb-1c-wht-for-screen.svg" class="logo__image only-dark" alt="NVIDIA"/>
+</a></div>
+      
+        <div class="footer-item">
+
+<div class="footer-links">
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/privacy-policy/">Privacy Policy</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/privacy-center/">Your Privacy Choices</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/terms-of-service/">Terms of Service</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/accessibility/">Accessibility</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/about-nvidia/company-policies/">Corporate Policies</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/product-security/">Product Security</a>
+   | 
+  
+  
+  
+  <a class="external" href="https://www.nvidia.com/en-us/contact/">Contact</a>
+  
+  
+  
+</div>
+</div>
+      
+        <div class="footer-item">
+
+
+
+
+  <p class="copyright">
+    
+      Copyright © 2022-2026 NVIDIA Corporation.
+      <br/>
+    
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+</div>
+
+  </footer>
+  </body>
+</html>

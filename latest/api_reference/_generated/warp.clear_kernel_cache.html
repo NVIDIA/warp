@@ -411,6 +411,7 @@
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/interoperability/pytorch.html">PyTorch Interoperability</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/interoperability/jax.html">JAX Interoperability</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../user_guide/interoperability/array_function_overrides.html">Array Function Overrides</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/interoperability/cutile.html">cuTile Python Interoperability</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../user_guide/execution_and_performance.html">Execution and Performance</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -513,11 +514,13 @@
 <h1>warp.clear_kernel_cache<a class="headerlink" href="#warp-clear-kernel-cache" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.clear_kernel_cache">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">clear_kernel_cache</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/build.py#L280-L297"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.clear_kernel_cache" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">clear_kernel_cache</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/build.py#L280-L304"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.clear_kernel_cache" title="Link to this definition">#</a></dt>
 <dd><p>Clear the kernel cache directory of previously generated source code and compiler artifacts.</p>
-<p>Only directories beginning with <code class="docutils literal notranslate"><span class="pre">wp_</span></code> will be deleted.
+<p>Directories beginning with <code class="docutils literal notranslate"><span class="pre">wp_</span></code> and the <code class="docutils literal notranslate"><span class="pre">cutile</span></code> foreign-function
+artifact directory will be deleted.
 This function only clears the cache for the current Warp version.
-LTO artifacts are not affected.</p>
+The separate <code class="docutils literal notranslate"><span class="pre">lto</span></code> cache directory is not affected (see
+<a class="reference internal" href="warp.clear_lto_cache.html#warp.clear_lto_cache" title="warp.clear_lto_cache"><code class="xref py py-func docutils literal notranslate"><span class="pre">clear_lto_cache()</span></code></a>).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>None</p>

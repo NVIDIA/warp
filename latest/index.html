@@ -410,6 +410,7 @@
 <li class="toctree-l2"><a class="reference internal" href="user_guide/interoperability/pytorch.html">PyTorch Interoperability</a></li>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/interoperability/jax.html">JAX Interoperability</a></li>
 <li class="toctree-l2"><a class="reference internal" href="user_guide/interoperability/array_function_overrides.html">Array Function Overrides</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/interoperability/cutile.html">cuTile Python Interoperability</a></li>
 </ul>
 </details></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="user_guide/execution_and_performance.html">Execution and Performance</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
@@ -860,6 +861,34 @@ tile-based GPU programming. Install the optional dependencies with
 </tbody>
 </table>
 </div>
+</section>
+<section id="warp-examples-interop">
+<h3>warp/examples/interop<a class="headerlink" href="#warp-examples-interop" title="Link to this heading">#</a></h3>
+<p>The cuTile example also needs the <code class="docutils literal notranslate"><span class="pre">cutile</span></code> extra (<code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">&quot;warp-lang[examples,cutile]&quot;</span></code>)
+and an Ampere or newer GPU.</p>
+<div class="pst-scrollable-table-container"><table class="gallery table">
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 25.0%" />
+<col style="width: 25.0%" />
+<col style="width: 25.0%" />
+</colgroup>
+<tbody>
+<tr class="row-odd"><td><a class="reference external image-reference" href="https://github.com/NVIDIA/warp/blob/main/warp/examples/interop/example_cutile_neural_sdf.py"><img alt="_images/interop_cutile_neural_sdf.png" src="_images/interop_cutile_neural_sdf.png" />
+</a>
+</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr class="row-even"><td><p>cutile neural sdf</p></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+</div>
 <div class="toctree-wrapper compound">
 <p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
 <ul>
@@ -1117,7 +1146,8 @@ tile-based GPU programming. Install the optional dependencies with
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp-examples-fem">warp/examples/fem</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">warp/examples/geometry</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp-examples-optim">warp/examples/optim</a></li>
-<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp-examples-tile">warp/examples/tile</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp-examples-tile">warp/examples/tile</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#warp-examples-interop">warp/examples/interop</a><ul class="nav section-nav flex-column">
 </ul>
 </li>
 </ul>
