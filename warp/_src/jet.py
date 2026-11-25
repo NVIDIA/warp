@@ -2511,25 +2511,48 @@ def _make_jet_space(width: int, dtype):
     @wp.func
     def jet_length(a: JetQuat) -> JetScalar:
         # As for vectors: a zero quaternion has a zero gradient, like native length(),
-        # and a NaN length stays NaN.
-        length_sq = jet_dot(a, a)
-        if length_sq.value == dtype(0.0):
+        # and a NaN length stays NaN. The squares are formed in the compute type, so a
+        # float16 quaternion whose length is representable does not overflow or underflow.
+        x = Compute(a.value[0])
+        y = Compute(a.value[1])
+        z = Compute(a.value[2])
+        w = Compute(a.value[3])
+        length = wp.sqrt(x * x + y * y + z * z + w * w)
+        if length == Compute(0.0):
             return JetScalar(dtype(0.0), Grad())
-        return jet_sqrt(length_sq)
+        # The gradient is the unit quaternion applied to the component gradients.
+        inv_length = Compute(1.0) / length
+        grad = (
+            (x * inv_length) * ComputeGrad(a.grad[0])
+            + (y * inv_length) * ComputeGrad(a.grad[1])
+            + (z * inv_length) * ComputeGrad(a.grad[2])
+            + (w * inv_length) * ComputeGrad(a.grad[3])
+        )
+        return JetScalar(dtype(length), Grad(grad))
+
+    @wp.func
+    def _quat_div_length(a: JetQuat, length: JetScalar) -> JetQuat:
+        return quat_from_scalars(
+            quat_component(a, 0) / length,
+            quat_component(a, 1) / length,
+            quat_component(a, 2) / length,
+            quat_component(a, 3) / length,
+        )
 
     @wp.func
     def jet_normalize(a: JetQuat) -> JetQuat:
         # Like native normalize(quat), a quaternion whose length is not positive (zero
         # or NaN) normalizes to the identity rotation, with zero derivatives.
-        length_sq = jet_dot(a, a)
-        if length_sq.value > dtype(0.0):
-            length = jet_sqrt(length_sq)
-            return quat_from_scalars(
-                quat_component(a, 0) / length,
-                quat_component(a, 1) / length,
-                quat_component(a, 2) / length,
-                quat_component(a, 3) / length,
-            )
+        length = jet_length(a)
+        if wp.static(Compute is not dtype):
+            # As for vectors, a float16 quaternion can be longer than the float16 maximum
+            # although its unit quaternion is representable. Scaling by a power of two is
+            # exact and leaves the unit quaternion and its derivatives unchanged.
+            if wp.isinf(length.value):
+                scaled = jet_mul(a, dtype(0.00390625))
+                return _quat_div_length(scaled, jet_length(scaled))
+        if length.value > dtype(0.0):
+            return _quat_div_length(a, length)
         return quat_constant(NativeQuat(dtype(0.0), dtype(0.0), dtype(0.0), dtype(1.0)))
 
     @wp.func
@@ -4208,19 +4231,56 @@ def _make_jet_space2(width: int, dtype):
     @wp.func
     def jet_length(a: Jet2Quat) -> Jet2Scalar:
         # As for vectors: a zero quaternion has zero derivatives, and a NaN length stays NaN.
-        length_sq = jet_dot(a, a)
-        if length_sq.value == dtype(0.0):
+        # The gradient and Hessian are formed as for vectors, in the compute type, so a
+        # float16 quaternion whose length is representable does not overflow or underflow.
+        x = Compute(a.x.value)
+        y = Compute(a.y.value)
+        z = Compute(a.z.value)
+        w = Compute(a.w.value)
+        length = wp.sqrt(x * x + y * y + z * z + w * w)
+        if length == Compute(0.0):
             return Jet2Scalar(dtype(0.0), Grad(), Hess())
-        return jet_sqrt(length_sq)
+        inv_length = Compute(1.0) / length
+        ux = x * inv_length
+        uy = y * inv_length
+        uz = z * inv_length
+        uw = w * inv_length
+        gx = ComputeGrad(a.x.grad)
+        gy = ComputeGrad(a.y.grad)
+        gz = ComputeGrad(a.z.grad)
+        gw = ComputeGrad(a.w.grad)
+        grad = ux * gx + uy * gy + uz * gz + uw * gw
+        hess = (
+            ux * ComputeHess(a.x.hess)
+            + uy * ComputeHess(a.y.hess)
+            + uz * ComputeHess(a.z.hess)
+            + uw * ComputeHess(a.w.hess)
+            + wp.outer(gx, inv_length * gx)
+            + wp.outer(gy, inv_length * gy)
+            + wp.outer(gz, inv_length * gz)
+            + wp.outer(gw, inv_length * gw)
+            - wp.outer(grad, inv_length * grad)
+        )
+        return Jet2Scalar(dtype(length), Grad(grad), Hess(hess))
+
+    @wp.func
+    def _quat_div_length(a: Jet2Quat, length: Jet2Scalar) -> Jet2Quat:
+        return Jet2Quat(a.x / length, a.y / length, a.z / length, a.w / length)
 
     @wp.func
     def jet_normalize(a: Jet2Quat) -> Jet2Quat:
         # Like native normalize(quat), a quaternion whose length is not positive (zero
         # or NaN) normalizes to the identity rotation, with zero derivatives.
-        length_sq = jet_dot(a, a)
-        if length_sq.value > dtype(0.0):
-            length = jet_sqrt(length_sq)
-            return Jet2Quat(a.x / length, a.y / length, a.z / length, a.w / length)
+        length = jet_length(a)
+        if wp.static(Compute is not dtype):
+            # As for vectors, a float16 quaternion can be longer than the float16 maximum
+            # although its unit quaternion is representable. Scaling by a power of two is
+            # exact and leaves the unit quaternion and its derivatives unchanged.
+            if wp.isinf(length.value):
+                scaled = jet_mul(a, dtype(0.00390625))
+                return _quat_div_length(scaled, jet_length(scaled))
+        if length.value > dtype(0.0):
+            return _quat_div_length(a, length)
         return quat_constant(NativeQuat(dtype(0.0), dtype(0.0), dtype(0.0), dtype(1.0)))
 
     @wp.func

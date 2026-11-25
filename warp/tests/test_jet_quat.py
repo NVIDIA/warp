@@ -414,6 +414,83 @@ def test_quat_slots(test, device):
     np.testing.assert_array_equal(directional.numpy()[0], np.array(dq))
 
 
+J1QH = wp.JetSpace((wp.quath,), width=1)
+J2QH = wp.JetSpace2(1, dtype=wp.float16)
+
+
+@wp.kernel(enable_backward=False)
+def float16_quat_norms_kernel(
+    q: wp.array[wp.quath],
+    lengths: wp.array2d[wp.float32],
+    grads: wp.array2d[wp.float32],
+    hessians: wp.array[wp.float32],
+    normalized: wp.array2d[wp.quath],
+):
+    # Both jet orders, differentiated along the first component.
+    i = wp.tid()
+    direction = wp.quath(wp.float16(1.0), wp.float16(0.0), wp.float16(0.0), wp.float16(0.0))
+    a = J1QH.directional(q[i], direction)
+    b = J2QH.make_quat(
+        J2QH.variable(q[i][0], 0), J2QH.constant(q[i][1]), J2QH.constant(q[i][2]), J2QH.constant(q[i][3])
+    )
+
+    la = wp.length(a)
+    lb = wp.length(b)
+    lengths[i, 0] = wp.float32(la.value)
+    lengths[i, 1] = wp.float32(lb.value)
+    grads[i, 0] = wp.float32(la.grad[0])
+    grads[i, 1] = wp.float32(lb.grad[0])
+    hessians[i] = wp.float32(lb.hess[0, 0])
+
+    normalized[i, 0] = wp.normalize(q[i])
+    normalized[i, 1] = wp.normalize(a).value
+    nb = wp.normalize(b)
+    normalized[i, 2] = wp.quath(nb.x.value, nb.y.value, nb.z.value, nb.w.value)
+
+
+def test_float16_length_and_normalize(test, device):
+    """Keep float16 quaternion jet lengths and unit quaternions where the squared length leaves the float16 range."""
+    # Squaring 300 overflows float16 and squaring 1e-4 underflows it, though both lengths are
+    # representable. The third quaternion's length itself overflows float16, while its unit
+    # quaternion does not. The last one is an ordinary control.
+    q_np = np.array(
+        [
+            [300.0, 0.0, 0.0, 0.0],
+            [0.0001, 0.0, 0.0, 0.0],
+            [40000.0, 40000.0, 40000.0, 40000.0],
+            [3.0, 4.0, 0.0, 0.0],
+        ]
+    )
+    n = len(q_np)
+    q = wp.array(q_np, dtype=wp.quath, device=device)
+    lengths = wp.zeros((n, 2), dtype=wp.float32, device=device)
+    grads = wp.zeros((n, 2), dtype=wp.float32, device=device)
+    hessians = wp.zeros(n, dtype=wp.float32, device=device)
+    normalized = wp.zeros((n, 3), dtype=wp.quath, device=device)
+    wp.launch(
+        float16_quat_norms_kernel, dim=n, inputs=[q], outputs=[lengths, grads, hessians, normalized], device=device
+    )
+
+    # Reference values from the float16-rounded inputs, rounded back to float16. The third
+    # length rounds to inf on purpose.
+    qh = q_np.astype(np.float16).astype(np.float64)
+    length = np.linalg.norm(qh, axis=1)
+    with np.errstate(over="ignore"):
+        want_length = length.astype(np.float16).astype(np.float64)
+    want_grad = (qh[:, 0] / length).astype(np.float16).astype(np.float64)
+    want_hess = ((1.0 - (qh[:, 0] / length) ** 2) / length).astype(np.float16).astype(np.float64)
+    want_unit = (qh / length[:, None]).astype(np.float16).astype(np.float64)
+
+    for order in range(2):
+        np.testing.assert_allclose(lengths.numpy()[:, order], want_length, rtol=2e-3, err_msg=f"order {order + 1}")
+        np.testing.assert_allclose(grads.numpy()[:, order], want_grad, rtol=2e-3, err_msg=f"order {order + 1}")
+    np.testing.assert_allclose(hessians.numpy(), want_hess, rtol=2e-3, atol=1e-7)
+
+    unit = normalized.numpy().astype(np.float64)
+    for column in range(3):
+        np.testing.assert_allclose(unit[:, column], want_unit, rtol=2e-3, atol=1e-3, err_msg=f"column {column}")
+
+
 devices = get_test_devices()
 
 
@@ -431,6 +508,7 @@ add_function_test(
 )
 add_function_test(TestJetQuat, "test_quat_slots", test_quat_slots, devices=devices)
 add_function_test(TestJetQuat, "test_blend_plain_endpoints", test_blend_plain_endpoints, devices=devices)
+add_function_test(TestJetQuat, "test_float16_length_and_normalize", test_float16_length_and_normalize, devices=devices)
 
 
 if __name__ == "__main__":
