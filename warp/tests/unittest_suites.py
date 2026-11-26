@@ -324,6 +324,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.tile.test_tile_matmul_no_mathdx import TestTileMatmulNoMathDx
     from warp.tests.tile.test_tile_matmul_strides import TestTileMatmulStrides
     from warp.tests.tile.test_tile_oob import TestTileOOB
+    from warp.tests.tile.test_tile_padded import TestTilePadded
     from warp.tests.tile.test_tile_print import TestTilePrint
     from warp.tests.tile.test_tile_reduce import TestTileReduce
     from warp.tests.tile.test_tile_shared_memory import (
@@ -546,6 +547,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestTileMatmulNoMathDx,
         TestTileMatmulStrides,
         TestTileOOB,
+        TestTilePadded,
         TestTilePrint,
         TestTileReduce,
         TestTileSharedMemory,
