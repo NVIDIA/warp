@@ -1708,7 +1708,9 @@ class TestCutileKernels(unittest.TestCase):
     """End-to-end tests of the .tilelib surface (export_func) on every CUDA test device."""
 
     def setUp(self):
-        """Skip when the cuTile frontend or a supported tileiras is missing."""
+        """Skip on Windows and when the cuTile frontend or a supported tileiras is missing."""
+        if sys.platform == "win32":
+            self.skipTest(CUTILE_WINDOWS_SKIP_REASON)
         if not cutile_toolchain_available():
             self.skipTest(CUTILE_SKIP_REASON)
 

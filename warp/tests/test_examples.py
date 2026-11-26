@@ -17,7 +17,7 @@ To skip tests if the optional dependencies are not found, use the following keys
 - {"usd_required": True} (requires usd-core)
 - {"torch_required": True} (requires torch)
 - {"pillow_required": True} (requires pillow)
-- {"cutile_required": True} (requires cuda.tile, cuda.tile_preview, and a supported tileiras)
+- {"cutile_required": True} (requires cuda.tile, cuda.tile_preview, and a supported tileiras; skipped on Windows)
 
 Use the "num_frames" and "train_iters" keys to control the number of steps.
 
@@ -36,6 +36,7 @@ import warp as wp
 import warp.tests.unittest_utils
 from warp.tests.unittest_utils import (
     CUTILE_SKIP_REASON,
+    CUTILE_WINDOWS_SKIP_REASON,
     USD_AVAILABLE,
     add_function_test,
     cutile_toolchain_available,
@@ -112,6 +113,8 @@ def add_example_test(
         # Mark the test as skipped if the cuTile toolchain is not installed but required
         cutile_required = options.pop("cutile_required", False)
         if cutile_required:
+            if sys.platform == "win32":
+                test.skipTest(CUTILE_WINDOWS_SKIP_REASON)
             if not cutile_toolchain_available():
                 test.skipTest(CUTILE_SKIP_REASON)
             if wp.get_device(device).arch < 80:

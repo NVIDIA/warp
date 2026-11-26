@@ -189,6 +189,15 @@ def get_test_devices(mode: str | None = None):
 CUTILE_SKIP_REASON = "Requires cuda.tile_preview and a supported tileiras"
 """Skip message shared by every test that needs the cuTile foreign-function toolchain."""
 
+CUTILE_WINDOWS_SKIP_REASON = "cuTile compiles fail intermittently on Windows while cleaning up temporary toolkit links"
+"""Skip message for tests that compile cuTile kernels on Windows.
+
+On Windows, ``cuda.tile_preview`` works around ``tileiras`` not finding nvJitLink in the pip CUDA
+toolkit by hard-linking the toolkit into a temporary directory for every compile. Deleting that
+directory can fail while a linked executable such as ``ptxas.exe`` is still in use, and the error
+fails the compile. Remove these skips once ``cuda.tile_preview`` tolerates that cleanup failure.
+"""
+
 
 @functools.cache
 def cutile_available() -> bool:
