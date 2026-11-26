@@ -956,4 +956,156 @@ inline CUDA_CALLABLE void adj_eig3(
     mat_t<3, 3, Type> F = mat_t<3, 3, Type>(0, F01, F02, -F01, 0, F12, -F02, -F12, 0);
     adj_A = adj_A + mul(Q, mul(D_bar + cw_mul(F, mul(QT, adj_Q)), QT));
 }
+
+// As for svd2, compute float16 and bfloat16 3x3 decompositions in float32: their iterative solvers square and multiply
+// entries, which overflows or underflows in float16 for ordinary inputs, and emulated low-precision arithmetic is
+// slower anyway. The adjoints recompute the factors in float32 rather than widening their rounded values.
+template <typename Type>
+inline CUDA_CALLABLE void
+_svd3_in_float(const mat_t<3, 3, Type>& A, mat_t<3, 3, Type>& U, vec_t<3, Type>& sigma, mat_t<3, 3, Type>& V)
+{
+    mat_t<3, 3, float> U_float;
+    vec_t<3, float> sigma_float;
+    mat_t<3, 3, float> V_float;
+    svd3(mat_t<3, 3, float>(A), U_float, sigma_float, V_float);
+    U = mat_t<3, 3, Type>(U_float);
+    sigma = vec_t<3, Type>(sigma_float);
+    V = mat_t<3, 3, Type>(V_float);
+}
+
+template <typename Type>
+inline CUDA_CALLABLE void _adj_svd3_in_float(
+    const mat_t<3, 3, Type>& A,
+    mat_t<3, 3, Type>& adj_A,
+    const mat_t<3, 3, Type>& adj_U,
+    const vec_t<3, Type>& adj_sigma,
+    const mat_t<3, 3, Type>& adj_V
+)
+{
+    mat_t<3, 3, float> A_float(A);
+    mat_t<3, 3, float> U_float;
+    vec_t<3, float> sigma_float;
+    mat_t<3, 3, float> V_float;
+    svd3(A_float, U_float, sigma_float, V_float);
+
+    mat_t<3, 3, float> adj_A_float(0.0f);
+    adj_svd3(
+        A_float, U_float, sigma_float, V_float, adj_A_float, mat_t<3, 3, float>(adj_U), vec_t<3, float>(adj_sigma),
+        mat_t<3, 3, float>(adj_V)
+    );
+    adj_A = adj_A + mat_t<3, 3, Type>(adj_A_float);
+}
+
+template <typename Type>
+inline CUDA_CALLABLE void _eig3_in_float(const mat_t<3, 3, Type>& A, mat_t<3, 3, Type>& Q, vec_t<3, Type>& d)
+{
+    mat_t<3, 3, float> Q_float;
+    vec_t<3, float> d_float;
+    eig3(mat_t<3, 3, float>(A), Q_float, d_float);
+    Q = mat_t<3, 3, Type>(Q_float);
+    d = vec_t<3, Type>(d_float);
+}
+
+template <typename Type>
+inline CUDA_CALLABLE void _adj_eig3_in_float(
+    const mat_t<3, 3, Type>& A, mat_t<3, 3, Type>& adj_A, const mat_t<3, 3, Type>& adj_Q, const vec_t<3, Type>& adj_d
+)
+{
+    mat_t<3, 3, float> A_float(A);
+    mat_t<3, 3, float> Q_float;
+    vec_t<3, float> d_float;
+    eig3(A_float, Q_float, d_float);
+
+    mat_t<3, 3, float> adj_A_float(0.0f);
+    adj_eig3(A_float, Q_float, d_float, adj_A_float, mat_t<3, 3, float>(adj_Q), vec_t<3, float>(adj_d));
+    adj_A = adj_A + mat_t<3, 3, Type>(adj_A_float);
+}
+
+// Templates only so that they compile when used, as for svd2 above.
+template <typename Unused = void>
+inline CUDA_CALLABLE void
+svd3(const mat_t<3, 3, half>& A, mat_t<3, 3, half>& U, vec_t<3, half>& sigma, mat_t<3, 3, half>& V)
+{
+    _svd3_in_float(A, U, sigma, V);
+}
+
+template <typename Unused = void>
+inline CUDA_CALLABLE void adj_svd3(
+    const mat_t<3, 3, half>& A,
+    const mat_t<3, 3, half>& U,
+    const vec_t<3, half>& sigma,
+    const mat_t<3, 3, half>& V,
+    mat_t<3, 3, half>& adj_A,
+    const mat_t<3, 3, half>& adj_U,
+    const vec_t<3, half>& adj_sigma,
+    const mat_t<3, 3, half>& adj_V
+)
+{
+    _adj_svd3_in_float(A, adj_A, adj_U, adj_sigma, adj_V);
+}
+
+template <typename Unused = void>
+inline CUDA_CALLABLE void eig3(const mat_t<3, 3, half>& A, mat_t<3, 3, half>& Q, vec_t<3, half>& d)
+{
+    _eig3_in_float(A, Q, d);
+}
+
+template <typename Unused = void>
+inline CUDA_CALLABLE void adj_eig3(
+    const mat_t<3, 3, half>& A,
+    const mat_t<3, 3, half>& Q,
+    const vec_t<3, half>& d,
+    mat_t<3, 3, half>& adj_A,
+    const mat_t<3, 3, half>& adj_Q,
+    const vec_t<3, half>& adj_d
+)
+{
+    _adj_eig3_in_float(A, adj_A, adj_Q, adj_d);
+}
+
+#ifndef WP_NO_BFLOAT16
+
+// Templates only so that they compile when used, as for svd2 above.
+template <typename Unused = void>
+inline CUDA_CALLABLE void
+svd3(const mat_t<3, 3, bfloat16>& A, mat_t<3, 3, bfloat16>& U, vec_t<3, bfloat16>& sigma, mat_t<3, 3, bfloat16>& V)
+{
+    _svd3_in_float(A, U, sigma, V);
+}
+
+template <typename Unused = void>
+inline CUDA_CALLABLE void adj_svd3(
+    const mat_t<3, 3, bfloat16>& A,
+    const mat_t<3, 3, bfloat16>& U,
+    const vec_t<3, bfloat16>& sigma,
+    const mat_t<3, 3, bfloat16>& V,
+    mat_t<3, 3, bfloat16>& adj_A,
+    const mat_t<3, 3, bfloat16>& adj_U,
+    const vec_t<3, bfloat16>& adj_sigma,
+    const mat_t<3, 3, bfloat16>& adj_V
+)
+{
+    _adj_svd3_in_float(A, adj_A, adj_U, adj_sigma, adj_V);
+}
+
+template <typename Unused = void>
+inline CUDA_CALLABLE void eig3(const mat_t<3, 3, bfloat16>& A, mat_t<3, 3, bfloat16>& Q, vec_t<3, bfloat16>& d)
+{
+    _eig3_in_float(A, Q, d);
+}
+
+template <typename Unused = void>
+inline CUDA_CALLABLE void adj_eig3(
+    const mat_t<3, 3, bfloat16>& A,
+    const mat_t<3, 3, bfloat16>& Q,
+    const vec_t<3, bfloat16>& d,
+    mat_t<3, 3, bfloat16>& adj_A,
+    const mat_t<3, 3, bfloat16>& adj_Q,
+    const vec_t<3, bfloat16>& adj_d
+)
+{
+    _adj_eig3_in_float(A, adj_A, adj_Q, adj_d);
+}
+
+#endif  // WP_NO_BFLOAT16
 }

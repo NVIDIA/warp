@@ -1302,6 +1302,111 @@ def test_svd_2D_grad_scale(test, device, dtype, register_kernels=False):
     check_tiny(np.eye(2), tiny, 0)
 
 
+@wp.kernel
+def svd3_eig3_low_precision(
+    a: wp.array[Any],
+    w: Any,
+    sigma_out: wp.array[Any],
+    recon_out: wp.array[Any],
+    eig_out: wp.array[Any],
+    eig_recon_out: wp.array[Any],
+    loss: wp.array[Any],
+):
+    # a[0] is a general matrix for svd3, a[1] a symmetric matrix for eig3.
+    U, sigma, V = wp.svd3(a[0])
+    sigma_out[0] = sigma
+    recon_out[0] = U * wp.diag(sigma) * wp.transpose(V)
+    Q, d = wp.eig3(a[1])
+    eig_out[0] = d
+    eig_recon_out[0] = Q * wp.diag(d) * wp.transpose(Q)
+    # A loss through the singular and eigen vectors, whose gradients involve the factor derivatives.
+    loss[0] = U[0, 1] + w * U[1, 2] + w * V[2, 0] + Q[0, 1] + w * Q[2, 1]
+
+
+for _mat, _vec, _scalar in ((wp.mat33h, wp.vec3h, wp.float16), (wp.mat33d, wp.vec3d, wp.float64)):
+    wp.overload(
+        svd3_eig3_low_precision,
+        [wp.array[_mat], _scalar, wp.array[_vec], wp.array[_mat], wp.array[_vec], wp.array[_mat], wp.array[_scalar]],
+    )
+
+
+def test_svd3_eig3_float16(test, device):
+    """Decompose and differentiate float16 3x3 matrices whose entries square past the float16 range."""
+    rng = np.random.default_rng(1)
+    Q1, _ = np.linalg.qr(rng.normal(size=(3, 3)))
+    Q2, _ = np.linalg.qr(rng.normal(size=(3, 3)))
+
+    def run(A, S, mat, vec, scalar):
+        a = wp.array([A, S], dtype=mat, requires_grad=True, device=device)
+        outs = [wp.zeros(1, dtype=t, device=device, requires_grad=True) for t in (vec, mat, vec, mat, scalar)]
+        tape = wp.Tape()
+        with tape:
+            wp.launch(svd3_eig3_low_precision, dim=1, inputs=[a, scalar(0.5)], outputs=outs, device=device)
+        tape.backward(loss=outs[-1])
+        return [o.numpy()[0].astype(np.float64) for o in outs[:4]] + [a.grad.numpy().astype(np.float64)]
+
+    # Singular values and eigenvalues of 300 square past the float16 maximum; those of 0.005 lose most of their bits.
+    for scale in (100.0, 0.005):
+        with test.subTest(scale=scale):
+            sig = scale * np.array([3.0, 2.0, 1.0])
+            A = (Q1 @ np.diag(sig) @ Q2.T).astype(np.float16).astype(np.float64)
+            S = (Q1 @ np.diag(sig) @ Q1.T).astype(np.float16).astype(np.float64)
+            sigma, recon, eig, eig_recon, grad = run(A, S, wp.mat33h, wp.vec3h, wp.float16)
+            *_, grad_ref = run(A, S, wp.mat33d, wp.vec3d, wp.float64)
+
+            # Compare relative to the input's scale.
+            amax = np.abs(A).max()
+            assert_np_equal(sigma / amax, np.linalg.svd(A, compute_uv=False) / amax, tol=3.0e-3)
+            assert_np_equal(recon / amax, A / amax, tol=3.0e-3)
+            assert_np_equal(np.sort(eig) / amax, np.linalg.eigvalsh(S) / amax, tol=3.0e-3)
+            assert_np_equal(eig_recon / amax, S / amax, tol=3.0e-3)
+            gmax = np.abs(grad_ref).max()
+            assert_np_equal(grad / gmax, grad_ref / gmax, tol=5.0e-3)
+
+
+mat33bf = wp.types.matrix(shape=(3, 3), dtype=wp.bfloat16)
+
+
+@wp.kernel(enable_backward=False)
+def svd3_eig3_bfloat16_residuals(a: wp.array[wp.mat33f], residuals: wp.array[float]):
+    # The largest entries of U S V^T - A and Q D Q^T - S for bfloat16 decompositions, in float32.
+    A = mat33bf(a[0])
+    S = mat33bf(a[1])
+    U, sigma, V = wp.svd3(A)
+    Q, d = wp.eig3(S)
+    R = wp.mat33f(U * wp.diag(sigma) * wp.transpose(V)) - wp.mat33f(A)
+    E = wp.mat33f(Q * wp.diag(d) * wp.transpose(Q)) - wp.mat33f(S)
+    r = float(0.0)
+    e = float(0.0)
+    for i in range(3):
+        for j in range(3):
+            r = wp.max(r, wp.abs(R[i, j]))
+            e = wp.max(e, wp.abs(E[i, j]))
+    residuals[0] = r
+    residuals[1] = e
+
+
+def test_svd3_eig3_bfloat16(test, device):
+    """Reconstruct bfloat16 3x3 matrices from svd3 and eig3 to within bfloat16 precision."""
+    rng = np.random.default_rng(1)
+    Q1, _ = np.linalg.qr(rng.normal(size=(3, 3)))
+    Q2, _ = np.linalg.qr(rng.normal(size=(3, 3)))
+    for scale in (1.0, 100.0, 0.005):
+        with test.subTest(scale=scale):
+            sig = scale * np.array([3.0, 2.0, 1.0])
+            mats = np.array([Q1 @ np.diag(sig) @ Q2.T, Q1 @ np.diag(sig) @ Q1.T])
+            residuals = wp.zeros(2, dtype=float, device=device)
+            wp.launch(
+                svd3_eig3_bfloat16_residuals,
+                dim=1,
+                inputs=[wp.array(mats, dtype=wp.mat33f, device=device)],
+                outputs=[residuals],
+                device=device,
+            )
+            # bfloat16 rounds each factor to about 4e-3 relative precision.
+            test.assertLess(residuals.numpy().max() / np.abs(mats).max(), 1.0e-2)
+
+
 mat22bf = wp.types.matrix(shape=(2, 2), dtype=wp.bfloat16)
 vec2bf = wp.types.vector(length=2, dtype=wp.bfloat16)
 
@@ -4050,6 +4155,8 @@ for dtype in (np.float32, np.float64):
     )
 
 add_function_test(TestMat, "test_svd_2D_bfloat16", test_svd_2D_bfloat16, devices=devices)
+add_function_test(TestMat, "test_svd3_eig3_float16", test_svd3_eig3_float16, devices=devices)
+add_function_test(TestMat, "test_svd3_eig3_bfloat16", test_svd3_eig3_bfloat16, devices=devices)
 add_function_test(TestMat, "test_matrix_len", test_matrix_len, devices=devices)
 add_function_test(TestMat, "test_mat_extract", test_mat_extract, devices=devices)
 add_function_test(TestMat, "test_mat_assign", test_mat_assign, devices=devices)

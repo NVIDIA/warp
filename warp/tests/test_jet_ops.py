@@ -1305,6 +1305,24 @@ def float16_cancellation_kernel(points: wp.array[float], seeds: wp.array[float],
         out[3 + k] = a32.grad[0]
 
 
+J9H = wp.JetSpace(wp.mat33h)
+J9D = wp.JetSpace(wp.mat33d)
+
+
+@wp.kernel(enable_backward=False)
+def float16_svd3_kernel(a: wp.mat33d, grads_h: wp.array2d[wp.float64], grads_d: wp.array2d[wp.float64]):
+    # Rows 0-8 hold the derivatives of U, rows 9-11 those of sigma, in float16 and in float64.
+    Uh, sh, _Vh = wp.svd3(J9H.seed(wp.mat33h(a)))
+    Ud, sd, _Vd = wp.svd3(J9D.seed(a))
+    for q in range(9):
+        for r in range(9):
+            grads_h[r, q] = wp.float64(Uh.grad[r, q])
+            grads_d[r, q] = Ud.grad[r, q]
+        for r in range(3):
+            grads_h[9 + r, q] = wp.float64(sh.grad[r, q])
+            grads_d[9 + r, q] = sd.grad[r, q]
+
+
 @wp.kernel(enable_backward=False)
 def svd2_polar_kernel(scale: float, direction: wp.mat22, out: wp.array[float]):
     # The polar factor U V^T of a scaled identity, differentiated along a rotation generator.
@@ -2224,6 +2242,21 @@ def test_float16_unit_vectors_of_overlong_vectors(test, device):
     np.testing.assert_allclose(unit_grads.numpy(), [unit_grad, unit_grad], rtol=2e-2, atol=1e-7)
 
 
+def test_float16_svd3_with_large_singular_values(test, device):
+    """Match float64 svd3 jet derivatives in float16 where squaring the singular values overflows float16."""
+    rng = np.random.default_rng(1)
+    Q1, _ = np.linalg.qr(rng.normal(size=(3, 3)))
+    Q2, _ = np.linalg.qr(rng.normal(size=(3, 3)))
+    A = (Q1 @ np.diag([300.0, 200.0, 100.0]) @ Q2.T).astype(np.float16).astype(np.float64)
+    grads_h = wp.zeros((12, 9), dtype=wp.float64, device=device)
+    grads_d = wp.zeros((12, 9), dtype=wp.float64, device=device)
+    wp.launch(float16_svd3_kernel, dim=1, inputs=[wp.mat33d(A)], outputs=[grads_h, grads_d], device=device)
+    got, want = grads_h.numpy(), grads_d.numpy()
+    for name, rows in (("U", slice(0, 9)), ("sigma", slice(9, 12))):
+        scale = np.abs(want[rows]).max()
+        np.testing.assert_allclose(got[rows] / scale, want[rows] / scale, rtol=0, atol=5e-3, err_msg=name)
+
+
 def test_svd2_polar_factor_at_repeated_singular_values(test, device):
     """Keep the derivative of the svd2 polar factor U V^T at repeated singular values, as native svd2 does."""
     rotation = wp.mat22(0.0, -1.0, 1.0, 0.0)
@@ -2345,6 +2378,12 @@ add_function_test(
     TestJetOps,
     "test_float16_unit_vectors_of_overlong_vectors",
     test_float16_unit_vectors_of_overlong_vectors,
+    devices=devices,
+)
+add_function_test(
+    TestJetOps,
+    "test_float16_svd3_with_large_singular_values",
+    test_float16_svd3_with_large_singular_values,
     devices=devices,
 )
 add_function_test(

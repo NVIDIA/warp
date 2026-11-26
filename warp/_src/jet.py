@@ -2124,16 +2124,40 @@ def _make_jet_space(width: int, dtype):
     @wp.func
     def jet_svd3(A: JetMat33):
         U, sigma, V = wp.svd3(A.value)
-        eps = dtype(svd_epsilon)
-        sx2 = sigma[0] * sigma[0]
-        sy2 = sigma[1] * sigma[1]
-        sz2 = sigma[2] * sigma[2]
-        f01 = dtype(1.0) / wp.min(sy2 - sx2, -eps)
-        f02 = dtype(1.0) / wp.min(sz2 - sx2, -eps)
-        f12 = dtype(1.0) / wp.min(sz2 - sy2, -eps)
+        # With P = U^T dA V, the factor derivatives use Yu = F o (P S) and Yv = F o (S P), where
+        # F_ij = 1 / (s_j^2 - s_i^2). Fold the singular values into F once, as Fu_ij = F_ij s_j and
+        # Fv_ij = F_ij s_i, in float32 for float16: the squares overflow above about 256, and F alone
+        # overflows for small singular values, even when the products are representable.
+        eps = Compute(svd_epsilon)
+        sx = Compute(sigma[0])
+        sy = Compute(sigma[1])
+        sz = Compute(sigma[2])
+        f01 = Compute(1.0) / wp.min(sy * sy - sx * sx, -eps)
+        f02 = Compute(1.0) / wp.min(sz * sz - sx * sx, -eps)
+        f12 = Compute(1.0) / wp.min(sz * sz - sy * sy, -eps)
         zero = dtype(0.0)
-        F = NativeMat33(zero, f01, f02, -f01, zero, f12, -f02, -f12, zero)
-        S = wp.diag(sigma)
+        Fu = NativeMat33(
+            zero,
+            dtype(f01 * sy),
+            dtype(f02 * sz),
+            dtype(-f01 * sx),
+            zero,
+            dtype(f12 * sz),
+            dtype(-f02 * sx),
+            dtype(-f12 * sy),
+            zero,
+        )
+        Fv = NativeMat33(
+            zero,
+            dtype(f01 * sx),
+            dtype(f02 * sx),
+            dtype(-f01 * sy),
+            zero,
+            dtype(f12 * sy),
+            dtype(-f02 * sz),
+            dtype(-f12 * sz),
+            zero,
+        )
         UT = wp.transpose(U)
         dU = GradMat9()
         dsigma = GradVec3()
@@ -2145,8 +2169,8 @@ def _make_jet_space(width: int, dtype):
                     dA[r, c] = A.grad[r * 3 + c, q]
             # P = U^T dA V: dsigma = diag(P), dU = U W_u, dV = V W_v.
             P = UT * dA * V
-            Yu = wp.cw_mul(F, P * S)
-            Yv = wp.cw_mul(F, S * P)
+            Yu = wp.cw_mul(Fu, P)
+            Yv = wp.cw_mul(Fv, P)
             dUq = U * (Yu - wp.transpose(Yu))
             dVq = V * (Yv - wp.transpose(Yv))
             for r in range(3):
