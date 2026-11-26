@@ -189,18 +189,18 @@ register_api_function(closest_point_seg_tri, module="warp.geometry", python_call
 class TriangleFeature(enum.IntEnum):
     """Triangle feature containing a closest point in its relative interior."""
 
-    VERTEX_A = 0
-    """First vertex."""
-    VERTEX_B = 1
-    """Second vertex."""
-    VERTEX_C = 2
-    """Third vertex."""
-    EDGE_AB = 3
-    """Open edge between the first and second vertices."""
-    EDGE_AC = 4
-    """Open edge between the first and third vertices."""
-    EDGE_BC = 5
-    """Open edge between the second and third vertices."""
+    VERTEX_0 = 0
+    """Vertex ``v0``."""
+    VERTEX_1 = 1
+    """Vertex ``v1``."""
+    VERTEX_2 = 2
+    """Vertex ``v2``."""
+    EDGE_01 = 3
+    """Open edge between ``v0`` and ``v1``."""
+    EDGE_02 = 4
+    """Open edge between ``v0`` and ``v2``."""
+    EDGE_12 = 5
+    """Open edge between ``v1`` and ``v2``."""
     FACE = 6
     """Open face interior."""
 
@@ -313,24 +313,24 @@ def _point_triangle(p: Any, a: Any, b: Any, c: Any):
 
 
 @wp.func(inline=True)
-def closest_point_point_tri(p: wp.vec3, a: wp.vec3, b: wp.vec3, c: wp.vec3):
+def closest_point_point_tri(p: wp.vec3, v0: wp.vec3, v1: wp.vec3, v2: wp.vec3):
     """Return the closest point on a closed triangle as barycentric coordinates.
 
     Args:
         p: Query point.
-        a: First triangle vertex.
-        b: Second triangle vertex.
-        c: Third triangle vertex.
+        v0: First triangle vertex.
+        v1: Second triangle vertex.
+        v2: Third triangle vertex.
 
     Returns:
         Tuple ``(bary, distance_squared, feature)``. The closest point is
-        ``bary[0]*a + bary[1]*b + bary[2]*c``. The nonnegative weights sum
-        to one up to rounding. ``feature`` is an integer :class:`TriangleFeature`
+        ``bary[0] * v0 + bary[1] * v1 + bary[2] * v2``. The nonnegative weights
+        sum to one up to rounding. ``feature`` is an integer :class:`TriangleFeature`
         identifying the relative interior of the returned barycentric support:
         a vertex, an open edge, or the open face.
 
     For reconstruction at large world coordinates, prefer
-    ``a + bary[1]*(b-a) + bary[2]*(c-a)`` to the weighted sum.
+    ``v0 + bary[1] * (v1 - v0) + bary[2] * (v2 - v0)`` to the weighted sum.
 
     No geometric tolerance is applied. Degenerate triangles are treated as
     closed edges, with deterministic input-order tie breaking. At a degenerate
@@ -344,12 +344,12 @@ def closest_point_point_tri(p: wp.vec3, a: wp.vec3, b: wp.vec3, c: wp.vec3):
     precision. Finite forward values do not guarantee finite reverse-mode
     intermediate values at extreme scales.
     """
-    return _point_triangle(p, a, b, c)
+    return _point_triangle(p, v0, v1, v2)
 
 
 @wp.func(inline=True)
-def closest_point_point_tri(p: wp.vec3d, a: wp.vec3d, b: wp.vec3d, c: wp.vec3d):
-    return _point_triangle(p, a, b, c)
+def closest_point_point_tri(p: wp.vec3d, v0: wp.vec3d, v1: wp.vec3d, v2: wp.vec3d):
+    return _point_triangle(p, v0, v1, v2)
 
 
 register_api_function(closest_point_point_tri, module="warp.geometry", python_callable=True, differentiable=True)

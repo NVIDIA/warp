@@ -15,11 +15,12 @@ collapsed, very small, and very large triangles.
 
 ## Design
 
-`closest_point_point_tri(p, a, b, c)` returns `(bary, distance_squared, feature)`.
-This follows the point/segment-first naming and ordering of the pending
-`closest_point_seg_tri` API. `TriangleFeature` is an `IntEnum` with vertex IDs
-0–2, edges AB/AC/BC numbered 3–5, and face interior numbered 6. These values
-match Newton's feature constants.
+`closest_point_point_tri(p, v0, v1, v2)` returns `(bary, distance_squared, feature)`.
+The name, argument order, and parameter names follow `closest_point_seg_tri` and
+`intersect_seg_tri`. `TriangleFeature` is an `IntEnum` with vertices `VERTEX_0`,
+`VERTEX_1`, and `VERTEX_2` numbered 0–2, edges `EDGE_01`, `EDGE_02`, and `EDGE_12`
+numbered 3–5, and `FACE` numbered 6. These values match Newton's feature
+constants, which name the vertices A, B, and C.
 
 The feature names the relative interior of the returned barycentric support.
 Exactly zero weights identify the lower-dimensional features; there is no
