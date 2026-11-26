@@ -165,6 +165,21 @@ def test_array_reductions_negative_axis_zero_count(test, device):
     np.testing.assert_allclose(array_inner(empty, empty, axis=-2).numpy(), expected_empty)
 
 
+def test_array_reductions_negative_count(test, device):
+    """Reject negative counts before writing the output."""
+    values = wp.ones((2, 3), dtype=wp.float32, device=device)
+    for axis, shape in ((None, (1,)), (-1, (2, 1))):
+        for operation in (array_sum, array_inner):
+            with test.subTest(axis=axis, operation=operation.__name__):
+                out = wp.full(shape, 7.0, dtype=wp.float32, device=device)
+                with test.assertRaisesRegex(RuntimeError, "negative count"):
+                    if operation is array_sum:
+                        array_sum(values, out=out, value_count=-1, axis=axis)
+                    else:
+                        array_inner(values, values, out=out, count=-1, axis=axis)
+                np.testing.assert_array_equal(out.numpy(), np.full(shape, 7.0))
+
+
 def test_array_reductions_invalid_axis(test, device):
     """Verify array reductions reject axes outside the valid range."""
     values = wp.ones((2, 3), dtype=wp.float32, device=device)
@@ -214,6 +229,9 @@ add_function_test(
 )
 add_function_test(
     TestArrayReduce, "test_array_reductions_invalid_axis", test_array_reductions_invalid_axis, devices=devices
+)
+add_function_test(
+    TestArrayReduce, "test_array_reductions_negative_count", test_array_reductions_negative_count, devices=devices
 )
 
 
