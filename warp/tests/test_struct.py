@@ -881,6 +881,66 @@ def test_struct_returned_from_func_grad(test, device):
             assert_np_equal(x.grad.numpy()[0], expected, tol=1e-5)
 
 
+@wp.struct
+class ComponentWriteInner:
+    v: wp.vec3
+
+
+@wp.struct
+class ComponentWriteStruct:
+    v: wp.vec3
+    m: wp.mat22
+    q: wp.quat
+    t: wp.transform
+    inner: ComponentWriteInner
+
+
+def test_struct_field_component_write_grad(test, device):
+    """Check that writes to components of a local struct's composite fields are differentiable."""
+
+    @wp.kernel(module="unique")
+    def component_write_kernel(x: wp.array[float], loss: wp.array[float]):
+        a = x[0]
+
+        s = ComponentWriteStruct()
+        s.v[0] = 1.0 * a
+        s.v.y = 2.0 * a
+        s.v[2] += 3.0 * a
+        s.m[0] = wp.vec2(4.0 * a, 5.0 * a)
+        s.m[1, 0] = 6.0 * a
+        s.m[1, 1] -= 7.0 * a
+        s.q.w = 8.0 * a
+        s.inner.v[1] = 9.0 * a
+
+        loss[0] = wp.dot(s.v, s.v) + wp.ddot(s.m, s.m) + s.q.w * s.q.w + wp.dot(s.inner.v, s.inner.v)
+
+    @wp.kernel(module="unique")
+    def transform_and_slice_write_kernel(x: wp.array[float], loss: wp.array[float]):
+        a = x[0]
+
+        s = ComponentWriteStruct()
+        s.t.p = wp.vec3(1.0 * a, 2.0 * a, 3.0 * a)
+        s.t.q = wp.quat(4.0 * a, 5.0 * a, 6.0 * a, 7.0 * a)
+        s.v[1:] = wp.vec2(8.0 * a, 9.0 * a)
+
+        loss[0] = wp.dot(s.t.p, s.t.p) + wp.dot(s.t.q, s.t.q) + wp.dot(s.v, s.v)
+
+    # Each kernel writes components c * a for c = 1..9, so loss = sum(c^2) * a^2 and d(loss)/da = 2 * sum(c^2) * a.
+    a = 0.5
+    c2_sum = float(np.sum(np.arange(1, 10) ** 2))
+    for kernel in (component_write_kernel, transform_and_slice_write_kernel):
+        with test.subTest(kernel=kernel.key):
+            x = wp.array([a], dtype=float, requires_grad=True, device=device)
+            loss = wp.zeros(1, dtype=float, requires_grad=True, device=device)
+
+            with wp.Tape() as tape:
+                wp.launch(kernel, dim=1, inputs=[x, loss], device=device)
+            tape.backward(loss=loss)
+
+            assert_np_equal(loss.numpy(), np.array([c2_sum * a * a]), tol=1e-4)
+            assert_np_equal(x.grad.numpy(), np.array([2.0 * c2_sum * a]), tol=1e-4)
+
+
 class TestStruct(unittest.TestCase):
     # check structs default initialized in Python correctly
     def test_struct_default_attributes_python(self):
@@ -1168,6 +1228,9 @@ add_function_test(
 )
 add_function_test(
     TestStruct, "test_struct_returned_from_func_grad", test_struct_returned_from_func_grad, devices=devices
+)
+add_function_test(
+    TestStruct, "test_struct_field_component_write_grad", test_struct_field_component_write_grad, devices=devices
 )
 
 
