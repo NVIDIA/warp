@@ -81,6 +81,55 @@ def test_smoothstep(test, device):
                 assert_np_equal(tape.gradients[t].numpy(), np.array([test_data.expected_adj_t]), tol=1e-6)
 
 
+def test_smoothstep_scaled_gradient(test, device):
+    for data_type, numpy_type, scale, rtol in (
+        (wp.float16, np.float16, 0.01, 2.0e-3),
+        (wp.float32, np.float32, 1.0e-12, 2.0e-6),
+        (wp.float64, np.float64, 1.0e-90, 2.0e-14),
+    ):
+
+        def fn(
+            a: wp.array[data_type],
+            b: wp.array[data_type],
+            x: wp.array[data_type],
+            out: wp.array[data_type],
+        ):
+            i = wp.tid()
+            out[i] = wp.smoothstep(a[i], b[i], x[i]) + wp.smoothstep(a[i], b[i], x[i])
+
+        kernel = wp.Kernel(func=fn, key=f"smoothstep_scaled_gradient_{data_type.__name__}")
+        cases = []
+        for width in (scale, 1.0, 1.0 / scale):
+            cases.extend(
+                (
+                    (0.0, width, width * 0.5),
+                    (width, 0.0, width * 0.5),
+                    (0.0, width, -width),
+                    (0.0, width, 0.0),
+                    (0.0, width, width),
+                    (0.0, width, width * 2.0),
+                )
+            )
+        values = np.asarray(cases, dtype=numpy_type)
+        a = wp.array(values[:, 0], dtype=data_type, device=device, requires_grad=True)
+        b = wp.array(values[:, 1], dtype=data_type, device=device, requires_grad=True)
+        x = wp.array(values[:, 2], dtype=data_type, device=device, requires_grad=True)
+        out = wp.zeros(len(cases), dtype=data_type, device=device, requires_grad=True)
+        with wp.Tape() as tape:
+            wp.launch(kernel, dim=len(cases), inputs=[a, b, x], outputs=[out], device=device)
+        tape.backward(grads={out: wp.ones(len(cases), dtype=data_type, device=device)})
+
+        expected_value = np.tile([1.0, 1.0, 0.0, 0.0, 2.0, 2.0], 3)
+        expected_gradients = np.zeros((len(cases), 3), dtype=np.float64)
+        for i in range(len(cases)):
+            if i % 6 < 2:
+                width = float(values[i, 1]) - float(values[i, 0])
+                expected_gradients[i] = (-1.5 / width, -1.5 / width, 3.0 / width)
+        np.testing.assert_array_equal(out.numpy(), expected_value)
+        for array, expected in zip((a, b, x), expected_gradients.T, strict=True):
+            np.testing.assert_allclose(array.grad.numpy(), expected, rtol=rtol, atol=0.0)
+
+
 devices = get_test_devices()
 
 
@@ -89,6 +138,7 @@ class TestSmoothstep(unittest.TestCase):
 
 
 add_function_test(TestSmoothstep, "test_smoothstep", test_smoothstep, devices=devices)
+add_function_test(TestSmoothstep, "test_smoothstep_scaled_gradient", test_smoothstep_scaled_gradient, devices=devices)
 
 
 if __name__ == "__main__":
