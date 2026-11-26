@@ -1264,7 +1264,7 @@ class CubeBSplineShapeFunctions(CubeShapeFunction):
             node_index_in_elt: int,
         ):
             node_i, node_j, node_k = self._node_ijk(node_index_in_elt)
-            return wp.vec3(float(node_i), float(node_j), float(node_k))
+            return self.CoordsType(self.scalar_type(node_i), self.scalar_type(node_j), self.scalar_type(node_k))
 
         return node_coords_in_element
 
@@ -1428,7 +1428,7 @@ class CubeBSplineShapeFunctions(CubeShapeFunction):
             dy = weight_gradient_fn(node_delta[1])
             dz = weight_gradient_fn(node_delta[2])
 
-            return wp.vec3(dx * wy * wz, dy * wz * wx, dz * wx * wy)
+            return self.CoordsType(dx * wy * wz, dy * wz * wx, dz * wx * wy)
 
         return cache.get_func(element_inner_weight_gradient, self.name)
 
