@@ -569,8 +569,9 @@ class Tetrahedron(PrototypeElement):
     @staticmethod
     def instantiate_quadrature(order: int, family: Polynomial):
         if family is not None:
-            # Duffy transformation from square to triangle
-            point_count = _point_count_from_order(order=order + 1, family=family)
+            # Duffy transformation from cube to tetrahedron
+            # The Jacobian (1 - x)^2 (1 - y) adds up to two degrees to the integrand
+            point_count = _point_count_from_order(order=order + 2, family=family)
             gauss_1d, weights_1d = quadrature_1d(point_count=point_count, family=family)
 
             coords = [
