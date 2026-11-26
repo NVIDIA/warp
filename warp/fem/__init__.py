@@ -37,6 +37,7 @@ from warp._src.fem.domain import Cells as Cells
 from warp._src.fem.types import Coords as Coords
 from warp._src.fem.types import Coords_f64 as Coords_f64
 from warp._src.fem.field.field import DiscreteField as DiscreteField
+from warp._src.fem.field.bound import BoundField as BoundField
 from warp._src.fem.space.dof_mapper import DofMapper as DofMapper
 from warp._src.fem.types import Domain as Domain
 from warp._src.fem.geometry.element import Element as Element
@@ -89,6 +90,7 @@ from warp._src.fem.geometry.trimesh import Trimesh3D as Trimesh3D
 from warp._src.fem.field.field import UniformField as UniformField
 from warp._src.fem.adaptivity import adaptive_nanogrid_from_field as adaptive_nanogrid_from_field
 from warp._src.fem.adaptivity import adaptive_nanogrid_from_hierarchy as adaptive_nanogrid_from_hierarchy
+from warp._src.fem.field.bound import bind as bind
 from warp._src.fem.cache import borrow_temporary as borrow_temporary
 from warp._src.fem.cache import borrow_temporary_like as borrow_temporary_like
 from warp._src.fem.space import hanging_node_prolongation as hanging_node_prolongation

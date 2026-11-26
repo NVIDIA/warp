@@ -2,11 +2,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import ast
+import ctypes
 import inspect
+import math
 import textwrap
 import weakref
 from collections.abc import Callable
 from contextlib import contextmanager
+from types import SimpleNamespace
 from typing import Any, NamedTuple
 
 import warp as wp
@@ -27,6 +30,7 @@ from warp._src.fem.field import (
     TrialField,
     make_restriction,
 )
+from warp._src.fem.field.bound import _BATCHED_DOF_INDEX, BoundField, _JetLayout
 from warp._src.fem.field.virtual import (
     make_bilinear_dispatch_kernel,
     make_linear_dispatch_kernel,
@@ -53,6 +57,7 @@ from warp._src.fem.types import (
 from warp._src.fem.utils import type_zero_element
 from warp._src.logger import log_warning
 from warp._src.types import (
+    array_t,
     concrete_array_type,
     is_array,
     type_length,
@@ -74,6 +79,42 @@ from warp.sparse import (
 )
 
 __all__ = ["integrate", "interpolate"]
+
+
+def _normalize_differentiation_options(
+    differentiation: str | None, options: dict[str, Any] | None, *, trial_required: bool
+) -> dict[str, float] | None:
+    if differentiation is None:
+        if options is not None:
+            raise ValueError("differentiation_options requires a differentiation method")
+        return None
+
+    if differentiation in ("jets", "reverse_over_forward"):
+        if options:
+            raise ValueError(f"{differentiation} differentiation does not take options")
+        return None
+
+    if differentiation != "finite_difference":
+        raise ValueError(f"Unsupported FEM differentiation method: {differentiation!r}")
+    if not isinstance(options, dict):
+        raise TypeError("finite_difference requires a differentiation_options dictionary")
+
+    required = {"test_step", "trial_step"} if trial_required else {"test_step"}
+    allowed = {"test_step", "trial_step"}
+    missing = required - options.keys()
+    extra = options.keys() - allowed
+    if missing or extra:
+        raise ValueError(
+            f"finite_difference options require {sorted(required)}; missing={sorted(missing)}, extra={sorted(extra)}"
+        )
+
+    normalized = {}
+    for name, step in options.items():
+        if isinstance(step, bool) or not isinstance(step, (int, float)) or not math.isfinite(step) or step <= 0:
+            raise ValueError(f"{name} must be a positive finite number")
+        normalized[name] = float(step)
+    return normalized
+
 
 _BSR_CAPACITY_AUTO = "auto"
 _BSR_CAPACITY_REUSE = "reuse"
@@ -458,6 +499,8 @@ class IntegrandArguments(NamedTuple):
     sample_name: str
     test_name: str
     trial_name: str
+    test: TestField | None
+    trial: TrialField | None
 
 
 def _parse_integrand_arguments(
@@ -472,6 +515,8 @@ def _parse_integrand_arguments(
     sample_name = None
     test_name = None
     trial_name = None
+    test = None
+    trial = None
 
     argspec = integrand.argspec
     for arg, arg_type in argspec.annotations.items():
@@ -485,10 +530,23 @@ def _parse_integrand_arguments(
                 if test_name is not None:
                     raise ValueError(f"More than one test field argument: '{test_name}' and '{arg}'")
                 test_name = arg
+                test = field
             elif isinstance(field, TrialField):
                 if trial_name is not None:
                     raise ValueError(f"More than one trial field argument: '{trial_name}' and '{arg}'")
                 trial_name = arg
+                trial = field
+            elif isinstance(field, BoundField):
+                if field.test is not None:
+                    if test_name is not None:
+                        raise ValueError(f"More than one test field argument: '{test_name}' and '{arg}'")
+                    test_name = arg
+                    test = field.test
+                if field.trial is not None:
+                    if trial_name is not None:
+                        raise ValueError(f"More than one trial field argument: '{trial_name}' and '{arg}'")
+                    trial_name = arg
+                    trial = field.trial
             elif not isinstance(field, FieldLike):
                 raise ValueError(f"Passed field argument '{arg}' is not a proper Field")
 
@@ -511,7 +569,7 @@ def _parse_integrand_arguments(
         else:
             value_args[arg] = arg_type
 
-    return IntegrandArguments(field_args, value_args, domain_name, sample_name, test_name, trial_name)
+    return IntegrandArguments(field_args, value_args, domain_name, sample_name, test_name, trial_name, test, trial)
 
 
 def _check_field_compat(integrand: Integrand, arguments: IntegrandArguments, domain: GeometryDomain):
@@ -542,6 +600,59 @@ def _find_integrand_operators(integrand: Integrand, field_args: dict[str, FieldL
         IntegrandOperatorParser.apply(integrand, field_args, operator_callback=operator_callback)
 
         integrand.operators = operators
+
+
+def _check_local_directions(
+    integrand: Integrand,
+    arguments: IntegrandArguments,
+    test: LocalTestField,
+    trial: LocalTrialField | None,
+) -> tuple[int, int]:
+    """Fix the local layouts of dispatched directions and return their test and trial component counts."""
+    # Notifying the local fields again with the same operators later leaves their layouts unchanged
+    test.notify_operator_usage(integrand.operators.get(arguments.test_name, set()))
+    test_count = test.TAYLOR_DOF_COUNT * test.value_dof_count
+    trial_count = 0
+    if trial is not None:
+        trial.notify_operator_usage(integrand.operators.get(arguments.trial_name, set()))
+        trial_count = trial.TAYLOR_DOF_COUNT * trial.value_dof_count
+    if (trial_count if trial is not None else test_count) == 0:
+        raise ValueError(f"{integrand.name}: the energy does not evaluate its bound test or trial directions")
+    return test_count, trial_count
+
+
+def _make_batched_jet_layout(
+    arguments: IntegrandArguments,
+    test: LocalTestField,
+    trial: LocalTrialField | None,
+    test_count: int,
+    trial_count: int,
+) -> _JetLayout:
+    """Assign one jet direction to each local component of the dispatched test and trial fields."""
+    if trial is None:
+        return _JetLayout(width=test_count, test_offset=0, trial_offset=0, batched=True)
+    # The same local functions perturbing the same binding are a single set of directions
+    shared = arguments.test_name == arguments.trial_name and test.space == trial.space
+    width, trial_offset = (test_count, 0) if shared else (test_count + trial_count, test_count)
+    return _JetLayout(width=width, test_offset=0, trial_offset=trial_offset, shared=shared, batched=True)
+
+
+def _check_jet_operators(integrand: Integrand, field_args: dict[str, FieldLike]):
+    for name, field in field_args.items():
+        if not isinstance(field, BoundField):
+            continue
+        for op in integrand.operators.get(name, ()):
+            try:
+                pointer = op.resolver(field)
+            except (AttributeError, NotImplementedError):
+                # Not a field evaluation; leave the error, if any, to kernel generation
+                continue
+            if pointer is None:
+                raise NotImplementedError(
+                    f"{integrand.name}: operator `{op.func.__name__}` on bound field '{name}' cannot be evaluated "
+                    "as a jet. Residuals support scalar, vec2, vec3, mat22, mat33, mat23, and mat32 values; "
+                    "tangents support scalar, vec2, and vec3 values only."
+                )
 
 
 def _check_domain_operators(integrand: Integrand, domain: GeometryDomain, domain_argument_name: str, device):
@@ -706,6 +817,8 @@ class PassFieldArgsToIntegrand(ast.NodeTransformer):
                 attr=self._test_name,
                 ctx=ast.Load(),
             )
+            if isinstance(self._field_args[self._test_name], BoundField):
+                call = ast.Attribute(value=call, attr="test", ctx=ast.Load())
         elif callee == _get_trial_arg.__name__:
             # print(ast.dump(call, indent=4))
             call = ast.Attribute(
@@ -713,8 +826,360 @@ class PassFieldArgsToIntegrand(ast.NodeTransformer):
                 attr=self._trial_name,
                 ctx=ast.Load(),
             )
+            if isinstance(self._field_args[self._trial_name], BoundField):
+                call = ast.Attribute(value=call, attr="trial", ctx=ast.Load())
 
         return call
+
+
+def _set_fd_coefficients(fields, test_coeff, trial_coeff):
+    """Marker expanded into bound-field assignments during code generation."""
+    raise RuntimeError("Finite-difference coefficient marker must be expanded")
+
+
+def _fill_fd_caches(fields, domain_arg, sample, fillers):
+    """Marker expanded into bound-field current-value cache fills during code generation."""
+    raise RuntimeError("Finite-difference cache marker must be expanded")
+
+
+class _SetFiniteDifferenceCoefficients(ast.NodeTransformer):
+    def __init__(self, field_names: tuple[str, ...]):
+        self.field_names = field_names
+
+    def visit_Expr(self, node: ast.Expr):
+        call = node.value
+        if not isinstance(call, ast.Call) or not isinstance(call.func, ast.Name):
+            return self.generic_visit(node)
+        if call.func.id == _fill_fd_caches.__name__:
+            # fields.<name> = fillers.<name>(domain_arg, fields.<name>, sample)
+            fields, domain_arg, sample, fillers = call.args
+            return [
+                ast.Assign(
+                    targets=[ast.Attribute(value=fields, attr=name, ctx=ast.Store())],
+                    value=ast.Call(
+                        func=ast.Attribute(value=fillers, attr=name, ctx=ast.Load()),
+                        args=[domain_arg, ast.Attribute(value=fields, attr=name, ctx=ast.Load()), sample],
+                        keywords=[],
+                    ),
+                )
+                for name in self.field_names
+            ]
+        if call.func.id != _set_fd_coefficients.__name__:
+            return self.generic_visit(node)
+
+        return [
+            ast.Assign(
+                targets=[
+                    ast.Attribute(
+                        value=ast.Attribute(
+                            value=ast.Name(id="perturbed_fields", ctx=ast.Load()), attr=name, ctx=ast.Load()
+                        ),
+                        attr=coeff_name,
+                        ctx=ast.Store(),
+                    )
+                ],
+                value=coeff_value,
+            )
+            for name in self.field_names
+            for coeff_name, coeff_value in (("test_coeff", call.args[1]), ("trial_coeff", call.args[2]))
+        ]
+
+
+class _PassDifferentiatedIntegrandToKernel(PassFieldArgsToIntegrand):
+    def visit_Call(self, call: ast.Call):
+        if isinstance(call.func, ast.Name) and call.func.id == self._func_name:
+            call.args = [
+                ast.Name(id=self._sample_var_name, ctx=ast.Load()),
+                ast.Name(id=self._domain_var_name, ctx=ast.Load()),
+                ast.Name(id=self._domain_index_var_name, ctx=ast.Load()),
+                ast.Name(id=self._fields_var_name, ctx=ast.Load()),
+                ast.Name(id=self._values_var_name, ctx=ast.Load()),
+            ]
+            return call
+        return super().visit_Call(call)
+
+
+def _make_finite_difference_integrand(
+    integrand: Integrand,
+    integrand_func: wp.Function,
+    arguments: IntegrandArguments,
+    domain: GeometryDomain,
+    FieldStruct: Struct,
+    ValueStruct: Struct,
+):
+    bound_names = tuple(name for name, field in arguments.field_args.items() if isinstance(field, BoundField))
+    transformers = [
+        _SetFiniteDifferenceCoefficients(bound_names),
+        PassFieldArgsToIntegrand(
+            arg_names=integrand.argspec.args,
+            parsed_args=arguments,
+            integrand_func=integrand_func,
+            fields_var_name="perturbed_fields",
+        ),
+    ]
+    suffix = (
+        integrand.name,
+        tuple((name, field.name) for name, field in arguments.field_args.items()),
+        "finite_difference",
+        arguments.trial is not None,
+        domain.name,
+    )
+    SampleType = domain.geometry.sample_type
+    ScalarType = domain.geometry.scalar_type
+
+    # Field values are evaluated once per sample and shared by the perturbed energy evaluations
+    cache_fillers = SimpleNamespace(**{name: arguments.field_args[name].fill_cache for name in bound_names})
+
+    if arguments.trial is None:
+
+        @cache.dynamic_func(suffix=suffix, code_transformers=transformers)
+        def finite_difference_integrand(
+            sample: SampleType,
+            domain_arg: domain.ElementArg,
+            domain_index_arg: domain.ElementIndexArg,
+            fields: FieldStruct,
+            values: ValueStruct,
+        ):
+            perturbed_fields = fields
+            _fill_fd_caches(perturbed_fields, domain_arg, sample, cache_fillers)
+            _set_fd_coefficients(perturbed_fields, values._fd_test_step, ScalarType(0.0))
+            positive = integrand_func(sample, perturbed_fields, values)
+            _set_fd_coefficients(perturbed_fields, -values._fd_test_step, ScalarType(0.0))
+            negative = integrand_func(sample, perturbed_fields, values)
+            return (positive - negative) / (ScalarType(2.0) * values._fd_test_step)
+    else:
+
+        @cache.dynamic_func(suffix=suffix, code_transformers=transformers)
+        def finite_difference_integrand(
+            sample: SampleType,
+            domain_arg: domain.ElementArg,
+            domain_index_arg: domain.ElementIndexArg,
+            fields: FieldStruct,
+            values: ValueStruct,
+        ):
+            perturbed_fields = fields
+            _fill_fd_caches(perturbed_fields, domain_arg, sample, cache_fillers)
+            _set_fd_coefficients(perturbed_fields, values._fd_test_step, values._fd_trial_step)
+            pp = integrand_func(sample, perturbed_fields, values)
+            _set_fd_coefficients(perturbed_fields, values._fd_test_step, -values._fd_trial_step)
+            plus_minus = integrand_func(sample, perturbed_fields, values)
+            _set_fd_coefficients(perturbed_fields, -values._fd_test_step, values._fd_trial_step)
+            minus_plus = integrand_func(sample, perturbed_fields, values)
+            _set_fd_coefficients(perturbed_fields, -values._fd_test_step, -values._fd_trial_step)
+            nn = integrand_func(sample, perturbed_fields, values)
+            return (pp - plus_minus - minus_plus + nn) / (
+                ScalarType(4.0) * values._fd_test_step * values._fd_trial_step
+            )
+
+    return finite_difference_integrand
+
+
+class _RenameBindingPlaceholders(ast.NodeTransformer):
+    """Replace the ``_rof_test`` and ``_rof_trial`` placeholder members of a field struct by binding names."""
+
+    def __init__(self, test_name: str, trial_name: str):
+        self.names = {"_rof_test": test_name, "_rof_trial": trial_name}
+
+    def visit_Attribute(self, node: ast.Attribute):
+        self.generic_visit(node)
+        if node.attr in self.names:
+            node.attr = self.names[node.attr]
+        return node
+
+
+def _clear_array_gradients(value: ctypes.Structure) -> bool:
+    """Zero the gradient pointer of every array embedded in a ctypes struct; return whether any was set."""
+    if isinstance(value, array_t):
+        had_gradient = value.grad != 0
+        value.grad = 0
+        return had_gradient
+    cleared = False
+    for name, field_type in value._fields_:
+        if issubclass(field_type, ctypes.Structure):
+            cleared |= _clear_array_gradients(getattr(value, name))
+    return cleared
+
+
+def _without_array_gradients(value: Any) -> Any:
+    """Return a copy of a struct argument whose arrays have no gradient buffers, or ``value`` if it has none.
+
+    The reverse sweep that reverse-over-forward tangents run inside the kernel has no adjoint buffers for array
+    arguments, so Warp accumulates array adjoints into the arrays' own ``grad`` buffers. The tangent does not
+    depend on those adjoints, so the kernel gets arrays without gradients and leaves the user's gradients untouched.
+    """
+    if not isinstance(value, StructInstance):
+        return value
+    copy = value._cls()
+    copy.assign(value)
+    return copy if _clear_array_gradients(copy._ctype) else value
+
+
+def _make_reverse_over_forward_integrand(
+    integrand: Integrand,
+    integrand_func: wp.Function,
+    arguments: IntegrandArguments,
+    domain: GeometryDomain,
+    FieldStruct: Struct,
+    ValueStruct: Struct,
+    batched: bool,
+):
+    """Return a function giving the tangent of an energy at a quadrature point.
+
+    Under generic assembly, it returns the single entry for the sample's test and trial degrees of freedom,
+    differentiating in reverse w.r.t. one scalar coefficient. Under dispatch assembly (``batched``), it returns
+    the ``test_count x trial_count`` local tangent block, as described below.
+
+    For each local trial component ``j``, the energy is evaluated over width-1 jets whose derivative follows
+    that component, giving the directional derivative ``D_j(a)`` of the energy at ``current + sum_i a[i] * test_i``.
+    Differentiating ``D_j`` in reverse with :func:`wp.grad` w.r.t. the coefficients ``a``, at ``a = 0``, gives
+    column ``j`` of the tangent block for all local test components at once.
+    """
+    # Argument parsing allows a single binding with a test direction and a single one with a trial direction
+    test_binding = arguments.field_args[arguments.test_name]
+    trial_binding = arguments.field_args[arguments.trial_name]
+    SampleType = domain.geometry.sample_type
+    ScalarType = domain.geometry.scalar_type
+    rename = _RenameBindingPlaceholders(arguments.test_name, arguments.trial_name)
+
+    suffix = (
+        integrand.name,
+        tuple((name, field.name) for name, field in arguments.field_args.items()),
+        "reverse_over_forward",
+        domain.name,
+    )
+
+    @cache.dynamic_func(
+        suffix=suffix,
+        code_transformers=[
+            PassFieldArgsToIntegrand(
+                arg_names=integrand.argspec.args,
+                parsed_args=arguments,
+                integrand_func=integrand_func,
+            )
+        ],
+    )
+    def directional_derivative(
+        sample: SampleType,
+        domain_arg: domain.ElementArg,
+        domain_index_arg: domain.ElementIndexArg,
+        fields: FieldStruct,
+        values: ValueStruct,
+    ):
+        # Derivative coefficient of the width-1 energy jet: the energy's variation along the trial component
+        return integrand_func(sample, fields, values).grad[0]
+
+    if not batched:
+        # Field and direction values are gathered once per sample, outside the differentiated function
+        bound_names = tuple(name for name, field in arguments.field_args.items() if isinstance(field, BoundField))
+        cache_fillers = SimpleNamespace(**{name: arguments.field_args[name].fill_cache for name in bound_names})
+
+        @cache.dynamic_func(
+            suffix=suffix,
+            code_transformers=[_SetFiniteDifferenceCoefficients(bound_names), rename],
+        )
+        def pair_integrand(
+            sample: SampleType,
+            domain_arg: domain.ElementArg,
+            domain_index_arg: domain.ElementIndexArg,
+            fields: FieldStruct,
+            values: ValueStruct,
+        ):
+            seeded_fields = fields
+            _fill_fd_caches(seeded_fields, domain_arg, sample, cache_fillers)
+            seeded_fields._rof_test.test_coeff = ScalarType(0.0)
+            _adj_sample, _adj_domain, _adj_domain_index, adj_fields, _adj_values = wp.grad(directional_derivative)(
+                sample, domain_arg, domain_index_arg, seeded_fields, values
+            )
+            return adj_fields._rof_test.test_coeff
+
+        return pair_integrand
+
+    test_count = test_binding.test_direction_count
+    trial_count = trial_binding.trial_direction_count
+    CoefficientsType = test_binding.EvalArg.vars["a"].type
+    TangentType = cache.cached_mat_type(shape=(test_count, trial_count), dtype=ScalarType)
+
+    @cache.dynamic_func(suffix=suffix, code_transformers=[rename])
+    def reverse_over_forward_integrand(
+        sample: SampleType,
+        domain_arg: domain.ElementArg,
+        domain_index_arg: domain.ElementIndexArg,
+        fields: FieldStruct,
+        values: ValueStruct,
+    ):
+        tangent = TangentType()
+        for trial_dof in range(trial_count):
+            seeded_fields = fields
+            seeded_fields._rof_trial.trial_index = trial_dof
+            seeded_fields._rof_test.a = CoefficientsType()
+            _adj_sample, _adj_domain, _adj_domain_index, adj_fields, _adj_values = wp.grad(directional_derivative)(
+                sample, domain_arg, domain_index_arg, seeded_fields, values
+            )
+            column = adj_fields._rof_test.a
+            for test_dof in range(test_count):
+                tangent[test_dof, trial_dof] = ScalarType(column[test_dof])
+        return tangent
+
+    return reverse_over_forward_integrand
+
+
+def _make_jet_integrand(
+    integrand: Integrand,
+    integrand_func: wp.Function,
+    arguments: IntegrandArguments,
+    domain: GeometryDomain,
+    FieldStruct: Struct,
+    ValueStruct: Struct,
+    batched: bool,
+):
+    transformers = [
+        PassFieldArgsToIntegrand(
+            arg_names=integrand.argspec.args,
+            parsed_args=arguments,
+            integrand_func=integrand_func,
+        ),
+    ]
+    suffix = (
+        integrand.name,
+        tuple((name, field.name) for name, field in arguments.field_args.items()),
+        "jets",
+        arguments.trial is not None,
+        batched,
+        domain.name,
+    )
+    SampleType = domain.geometry.sample_type
+
+    # Batched integrands return every derivative; per-pair ones the single entry for the sample's directions
+    if arguments.trial is None:
+
+        @cache.dynamic_func(suffix=suffix, code_transformers=transformers)
+        def jet_integrand(
+            sample: SampleType,
+            domain_arg: domain.ElementArg,
+            domain_index_arg: domain.ElementIndexArg,
+            fields: FieldStruct,
+            values: ValueStruct,
+        ):
+            if wp.static(batched):
+                return integrand_func(sample, fields, values).grad
+            else:
+                return integrand_func(sample, fields, values).grad[0]
+    else:
+
+        @cache.dynamic_func(suffix=suffix, code_transformers=transformers)
+        def jet_integrand(
+            sample: SampleType,
+            domain_arg: domain.ElementArg,
+            domain_index_arg: domain.ElementIndexArg,
+            fields: FieldStruct,
+            values: ValueStruct,
+        ):
+            if wp.static(batched):
+                return integrand_func(sample, fields, values).hess
+            else:
+                return integrand_func(sample, fields, values).hess[0, 1]
+
+    return jet_integrand
 
 
 _INTEGRATE_CONSTANT_TILE_SIZE = 256
@@ -961,6 +1426,126 @@ def get_integrate_linear_local_kernel(
         sample = SampleType(element_index, qp_coords, qp_index, qp_weight, test_dof_index, trial_dof_index)
         val = integrand_func(sample, fields, values)
         result[qp_eval_index, taylor_dof, test_dof] = qp_weight * vol * local_scalar_type(val)
+
+    return integrate_kernel_fn
+
+
+def get_integrate_linear_batched_local_kernel(
+    integrand_func: wp.Function,
+    domain: GeometryDomain,
+    quadrature: Quadrature,
+    FieldStruct: Struct,
+    ValueStruct: Struct,
+    test: LocalTestField,
+    test_offset: int,
+):
+    """Evaluate a differentiated energy once per quadrature point and store its derivative along every local test component.
+
+    The integrand returns a vector indexed by ``test_offset + taylor_dof * value_dof_count + value_dof``.
+    """
+    SampleType = domain.geometry.sample_type
+    local_scalar_type = domain.geometry.scalar_type
+    TEST_TAYLOR_DOF_COUNT = test.TAYLOR_DOF_COUNT
+    TEST_VALUE_DOF_COUNT = test.value_dof_count
+    TEST_OFFSET = test_offset
+
+    def integrate_kernel_fn(
+        qp_arg: quadrature.Arg,
+        qp_element_index_arg: quadrature.ElementIndexArg,
+        domain_arg: domain.ElementArg,
+        domain_index_arg: domain.ElementIndexArg,
+        fields: FieldStruct,
+        values: ValueStruct,
+        result: wp.array3d(dtype=local_scalar_type),
+    ):
+        qp_eval_index = wp.tid()
+        domain_element_index, qp = quadrature.evaluation_point_element_index(qp_element_index_arg, qp_eval_index)
+
+        if domain_element_index == NULL_ELEMENT_INDEX:
+            return
+
+        element_index = domain.element_index(domain_index_arg, domain_element_index)
+        if element_index == NULL_ELEMENT_INDEX:
+            return
+
+        qp_coords = quadrature.point_coords(domain_arg, qp_arg, domain_element_index, element_index, qp)
+        qp_weight = quadrature.point_weight(domain_arg, qp_arg, domain_element_index, element_index, qp)
+        qp_index = quadrature.point_index(domain_arg, qp_arg, domain_element_index, element_index, qp)
+
+        qp_vol = qp_weight * domain.element_measure(domain_arg, make_free_sample(element_index, qp_coords))
+
+        sample = SampleType(element_index, qp_coords, qp_index, qp_weight, _BATCHED_DOF_INDEX, NULL_DOF_INDEX)
+        gradient = integrand_func(sample, fields, values)
+        for taylor_dof in range(TEST_TAYLOR_DOF_COUNT):
+            for test_dof in range(TEST_VALUE_DOF_COUNT):
+                direction = TEST_OFFSET + taylor_dof * TEST_VALUE_DOF_COUNT + test_dof
+                result[qp_eval_index, taylor_dof, test_dof] = qp_vol * local_scalar_type(gradient[direction])
+
+    return integrate_kernel_fn
+
+
+def get_integrate_bilinear_batched_local_kernel(
+    integrand_func: wp.Function,
+    domain: GeometryDomain,
+    quadrature: Quadrature,
+    FieldStruct: Struct,
+    ValueStruct: Struct,
+    test: LocalTestField,
+    trial: LocalTrialField,
+    test_offset: int,
+    trial_offset: int,
+):
+    """Evaluate a differentiated energy once per quadrature point and store its second derivatives over the local test and trial components.
+
+    The integrand returns a matrix whose rows and columns are indexed like the vector of
+    :func:`get_integrate_linear_batched_local_kernel`, from ``test_offset`` and ``trial_offset``.
+    """
+    SampleType = domain.geometry.sample_type
+    local_scalar_type = domain.geometry.scalar_type
+    TEST_TAYLOR_DOF_COUNT = test.TAYLOR_DOF_COUNT
+    TEST_VALUE_DOF_COUNT = test.value_dof_count
+    TRIAL_TAYLOR_DOF_COUNT = trial.TAYLOR_DOF_COUNT
+    TRIAL_VALUE_DOF_COUNT = trial.value_dof_count
+    TEST_OFFSET = test_offset
+    TRIAL_OFFSET = trial_offset
+
+    def integrate_kernel_fn(
+        qp_arg: quadrature.Arg,
+        qp_element_index_arg: quadrature.ElementIndexArg,
+        domain_arg: domain.ElementArg,
+        domain_index_arg: domain.ElementIndexArg,
+        fields: FieldStruct,
+        values: ValueStruct,
+        result: wp.array4d(dtype=local_scalar_type),
+    ):
+        qp_eval_index = wp.tid()
+        domain_element_index, qp = quadrature.evaluation_point_element_index(qp_element_index_arg, qp_eval_index)
+
+        if domain_element_index == NULL_ELEMENT_INDEX:
+            return
+
+        element_index = domain.element_index(domain_index_arg, domain_element_index)
+        if element_index == NULL_ELEMENT_INDEX:
+            return
+
+        qp_coords = quadrature.point_coords(domain_arg, qp_arg, domain_element_index, element_index, qp)
+        qp_weight = quadrature.point_weight(domain_arg, qp_arg, domain_element_index, element_index, qp)
+        qp_index = quadrature.point_index(domain_arg, qp_arg, domain_element_index, element_index, qp)
+
+        qp_vol = qp_weight * domain.element_measure(domain_arg, make_free_sample(element_index, qp_coords))
+
+        sample = SampleType(element_index, qp_coords, qp_index, qp_weight, _BATCHED_DOF_INDEX, _BATCHED_DOF_INDEX)
+        hessian = integrand_func(sample, fields, values)
+        for test_taylor_dof in range(TEST_TAYLOR_DOF_COUNT):
+            for trial_taylor_dof in range(TRIAL_TAYLOR_DOF_COUNT):
+                taylor_dof = test_taylor_dof * TRIAL_TAYLOR_DOF_COUNT + trial_taylor_dof
+                for test_dof in range(TEST_VALUE_DOF_COUNT):
+                    row = TEST_OFFSET + test_taylor_dof * TEST_VALUE_DOF_COUNT + test_dof
+                    for trial_dof in range(TRIAL_VALUE_DOF_COUNT):
+                        col = TRIAL_OFFSET + trial_taylor_dof * TRIAL_VALUE_DOF_COUNT + trial_dof
+                        result[test_dof, trial_dof, qp_eval_index, taylor_dof] = qp_vol * local_scalar_type(
+                            hessian[row, col]
+                        )
 
     return integrate_kernel_fn
 
@@ -1235,9 +1820,16 @@ def _generate_integrate_kernel(
     output_dtype: type,
     accumulate_dtype: type,
     fused_mapped_atomic: bool,
+    differentiation: str | None = None,
+    jet_layout: _JetLayout | None = None,
+    batched_local: bool = False,
     kernel_options: dict[str, Any] | None = None,
 ) -> wp.Kernel:
     output_dtype = type_scalar_type(output_dtype)
+
+    if differentiation == "reverse_over_forward":
+        # The reverse sweeps run inside the kernel; the kernel itself is never differentiated
+        kernel_options = {"enable_backward": False, **(kernel_options or {})}
 
     _notify_operator_usage(integrand, arguments.field_args)
 
@@ -1248,6 +1840,7 @@ def _generate_integrate_kernel(
         field_names,
         cache.pod_type_key(output_dtype),
         cache.pod_type_key(accumulate_dtype),
+        differentiation if differentiation is not None else "ordinary",
         fused_mapped_atomic,
     )
 
@@ -1263,7 +1856,12 @@ def _generate_integrate_kernel(
         return kernel, field_arg_values, value_struct_values
 
     FieldStruct = _gen_field_struct(arguments.field_args)
-    ValueStruct = cache.get_argument_struct(arguments.value_args)
+    value_types = arguments.value_args.copy()
+    if differentiation == "finite_difference":
+        value_types["_fd_test_step"] = domain.geometry.scalar_type
+        if trial is not None:
+            value_types["_fd_trial_step"] = domain.geometry.scalar_type
+    ValueStruct = cache.get_argument_struct(value_types)
 
     # Not found in cache, transform integrand and generate kernel
     _check_field_compat(integrand, arguments, domain)
@@ -1271,6 +1869,22 @@ def _generate_integrate_kernel(
     integrand_func = IntegrandTransformer.apply(
         integrand, arguments.field_args, sample_type=domain.geometry.sample_type
     )
+
+    # Reverse-over-forward returns the local tangent block alone, without jet offsets
+    test_offset, trial_offset = (jet_layout.test_offset, jet_layout.trial_offset) if jet_layout else (0, 0)
+
+    if differentiation == "finite_difference":
+        integrand_func = _make_finite_difference_integrand(
+            integrand, integrand_func, arguments, domain, FieldStruct, ValueStruct
+        )
+    elif differentiation == "jets":
+        integrand_func = _make_jet_integrand(
+            integrand, integrand_func, arguments, domain, FieldStruct, ValueStruct, batched=batched_local
+        )
+    elif differentiation == "reverse_over_forward":
+        integrand_func = _make_reverse_over_forward_integrand(
+            integrand, integrand_func, arguments, domain, FieldStruct, ValueStruct, batched=batched_local
+        )
 
     nodal = quadrature is None
 
@@ -1293,6 +1907,10 @@ def _generate_integrate_kernel(
                 test=test,
                 output_dtype=output_dtype,
                 accumulate_dtype=accumulate_dtype,
+            )
+        elif batched_local:
+            integrate_kernel_fn = get_integrate_linear_batched_local_kernel(
+                integrand_func, domain, quadrature, FieldStruct, ValueStruct, test=test, test_offset=test_offset
             )
         elif isinstance(test, LocalTestField):
             integrate_kernel_fn = get_integrate_linear_local_kernel(
@@ -1326,6 +1944,18 @@ def _generate_integrate_kernel(
                 accumulate_dtype=accumulate_dtype,
                 fused_mapped_atomic=fused_mapped_atomic,
             )
+        elif batched_local:
+            integrate_kernel_fn = get_integrate_bilinear_batched_local_kernel(
+                integrand_func,
+                domain,
+                quadrature,
+                FieldStruct,
+                ValueStruct,
+                test=test,
+                trial=trial,
+                test_offset=test_offset,
+                trial_offset=trial_offset,
+            )
         elif isinstance(test, LocalTestField):
             integrate_kernel_fn = get_integrate_bilinear_local_kernel(
                 integrand_func,
@@ -1356,7 +1986,7 @@ def _generate_integrate_kernel(
         suffix=kernel_suffix,
         kernel_options=kernel_options,
         code_transformers=[
-            PassFieldArgsToIntegrand(
+            (_PassDifferentiatedIntegrandToKernel if differentiation is not None else PassFieldArgsToIntegrand)(
                 arg_names=integrand.argspec.args, parsed_args=arguments, integrand_func=integrand_func
             )
         ],
@@ -1495,6 +2125,8 @@ def _launch_integrate_kernel(
     trial: TrialField | None,
     fields: dict[str, FieldLike],
     values: dict[str, Any],
+    differentiation_options: dict[str, float] | None,
+    batched_local: bool,
     accumulate_dtype: type,
     temporary_store: cache.TemporaryStore | None,
     output_dtype: type,
@@ -1502,6 +2134,7 @@ def _launch_integrate_kernel(
     add_to_output: bool,
     bsr_options: dict[str, Any] | None,
     device,
+    reverse_over_forward: bool = False,
 ):
     # Set-up launch arguments
     domain_elt_arg = domain.element_arg_value(device=device)
@@ -1514,7 +2147,18 @@ def _launch_integrate_kernel(
         if not isinstance(v, GeometryDomain):
             v.fill_eval_arg(getattr(field_arg_values, k), device=device)
 
+    if differentiation_options is not None:
+        values = values | {"_fd_test_step": differentiation_options["test_step"]}
+        if trial is not None:
+            values["_fd_trial_step"] = differentiation_options["trial_step"]
     cache.populate_argument_struct(value_struct_values, values, func_name=integrand.name)
+
+    if reverse_over_forward:
+        # Arguments of the function that the kernel differentiates in reverse
+        domain_elt_arg = _without_array_gradients(domain_elt_arg)
+        domain_elt_index_arg = _without_array_gradients(domain_elt_index_arg)
+        field_arg_values = _without_array_gradients(field_arg_values)
+        value_struct_values = _without_array_gradients(value_struct_values)
 
     # Constant form
     if test is None and trial is None:
@@ -1658,7 +2302,7 @@ def _launch_integrate_kernel(
 
             wp.launch(
                 kernel=kernel,
-                dim=local_result.shape,
+                dim=local_result.shape[0] if batched_local else local_result.shape,
                 inputs=[
                     qp_arg,
                     quadrature.element_index_arg_value(device),
@@ -1911,7 +2555,9 @@ def _launch_integrate_kernel(
 
         wp.launch(
             kernel=kernel,
-            dim=(
+            dim=qp_eval_count
+            if batched_local
+            else (
                 qp_eval_count,
                 test.value_dof_count,
                 trial.value_dof_count,
@@ -2091,6 +2737,8 @@ def integrate(
     assembly: str | None = None,
     add: bool = False,
     bsr_options: dict[str, Any] | None = None,
+    differentiation: str | None = None,
+    differentiation_options: dict[str, Any] | None = None,
 ):
     """
     Integrates a constant, linear or bilinear form, and returns a scalar, array, or sparse matrix, respectively.
@@ -2099,7 +2747,7 @@ def integrate(
         integrand: Form to be integrated, must have :func:`integrand` decorator
         domain: Integration domain. If None, deduced from fields
         quadrature: Quadrature formula. If None, deduced from domain and fields degree.
-        fields: Discrete, test, and trial fields to be passed to the integrand. Keys in the dictionary must match integrand parameter names.
+        fields: Discrete, test, trial, and bound fields to be passed to the integrand. Keys in the dictionary must match integrand parameter names.
         values: Additional variable values to be passed to the integrand, can be of any type accepted by warp kernel launches. Keys in the dictionary must match integrand parameter names.
         temporary_store: shared pool from which to allocate temporary arrays
         accumulate_dtype: Scalar type to be used for accumulating integration samples
@@ -2143,6 +2791,22 @@ def integrate(
           the mapped assembly strategy must remain unchanged. Non-mapped FEM writes invalidate the cached map,
           but in-place changes made by custom kernels or external libraries cannot be detected; violating this
           requirement has undefined behavior.
+        differentiation: Method for differentiating an energy with bound fields, one of
+            ``"finite_difference"``, ``"jets"``, or ``"reverse_over_forward"``. Jets evaluate the bound fields as
+            forward-mode :func:`warp.JetSpace` values, so the energy and any function it calls must accept jets, for
+            instance by using ``Any`` argument types. Tangent matrices use :func:`warp.JetSpace2`, which
+            supports scalar and vector values but not matrices, such as the gradient of a vector field.
+            ``"reverse_over_forward"`` computes residuals like ``"jets"``. Tangent matrices instead use
+            first-order jets along each local trial component and differentiate them in reverse with
+            :func:`warp.grad`, so matrix values are supported and the state per quadrature point grows linearly,
+            not quadratically, with the number of local components. Generic assembly differentiates one test and
+            trial pair at a time. These tangents cannot be recorded on a :class:`warp.Tape`, and leave the
+            gradient buffers of the arrays they read untouched.
+        differentiation_options: Method-specific options. ``"jets"`` and ``"reverse_over_forward"`` take no options. For ``"finite_difference"``,
+            ``test_step`` is required and ``trial_step`` is required for a tangent matrix.
+            Any supplied steps must be positive finite numbers. The steps
+            are applied at runtime and do not affect kernel specialization. Centered second
+            differences can lose accuracy through cancellation, especially with float32 fields.
     """
     if fields is None:
         fields = {}
@@ -2157,15 +2821,47 @@ def integrate(
 
     # test, test_name, trial, trial_name = _get_test_and_trial_fields(fields)
     arguments = _parse_integrand_arguments(integrand, fields)
+    differentiation_options = _normalize_differentiation_options(
+        differentiation, differentiation_options, trial_required=arguments.trial is not None
+    )
 
-    test = None
-    if arguments.test_name:
-        test = arguments.field_args[arguments.test_name]
-    trial = None
-    if arguments.trial_name:
+    bound_fields = [field for field in arguments.field_args.values() if isinstance(field, BoundField)]
+    if bound_fields and differentiation is None:
+        raise ValueError("Bound fields require an explicit differentiation method")
+    if differentiation is not None:
+        if not bound_fields:
+            raise ValueError("Energy differentiation requires at least one bound field")
+        if any(isinstance(field, (TestField, TrialField)) for field in arguments.field_args.values()):
+            raise ValueError("Differentiated energy forms cannot mix bound and unbound test or trial fields")
+    if differentiation == "reverse_over_forward" and arguments.trial is None:
+        # Residuals are one forward pass; reverse mode only enters for tangents
+        differentiation = "jets"
+    if differentiation == "finite_difference":
+        reserved = {"_fd_test_step", "_fd_trial_step"}
+        if reserved.intersection(values) or reserved.intersection(arguments.value_args):
+            raise ValueError("Integrand parameters and values cannot use reserved finite-difference step names")
+    elif differentiation == "reverse_over_forward":
+        if wp._src.context.runtime.tape is not None:
+            raise RuntimeError(
+                "reverse_over_forward tangents cannot be recorded on a wp.Tape, since their kernels run a reverse "
+                "sweep internally and have no backward pass"
+            )
+        # Tangents only; the reverse sweep needs an output to differentiate, and residuals need none
+        for name, field in arguments.field_args.items():
+            if isinstance(field, BoundField):
+                arguments.field_args[name] = field._with_reverse_over_forward()
+    elif differentiation == "jets":
+        # First-order jets give residuals; tangents need the mixed second derivative
+        jet_order = 1 if arguments.trial is None else 2
+        for name, field in arguments.field_args.items():
+            if isinstance(field, BoundField):
+                arguments.field_args[name] = field._with_jets(jet_order)
+
+    test = arguments.test
+    trial = arguments.trial
+    if trial is not None:
         if test is None:
             raise ValueError("A trial field cannot be provided without a test field")
-        trial = arguments.field_args[arguments.trial_name]
         if test.domain != trial.domain:
             raise ValueError("Incompatible test and trial domains")
 
@@ -2188,17 +2884,42 @@ def integrate(
 
     _find_integrand_operators(integrand, arguments.field_args)
     _check_domain_operators(integrand, domain, arguments.domain_name, device)
+    if differentiation == "jets":
+        _check_jet_operators(integrand, arguments.field_args)
 
+    if bound_fields and assembly == "nodal":
+        raise NotImplementedError("Bound-field differentiation supports generic and dispatch assembly only")
     assembly = _pick_assembly_strategy(assembly, arguments=arguments, operators=integrand.operators)
     # print("assembly for ", integrand.name, ":", strategy)
+
+    jet_layout = None
+    # Jets and reverse-over-forward evaluate dispatched energies once per quadrature point
+    batched_local = False
 
     if assembly == "dispatch":
         if test is not None:
             test = LocalTestField(test)
-            arguments.field_args[arguments.test_name] = test
         if trial is not None:
             trial = LocalTrialField(trial)
-            arguments.field_args[arguments.trial_name] = trial
+        if bound_fields:
+            if differentiation in ("jets", "reverse_over_forward"):
+                batched_local = True
+                test_count, trial_count = _check_local_directions(integrand, arguments, test, trial)
+                if differentiation == "jets":
+                    jet_layout = _make_batched_jet_layout(arguments, test, trial, test_count, trial_count)
+            # Directions live inside bindings, which keep evaluating the current field
+            for name, field in arguments.field_args.items():
+                if isinstance(field, BoundField):
+                    arguments.field_args[name] = field._rebind(
+                        test if field.test is not None else None,
+                        trial if field.trial is not None else None,
+                        jet_layout,
+                    )
+        else:
+            if test is not None:
+                arguments.field_args[arguments.test_name] = test
+            if trial is not None:
+                arguments.field_args[arguments.trial_name] = trial
 
     if assembly == "nodal":
         if quadrature is not None:
@@ -2257,6 +2978,9 @@ def integrate(
         test=test,
         trial=trial,
         accumulate_dtype=accumulate_dtype,
+        differentiation=differentiation,
+        jet_layout=jet_layout,
+        batched_local=batched_local,
         output_dtype=output_dtype,
         fused_mapped_atomic=integrate_kernel_fused_atomic,
         kernel_options=kernel_options,
@@ -2284,6 +3008,8 @@ def integrate(
         trial=trial,
         fields=arguments.field_args,
         values=values,
+        differentiation_options=differentiation_options,
+        batched_local=batched_local,
         accumulate_dtype=accumulate_dtype,
         temporary_store=temporary_store,
         output_dtype=output_dtype,
@@ -2291,6 +3017,7 @@ def integrate(
         add_to_output=add,
         bsr_options=bsr_options,
         device=device,
+        reverse_over_forward=differentiation == "reverse_over_forward",
     )
 
 

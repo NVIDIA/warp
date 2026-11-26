@@ -121,6 +121,76 @@ The following excerpt from the introductory example ``warp/examples/fem/example_
     arbitrary operations are permitted. However, the result of the form must remain linear in the test and trial fields. 
     This strategy is demonstrated in the ``example_mixed_elasticity.py`` example.
 
+Differentiating an energy
+-------------------------
+
+Bind a valued field to test and trial directions to assemble variations from one
+scalar energy integrand::
+
+    @fem.integrand
+    def energy(s: fem.Sample, u: fem.Field):
+        value = u(s)
+        return 0.5 * value * value + 0.25 * value * value * value * value
+
+    residual = fem.integrate(
+        energy, fields={"u": fem.bind(current, test=test)}, differentiation="jets"
+    )
+    tangent = fem.integrate(
+        energy, fields={"u": fem.bind(current, test=test, trial=trial)}, differentiation="jets"
+    )
+
+The binding makes ``u(s)`` and supported field operators evaluate the current
+field plus a multiple of each direction. ``test`` supplies residual rows and
+``trial`` supplies tangent columns. For a mixed block, bind the test and trial
+directions to separate valued fields in the same energy. Plain fields and
+``values=`` arguments stay fixed. Geometry, quadrature points, and weights are
+also held fixed during differentiation.
+
+The ``differentiation=`` argument is required and selects how the derivatives
+are computed:
+
+- ``"jets"`` evaluates bound fields as forward-mode jets (see :func:`warp.JetSpace`),
+  so the derivatives are exact up to rounding. The energy, and any ``@wp.func`` it
+  calls with field values, must accept jets: annotate such arguments with ``Any``.
+  Residuals support scalar, ``vec2``, ``vec3``, and 2x2, 3x3, 2x3, and 3x2 matrix
+  field values; ``wp.ddot`` and
+  ``wp.outer`` have no jet overloads, so write, for instance,
+  ``wp.trace(wp.transpose(F) * F)`` instead of ``wp.ddot(F, F)``. Tangents use
+  second-order jets (see :func:`warp.JetSpace2`), which support scalar, ``vec2``,
+  and ``vec3`` values but not matrices, so tangents of energies of a vector field's
+  gradient are not yet available with jets.
+- ``"reverse_over_forward"`` computes the same exact residuals as ``"jets"``. Tangents
+  evaluate the energy with first-order jets along a trial direction, and differentiate
+  that directional derivative in reverse mode with :func:`warp.grad` with respect to the test
+  directions. Only first-order jets are required, so tangents of energies of a vector
+  field's gradient (matrix-valued operators) are supported. It takes no
+  ``differentiation_options``. With dispatch assembly, one forward and reverse pass per
+  local trial component yields a whole tangent column, and its cost is comparable to
+  ``"jets"``. With generic assembly, one pass is needed per pair of element nodes, which is
+  not faster than finite differences. Kernels default to ``enable_backward=False``.
+  Because the reverse sweep runs inside the kernel, these tangents cannot be recorded on a
+  :class:`warp.Tape`. They leave the gradient buffers of the arrays they read untouched.
+- ``"finite_difference"`` uses centered differences and requires a ``test_step``
+  option in ``differentiation_options``. Tangent matrices also require
+  ``trial_step``; residual calls may omit it. The step sizes must be positive and
+  should be chosen for the scale and precision of the energy. Second differences
+  can lose accuracy through cancellation, especially with float32 fields::
+
+      options = {"test_step": 0.01, "trial_step": 0.01}
+      tangent = fem.integrate(
+          energy, fields={"u": fem.bind(current, test=test, trial=trial)},
+          differentiation="finite_difference", differentiation_options=options,
+      )
+
+All methods support generic and dispatch assembly, and pick dispatch by default
+as for other forms. With dispatch, jets evaluate the energy once per quadrature
+point, carrying derivatives along every local value and gradient component of the
+test (and trial) functions, while finite differences evaluate it per pair of local
+components rather than per pair of element nodes. Finite differences evaluate the
+bound fields once per pair and reuse those values for all perturbed evaluations.
+``assembly="nodal"`` is not supported for bound fields. Supply a quadrature explicitly for nonlinear
+energies when the degree-based default is insufficient.
+
 Introductory Examples
 ---------------------
 
@@ -135,6 +205,7 @@ Introductory Examples
  - ``example_navier_stokes.py``: 2D Navier-Stokes flow using mixed :math:`P_k/P_{k-1}` elements
  - ``example_mixed_elasticity.py``: 2D nonlinear elasticity using mixed continuous/discontinuous :math:`S_k/P_{(k-1)d}` elements
  - ``example_distortion_energy.py``: Parameterization of a 3D surface minimizing a 2D nonlinear distortion energy
+ - ``example_energy_differentiation.py``: Assemble an energy, residual, and tangent from one integrand
  - ``example_magnetostatics.py``: 2D magnetostatics using a curl-curl formulation
  - ``example_elastic_shape_optimization.py``: Shape optimization of a 2D elastic cantilever beam 
  - ``example_darcy_ls_optimization.py``: Level-set-based optimization of a 2D Darcy flow

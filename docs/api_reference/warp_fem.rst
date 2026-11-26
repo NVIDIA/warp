@@ -39,6 +39,7 @@ Python API
 
    AdaptiveNanogrid
    BasisSpace
+   BoundField
    BoundarySides
    CellBasedGeometryPartition
    Cells
@@ -99,6 +100,7 @@ Python API
    UniformField
    adaptive_nanogrid_from_field
    adaptive_nanogrid_from_hierarchy
+   bind
    borrow_temporary
    borrow_temporary_like
    hanging_node_prolongation
