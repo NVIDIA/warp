@@ -27,6 +27,10 @@ on:
         description: Force a native build
         type: boolean
         default: true
+      probe-only:
+        description: Check host MSVC and the CUDA CDN TLS connection
+        type: boolean
+        default: false
 
 env:
   PYTHONFAULTHANDLER: "1" # Dump tracebacks on fatal signals (SIGSEGV, SIGABRT, etc.)
@@ -96,19 +100,50 @@ jobs:
 
       - name: Set up Python
         run: uv python install
+      - name: Probe host MSVC and CUDA CDN
+        if: inputs.probe-only
+        shell: pwsh
+        run: |
+          $os = Get-CimInstance Win32_OperatingSystem
+          Write-Output ("Windows edition: " + $os.Caption)
+          Write-Output ("Logical processors: " + [Environment]::ProcessorCount)
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          if (Test-Path -LiteralPath $vswhere) {
+            $vsPath = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+            if ($vsPath) {
+              Write-Output "MSVC x64 install: $vsPath"
+              Get-ChildItem -Path "$vsPath\VC\Tools\MSVC" -Name
+            } else {
+              Write-Output "MSVC x64 install: missing"
+            }
+          } else {
+            Write-Output "vswhere: missing"
+          }
+          $cl = Get-Command cl.exe -ErrorAction SilentlyContinue
+          Write-Output ("MSVC in PATH: " + [bool]$cl)
+          $archive = "https://developer.download.nvidia.com/compute/cuda/redist/cuda_cccl/windows-x86_64/cuda_cccl-windows-x86_64-12.9.27-archive.zip"
+          & curl.exe --silent --show-error --fail --head --max-time 25 --output NUL $archive
+          $curlExitCode = $LASTEXITCODE
+          Write-Output "Windows curl TLS probe exit code: $curlExitCode"
+          & uv run --no-project python -c 'import sys, urllib.request; print(urllib.request.urlopen(urllib.request.Request(sys.argv[1], method="HEAD"), timeout=25).status)' $archive
+          $pythonExitCode = $LASTEXITCODE
+          Write-Output "Python urllib TLS probe exit code: $pythonExitCode"
+          exit 0
 
       - name: Set snapshot version
-        if: needs.prepare-build-metadata.outputs.version-mode == 'snapshot'
+        if: "!inputs.probe-only && (needs.prepare-build-metadata.outputs.version-mode == 'snapshot')"
         run: uv run --no-project tools/ci/publishing/set_nightly_version.py --date ${{ needs.prepare-build-metadata.outputs.snapshot-date }}
 
       - name: Record Git commit
         run: uv run --no-project tools/ci/publishing/update_git_hash.py
+        if: "!inputs.probe-only"
 
       - name: Synchronize version files
         run: uv run --no-project tools/pre-commit-hooks/check_version_consistency.py
+        if: "!inputs.probe-only"
 
       - name: Cache build artifacts
-        if: "!inputs.bypass-build-cache && github.repository == 'NVIDIA/warp'"
+        if: "!inputs.probe-only && (!inputs.bypass-build-cache && github.repository == 'NVIDIA/warp')"
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         id: cache-build
         with:
@@ -118,7 +153,7 @@ jobs:
           key: build-${{ matrix.artifact-name }}-${{ matrix.cuda-version }}-${{ needs.prepare-build-metadata.outputs.cache-suffix }}-${{ hashFiles('build_lib.py', 'build_llvm.py', 'warp/_src/build_architecture.py', 'warp/_src/build_dll.py', 'warp/native/clang/clang.cpp', 'warp/native/**/*.cpp', 'warp/native/**/*.cu', 'warp/native/**/*.cuh', 'warp/native/**/*.h', 'warp/native/libdevice/*.bc', 'warp/native/warp.map', 'deps/llvm-deps.packman.xml', 'deps/libmathdx-deps.packman.xml', '.github/actions/setup-warp-cuda/action.yml', 'tools/ci/cuda_toolkit.py', 'tools/ci/cuda_toolkit_requirements.json', 'tools/ci/cuda_toolkit_lock.json') }}
 
       - name: Set up CUDA Toolkit for Warp
-        if: steps.cache-build.outputs.cache-hit != 'true' && matrix.cuda-version != ''
+        if: "!inputs.probe-only && (steps.cache-build.outputs.cache-hit != 'true' && matrix.cuda-version != '')"
         uses: ./.github/actions/setup-warp-cuda
         with:
           version: ${{ matrix.cuda-version }}
@@ -127,7 +162,7 @@ jobs:
           cache-write: false
 
       - name: Build Warp
-        if: steps.cache-build.outputs.cache-hit != 'true'
+        if: "!inputs.probe-only && (steps.cache-build.outputs.cache-hit != 'true')"
         env:
           WARP_CACHE_PATH: ${{ runner.temp }}/warp-cache-${{ matrix.artifact-name }}
         run: uv run build_lib.py ${{ matrix.build-args }}
@@ -142,10 +177,11 @@ jobs:
             warp/bin/
             warp/native/version.h
           retention-days: ${{ github.repository == 'NVIDIA/warp' && 7 || 1 }}
+        if: "!inputs.probe-only"
     timeout-minutes: 60
 
   test-warp-cpu:
-    if: ${{ inputs.bypass-build-cache }}
+    if: ${{ inputs.bypass-build-cache && !inputs.probe-only }}
     runs-on: ${{ matrix.os }}
     needs: build-warp
     permissions:
@@ -200,4 +236,4 @@ jobs:
           show: "fail"
         if: always()
     timeout-minutes: 60
-run-name: Windows CUDA 12 benchmark (NVIDIA=${{ inputs.use-nvidia-runner }}, cold=${{ inputs.bypass-build-cache }})
+run-name: Windows CUDA 12 benchmark (NVIDIA=${{ inputs.use-nvidia-runner }}, cold=${{ inputs.bypass-build-cache }}, probe=${{ inputs.probe-only }})
