@@ -1952,6 +1952,65 @@ def test_non_ascii_source(test, device):
     np.testing.assert_array_equal(out.numpy(), [1])
 
 
+@wp.kernel(module="unique")
+def _cpp_keyword_arg_names_kernel(
+    new: wp.array[float],
+    this: wp.array[float],
+    delete: wp.array[float],
+    union: wp.array[float],
+    int: wp.array[float],
+    NAN: wp.array[float],
+    default: float,
+    INFINITY: wp.array[float],
+):
+    i = wp.tid()
+    # Make a fallback to a single-thread block observable in the output and gradients.
+    scale = default * float(wp.block_dim())
+    INFINITY[i] = scale * (new[i] + 2.0 * this[i] + 3.0 * delete[i] + 4.0 * union[i] + 5.0 * int[i] + 6.0 * NAN[i])
+
+
+def test_cpp_keyword_kernel_arg_names(test, device):
+    """Launch and differentiate a kernel whose arguments are named after C++ keywords or macros."""
+    n = 5
+    scale = 0.5
+    weights = (1.0, 2.0, 3.0, 4.0, 5.0, 6.0)
+    # Exercise both CPU task loops and the cooperative CPU block path.
+    for stride, block_dim in ((1, 1), (2, 1), (1, 4)):
+        with test.subTest(stride=stride, block_dim=block_dim):
+            rng = np.random.default_rng(42)
+            bases = [
+                wp.array(rng.random(n * stride, dtype=np.float32), dtype=float, device=device, requires_grad=True)
+                for _ in weights
+            ]
+            out_base = wp.zeros(n * stride, dtype=float, device=device, requires_grad=True)
+            inputs = [b[::stride] for b in bases]
+            out = out_base[::stride]
+
+            tape = wp.Tape()
+            with tape:
+                wp.launch(
+                    _cpp_keyword_arg_names_kernel,
+                    dim=n,
+                    inputs=[*inputs, scale],
+                    outputs=[out],
+                    device=device,
+                    block_dim=block_dim,
+                )
+
+            expected_scale = scale * block_dim
+            expected = expected_scale * np.sum(
+                [w * b.numpy()[::stride] for w, b in zip(weights, bases, strict=True)], axis=0
+            )
+            np.testing.assert_allclose(out.numpy(), expected, rtol=1e-6)
+
+            out.grad.fill_(1.0)
+            tape.backward()
+            for w, b in zip(weights, bases, strict=True):
+                expected_grad = np.zeros(n * stride, dtype=np.float32)
+                expected_grad[::stride] = expected_scale * w
+                np.testing.assert_allclose(b.grad.numpy(), expected_grad, rtol=1e-6)
+
+
 _SCAN_SCALE = 2.0
 
 
@@ -3244,6 +3303,13 @@ add_function_test(
     devices=devices,
 )
 add_function_test(TestCodeGen, "test_non_ascii_source", test_non_ascii_source, devices=devices)
+add_function_test(
+    TestCodeGen,
+    "test_cpp_keyword_kernel_arg_names",
+    test_cpp_keyword_kernel_arg_names,
+    devices=devices,
+    enable_cpu_blocks=True,
+)
 
 
 if __name__ == "__main__":

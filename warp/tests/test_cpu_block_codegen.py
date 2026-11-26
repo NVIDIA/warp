@@ -71,7 +71,7 @@ class TestCpuBlockCodegen(unittest.TestCase):
         self.assertIn(f"{name}_cpu_kernel_forward<wp_linear_contiguous>", one_lane_source)
         self.assertIn(f"{name}_cpu_forward_tasks<false>", one_lane_source)
         self.assertIn("strides[0] == (int)sizeof(wp::float32)", one_lane_source)
-        self.assertIn("wp_contiguous_args.values.strides[0] = sizeof(wp::float32)", one_lane_source)
+        self.assertIn("wp_contiguous_args.var_values.strides[0] = sizeof(wp::float32)", one_lane_source)
         self.assertRegex(one_lane_source, r"if \(var_\d+ >= 17\) goto end_for_0;")
         self.assertRegex(one_lane_source, r"var_\d+ \+= 1;")
         self.assertRegex(one_lane_source, r"if \(var_\d+ < 0\) goto end_for_0;")
