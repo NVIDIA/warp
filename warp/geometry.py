@@ -56,6 +56,9 @@ from warp._src.geometry import tri_tri_adjacency as tri_tri_adjacency
 
 # category: Kernel API
 
+from warp._src.geometry.closest import TriangleFeature as TriangleFeature
+from warp._src.geometry.closest import closest_point_point_tri as closest_point_point_tri
+
 from warp._src.geometry.closest import closest_point_seg_seg as closest_point_seg_seg
 from warp._src.geometry.closest import closest_point_seg_tri as closest_point_seg_tri
 

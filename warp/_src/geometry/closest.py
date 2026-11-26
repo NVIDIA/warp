@@ -3,6 +3,7 @@
 
 """Closest pairs on closed simplices, evaluated by finite feature tests."""
 
+import enum
 from typing import Any
 
 import warp as wp
@@ -183,3 +184,172 @@ def closest_point_seg_tri(p0: wp.vec3d, p1: wp.vec3d, v0: wp.vec3d, v1: wp.vec3d
 
 register_api_function(closest_point_seg_seg, module="warp.geometry", python_callable=True, differentiable=True)
 register_api_function(closest_point_seg_tri, module="warp.geometry", python_callable=True, differentiable=True)
+
+
+class TriangleFeature(enum.IntEnum):
+    """Triangle feature containing a closest point in its relative interior."""
+
+    VERTEX_A = 0
+    """First vertex."""
+    VERTEX_B = 1
+    """Second vertex."""
+    VERTEX_C = 2
+    """Third vertex."""
+    EDGE_AB = 3
+    """Open edge between the first and second vertices."""
+    EDGE_AC = 4
+    """Open edge between the first and third vertices."""
+    EDGE_BC = 5
+    """Open edge between the second and third vertices."""
+    FACE = 6
+    """Open face interior."""
+
+
+@wp.func(inline=True)
+def _triangle_feature(bary: Any):
+    zero = type(bary[0])(0.0)
+    # Support masks 1, 2, 4 name vertices; 3, 5, 6 name edges; 7 names the face.
+    mask = int(bary[0] > zero) + 2 * int(bary[1] > zero) + 4 * int(bary[2] > zero)
+    return mask - 1 + int(mask == 3) - int(mask == 4)
+
+
+@wp.func(inline=True)
+def _point_triangle(p: Any, a: Any, b: Any, c: Any):
+    zero = type(a[0])(0.0)
+    one = type(a[0])(1.0)
+    ab0 = b - a
+    ac0 = c - a
+    ap0 = p - a
+    size = wp.max(wp.max(wp.abs(ab0)), wp.max(wp.abs(ac0)))
+    # Exact powers of two change exponent range without rounding the shape.
+    # These thresholds choose arithmetic, not a geometric degeneracy cutoff.
+    factor = one
+    if size < type(a[0])(1.0e-4):
+        factor = type(a[0])(4294967296.0)
+    elif size > type(a[0])(1.0e4):
+        factor = type(a[0])(2.3283064365386963e-10)
+    ab = ab0 * factor
+    ac = ac0 * factor
+    ap = ap0 * factor
+    bp = (p - b) * factor
+    cp = (p - c) * factor
+    n = wp.cross(ab, ac)
+    ns = wp.max(wp.abs(n))
+    if ns > zero and ns < type(a[0])(1.0e-8):
+        n = n * type(a[0])(18446744073709551616.0)
+    elif ns > type(a[0])(1.0e8):
+        n = n * type(a[0])(5.421010862427522e-20)
+    d1 = wp.dot(ab, ap)
+    d2 = wp.dot(ac, ap)
+    d3 = wp.dot(ab, bp)
+    d4 = wp.dot(ac, bp)
+    d5 = wp.dot(ab, cp)
+    d6 = wp.dot(ac, cp)
+    # Keep the established region determinants on well-shaped triangles.
+    # Cross products avoid their cancellation on slivers; no feature is discarded.
+    sliver = ns < type(a[0])(0.01) * (size * factor) * (size * factor)
+    vc = d1 * d4 - d3 * d2
+    vb = d5 * d2 - d1 * d6
+    va = d3 * d6 - d5 * d4
+    if sliver:
+        vc = wp.dot(wp.cross(ab, ap), n)
+        vb = wp.dot(wp.cross(ap, ac), n)
+        va = wp.dot(wp.cross(bp, cp), n)
+    weights = type(a)(va, vb, vc)
+    if va < zero or vb < zero or vc < zero or va + vb + vc <= zero:
+        if d1 <= zero and d2 <= zero:
+            weights = type(a)(one, zero, zero)
+        elif d3 >= zero and d4 <= d3:
+            weights = type(a)(zero, one, zero)
+        elif d6 >= zero and d5 <= d6:
+            weights = type(a)(zero, zero, one)
+        elif vc <= zero and d1 >= zero and d3 <= zero and d1 > d3:
+            weights = type(a)(-d3, d1, zero)
+        elif vb <= zero and d2 >= zero and d6 <= zero and d2 > d6:
+            weights = type(a)(-d6, zero, d2)
+        elif va <= zero and d4 >= d3 and d5 >= d6 and (d4 > d3 or d5 > d6):
+            weights = type(a)(zero, d5 - d6, d4 - d3)
+        else:
+            weights = wp.max(weights, type(a)(zero))
+    elif sliver:
+        # On slivers, separately computed area weights lose their shared
+        # long-edge coordinate. Recover that coordinate with a dot projection.
+        denominator = wp.dot(wp.cross(ab, ac), n)
+        ab2 = wp.dot(ab, ab)
+        ac2 = wp.dot(ac, ac)
+        abac = wp.dot(ab, ac)
+        v = zero
+        w = zero
+        if ab2 >= ac2:
+            w = vc / denominator
+            v = (wp.dot(ab, ap) - w * abac) / ab2
+        else:
+            v = vb / denominator
+            w = (wp.dot(ac, ap) - v * abac) / ac2
+        u = one - v - w
+        weights = wp.max(type(a)(u, v, w), type(a)(zero))
+        if va == zero:
+            weights[0] = zero
+        if vb == zero:
+            weights[1] = zero
+        if vc == zero:
+            weights[2] = zero
+    # Share one reciprocal across all feature regions and all three weights.
+    # Do not skip it just because total rounds to one: its derivative can be nonzero.
+    total = weights[0] + weights[1] + weights[2]
+    bary = type(a)(one, zero, zero)
+    if total > zero:
+        bary = weights * (one / total)
+    # Assign the largest weight by partition of unity. Unlike reconstructing
+    # an arbitrarily chosen weight, this cannot erase a small positive weight.
+    if bary[0] >= bary[1] and bary[0] >= bary[2]:
+        bary[0] = one - (bary[1] + bary[2])
+    elif bary[1] >= bary[2]:
+        bary[1] = one - (bary[0] + bary[2])
+    else:
+        bary[2] = one - (bary[0] + bary[1])
+    delta = bary[1] * ab0 + bary[2] * ac0 - ap0
+    return bary, wp.dot(delta, delta), _triangle_feature(bary)
+
+
+@wp.func(inline=True)
+def closest_point_point_tri(p: wp.vec3, a: wp.vec3, b: wp.vec3, c: wp.vec3):
+    """Return the closest point on a closed triangle as barycentric coordinates.
+
+    Args:
+        p: Query point.
+        a: First triangle vertex.
+        b: Second triangle vertex.
+        c: Third triangle vertex.
+
+    Returns:
+        Tuple ``(bary, distance_squared, feature)``. The closest point is
+        ``bary[0]*a + bary[1]*b + bary[2]*c``. The nonnegative weights sum
+        to one up to rounding. ``feature`` is an integer :class:`TriangleFeature`
+        identifying the relative interior of the returned barycentric support:
+        a vertex, an open edge, or the open face.
+
+    For reconstruction at large world coordinates, prefer
+    ``a + bary[1]*(b-a) + bary[2]*(c-a)`` to the weighted sum.
+
+    No geometric tolerance is applied. Degenerate triangles are treated as
+    closed edges, with deterministic input-order tie breaking. At a degenerate
+    triangle, different barycentric representations can name different features
+    at the same physical point. Boundary points select the lower-dimensional
+    feature. Floating-point rounding can change classifications near a boundary.
+
+    The coordinates and squared distance are differentiable away from feature
+    changes and ties; the integer feature is not differentiable. Inputs and
+    intermediate differences and products must be representable in the chosen
+    precision. Finite forward values do not guarantee finite reverse-mode
+    intermediate values at extreme scales.
+    """
+    return _point_triangle(p, a, b, c)
+
+
+@wp.func(inline=True)
+def closest_point_point_tri(p: wp.vec3d, a: wp.vec3d, b: wp.vec3d, c: wp.vec3d):
+    return _point_triangle(p, a, b, c)
+
+
+register_api_function(closest_point_point_tri, module="warp.geometry", python_callable=True, differentiable=True)

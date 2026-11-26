@@ -36,6 +36,8 @@ Kernel API
    :nosignatures:
    :toctree: _generated
 
+   TriangleFeature
+   closest_point_point_tri
    closest_point_seg_seg
    closest_point_seg_tri
    find_triangle_neighbor_edge_index
