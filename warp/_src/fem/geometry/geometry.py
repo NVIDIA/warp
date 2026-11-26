@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+from dataclasses import dataclass
 from functools import cached_property
 from typing import Any, ClassVar
 
@@ -34,6 +35,30 @@ _COORD_LOOKUP_EPS = float(2**-20)
 _COORD_LOOKUP_EPS_F64 = float(2**-44)
 _BVH_MIN_PADDING = float(2**-16)
 _BVH_MAX_PADDING = float(2**16)
+
+
+@dataclass(frozen=True)
+class SideFacetIncidence:
+    """Incidence between geometry sides and cell-local facets.
+
+    A side is an integration element with one or two neighboring cells. A
+    facet is one cell's full local codimension-one face, even when several
+    sides cover different parts of it. Every facet is covered exactly once
+    by the footprints of its sides. Each side appears in the inverse list of
+    each adjacent facet. ``outer_cell`` and ``outer_facet`` are ``-1`` on
+    boundary sides. The CSR range for facet
+    ``cell * facets_per_cell + local_facet`` in ``facet_side_offsets`` indexes
+    its sides in ``facet_side_indices``.
+    All arrays reside on the geometry device.
+    """
+
+    facets_per_cell: int
+    inner_cell: wp.array
+    outer_cell: wp.array
+    inner_facet: wp.array
+    outer_facet: wp.array
+    facet_side_offsets: wp.array
+    facet_side_indices: wp.array
 
 
 class Geometry:
@@ -74,6 +99,16 @@ class Geometry:
     def boundary_side_count(self):
         """Number of boundary sides (sides with a single neighbour cell) in the geometry"""
         raise NotImplementedError
+
+    def side_facet_incidence(self) -> SideFacetIncidence:
+        """Return the sides covering each cell-local facet.
+
+        Geometries that support conforming constraints implement this
+        optional interface. Each returned side retains its one or two
+        neighboring cells; a facet may have multiple sides. The sides cover
+        every facet without gaps or overlaps.
+        """
+        raise NotImplementedError(f"{type(self).__name__} does not expose side-facet incidence")
 
     def environment_count(self):
         """Number of topologically independent environments represented by this geometry."""

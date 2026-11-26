@@ -34,7 +34,7 @@ import warp as wp
 
 
 @wp.func
-def sample_height(heights: wp.array(dtype=float), x: int, y: int, width: int, height: int):
+def sample_height(heights: wp.array[float], x: int, y: int, width: int, height: int):
     """Sample height field with boundary clamping."""
     x = wp.clamp(x, 0, width - 1)
     y = wp.clamp(y, 0, height - 1)
@@ -43,9 +43,9 @@ def sample_height(heights: wp.array(dtype=float), x: int, y: int, width: int, he
 
 @wp.kernel
 def wave_displace(
-    hprevious: wp.array(dtype=float),
-    hcurrent: wp.array(dtype=float),
-    mouse_pos: wp.array(dtype=wp.vec2),
+    hprevious: wp.array[float],
+    hcurrent: wp.array[float],
+    mouse_pos: wp.array[wp.vec2],
     width: int,
     height: int,
     radius: float,
@@ -73,8 +73,8 @@ def wave_displace(
 
 @wp.kernel
 def wave_solve(
-    hprevious: wp.array(dtype=float),
-    hcurrent: wp.array(dtype=float),
+    hprevious: wp.array[float],
+    hcurrent: wp.array[float],
     width: int,
     height: int,
     inv_cell: float,

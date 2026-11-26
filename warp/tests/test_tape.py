@@ -1,6 +1,8 @@
 # SPDX-FileCopyrightText: Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import contextlib
+import io
 import unittest
 from unittest.mock import patch
 
@@ -1010,8 +1012,47 @@ def test_tape_backward_cuda_launch_failure(test, device):
     test.assertEqual(len(launch), 8)
     launch[6] = 2048  # block_dim
 
-    with test.assertRaisesRegex(RuntimeError, r"Error launching kernel: .*mul_constant.*Warp CUDA error"):
+    with (
+        suppress_native_error_output(),
+        test.assertRaisesRegex(RuntimeError, r"Error launching kernel: .*mul_constant.*Warp CUDA error"),
+    ):
         tape.backward(grads={y: wp.ones_like(y)})
+
+
+@wp.kernel(enable_backward=False)
+def count_true(flags: wp.array[wp.bool], count: wp.array[int]):
+    i = wp.tid()
+    if flags[i]:
+        wp.atomic_add(count, 0, 1)
+
+
+@wp.kernel(enable_backward=False)
+def gather(indices: wp.array[int], x: wp.array[float], y: wp.array[float]):
+    i = wp.tid()
+    y[i] = x[indices[i]]
+
+
+def test_tape_backward_warns_only_for_float_arrays(test, device):
+    """Run backward and warn only about the kernel that takes float arrays.
+
+    Integer and boolean arrays never carry gradients, so skipping the adjoint of ``count_true`` cannot lose any.
+    ``gather`` also reads integer indices, but skipping its adjoint loses the gradient of ``x``.
+    """
+    flags = wp.array([True, False, True], dtype=wp.bool, device=device)
+    count = wp.zeros(1, dtype=int, device=device)
+    indices = wp.array([1, 0], dtype=int, device=device)
+    x = wp.array([1.0, 2.0], dtype=float, requires_grad=True, device=device)
+    y = wp.zeros_like(x)
+
+    with wp.Tape() as tape:
+        wp.launch(count_true, dim=flags.shape, inputs=[flags], outputs=[count], device=device)
+        wp.launch(gather, dim=indices.shape, inputs=[indices, x], outputs=[y], device=device)
+
+    with contextlib.redirect_stderr(io.StringIO()) as stderr:
+        tape.backward()
+
+    expected = f"Warp UserWarning: Running the tape backwards may produce incorrect gradients because recorded kernel {gather.key} is configured with the option 'enable_backward=False'.\n"
+    test.assertEqual(stderr.getvalue(), expected)
 
 
 devices = get_test_devices()
@@ -1099,6 +1140,12 @@ add_function_test(
 )
 add_function_test(
     TestTape, "test_tape_backward_cuda_launch_failure", test_tape_backward_cuda_launch_failure, devices=cuda_devices
+)
+add_function_test(
+    TestTape,
+    "test_tape_backward_warns_only_for_float_arrays",
+    test_tape_backward_warns_only_for_float_arrays,
+    devices=devices,
 )
 
 

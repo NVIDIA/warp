@@ -28,7 +28,7 @@ def _create_kernel_1d(tile_dim, dtype):
     TILE = tile_dim
 
     @wp.kernel
-    def k(a: wp.array1d(dtype=dtype), b: wp.array1d(dtype=dtype)):
+    def k(a: wp.array[dtype], b: wp.array[dtype]):
         i = wp.tid()
         t = wp.tile_load(a, shape=(TILE,), offset=(i * TILE,), storage="shared")
         wp.tile_store(b, t, offset=(i * TILE,))

@@ -11,7 +11,7 @@
 // CUDA-specific code lives in apic.cu and is reached via a small set of
 // helpers declared in apic_internal.h under WP_ENABLE_CUDA
 // (apic_load_graph_cuda_setup, apic_set_param_cuda, apic_get_param_cuda,
-// apic_fixup_handle_cuda). apic.cu also owns the CUDA build of the
+// apic_fixup_handles_cuda). apic.cu also owns the CUDA build of the
 // APICGraph destructor, the device-mesh registration path, and
 // CUDA graph rebuild / launch.
 
@@ -23,6 +23,7 @@
 #include "error.h"
 #include "hashgrid.h"
 #include "mesh.h"
+#include "version.h"
 
 #include <algorithm>
 #include <cassert>
@@ -102,10 +103,17 @@ void wp_apic_end_recording(APICState* state)
         // Downstream replay paths gate on operations_validated and skip per-op
         // bounds checks.
         state->operations_validated = apic_validate_operation_stream(
-            state->operation_stream.data(), state->operation_stream.size(), state->operation_count
+            state->operation_stream.data(), state->operation_stream.size(), state->operation_count, 0,
+            APIC_FORMAT_VERSION, state->child_states.size()
         );
         g_apic_state = nullptr;
     }
+}
+
+void wp_apic_set_cuda_context(APICState* state, void* context)
+{
+    if (state)
+        state->cuda_context = context;
 }
 
 // Host (CPU) capture hooks: return the active state only for a CPU capture, so
@@ -113,10 +121,15 @@ void wp_apic_end_recording(APICState* state)
 // into the CUDA byte stream.
 APICState* wp_apic_get_recording_state() { return (g_apic_state && g_apic_state->is_cpu) ? g_apic_state : nullptr; }
 
-// Device (CUDA) capture hooks: mirror of the above for the CUDA side.
+// Device (CUDA) capture hooks: mirror of the above for the CUDA side, which
+// also declines ops issued under another device's context.
 APICState* wp_apic_get_cuda_recording_state()
 {
-    return (g_apic_state && !g_apic_state->is_cpu) ? g_apic_state : nullptr;
+    if (!g_apic_state || g_apic_state->is_cpu)
+        return nullptr;
+    if (g_apic_state->cuda_context && g_apic_state->cuda_context != wp_cuda_context_get_current())
+        return nullptr;
+    return g_apic_state;
 }
 
 uint32_t wp_apic_get_operation_count(APICState* state) { return state ? state->operation_count : 0; }
@@ -281,6 +294,32 @@ void wp_apic_register_module(
     }
 }
 
+void wp_apic_register_cuda_module_artifacts(
+    APICState* state,
+    const char* module_hash,
+    const char* binary_digest,
+    const char* source_filename,
+    const char* source_digest,
+    int binary_kind,
+    int fallback_reason,
+    const APICCudaCompileRecipe* compile_recipe
+)
+{
+    if (!state || !module_hash)
+        return;
+    auto it = state->modules.find(module_hash);
+    if (it == state->modules.end())
+        return;
+
+    APICModule& mod = it->second;
+    mod.binary_digest = binary_digest ? binary_digest : "";
+    mod.source_filename = source_filename ? source_filename : "";
+    mod.source_digest = source_digest ? source_digest : "";
+    mod.binary_kind = static_cast<APICCudaBinaryKind>(binary_kind);
+    mod.fallback_reason = static_cast<APICCudaFallbackReason>(fallback_reason);
+    mod.compile_recipe = compile_recipe ? *compile_recipe : APICCudaCompileRecipe {};
+}
+
 void wp_apic_register_kernel(
     APICState* state,
     const char* kernel_key,
@@ -317,7 +356,9 @@ void wp_apic_register_binding(APICState* state, const char* name, uint32_t regio
     state->bindings.push_back({ std::string(name), region_id });
 }
 
-void wp_apic_register_ptr_location(APICState* state, uint32_t region_id, uint64_t offset, uint64_t stride)
+void wp_apic_register_ptr_location(
+    APICState* state, uint32_t region_id, uint64_t offset, uint64_t stride, uint64_t count
+)
 {
     if (!state)
         return;
@@ -325,6 +366,7 @@ void wp_apic_register_ptr_location(APICState* state, uint32_t region_id, uint64_
     loc.region_id = region_id;
     loc.offset = offset;
     loc.stride = stride;
+    loc.count = count;
     state->ptr_locations.push_back(loc);
 }
 
@@ -473,6 +515,67 @@ void apic_record_memtile(
     if (srcsize > 0 && value_ptr)
         state->append_bytes(value_ptr, srcsize);
     state->operation_count++;
+}
+
+bool apic_record_array_fill(
+    APICState* state, bool live, const void* arr_ptr, int arr_type, const void* value_ptr, uint32_t value_size
+)
+{
+    if (!state || !arr_ptr || !value_ptr)
+        return false;
+
+    const wp::array_t<void>* arr;
+    const int* shape;
+    const int* const* indices = nullptr;
+    if (arr_type == wp::ARRAY_TYPE_REGULAR) {
+        arr = static_cast<const wp::array_t<void>*>(arr_ptr);
+        shape = arr->shape.dims;
+    } else if (arr_type == wp::ARRAY_TYPE_INDEXED) {
+        const auto* ia = static_cast<const wp::indexedarray_t<void>*>(arr_ptr);
+        arr = &ia->arr;
+        shape = ia->shape.dims;
+        indices = ia->indices;
+    } else {
+        return false;
+    }
+    if (arr->ndim < 1 || arr->ndim > APIC_MAX_DIMS)
+        return false;
+
+    APICArrayFillRecord rec = {};
+    rec.header.op_type = APIC_OP_ARRAY_FILL;
+    rec.header.total_size = static_cast<uint32_t>(sizeof(rec) + value_size);
+    rec.value_size = value_size;
+    rec.ndim = static_cast<uint8_t>(arr->ndim);
+    for (int d = 0; d < APIC_MAX_DIMS; d++)
+        rec.indices_region_id[d] = -1;
+    for (int d = 0; d < arr->ndim; d++) {
+        rec.shape[d] = shape[d];
+        rec.data_shape[d] = arr->shape.dims[d];
+        rec.strides[d] = arr->strides[d];
+        // Placeholder until the index array resolves, so validation sees an indexed dimension.
+        if (indices && indices[d])
+            rec.indices_region_id[d] = 0;
+    }
+    if (!apic_array_fill_record_valid(rec))
+        return false;
+
+    auto resolve = live ? apic_resolve_live_ptr : apic_resolve_host_ptr;
+    APICAddress data = resolve(state, reinterpret_cast<uint64_t>(arr->data), apic_array_fill_data_bytes(rec));
+    rec.data_region_id = data.region_id;
+    rec.data_offset = data.offset;
+    for (int d = 0; d < arr->ndim; d++) {
+        if (rec.indices_region_id[d] < 0)
+            continue;
+        uint64_t index_bytes = static_cast<uint64_t>(rec.shape[d]) * sizeof(int32_t);
+        APICAddress index = resolve(state, reinterpret_cast<uint64_t>(indices[d]), index_bytes);
+        rec.indices_region_id[d] = index.region_id;
+        rec.indices_offset[d] = index.offset;
+    }
+
+    state->append_bytes(&rec, sizeof(rec));
+    state->append_bytes(value_ptr, value_size);
+    state->operation_count++;
+    return true;
 }
 
 void apic_record_alloc(APICState* state, int32_t region_id, uint64_t size)
@@ -783,6 +886,80 @@ void apic_record_bsr_transpose(
     state->operation_count++;
 }
 
+bool apic_record_bsr_compress(
+    APICState* state,
+    APICResolvePtrFn resolve,
+    int32_t row_count,
+    int32_t col_count,
+    int32_t block_size,
+    int32_t scalar_size_in_bytes,
+    int32_t scalar_type,
+    int32_t nnz_upper_bound,
+    bool prune_numerical_zeros,
+    uint64_t scalar_zero_mask,
+    bool make_compact,
+    const int32_t* bsr_offsets,
+    const int32_t* bsr_row_counts,
+    const int32_t* bsr_columns,
+    const void* bsr_values,
+    bool compress_values
+)
+{
+    if (!state || row_count <= 0 || nnz_upper_bound < 0 || !bsr_offsets || (nnz_upper_bound > 0 && !bsr_columns))
+        return false;
+
+    APICBsrCompressRecord rec = {};
+    rec.header.op_type = APIC_OP_BSR_COMPRESS;
+    rec.header.total_size = static_cast<uint32_t>(sizeof(rec));
+    rec.row_count = row_count;
+    rec.col_count = col_count;
+    rec.block_size = block_size;
+    rec.scalar_size_in_bytes = scalar_size_in_bytes;
+    rec.scalar_type = scalar_type;
+    rec.nnz_upper_bound = nnz_upper_bound;
+    rec.prune_numerical_zeros = prune_numerical_zeros ? 1 : 0;
+    rec.make_compact = make_compact ? 1 : 0;
+    rec.compress_values = compress_values ? 1 : 0;
+    rec.scalar_zero_mask = scalar_zero_mask;
+
+    // Optional pointers keep region_id == -1 when null: resolving a null
+    // pointer would auto-register address 0 as a region.
+    const APICAddress offsets_addr = resolve(
+        state, reinterpret_cast<uint64_t>(bsr_offsets), (static_cast<uint64_t>(row_count) + 1) * sizeof(int32_t)
+    );
+    rec.offsets_region_id = offsets_addr.region_id;
+    rec.offsets_offset = offsets_addr.offset;
+
+    APICAddress row_counts_addr;
+    if (bsr_row_counts)
+        row_counts_addr = resolve(
+            state, reinterpret_cast<uint64_t>(bsr_row_counts), static_cast<uint64_t>(row_count) * sizeof(int32_t)
+        );
+    rec.row_counts_region_id = row_counts_addr.region_id;
+    rec.row_counts_offset = row_counts_addr.offset;
+
+    // Without block storage, compression only reads the offsets and row counts.
+    APICAddress columns_addr;
+    APICAddress values_addr;
+    if (nnz_upper_bound > 0) {
+        columns_addr = resolve(
+            state, reinterpret_cast<uint64_t>(bsr_columns), static_cast<uint64_t>(nnz_upper_bound) * sizeof(int32_t)
+        );
+        const uint64_t values_bytes = static_cast<uint64_t>(nnz_upper_bound) * static_cast<uint64_t>(block_size)
+            * static_cast<uint64_t>(scalar_size_in_bytes);
+        if (bsr_values && values_bytes > 0)
+            values_addr = resolve(state, reinterpret_cast<uint64_t>(bsr_values), values_bytes);
+    }
+    rec.columns_region_id = columns_addr.region_id;
+    rec.columns_offset = columns_addr.offset;
+    rec.values_region_id = values_addr.region_id;
+    rec.values_offset = values_addr.offset;
+
+    state->append_bytes(&rec, sizeof(rec));
+    state->operation_count++;
+    return true;
+}
+
 static void apic_record_bvh_op(APICState* state, APICOpType op_type, uint64_t bvh_id, int32_t constructor_type)
 {
     if (!state)
@@ -885,6 +1062,148 @@ void apic_record_hash_grid_update(
     state->operation_count++;
 }
 
+// Register the live region spanned by a strided 1D view and return the address
+// of its logical first element. Returns an empty address (region -1) for an
+// empty or null view.
+static APICAddress
+apic_resolve_live_strided(APICState* state, const void* data, int32_t count, int32_t stride, uint64_t element_size)
+{
+    APICAddress address;
+    if (count <= 0 || !data)
+        return address;
+
+    const uint64_t logical_address = reinterpret_cast<uint64_t>(data);
+    uint64_t low_address;
+    uint64_t span_size;
+    if (apic_compute_strided_span(count, stride, element_size, logical_address, &low_address, &span_size)) {
+        address = apic_resolve_live_ptr(state, low_address, span_size);
+        address.offset += logical_address - low_address;
+    }
+    return address;
+}
+
+void apic_record_mesh_refit(APICState* state, uint64_t mesh_id)
+{
+    if (!state)
+        return;
+    APICMeshUpdateRecord rec = {};
+    rec.header.op_type = APIC_OP_MESH_REFIT;
+    rec.header.total_size = sizeof(rec);
+    rec.mesh_id = mesh_id;
+    rec.data_region_id = -1;
+    rec.grad_region_id = -1;
+    state->append_bytes(&rec, sizeof(rec));
+    state->operation_count++;
+}
+
+void apic_record_mesh_set_array(
+    APICState* state,
+    APICOpType op_type,
+    uint64_t mesh_id,
+    const void* data,
+    const void* grad,
+    int32_t count,
+    int32_t stride,
+    uint16_t flags
+)
+{
+    if (!state)
+        return;
+
+    // Mesh updates are live-only (the handle is process-local), so retain region
+    // IDs without snapshotting the backing allocations, as HashGrid updates do.
+    const APICAddress data_address = apic_resolve_live_strided(state, data, count, stride, sizeof(wp::vec3));
+    const APICAddress grad_address = apic_resolve_live_strided(state, grad, count, stride, sizeof(wp::vec3));
+
+    APICMeshUpdateRecord rec = {};
+    rec.header.op_type = op_type;
+    rec.header.total_size = sizeof(rec);
+    rec.mesh_id = mesh_id;
+    rec.data_region_id = data_address.region_id;
+    rec.grad_region_id = grad_address.region_id;
+    rec.data_offset = data_address.offset;
+    rec.grad_offset = grad_address.offset;
+    rec.count = count;
+    rec.stride = stride;
+    rec.flags = flags;
+    state->append_bytes(&rec, sizeof(rec));
+    state->operation_count++;
+}
+
+void apic_record_volume_rebuild(
+    APICState* state,
+    APICVolumeRebuildKind kind,
+    uint64_t volume_id,
+    const void* points,
+    int32_t num_points,
+    const int32_t* point_mask,
+    const float transform[9],
+    const float translation[3],
+    bool points_in_world_space,
+    const void* bg_value,
+    uint32_t bg_value_size,
+    const char* bg_value_type,
+    const uint32_t* status
+)
+{
+    if (!state)
+        return;
+
+    // Volume rebuilds are live-only (the handle is process-local), so retain
+    // region IDs without snapshotting the backing allocations.
+    const APICAddress points_address = apic_resolve_live_strided(state, points, num_points, 12, 12);
+    const APICAddress mask_address
+        = apic_resolve_live_strided(state, point_mask, num_points, sizeof(int32_t), sizeof(int32_t));
+    const APICAddress status_address = apic_resolve_live_strided(state, status, 1, sizeof(uint32_t), sizeof(uint32_t));
+
+    APICVolumeRebuildRecord rec = {};
+    rec.header.op_type = APIC_OP_VOLUME_REBUILD;
+    rec.header.total_size = sizeof(rec);
+    rec.volume_id = volume_id;
+    rec.points_region_id = points_address.region_id;
+    rec.point_mask_region_id = mask_address.region_id;
+    rec.points_offset = points_address.offset;
+    rec.point_mask_offset = mask_address.offset;
+    rec.status_region_id = status_address.region_id;
+    rec.num_points = num_points;
+    rec.status_offset = status_address.offset;
+    memcpy(rec.transform, transform, sizeof(rec.transform));
+    memcpy(rec.translation, translation, sizeof(rec.translation));
+    rec.kind = kind;
+    rec.points_in_world_space = points_in_world_space ? 1 : 0;
+    // An oversized background value keeps its true size so stream validation
+    // rejects the record instead of replaying a truncated value.
+    rec.bg_value_size = bg_value ? bg_value_size : 0;
+    if (bg_value)
+        memcpy(rec.bg_value, bg_value, std::min<size_t>(bg_value_size, sizeof(rec.bg_value)));
+    if (bg_value_type)
+        strncpy(rec.bg_value_type, bg_value_type, sizeof(rec.bg_value_type) - 1);
+    state->append_bytes(&rec, sizeof(rec));
+    state->operation_count++;
+}
+
+void apic_record_volume_get_coords(
+    APICState* state, APICOpType op_type, uint64_t volume_id, const void* out, uint64_t out_size
+)
+{
+    if (!state)
+        return;
+
+    APICAddress out_address;
+    if (out && out_size > 0)
+        out_address = apic_resolve_live_ptr(state, reinterpret_cast<uint64_t>(out), out_size);
+
+    APICVolumeGetCoordsRecord rec = {};
+    rec.header.op_type = op_type;
+    rec.header.total_size = sizeof(rec);
+    rec.volume_id = volume_id;
+    rec.out_region_id = out_address.region_id;
+    rec.out_offset = out_address.offset;
+    rec.out_size = out_address.region_id >= 0 ? out_size : 0;
+    state->append_bytes(&rec, sizeof(rec));
+    state->operation_count++;
+}
+
 // ============================================================================
 // Conditional / Loop branch capture (APIC_OP_IF / APIC_OP_WHILE)
 // ============================================================================
@@ -974,6 +1293,65 @@ void wp_apic_record_conditional(
     delete b;
 }
 
+bool wp_apic_state_has_conditional(const APICState* state)
+{
+    if (!state || !state->operations_validated)
+        return false;
+    // Nested conditionals and child-graph records are only recorded inside
+    // branch bodies, so scanning the top level is enough.
+    const uint8_t* ptr = state->operation_stream.data();
+    for (uint32_t i = 0; i < state->operation_count; ++i) {
+        const auto* header = reinterpret_cast<const APICOpHeader*>(ptr);
+        if (header->op_type == APIC_OP_IF || header->op_type == APIC_OP_WHILE)
+            return true;
+        ptr += header->total_size;
+    }
+    return false;
+}
+
+bool wp_apic_record_child_graph(APICState* state, APICState* child)
+{
+    if (!state || !child) {
+        wp::set_error_string(
+            "Warp APIC error: Null %s passed to wp_apic_record_child_graph", !state ? "state" : "child"
+        );
+        return false;
+    }
+    if (!state->recording || !state->is_cpu) {
+        wp::set_error_string("Warp APIC error: A child graph can only be recorded into an active CPU capture");
+        return false;
+    }
+    if (child == state || child->recording || !child->operations_validated) {
+        wp::set_error_string("Warp APIC error: A child graph must be a finished CPU capture");
+        return false;
+    }
+    if (!child->is_cpu) {
+        wp::set_error_string("Warp APIC error: A child graph of a CPU capture must also be a CPU capture");
+        return false;
+    }
+    // CUDA child graph nodes cannot contain conditional nodes; keep CPU capture
+    // from composing graphs that CUDA capture cannot.
+    if (wp_apic_state_has_conditional(child)) {
+        wp::set_error_string("Warp APIC error: A child graph cannot contain capture_if() or capture_while()");
+        return false;
+    }
+
+    // Reuse the slot when the same graph is referenced more than once.
+    uint32_t child_index = 0;
+    while (child_index < state->child_states.size() && state->child_states[child_index] != child)
+        ++child_index;
+    if (child_index == state->child_states.size())
+        state->child_states.push_back(child);
+
+    APICChildGraphRecord rec = {};
+    rec.header.op_type = APIC_OP_CHILD_GRAPH;
+    rec.header.total_size = sizeof(rec);
+    rec.child_index = child_index;
+    state->append_bytes(&rec, sizeof(rec));
+    state->operation_count++;
+    return true;
+}
+
 // ============================================================================
 // Mesh Registration
 //
@@ -986,22 +1364,27 @@ void wp_apic_record_conditional(
 // a wp::Mesh and copies the point / index / velocity arrays via host pointers.
 // ============================================================================
 
-void apic_register_cpu_mesh(APICState* state, uint64_t mesh_id)
+bool wp_apic_is_mesh(uint64_t mesh_id)
+{
+    wp::Mesh mesh;
+    return wp::mesh_get_descriptor_host(mesh_id, mesh) || wp::mesh_get_descriptor(mesh_id, mesh);
+}
+
+bool apic_register_cpu_mesh(APICState* state, uint64_t mesh_id)
 {
     if (!state || mesh_id == 0)
-        return;
+        return true;
 
     for (const auto& rec : state->mesh_records) {
         if (rec.original_ptr == mesh_id)
-            return;
+            return true;
     }
 
-    wp::Mesh* mesh_ptr = reinterpret_cast<wp::Mesh*>(mesh_id);
-    if (!mesh_ptr) {
-        fprintf(stderr, "Warp APIC error: null mesh pointer for mesh_id 0x%llx\n", (unsigned long long)mesh_id);
-        return;
+    wp::Mesh mesh;
+    if (!wp::mesh_get_descriptor_host(mesh_id, mesh)) {
+        wp::set_error_string("Warp APIC error: invalid or expired mesh ID 0x%llx", (unsigned long long)mesh_id);
+        return false;
     }
-    wp::Mesh mesh = *mesh_ptr;
 
     uint64_t points_size = mesh.num_points * sizeof(wp::vec3);
     uint64_t indices_size = mesh.num_tris * (3 * sizeof(int));
@@ -1037,15 +1420,12 @@ void apic_register_cpu_mesh(APICState* state, uint64_t mesh_id)
     rec.original_ptr = mesh_id;
 
     state->mesh_records.push_back(rec);
+    return true;
 }
 
 #if !WP_ENABLE_CUDA
 // Non-CUDA build: mesh_id is always a host pointer (no descriptor table).
-bool wp_apic_register_mesh(APICState* state, uint64_t mesh_id)
-{
-    apic_register_cpu_mesh(state, mesh_id);
-    return true;
-}
+bool wp_apic_register_mesh(APICState* state, uint64_t mesh_id) { return apic_register_cpu_mesh(state, mesh_id); }
 #endif  // !WP_ENABLE_CUDA
 
 // ============================================================================
@@ -1136,6 +1516,91 @@ bool apic_read_file(const char* path, std::vector<uint8_t>& data)
     return read == static_cast<size_t>(size);
 }
 
+std::string apic_sha256_hex(const uint8_t* data, size_t size)
+{
+    static const uint32_t constants[64] = {
+        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+        0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+        0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+        0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+        0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+        0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+        0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+    };
+    uint32_t state[8] = {
+        0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19,
+    };
+    auto rotate_right = [](uint32_t value, uint32_t count) { return (value >> count) | (value << (32 - count)); };
+    auto process_block = [&](const uint8_t* block) {
+        uint32_t words[64];
+        for (int i = 0; i < 16; ++i) {
+            words[i] = (uint32_t(block[i * 4]) << 24) | (uint32_t(block[i * 4 + 1]) << 16)
+                | (uint32_t(block[i * 4 + 2]) << 8) | uint32_t(block[i * 4 + 3]);
+        }
+        for (int i = 16; i < 64; ++i) {
+            uint32_t s0 = rotate_right(words[i - 15], 7) ^ rotate_right(words[i - 15], 18) ^ (words[i - 15] >> 3);
+            uint32_t s1 = rotate_right(words[i - 2], 17) ^ rotate_right(words[i - 2], 19) ^ (words[i - 2] >> 10);
+            words[i] = words[i - 16] + s0 + words[i - 7] + s1;
+        }
+        uint32_t a = state[0], b = state[1], c = state[2], d = state[3];
+        uint32_t e = state[4], f = state[5], g = state[6], h = state[7];
+        for (int i = 0; i < 64; ++i) {
+            uint32_t sum1 = rotate_right(e, 6) ^ rotate_right(e, 11) ^ rotate_right(e, 25);
+            uint32_t choice = (e & f) ^ (~e & g);
+            uint32_t temp1 = h + sum1 + choice + constants[i] + words[i];
+            uint32_t sum0 = rotate_right(a, 2) ^ rotate_right(a, 13) ^ rotate_right(a, 22);
+            uint32_t majority = (a & b) ^ (a & c) ^ (b & c);
+            uint32_t temp2 = sum0 + majority;
+            h = g;
+            g = f;
+            f = e;
+            e = d + temp1;
+            d = c;
+            c = b;
+            b = a;
+            a = temp1 + temp2;
+        }
+        state[0] += a;
+        state[1] += b;
+        state[2] += c;
+        state[3] += d;
+        state[4] += e;
+        state[5] += f;
+        state[6] += g;
+        state[7] += h;
+    };
+
+    size_t offset = 0;
+    while (size - offset >= 64) {
+        process_block(data + offset);
+        offset += 64;
+    }
+    uint8_t tail[128] = {};
+    const size_t remainder = size - offset;
+    if (remainder)
+        memcpy(tail, data + offset, remainder);
+    tail[remainder] = 0x80;
+    const size_t padded_size = remainder < 56 ? 64 : 128;
+    const uint64_t bit_size = static_cast<uint64_t>(size) * 8;
+    for (int i = 0; i < 8; ++i)
+        tail[padded_size - 1 - i] = static_cast<uint8_t>(bit_size >> (i * 8));
+    process_block(tail);
+    if (padded_size == 128)
+        process_block(tail + 64);
+
+    static const char hex[] = "0123456789abcdef";
+    std::string digest(64, '0');
+    for (int i = 0; i < 8; ++i) {
+        for (int byte = 0; byte < 4; ++byte) {
+            const uint8_t value = static_cast<uint8_t>(state[i] >> (24 - byte * 8));
+            digest[(i * 4 + byte) * 2] = hex[value >> 4];
+            digest[(i * 4 + byte) * 2 + 1] = hex[value & 0xf];
+        }
+    }
+    return digest;
+}
+
 template <typename T> static T apic_read_value(const uint8_t*& ptr)
 {
     T value;
@@ -1144,48 +1609,145 @@ template <typename T> static T apic_read_value(const uint8_t*& ptr)
     return value;
 }
 
-namespace {
-
-// Reads fixed-size values and length-prefixed strings from a byte span,
-// failing instead of reading past its end.
-struct APICByteReader {
-    const uint8_t* ptr;
-    const uint8_t* end;
+class APICMetadataReader {
+public:
+    APICMetadataReader(const uint8_t* data, size_t size)
+        : m_ptr(data)
+        , m_end(data + size)
+    {
+    }
 
     template <typename T> bool read(T& value)
     {
-        if (static_cast<size_t>(end - ptr) < sizeof(T))
+        if (sizeof(T) > remaining())
             return false;
-        memcpy(&value, ptr, sizeof(T));
-        ptr += sizeof(T);
+        memcpy(&value, m_ptr, sizeof(T));
+        m_ptr += sizeof(T);
         return true;
     }
 
     bool read_string(std::string& value)
     {
-        uint32_t length = 0;
-        if (!read(length) || static_cast<size_t>(end - ptr) < length)
+        uint32_t size = 0;
+        if (!read(size) || size > remaining())
             return false;
-        value.assign(reinterpret_cast<const char*>(ptr), length);
-        ptr += length;
+        value.assign(reinterpret_cast<const char*>(m_ptr), size);
+        m_ptr += size;
         return true;
     }
+
+    bool read_bytes(void* value, size_t size)
+    {
+        if (size > remaining())
+            return false;
+        memcpy(value, m_ptr, size);
+        m_ptr += size;
+        return true;
+    }
+
+    size_t remaining() const { return static_cast<size_t>(m_end - m_ptr); }
+
+private:
+    const uint8_t* m_ptr;
+    const uint8_t* m_end;
 };
 
-bool apic_metadata_truncated(const char* part)
+static bool apic_is_relative_basename(const std::string& name)
 {
-    wp::set_error_string("Warp APIC error: Invalid APIC metadata section: truncated %s", part);
-    return false;
+    return !name.empty() && name != "." && name != ".." && name.find('/') == std::string::npos
+        && name.find('\\') == std::string::npos && name.find(':') == std::string::npos;
 }
 
-}  // namespace
+static bool apic_is_sha256(const std::string& digest)
+{
+    if (digest.size() != 64)
+        return false;
+    for (char c : digest) {
+        if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')))
+            return false;
+    }
+    return true;
+}
+
+static bool apic_has_suffix(const std::string& value, const char* suffix)
+{
+    const size_t suffix_size = strlen(suffix);
+    return value.size() >= suffix_size && value.compare(value.size() - suffix_size, suffix_size, suffix) == 0;
+}
+
+static bool apic_validate_cuda_recipe(const APICModule& mod)
+{
+    const APICCudaCompileRecipe& recipe = mod.compile_recipe;
+    if (mod.binary_kind != APIC_CUDA_BINARY_PTX && mod.binary_kind != APIC_CUDA_BINARY_CUBIN)
+        return false;
+    if (mod.fallback_reason < APIC_CUDA_FALLBACK_AVAILABLE
+        || mod.fallback_reason > APIC_CUDA_FALLBACK_RECIPE_UNAVAILABLE)
+        return false;
+    if (recipe.debug > 1 || recipe.optimization_level > 3 || recipe.verify_fp > 1 || recipe.fast_math > 1
+        || recipe.fuse_fp > 1 || recipe.lineinfo > 1 || recipe.arch_suffix > APIC_CUDA_ARCH_SUFFIX_F)
+        return false;
+    for (uint8_t value : recipe._reserved) {
+        if (value != 0)
+            return false;
+    }
+    return true;
+}
+
+static const char* apic_validate_module(const APICModule& mod, APICDeviceType device_type)
+{
+    if (mod.module_hash.empty() || !apic_is_relative_basename(mod.cubin_filename))
+        return "module hash is empty or binary filename is invalid";
+
+    if ((device_type == APIC_DEVICE_CUDA && mod.target_arch <= 0)
+        || (device_type == APIC_DEVICE_CPU && mod.target_arch != 0))
+        return "module target does not match the graph device";
+
+    if (device_type != APIC_DEVICE_CUDA)
+        return nullptr;
+
+    // Binary-only saves omit source fallback metadata. Accept only the complete
+    // empty representation so partial artifact records still fail validation.
+    if (mod.binary_digest.empty()) {
+        const APICCudaCompileRecipe empty_recipe = {};
+        if (mod.source_filename.empty() && mod.source_digest.empty() && mod.binary_kind == APIC_CUDA_BINARY_NONE
+            && mod.fallback_reason == APIC_CUDA_FALLBACK_SOURCE_UNAVAILABLE
+            && memcmp(&mod.compile_recipe, &empty_recipe, sizeof(empty_recipe)) == 0) {
+            return nullptr;
+        }
+        return "CUDA binary-only module contains incomplete artifact metadata";
+    }
+
+    if (!apic_is_sha256(mod.binary_digest) || !apic_validate_cuda_recipe(mod))
+        return "CUDA artifact digest, kind, fallback reason, or compile recipe is invalid";
+
+    const bool binary_kind_matches = mod.binary_kind == APIC_CUDA_BINARY_PTX
+        ? apic_has_suffix(mod.cubin_filename, ".ptx")
+        : apic_has_suffix(mod.cubin_filename, ".cubin");
+    if (!binary_kind_matches)
+        return "CUDA binary kind does not match its filename";
+
+    if (mod.source_filename.empty() != mod.source_digest.empty()
+        || (!mod.source_filename.empty()
+            && (!apic_is_relative_basename(mod.source_filename) || !apic_is_sha256(mod.source_digest)
+                || !apic_has_suffix(mod.source_filename, ".cu"))))
+        return "CUDA source filename or digest is invalid";
+
+    if ((mod.compile_recipe.arch_suffix == APIC_CUDA_ARCH_SUFFIX_A && mod.target_arch < 90)
+        || (mod.compile_recipe.arch_suffix == APIC_CUDA_ARCH_SUFFIX_F && mod.target_arch < 100))
+        return "CUDA architecture suffix is invalid for the module target";
+
+    if (mod.fallback_reason == APIC_CUDA_FALLBACK_AVAILABLE && mod.source_filename.empty())
+        return "CUDA source fallback is marked available without source";
+
+    return nullptr;
+}
 
 bool apic_parse_metadata(const uint8_t* data, size_t size, APICGraph* graph)
 {
-    if (!data)
-        return apic_metadata_truncated("header");
-    APICByteReader reader { data, data + size };
+    if (!data || !graph)
+        return false;
 
+    APICMetadataReader reader(data, size);
     uint32_t version = 0;
     uint32_t target_arch = 0;
     uint32_t num_modules = 0;
@@ -1193,19 +1755,65 @@ bool apic_parse_metadata(const uint8_t* data, size_t size, APICGraph* graph)
     uint32_t num_params = 0;
     uint32_t num_meshes = 0;
     uint32_t num_ptr_locations = 0;
-    if (!reader.read(version) || !reader.read(target_arch) || !reader.read(num_modules) || !reader.read(num_kernels)
-        || !reader.read(num_params) || !reader.read(num_meshes) || !reader.read(num_ptr_locations))
-        return apic_metadata_truncated("header");
-    graph->target_arch = static_cast<int>(target_arch);
+    if (!reader.read(version) || !reader.read_string(graph->producer_version) || !reader.read(target_arch)
+        || !reader.read(num_modules) || !reader.read(num_kernels) || !reader.read(num_params)
+        || !reader.read(num_meshes) || !reader.read(num_ptr_locations)) {
+        wp::set_error_string("Warp APIC error: Invalid APIC metadata header");
+        return false;
+    }
+    if (version != APIC_FORMAT_VERSION) {
+        wp::set_error_string(
+            "Warp APIC error: APIC metadata version %u does not match loader version %u", version, APIC_FORMAT_VERSION
+        );
+        return false;
+    }
+    if (graph->producer_version != WP_VERSION_STRING) {
+        wp::set_error_string(
+            "Warp APIC error: APIC capture was produced by Warp %s, but this loader is Warp %s",
+            graph->producer_version.c_str(), WP_VERSION_STRING
+        );
+        return false;
+    }
+    if (graph->target_arch != static_cast<int>(target_arch)) {
+        wp::set_error_string(
+            "Warp APIC error: APIC metadata target architecture %u does not match the WRP header target architecture "
+            "%d",
+            target_arch, graph->target_arch
+        );
+        return false;
+    }
 
     for (uint32_t i = 0; i < num_modules; i++) {
         APICModule mod;
-        uint32_t module_target_arch = 0;
+        uint32_t module_arch = 0;
+        uint8_t binary_kind = 0;
+        uint8_t fallback_reason = 0;
         if (!reader.read_string(mod.module_hash) || !reader.read_string(mod.module_name)
-            || !reader.read_string(mod.cubin_filename) || !reader.read(module_target_arch))
-            return apic_metadata_truncated("module record");
-        mod.target_arch = static_cast<int>(module_target_arch);
-        graph->modules[mod.module_hash] = mod;
+            || !reader.read_string(mod.cubin_filename) || !reader.read(module_arch)
+            || !reader.read_string(mod.binary_digest) || !reader.read_string(mod.source_filename)
+            || !reader.read_string(mod.source_digest) || !reader.read(binary_kind) || !reader.read(fallback_reason)
+            || !reader.read(mod.compile_recipe)) {
+            wp::set_error_string("Warp APIC error: Invalid APIC module record %u", i);
+            return false;
+        }
+        if (module_arch > INT_MAX) {
+            wp::set_error_string("Warp APIC error: Invalid APIC module architecture in record %u", i);
+            return false;
+        }
+        mod.target_arch = static_cast<int>(module_arch);
+        mod.binary_kind = static_cast<APICCudaBinaryKind>(binary_kind);
+        mod.fallback_reason = static_cast<APICCudaFallbackReason>(fallback_reason);
+        if (const char* validation_error = apic_validate_module(mod, graph->device_type)) {
+            wp::set_error_string(
+                "Warp APIC error: Invalid APIC module record %u for %s: %s", i, mod.module_name.c_str(),
+                validation_error
+            );
+            return false;
+        }
+        if (!graph->modules.emplace(mod.module_hash, std::move(mod)).second) {
+            wp::set_error_string("Warp APIC error: Duplicate APIC module hash in record %u", i);
+            return false;
+        }
     }
 
     for (uint32_t i = 0; i < num_kernels; i++) {
@@ -1215,43 +1823,56 @@ bool apic_parse_metadata(const uint8_t* data, size_t size, APICGraph* graph)
         uint32_t block_dim = 0;
         if (!reader.read_string(info.kernel_key) || !reader.read_string(info.module_hash)
             || !reader.read_string(info.forward_name) || !reader.read_string(info.backward_name)
-            || !reader.read(forward_smem_bytes) || !reader.read(backward_smem_bytes) || !reader.read(block_dim))
-            return apic_metadata_truncated("kernel record");
+            || !reader.read(forward_smem_bytes) || !reader.read(backward_smem_bytes) || !reader.read(block_dim)) {
+            wp::set_error_string("Warp APIC error: Invalid APIC kernel record %u", i);
+            return false;
+        }
         info.forward_smem_bytes = static_cast<int>(forward_smem_bytes);
         info.backward_smem_bytes = static_cast<int>(backward_smem_bytes);
         info.block_dim = static_cast<int>(block_dim);
-        graph->kernels[apic_kernel_map_key(info.module_hash, info.kernel_key)] = info;
+        std::string key = apic_kernel_map_key(info.module_hash, info.kernel_key);
+        if (!graph->kernels.emplace(key, std::move(info)).second) {
+            wp::set_error_string("Warp APIC error: Duplicate APIC kernel record %u", i);
+            return false;
+        }
     }
 
     for (uint32_t i = 0; i < num_params; i++) {
         std::string name;
         uint32_t region_id = 0;
-        if (!reader.read_string(name) || !reader.read(region_id))
-            return apic_metadata_truncated("binding");
+        if (!reader.read_string(name) || !reader.read(region_id)) {
+            wp::set_error_string("Warp APIC error: Invalid APIC binding record %u", i);
+            return false;
+        }
         graph->bindings[name] = region_id;
         graph->binding_names.push_back(name);
     }
 
     for (uint32_t i = 0; i < num_meshes; i++) {
         APICMeshRecord rec;
-        if (!reader.read(rec))
-            return apic_metadata_truncated("mesh record");
+        if (!reader.read_bytes(&rec, sizeof(rec))) {
+            wp::set_error_string("Warp APIC error: Invalid APIC mesh record %u", i);
+            return false;
+        }
         graph->mesh_records.push_back(rec);
     }
 
     for (uint32_t i = 0; i < num_ptr_locations; i++) {
         APICMemoryPtrLocation loc;
-        uint32_t region_id = 0;
-        uint64_t offset = 0;
-        uint64_t stride = 0;
-        if (!reader.read(region_id) || !reader.read(offset) || !reader.read(stride))
-            return apic_metadata_truncated("pointer location");
-        loc.region_id = region_id;
-        loc.offset = offset;
-        loc.stride = stride;
+        if (!reader.read(loc.region_id) || !reader.read(loc.offset) || !reader.read(loc.stride)
+            || !reader.read(loc.count)) {
+            wp::set_error_string("Warp APIC error: Invalid APIC pointer-location record %u", i);
+            return false;
+        }
         graph->ptr_locations.push_back(loc);
     }
 
+    if (reader.remaining() != 0) {
+        wp::set_error_string(
+            "Warp APIC error: APIC metadata has %llu trailing bytes", (unsigned long long)reader.remaining()
+        );
+        return false;
+    }
     return true;
 }
 
@@ -1387,54 +2008,60 @@ bool apic_create_meshes(APICGraph* graph)
     return true;
 }
 
-// Walk the graph's ptr_locations and remap any old handle values found at
-// those offsets to their new values in graph->handle_ptr_remap. The CPU path
-// is pure memcpy; the CUDA path delegates per-offset to apic_fixup_handle_cuda.
-void apic_fixup_ptr_locations(APICGraph* graph)
+// Always read the original snapshot, even when locations overlap. Remapping
+// in place could interpret a restored ID as another saved ID if addresses are
+// reused. Patch a host copy and transfer each affected region only once.
+bool apic_fixup_ptr_locations(APICGraph* graph, const uint8_t* memory_ptr)
 {
-    if (graph->handle_ptr_remap.empty() || graph->ptr_locations.empty())
-        return;
-
-    bool is_cpu = (graph->device_type == APIC_DEVICE_CPU);
-
+    std::unordered_map<uint32_t, std::vector<uint8_t>> patched_regions;
     for (const auto& loc : graph->ptr_locations) {
+        if (loc.count == 0)
+            continue;
         auto region_it = graph->regions.find(loc.region_id);
-        if (region_it == graph->regions.end() || !region_it->second.ptr)
+        if (region_it == graph->regions.end()) {
+            wp::set_error_string("Warp APIC error: handle relocation refers to missing region %u", loc.region_id);
+            return false;
+        }
+        const APICMemory& region = region_it->second;
+        // Subtraction and division avoid overflow from offset + stride * count.
+        if (loc.offset > region.size || region.size - loc.offset < sizeof(uint64_t)
+            || (loc.stride == 0 && loc.count != 1)
+            || (loc.stride != 0 && loc.count - 1 > (region.size - loc.offset - sizeof(uint64_t)) / loc.stride)) {
+            wp::set_error_string("Warp APIC error: handle relocation is out of bounds for region %u", loc.region_id);
+            return false;
+        }
+        if (!region.has_initial_data)
             continue;
 
-        uint8_t* base = static_cast<uint8_t*>(region_it->second.ptr);
-        uint64_t region_size = region_it->second.size;
-
-        auto fixup = [&](uint64_t off) -> bool {
-            if (is_cpu) {
-                uint64_t old_val;
-                memcpy(&old_val, base + off, sizeof(uint64_t));
-                auto remap_it = graph->handle_ptr_remap.find(old_val);
-                if (remap_it != graph->handle_ptr_remap.end()) {
-                    uint64_t new_val = remap_it->second;
-                    memcpy(base + off, &new_val, sizeof(uint64_t));
-                }
-                return true;
-            }
-#if WP_ENABLE_CUDA
-            return apic_fixup_handle_cuda(graph, base, off);
-#else
-            (void)base;
-            (void)off;
-            return false;
-#endif
-        };
-
-        if (loc.stride == 0) {
-            if (loc.offset + sizeof(uint64_t) <= region_size)
-                fixup(loc.offset);
-        } else {
-            for (uint64_t off = loc.offset; off + sizeof(uint64_t) <= region_size; off += loc.stride) {
-                if (!fixup(off))
-                    break;  // Stop this region; continue with next to avoid cascade
+        const uint8_t* source = memory_ptr + region.initial_data_offset;
+        for (uint64_t i = 0, offset = loc.offset; i < loc.count; i++, offset += loc.stride) {
+            uint64_t original;
+            memcpy(&original, source + offset, sizeof(original));
+            auto remap = graph->handle_ptr_remap.find(original);
+            if (remap != graph->handle_ptr_remap.end()) {
+                auto& patched = patched_regions[loc.region_id];
+                if (patched.empty())
+                    patched.assign(source, source + region.size);
+                memcpy(patched.data() + offset, &remap->second, sizeof(uint64_t));
             }
         }
     }
+
+    for (const auto& entry : patched_regions) {
+        void* dst = graph->regions.at(entry.first).ptr;
+        const auto& data = entry.second;
+        if (graph->device_type == APIC_DEVICE_CPU) {
+            memcpy(dst, data.data(), data.size());
+        } else {
+#if WP_ENABLE_CUDA
+            if (!apic_fixup_handles_cuda(graph, dst, data.data(), data.size()))
+                return false;
+#else
+            return false;
+#endif
+        }
+    }
+    return true;
 }
 
 // ============================================================================
@@ -1467,7 +2094,12 @@ static bool apic_add_check(uint64_t a, uint64_t b, uint64_t* out)
 // for live capture; after .wrp load for deserialized graphs). Replay paths
 // skip per-op bounds checks once this returns true.
 bool apic_validate_operation_stream(
-    const uint8_t* data, size_t size, uint32_t operation_count, uint32_t depth, uint32_t format_version
+    const uint8_t* data,
+    size_t size,
+    uint32_t operation_count,
+    uint32_t depth,
+    uint32_t format_version,
+    size_t child_graph_count
 )
 {
     // Cap conditional nesting before recursion can stack-overflow on a
@@ -1662,6 +2294,22 @@ bool apic_validate_operation_stream(
             }
             break;
         }
+        case APIC_OP_ARRAY_FILL: {
+            if (op_end < op_start + sizeof(APICArrayFillRecord)) {
+                fprintf(stderr, "Warp APIC error: array fill record overflow at operation %u\n", i);
+                return false;
+            }
+            const APICArrayFillRecord* rec = reinterpret_cast<const APICArrayFillRecord*>(ptr);
+            if (header->total_size != sizeof(APICArrayFillRecord) + static_cast<uint64_t>(rec->value_size)) {
+                fprintf(stderr, "Warp APIC error: array fill record size invalid at operation %u\n", i);
+                return false;
+            }
+            if (!apic_array_fill_record_valid(*rec)) {
+                fprintf(stderr, "Warp APIC error: invalid array fill layout at operation %u\n", i);
+                return false;
+            }
+            break;
+        }
         case APIC_OP_ALLOC:
             if (op_end < op_start + sizeof(APICAllocRecord)) {
                 fprintf(stderr, "Warp APIC error: alloc record overflow at operation %u\n", i);
@@ -1848,6 +2496,37 @@ bool apic_validate_operation_stream(
             }
             break;
         }
+        case APIC_OP_BSR_COMPRESS: {
+            if (header->total_size != sizeof(APICBsrCompressRecord)) {
+                fprintf(stderr, "Warp APIC error: invalid bsr-compress record size at operation %u\n", i);
+                return false;
+            }
+            {
+                const APICBsrCompressRecord* rec = reinterpret_cast<const APICBsrCompressRecord*>(ptr);
+                const int32_t scalar_size = rec->scalar_size_in_bytes;
+                const bool valid_scalar_size
+                    = scalar_size == 0 || scalar_size == 1 || scalar_size == 2 || scalar_size == 4 || scalar_size == 8;
+                // Replay accesses (row_count + 1) offsets, nnz_upper_bound columns, and
+                // nnz_upper_bound * block_size * scalar_size bytes of values; the int32
+                // factors can overflow for a corrupt record.
+                uint64_t span_tmp;
+                // Padded compression writes the compressed counts back to the row counts.
+                const bool missing_row_counts = rec->make_compact == 0 && rec->row_counts_region_id < 0;
+                if (rec->row_count < 0 || rec->col_count < 0 || rec->block_size < 0 || rec->nnz_upper_bound < 0
+                    || !valid_scalar_size || rec->prune_numerical_zeros > 1 || rec->make_compact > 1
+                    || rec->compress_values > 1 || missing_row_counts
+                    || !apic_mul_check(static_cast<uint64_t>(rec->row_count) + 1u, sizeof(int32_t), &span_tmp)
+                    || !apic_mul_check(static_cast<uint64_t>(rec->nnz_upper_bound), sizeof(int32_t), &span_tmp)
+                    || !apic_mul_check(
+                        static_cast<uint64_t>(rec->nnz_upper_bound), static_cast<uint64_t>(rec->block_size), &span_tmp
+                    )
+                    || !apic_mul_check(span_tmp, static_cast<uint64_t>(scalar_size), &span_tmp)) {
+                    fprintf(stderr, "Warp APIC error: invalid bsr-compress record at operation %u\n", i);
+                    return false;
+                }
+            }
+            break;
+        }
         case APIC_OP_BVH_REFIT:
         case APIC_OP_BVH_REBUILD:
             if (op_end < op_start + sizeof(APICBvhRecord)) {
@@ -1855,6 +2534,77 @@ bool apic_validate_operation_stream(
                 return false;
             }
             break;
+        case APIC_OP_MESH_REFIT:
+        case APIC_OP_MESH_SET_POINTS:
+        case APIC_OP_MESH_SET_VELOCITIES: {
+            if (header->total_size != sizeof(APICMeshUpdateRecord)) {
+                fprintf(stderr, "Warp APIC error: invalid mesh record size at operation %u\n", i);
+                return false;
+            }
+            const auto* rec = reinterpret_cast<const APICMeshUpdateRecord*>(ptr);
+            if (rec->mesh_id == 0 || rec->count < 0 || rec->data_region_id == 0 || rec->data_region_id < -1
+                || rec->grad_region_id == 0 || rec->grad_region_id < -1) {
+                fprintf(stderr, "Warp APIC error: invalid mesh record metadata at operation %u\n", i);
+                return false;
+            }
+            if (header->op_type == APIC_OP_MESH_REFIT) {
+                if (rec->count != 0 || rec->data_region_id != -1 || rec->grad_region_id != -1) {
+                    fprintf(stderr, "Warp APIC error: invalid mesh refit record at operation %u\n", i);
+                    return false;
+                }
+                break;
+            }
+            uint64_t low_offset;
+            uint64_t span_size;
+            if ((rec->count > 0 && rec->data_region_id < 1)
+                || !apic_compute_strided_span(
+                    rec->count, rec->stride, sizeof(wp::vec3), rec->data_offset, &low_offset, &span_size
+                )
+                || (rec->grad_region_id >= 1
+                    && !apic_compute_strided_span(
+                        rec->count, rec->stride, sizeof(wp::vec3), rec->grad_offset, &low_offset, &span_size
+                    ))) {
+                fprintf(stderr, "Warp APIC error: invalid mesh array span at operation %u\n", i);
+                return false;
+            }
+            break;
+        }
+        case APIC_OP_VOLUME_REBUILD: {
+            if (header->total_size != sizeof(APICVolumeRebuildRecord)) {
+                fprintf(stderr, "Warp APIC error: invalid volume rebuild record size at operation %u\n", i);
+                return false;
+            }
+            const auto* rec = reinterpret_cast<const APICVolumeRebuildRecord*>(ptr);
+            const bool has_bg_value = rec->kind == APIC_VOLUME_REBUILD_TILES;
+            if (rec->volume_id == 0 || rec->num_points < 0 || rec->kind > APIC_VOLUME_REBUILD_ACTIVE_VOXELS
+                || rec->points_in_world_space > 1 || rec->bg_value_size > sizeof(rec->bg_value)
+                || (has_bg_value && rec->bg_value_size == 0) || (!has_bg_value && rec->bg_value_size != 0)
+                || rec->bg_value_type[sizeof(rec->bg_value_type) - 1] != '\0') {
+                fprintf(stderr, "Warp APIC error: invalid volume rebuild metadata at operation %u\n", i);
+                return false;
+            }
+            if (rec->points_region_id == 0 || rec->points_region_id < -1 || rec->point_mask_region_id == 0
+                || rec->point_mask_region_id < -1 || rec->status_region_id == 0 || rec->status_region_id < -1
+                || (rec->num_points > 0 && rec->points_region_id < 1)) {
+                fprintf(stderr, "Warp APIC error: invalid volume rebuild region id at operation %u\n", i);
+                return false;
+            }
+            break;
+        }
+        case APIC_OP_VOLUME_GET_TILES:
+        case APIC_OP_VOLUME_GET_VOXELS: {
+            if (header->total_size != sizeof(APICVolumeGetCoordsRecord)) {
+                fprintf(stderr, "Warp APIC error: invalid volume query record size at operation %u\n", i);
+                return false;
+            }
+            const auto* rec = reinterpret_cast<const APICVolumeGetCoordsRecord*>(ptr);
+            if (rec->volume_id == 0 || rec->out_region_id == 0 || rec->out_region_id < -1
+                || (rec->out_region_id == -1 && rec->out_size != 0)) {
+                fprintf(stderr, "Warp APIC error: invalid volume query metadata at operation %u\n", i);
+                return false;
+            }
+            break;
+        }
         case APIC_OP_HASH_GRID_UPDATE: {
             if (header->total_size != sizeof(APICHashGridUpdateRecord)) {
                 fprintf(stderr, "Warp APIC error: invalid HashGrid update record size at operation %u\n", i);
@@ -1939,7 +2689,7 @@ bool apic_validate_operation_stream(
             // Recurse into the inner sub-streams.
             if (rec->branch_a_size > 0
                 && !apic_validate_operation_stream(
-                    branch_a, rec->branch_a_size, rec->branch_a_op_count, depth + 1, format_version
+                    branch_a, rec->branch_a_size, rec->branch_a_op_count, depth + 1, format_version, child_graph_count
                 )) {
                 fprintf(stderr, "Warp APIC error: branch_a invalid at operation %u\n", i);
                 return false;
@@ -1950,9 +2700,25 @@ bool apic_validate_operation_stream(
             }
             if (rec->branch_b_size > 0
                 && !apic_validate_operation_stream(
-                    branch_b, rec->branch_b_size, rec->branch_b_op_count, depth + 1, format_version
+                    branch_b, rec->branch_b_size, rec->branch_b_op_count, depth + 1, format_version, child_graph_count
                 )) {
                 fprintf(stderr, "Warp APIC error: branch_b invalid at operation %u\n", i);
+                return false;
+            }
+            break;
+        }
+        case APIC_OP_CHILD_GRAPH: {
+            // Only a live CPU capture has a child table to index; a loaded
+            // stream passes child_graph_count == 0 and is rejected here.
+            if (header->total_size != sizeof(APICChildGraphRecord)) {
+                fprintf(stderr, "Warp APIC error: invalid child graph record size at operation %u\n", i);
+                return false;
+            }
+            const APICChildGraphRecord* rec = reinterpret_cast<const APICChildGraphRecord*>(ptr);
+            if (rec->child_index >= child_graph_count) {
+                fprintf(
+                    stderr, "Warp APIC error: child graph index %u out of range at operation %u\n", rec->child_index, i
+                );
                 return false;
             }
             break;
@@ -1972,26 +2738,55 @@ bool apic_validate_operation_stream(
     return true;
 }
 
-// Human-facing name for a BVH op type (nullptr for any non-BVH op). BVH refit /
-// rebuild replay by re-invoking a host function on a process-local BVH handle,
-// so a stream that records one cannot cross a save/load boundary; naming the op
-// makes the rejection actionable.
-static const char* apic_bvh_op_name(uint32_t op_type)
+// Human-facing name and handle kind for an op that replays by re-invoking a
+// host function on a process-local handle (BVH and mesh updates). Such a stream
+// cannot cross a save/load boundary; naming the op makes the rejection
+// actionable. Returns false for any other op.
+static bool apic_live_only_op_name(uint32_t op_type, const char** op_name, const char** handle_kind)
 {
     switch (op_type) {
     case APIC_OP_BVH_REFIT:
-        return "wp.Bvh.refit()";
+        *op_name = "wp.Bvh.refit()";
+        *handle_kind = "BVH";
+        return true;
     case APIC_OP_BVH_REBUILD:
-        return "wp.Bvh.rebuild()";
+        *op_name = "wp.Bvh.rebuild()";
+        *handle_kind = "BVH";
+        return true;
+    case APIC_OP_MESH_REFIT:
+        *op_name = "wp.Mesh.refit()";
+        *handle_kind = "mesh";
+        return true;
+    case APIC_OP_MESH_SET_POINTS:
+        *op_name = "wp.Mesh.points assignment";
+        *handle_kind = "mesh";
+        return true;
+    case APIC_OP_MESH_SET_VELOCITIES:
+        *op_name = "wp.Mesh.velocities assignment";
+        *handle_kind = "mesh";
+        return true;
+    case APIC_OP_VOLUME_REBUILD:
+        *op_name = "wp.Volume.rebuild()";
+        *handle_kind = "volume";
+        return true;
+    case APIC_OP_VOLUME_GET_TILES:
+        *op_name = "wp.Volume.get_tiles()";
+        *handle_kind = "volume";
+        return true;
+    case APIC_OP_VOLUME_GET_VOXELS:
+        *op_name = "wp.Volume.get_voxels()";
+        *handle_kind = "volume";
+        return true;
     default:
-        return nullptr;
+        return false;
     }
 }
 
 // Returns the op_type of the first operation in `data` whose replay depends on a
-// process-local handle -- BVH refit/rebuild (a live BVH pointer) or a HashGrid
-// update (a live grid_id) -- or 0 if the stream is fully serializable. Recurses
-// into capture_if / capture_while branch bodies. Deriving non-serializability
+// process-local handle -- BVH refit/rebuild (a live BVH pointer), a HashGrid
+// update (a live grid_id), or a child graph (a live APICState) -- or 0 if the
+// stream is fully serializable. Recurses into capture_if / capture_while
+// branch bodies. Deriving non-serializability
 // from the finalized stream, rather than from a flag set eagerly when an op is
 // recorded, means an op that a branch body discards when it unwinds no longer
 // blocks a later save. Callers validate the stream first, so record sizes and
@@ -2005,6 +2800,13 @@ static uint32_t apic_stream_first_nonserializable_op(const uint8_t* data, uint32
         case APIC_OP_BVH_REFIT:
         case APIC_OP_BVH_REBUILD:
         case APIC_OP_HASH_GRID_UPDATE:
+        case APIC_OP_CHILD_GRAPH:
+        case APIC_OP_MESH_REFIT:
+        case APIC_OP_MESH_SET_POINTS:
+        case APIC_OP_MESH_SET_VELOCITIES:
+        case APIC_OP_VOLUME_REBUILD:
+        case APIC_OP_VOLUME_GET_TILES:
+        case APIC_OP_VOLUME_GET_VOXELS:
             return header->op_type;
         case APIC_OP_IF:
         case APIC_OP_WHILE: {
@@ -2144,6 +2946,27 @@ static void apic_execute_hash_grid_update(const APICHashGridUpdateRecord* rec, v
     );
 }
 
+// Check that a BSR matrix's replay-time rows are disjoint and lie within its
+// first ``nnz_upper_bound`` block slots: offsets start at 0 or more, never
+// decrease, and end at most at ``nnz_upper_bound``, and each row count fits its
+// row's capacity. Compression indexes columns and values through these arrays,
+// and compact compression packs every active block from slot 0, so the
+// recorded region spans alone can't bound its accesses.
+static bool
+apic_check_bsr_rows(const int32_t* offsets, const int32_t* row_counts, int32_t row_count, int32_t nnz_upper_bound)
+{
+    if (offsets[0] < 0 || offsets[row_count] > nnz_upper_bound)
+        return false;
+    for (int32_t row = 0; row < row_count; ++row) {
+        const int64_t capacity = static_cast<int64_t>(offsets[row + 1]) - offsets[row];
+        if (capacity < 0)
+            return false;
+        if (row_counts && (row_counts[row] < 0 || row_counts[row] > capacity))
+            return false;
+    }
+    return true;
+}
+
 // Walk an APIC byte stream and execute CPU operations. Assumes the stream
 // has already passed apic_validate_operation_stream — no per-op bounds
 // checks are performed here.
@@ -2151,14 +2974,17 @@ static void apic_execute_hash_grid_update(const APICHashGridUpdateRecord* rec, v
 // remap_handle:  (uint64_t old_id) -> uint64_t (identity for live recording,
 //                                                load-time remap for loaded graphs)
 // find_kernel:   (const std::string& key, uint8_t is_forward) -> void*
-template <typename ResolvePtrFn, typename RemapHandleFn, typename FindKernelFn>
+// replay_child:  (uint32_t child_index) -> bool, replays an APIC_OP_CHILD_GRAPH
+//                target (live CPU captures only; validation rejects the op elsewhere)
+template <typename ResolvePtrFn, typename RemapHandleFn, typename FindKernelFn, typename ReplayChildFn>
 static bool apic_cpu_replay_stream(
     const uint8_t* stream_data,
     size_t stream_size,
     uint32_t operation_count,
     ResolvePtrFn resolve_ptr,
     RemapHandleFn remap_handle,
-    FindKernelFn find_kernel
+    FindKernelFn find_kernel,
+    ReplayChildFn replay_child
 )
 {
     // Capture and load validate the stream before replay; no per-op bounds
@@ -2332,6 +3158,21 @@ static bool apic_cpu_replay_stream(
             // g_apic_state is null during replay, so this call executes
             // the actual memtile instead of re-recording it.
             wp_memtile_host(dst, value, rec->srcsize, rec->count);
+            break;
+        }
+
+        case APIC_OP_ARRAY_FILL: {
+            const APICArrayFillRecord* rec = reinterpret_cast<const APICArrayFillRecord*>(ptr);
+            wp::indexedarray_t<void> ia;
+            if (!apic_array_fill_descriptor(*rec, resolve_ptr, &ia)) {
+                wp::set_error_string("Warp APIC error: array fill pointer resolution failed at operation %u", i);
+                return false;
+            }
+            // g_apic_state is null during replay, so this call executes
+            // the fill instead of re-recording it.
+            wp_array_fill_host(
+                &ia, wp::ARRAY_TYPE_INDEXED, ptr + sizeof(APICArrayFillRecord), static_cast<int>(rec->value_size)
+            );
             break;
         }
 
@@ -2669,6 +3510,48 @@ static bool apic_cpu_replay_stream(
             break;
         }
 
+        case APIC_OP_BSR_COMPRESS: {
+            const APICBsrCompressRecord* rec = reinterpret_cast<const APICBsrCompressRecord*>(ptr);
+            const size_t nnz = static_cast<size_t>(rec->nnz_upper_bound);
+            const size_t rowp1_bytes = (static_cast<size_t>(rec->row_count) + 1) * sizeof(int32_t);
+            const size_t values_bytes
+                = nnz * static_cast<size_t>(rec->block_size) * static_cast<size_t>(rec->scalar_size_in_bytes);
+            void* offsets = resolve_ptr(rec->offsets_region_id, rec->offsets_offset, rowp1_bytes);
+            void* row_counts = rec->row_counts_region_id >= 0
+                ? resolve_ptr(
+                      rec->row_counts_region_id, rec->row_counts_offset,
+                      static_cast<size_t>(rec->row_count) * sizeof(int32_t)
+                  )
+                : nullptr;
+            void* columns = rec->columns_region_id >= 0
+                ? resolve_ptr(rec->columns_region_id, rec->columns_offset, nnz * sizeof(int32_t))
+                : nullptr;
+            void* values = rec->values_region_id >= 0
+                ? resolve_ptr(rec->values_region_id, rec->values_offset, values_bytes)
+                : nullptr;
+            if (!offsets || (nnz > 0 && !columns) || (rec->row_counts_region_id >= 0 && !row_counts)
+                || (rec->values_region_id >= 0 && !values)) {
+                wp::set_error_string("Warp APIC error: bsr-compress pointer resolution failed at operation %u", i);
+                return false;
+            }
+            if (!apic_check_bsr_rows(
+                    reinterpret_cast<const int32_t*>(offsets), reinterpret_cast<const int32_t*>(row_counts),
+                    rec->row_count, rec->nnz_upper_bound
+                )) {
+                wp::set_error_string("Warp APIC error: bsr-compress row range out of bounds at operation %u", i);
+                return false;
+            }
+            // g_apic_state is null during replay, so this executes the real
+            // compression. Same entry point wp.sparse.bsr_compress uses.
+            wp_bsr_compress_inplace_host(
+                rec->row_count, rec->col_count, rec->block_size, rec->scalar_size_in_bytes, rec->scalar_type,
+                rec->nnz_upper_bound, rec->prune_numerical_zeros != 0, rec->scalar_zero_mask, rec->make_compact != 0,
+                reinterpret_cast<int*>(offsets), reinterpret_cast<int*>(row_counts), reinterpret_cast<int*>(columns),
+                values, rec->compress_values != 0
+            );
+            break;
+        }
+
         case APIC_OP_BVH_REFIT: {
             const APICBvhRecord* rec = reinterpret_cast<const APICBvhRecord*>(ptr);
             // g_apic_state is null during replay, so this re-runs the real refit
@@ -2682,6 +3565,124 @@ static bool apic_cpu_replay_stream(
         case APIC_OP_BVH_REBUILD: {
             const APICBvhRecord* rec = reinterpret_cast<const APICBvhRecord*>(ptr);
             wp_bvh_rebuild_host(remap_handle(rec->bvh_id), rec->constructor_type);
+            break;
+        }
+
+        case APIC_OP_MESH_REFIT: {
+            const auto* rec = reinterpret_cast<const APICMeshUpdateRecord*>(ptr);
+            // g_apic_state is null during replay, so this re-runs the real refit
+            // against the replay-time points. Same entry point wp.Mesh.refit()
+            // dispatches to.
+            wp_mesh_refit_host(remap_handle(rec->mesh_id));
+            break;
+        }
+
+        case APIC_OP_MESH_SET_POINTS:
+        case APIC_OP_MESH_SET_VELOCITIES: {
+            const auto* rec = reinterpret_cast<const APICMeshUpdateRecord*>(ptr);
+            wp::array_t<wp::vec3> array;
+            array.ndim = 1;
+            array.shape.dims[0] = rec->count;
+            array.strides[0] = rec->stride;
+            array.flags = rec->flags;
+            if (rec->count > 0) {
+                const int32_t region_ids[2] = { rec->data_region_id, rec->grad_region_id };
+                const uint64_t offsets[2] = { rec->data_offset, rec->grad_offset };
+                wp::vec3* resolved[2] = { nullptr, nullptr };
+                for (int k = 0; k < 2; ++k) {
+                    if (region_ids[k] < 0)
+                        continue;
+                    uint64_t low_offset;
+                    uint64_t span_size;
+                    if (!apic_compute_strided_span(
+                            rec->count, rec->stride, sizeof(wp::vec3), offsets[k], &low_offset, &span_size
+                        )) {
+                        fprintf(stderr, "Warp APIC error: mesh array span invalid at operation %u\n", i);
+                        return false;
+                    }
+                    void* low_data = resolve_ptr(region_ids[k], low_offset, span_size);
+                    if (!low_data) {
+                        fprintf(stderr, "Warp APIC error: mesh array resolution failed at operation %u\n", i);
+                        return false;
+                    }
+                    resolved[k]
+                        = reinterpret_cast<wp::vec3*>(static_cast<uint8_t*>(low_data) + (offsets[k] - low_offset));
+                }
+                array.data = resolved[0];
+                array.grad = resolved[1];
+            }
+            if (header->op_type == APIC_OP_MESH_SET_POINTS)
+                wp_mesh_set_points_host(remap_handle(rec->mesh_id), array);
+            else
+                wp_mesh_set_velocities_host(remap_handle(rec->mesh_id), array);
+            break;
+        }
+
+        case APIC_OP_VOLUME_REBUILD: {
+            const auto* rec = reinterpret_cast<const APICVolumeRebuildRecord*>(ptr);
+            const uint64_t point_count = static_cast<uint64_t>(rec->num_points);
+            void* points = rec->num_points > 0
+                ? resolve_ptr(rec->points_region_id, rec->points_offset, point_count * 12)
+                : nullptr;
+            void* point_mask = rec->point_mask_region_id >= 0 && rec->num_points > 0
+                ? resolve_ptr(rec->point_mask_region_id, rec->point_mask_offset, point_count * sizeof(int32_t))
+                : nullptr;
+            void* status = rec->status_region_id >= 0
+                ? resolve_ptr(rec->status_region_id, rec->status_offset, sizeof(uint32_t))
+                : nullptr;
+            if ((rec->num_points > 0 && !points)
+                || (rec->point_mask_region_id >= 0 && rec->num_points > 0 && !point_mask)
+                || (rec->status_region_id >= 0 && !status)) {
+                fprintf(stderr, "Warp APIC error: volume rebuild pointer resolution failed at operation %u\n", i);
+                return false;
+            }
+            // The native entry points take mutable transform buffers.
+            float transform[9];
+            float translation[3];
+            memcpy(transform, rec->transform, sizeof(transform));
+            memcpy(translation, rec->translation, sizeof(translation));
+            const uint64_t volume_id = remap_handle(rec->volume_id);
+            const bool in_world_space = rec->points_in_world_space != 0;
+            // g_apic_state is null during replay, so these execute the real
+            // rebuild. Same entry points wp.Volume.rebuild() dispatches to.
+            switch (rec->kind) {
+            case APIC_VOLUME_REBUILD_TILES:
+                wp_volume_rebuild_from_tiles_host(
+                    volume_id, points, rec->num_points, static_cast<const int32_t*>(point_mask), transform, translation,
+                    in_world_space, rec->bg_value, rec->bg_value_size, rec->bg_value_type,
+                    static_cast<uint32_t*>(status)
+                );
+                break;
+            case APIC_VOLUME_REBUILD_INDEX_TILES:
+                wp_volume_index_rebuild_from_tiles_host(
+                    volume_id, points, rec->num_points, static_cast<const int32_t*>(point_mask), transform, translation,
+                    in_world_space, static_cast<uint32_t*>(status)
+                );
+                break;
+            default:
+                wp_volume_rebuild_from_active_voxels_host(
+                    volume_id, points, rec->num_points, static_cast<const int32_t*>(point_mask), transform, translation,
+                    in_world_space, static_cast<uint32_t*>(status)
+                );
+                break;
+            }
+            break;
+        }
+
+        case APIC_OP_VOLUME_GET_TILES:
+        case APIC_OP_VOLUME_GET_VOXELS: {
+            const auto* rec = reinterpret_cast<const APICVolumeGetCoordsRecord*>(ptr);
+            if (rec->out_region_id < 0)
+                break;
+            void* out = resolve_ptr(rec->out_region_id, rec->out_offset, rec->out_size);
+            if (!out) {
+                fprintf(stderr, "Warp APIC error: volume query pointer resolution failed at operation %u\n", i);
+                return false;
+            }
+            if (header->op_type == APIC_OP_VOLUME_GET_TILES)
+                wp_volume_get_tiles_host(remap_handle(rec->volume_id), out);
+            else
+                wp_volume_get_voxels_host(remap_handle(rec->volume_id), out);
             break;
         }
 
@@ -2772,12 +3773,14 @@ static bool apic_cpu_replay_stream(
 
             if (cond_value && rec->branch_a_size > 0) {
                 if (!apic_cpu_replay_stream(
-                        branch_a, rec->branch_a_size, rec->branch_a_op_count, resolve_ptr, remap_handle, find_kernel
+                        branch_a, rec->branch_a_size, rec->branch_a_op_count, resolve_ptr, remap_handle, find_kernel,
+                        replay_child
                     ))
                     return false;
             } else if (!cond_value && rec->branch_b_size > 0) {
                 if (!apic_cpu_replay_stream(
-                        branch_b, rec->branch_b_size, rec->branch_b_op_count, resolve_ptr, remap_handle, find_kernel
+                        branch_b, rec->branch_b_size, rec->branch_b_op_count, resolve_ptr, remap_handle, find_kernel,
+                        replay_child
                     ))
                     return false;
             }
@@ -2801,13 +3804,23 @@ static bool apic_cpu_replay_stream(
                 if (rec->branch_a_size == 0)
                     break;
                 if (!apic_cpu_replay_stream(
-                        body, rec->branch_a_size, rec->branch_a_op_count, resolve_ptr, remap_handle, find_kernel
+                        body, rec->branch_a_size, rec->branch_a_op_count, resolve_ptr, remap_handle, find_kernel,
+                        replay_child
                     ))
                     return false;
                 if (++guard >= guard_limit) {
                     fprintf(stderr, "Warp APIC error: APIC_OP_WHILE exceeded guard limit at operation %u\n", i);
                     return false;
                 }
+            }
+            break;
+        }
+
+        case APIC_OP_CHILD_GRAPH: {
+            const APICChildGraphRecord* rec = reinterpret_cast<const APICChildGraphRecord*>(ptr);
+            if (!replay_child(rec->child_index)) {
+                fprintf(stderr, "Warp APIC error: child graph replay failed at operation %u\n", i);
+                return false;
             }
             break;
         }
@@ -2827,9 +3840,10 @@ static bool apic_cpu_replay_stream(
 // APICState or APICGraph; both expose operation_stream,
 // operation_count, and cpu_kernels (map<string, APICCPUKernel>). The only
 // per-container difference is how region_id is resolved to a host pointer,
-// which the caller supplies as `resolve`.
-template <typename Container, typename Resolver, typename HandleRemap>
-static bool apic_cpu_replay_container(Container* c, Resolver resolve, HandleRemap remap_handle)
+// which the caller supplies as `resolve`, and how child graphs are replayed.
+template <typename Container, typename Resolver, typename HandleRemap, typename ChildReplay>
+static bool
+apic_cpu_replay_container(Container* c, Resolver resolve, HandleRemap remap_handle, ChildReplay replay_child)
 {
     auto find_kernel = [c](const std::string& key, const std::string& module_hash, uint8_t is_forward) -> void* {
         // Prefer the exact (module_hash, key) match so same-key kernels from
@@ -2844,13 +3858,28 @@ static bool apic_cpu_replay_container(Container* c, Resolver resolve, HandleRema
         return is_forward ? it->second.forward_fn : it->second.backward_fn;
     };
     return apic_cpu_replay_stream(
-        c->operation_stream.data(), c->operation_stream.size(), c->operation_count, resolve, remap_handle, find_kernel
+        c->operation_stream.data(), c->operation_stream.size(), c->operation_count, resolve, remap_handle, find_kernel,
+        replay_child
     );
+}
+
+// Replay calls the same entry points the CPU capture hooks intercept, so
+// replaying during a CPU capture would re-record the graph into it, dropping
+// kernel launches and fixing conditionals at capture time.
+static bool apic_check_cpu_replay_allowed()
+{
+    if (wp_apic_get_recording_state()) {
+        wp::set_error_string("Warp APIC error: cannot replay a CPU graph while a CPU graph capture is recording");
+        return false;
+    }
+    return true;
 }
 
 bool wp_apic_cpu_replay_state(APICState* state)
 {
     if (!state)
+        return false;
+    if (!apic_check_cpu_replay_allowed())
         return false;
     if (state->operation_stream.empty())
         return true;
@@ -2859,19 +3888,24 @@ bool wp_apic_cpu_replay_state(APICState* state)
         return false;
     }
     // Live recording: handles captured this session are still valid, so the
-    // remap is identity.
+    // remap is identity. Child indices were validated against child_states,
+    // which only grows. A child is a finished capture without conditionals, so
+    // it holds no child records and replay recurses at most one level.
     return apic_cpu_replay_container(
         state,
         [state](int32_t region_id, uint64_t offset, size_t access_size) {
             return apic_resolve_state_region_ptr(state, region_id, offset, access_size);
         },
-        [](uint64_t handle) -> uint64_t { return handle; }
+        [](uint64_t handle) -> uint64_t { return handle; },
+        [state](uint32_t child_index) { return wp_apic_cpu_replay_state(state->child_states[child_index]); }
     );
 }
 
 bool wp_apic_cpu_replay_graph(APICGraph* graph)
 {
     if (!graph)
+        return false;
+    if (!apic_check_cpu_replay_allowed())
         return false;
     if (graph->operation_stream.empty())
         return true;
@@ -2884,7 +3918,9 @@ bool wp_apic_cpu_replay_graph(APICGraph* graph)
         [graph](uint64_t handle) -> uint64_t {
             auto it = graph->handle_ptr_remap.find(handle);
             return (it != graph->handle_ptr_remap.end()) ? it->second : handle;
-        }
+        },
+        // Unreachable: loader validation rejects APIC_OP_CHILD_GRAPH.
+        [](uint32_t) { return false; }
     );
 }
 
@@ -2917,8 +3953,25 @@ bool wp_apic_state_save(APICState* state, const char* path, int target_arch, voi
         return false;
     }
 
+    if (target_arch < 0) {
+        wp::set_error_string("Warp APIC error: Cannot save a graph with invalid target architecture %d", target_arch);
+        return false;
+    }
+
+    const APICDeviceType device_type = target_arch == 0 ? APIC_DEVICE_CPU : APIC_DEVICE_CUDA;
+    for (const auto& kv : state->modules) {
+        const APICModule& mod = kv.second;
+        if (const char* validation_error = apic_validate_module(mod, device_type)) {
+            wp::set_error_string(
+                "Warp APIC error: Cannot save invalid APIC module %s: %s", mod.module_name.c_str(), validation_error
+            );
+            return false;
+        }
+    }
+
     if (!apic_validate_operation_stream(
-            state->operation_stream.data(), state->operation_stream.size(), state->operation_count
+            state->operation_stream.data(), state->operation_stream.size(), state->operation_count, 0,
+            APIC_FORMAT_VERSION, state->child_states.size()
         )) {
         wp::set_error_string("Warp APIC error: operation stream failed validation");
         return false;
@@ -2932,17 +3985,27 @@ bool wp_apic_state_save(APICState* state, const char* path, int target_arch, voi
     // unwinding do not count.
     const uint32_t nonserializable_op
         = apic_stream_first_nonserializable_op(state->operation_stream.data(), state->operation_count);
-    if (const char* bvh_op = apic_bvh_op_name(nonserializable_op)) {
+    const char* live_only_op;
+    const char* handle_kind;
+    if (apic_live_only_op_name(nonserializable_op, &live_only_op, &handle_kind)) {
         wp::set_error_string(
-            "Warp APIC error: Cannot serialize a captured graph that records %s: the BVH handle is process-local and "
+            "Warp APIC error: Cannot serialize a captured graph that records %s: the %s handle is process-local and "
             "cannot be "
             "saved to a .wrp. Replay the captured graph in-process instead of saving it.",
-            bvh_op
+            live_only_op, handle_kind
         );
         return false;
     }
     if (nonserializable_op == APIC_OP_HASH_GRID_UPDATE) {
         wp::set_error_string("Warp APIC error: HashGrid serialization is not yet supported in APIC graphs");
+        return false;
+    }
+    if (nonserializable_op == APIC_OP_CHILD_GRAPH) {
+        wp::set_error_string(
+            "Warp APIC error: Cannot serialize a captured graph that runs another captured Graph passed to "
+            "wp.capture_if() or wp.capture_while(). Replay the captured graph in-process instead of saving it, or "
+            "pass a callable branch."
+        );
         return false;
     }
 
@@ -2960,6 +4023,7 @@ bool wp_apic_state_save(APICState* state, const char* path, int target_arch, voi
     // Build metadata
     std::vector<uint8_t> metadata_section;
     apic_write_nc<uint32_t>(metadata_section, APIC_FORMAT_VERSION);
+    apic_write_string_nc(metadata_section, WP_VERSION_STRING);
     apic_write_nc<uint32_t>(metadata_section, target_arch);
     apic_write_nc<uint32_t>(metadata_section, static_cast<uint32_t>(state->modules.size()));
     apic_write_nc<uint32_t>(metadata_section, static_cast<uint32_t>(state->kernels.size()));
@@ -2973,6 +4037,12 @@ bool wp_apic_state_save(APICState* state, const char* path, int target_arch, voi
         apic_write_string_nc(metadata_section, m.module_name);
         apic_write_string_nc(metadata_section, m.cubin_filename);
         apic_write_nc<uint32_t>(metadata_section, static_cast<uint32_t>(m.target_arch));
+        apic_write_string_nc(metadata_section, m.binary_digest);
+        apic_write_string_nc(metadata_section, m.source_filename);
+        apic_write_string_nc(metadata_section, m.source_digest);
+        apic_write_nc<uint8_t>(metadata_section, static_cast<uint8_t>(m.binary_kind));
+        apic_write_nc<uint8_t>(metadata_section, static_cast<uint8_t>(m.fallback_reason));
+        apic_write_nc<APICCudaCompileRecipe>(metadata_section, m.compile_recipe);
     }
     for (const auto& kv : state->kernels) {
         const APICKernel& k = kv.second;
@@ -2997,6 +4067,7 @@ bool wp_apic_state_save(APICState* state, const char* path, int target_arch, voi
         apic_write_nc<uint32_t>(metadata_section, loc.region_id);
         apic_write_nc<uint64_t>(metadata_section, loc.offset);
         apic_write_nc<uint64_t>(metadata_section, loc.stride);
+        apic_write_nc<uint64_t>(metadata_section, loc.count);
     }
 
     // Build memory section
@@ -3274,16 +4345,29 @@ using APICModuleResolver = std::function<bool(const std::string& filename, std::
 // Parse and validate a .wrp image into graph-owned storage.
 // Resolve CUDA modules through resolve_module; the caller loads CPU objects.
 static APICGraph* apic_load_graph_from_image(
-    void* context, const uint8_t* data, size_t size, const APICModuleResolver& resolve_module, int device_type
+    void* context,
+    const uint8_t* data,
+    size_t size,
+    const APICModuleResolver& resolve_module,
+    int device_type,
+    const char* modules_dir = nullptr,
+    const char* warp_include_dir = nullptr
 )
 {
 #if !WP_ENABLE_CUDA
     (void)resolve_module;
+    (void)modules_dir;
+    (void)warp_include_dir;
     if (device_type != APIC_DEVICE_CPU) {
         wp::set_error_string("Warp APIC error: CUDA graph load requested in a non-CUDA build");
         return nullptr;
     }
 #endif
+
+    if (device_type != APIC_DEVICE_CUDA && device_type != APIC_DEVICE_CPU) {
+        wp::set_error_string("Warp APIC error: Unknown requested APIC device type: %d", device_type);
+        return nullptr;
+    }
 
     if (!data || size < sizeof(APICFileHeader)) {
         wp::set_error_string("Warp APIC error: Invalid WRP data: too small");
@@ -3304,10 +4388,25 @@ static APICGraph* apic_load_graph_from_image(
         return nullptr;
     }
 
-    // Validate section bounds before reading from the caller's buffer.
-    if (header.section_table_offset > size
+    if (header.device_type != APIC_DEVICE_CUDA && header.device_type != APIC_DEVICE_CPU) {
+        wp::set_error_string("Warp APIC error: Invalid WRP file: unknown device type %u", (unsigned)header.device_type);
+        return nullptr;
+    }
+    if (header.device_type != static_cast<uint8_t>(device_type)) {
+        wp::set_error_string(
+            "Warp APIC error: WRP device type %u does not match requested device type %u", (unsigned)header.device_type,
+            (unsigned)device_type
+        );
+        return nullptr;
+    }
+    if ((header.device_type == APIC_DEVICE_CUDA && header.target_arch == 0)
+        || (header.device_type == APIC_DEVICE_CPU && header.target_arch != 0) || header.target_arch > INT_MAX) {
+        wp::set_error_string("Warp APIC error: Invalid WRP file: device type and target architecture disagree");
+        return nullptr;
+    }
+    if (header.num_sections == 0 || header.num_sections > 64 || header.section_table_offset > size
         || header.num_sections > (size - header.section_table_offset) / sizeof(APICSectionEntry)) {
-        wp::set_error_string("Warp APIC error: Invalid WRP data: section table is out of bounds");
+        wp::set_error_string("Warp APIC error: Invalid WRP file: section table is out of bounds");
         return nullptr;
     }
 
@@ -3321,22 +4420,40 @@ static APICGraph* apic_load_graph_from_image(
     for (uint32_t i = 0; i < header.num_sections; i++) {
         APICSectionEntry entry;
         memcpy(&entry, data + header.section_table_offset + i * sizeof(APICSectionEntry), sizeof(entry));
-        if (entry.offset > size || entry.size > size - entry.offset) {
+        if (entry.offset > size || entry.size > size - entry.offset || entry.uncompressed_size != entry.size) {
             wp::set_error_string("Warp APIC error: Invalid WRP data: section %u is out of bounds", i);
             return nullptr;
         }
         const uint8_t* section_ptr = data + entry.offset;
         const size_t section_size = static_cast<size_t>(entry.size);
         if (entry.type == APIC_SECTION_METADATA) {
+            if (metadata_ptr) {
+                wp::set_error_string("Warp APIC error: Invalid WRP data: duplicate metadata section");
+                return nullptr;
+            }
             metadata_ptr = section_ptr;
             metadata_size = section_size;
         } else if (entry.type == APIC_SECTION_MEMORY) {
+            if (memory_ptr) {
+                wp::set_error_string("Warp APIC error: Invalid WRP data: duplicate memory section");
+                return nullptr;
+            }
             memory_ptr = section_ptr;
             memory_size = section_size;
         } else if (entry.type == APIC_SECTION_OPERATIONS) {
+            if (operations_ptr) {
+                wp::set_error_string("Warp APIC error: Invalid WRP data: duplicate operations section");
+                return nullptr;
+            }
             operations_ptr = section_ptr;
             operations_size = section_size;
         }
+    }
+
+    if (!metadata_ptr || metadata_size == 0 || !memory_ptr || memory_size == 0 || !operations_ptr
+        || operations_size == 0) {
+        wp::set_error_string("Warp APIC error: Invalid WRP data: required section is missing");
+        return nullptr;
     }
 
     // Validate a private copy before reconstructing resources so replay and
@@ -3359,12 +4476,14 @@ static APICGraph* apic_load_graph_from_image(
         // since a loaded graph cannot reconstruct the live BVH pointer or grid_id.
         const uint32_t nonserializable_op
             = apic_stream_first_nonserializable_op(operation_stream.data(), operation_count);
-        if (const char* bvh_op = apic_bvh_op_name(nonserializable_op)) {
+        const char* live_only_op;
+        const char* handle_kind;
+        if (apic_live_only_op_name(nonserializable_op, &live_only_op, &handle_kind)) {
             wp::set_error_string(
-                "Warp APIC error: Cannot load a captured graph that records %s: the BVH handle is process-local and "
+                "Warp APIC error: Cannot load a captured graph that records %s: the %s handle is process-local and "
                 "cannot be "
                 "reconstructed from a .wrp.",
-                bvh_op
+                live_only_op, handle_kind
             );
             return nullptr;
         }
@@ -3399,19 +4518,33 @@ static APICGraph* apic_load_graph_from_image(
         }
     } else {
 #if WP_ENABLE_CUDA
-        // Copy each module's bytes and append a NUL byte, which PTX images need
-        // and CUBIN loading ignores.
-        std::unordered_map<std::string, std::vector<uint8_t>> module_images;
-        for (const auto& pair : graph->modules) {
-            std::vector<uint8_t> image;
-            if (!resolve_module(pair.second.cubin_filename, image)) {
-                delete graph;
-                return nullptr;
+        bool modules_loaded = false;
+        if (modules_dir) {
+            modules_loaded
+                = apic_load_graph_cuda_setup(graph, context, modules_dir, warp_include_dir, memory_ptr, memory_size);
+        } else {
+            std::unordered_map<std::string, std::vector<uint8_t>> module_images;
+            for (const auto& pair : graph->modules) {
+                std::vector<uint8_t> image;
+                if (!resolve_module(pair.second.cubin_filename, image)) {
+                    delete graph;
+                    return nullptr;
+                }
+                if (!pair.second.binary_digest.empty()
+                    && apic_sha256_hex(image.data(), image.size()) != pair.second.binary_digest) {
+                    wp::set_error_string(
+                        "Warp APIC error: Module %s failed its SHA-256 check", pair.second.cubin_filename.c_str()
+                    );
+                    delete graph;
+                    return nullptr;
+                }
+                // The borrowed image has been copied; PTX loading requires a NUL terminator.
+                image.push_back(0);
+                module_images.emplace(pair.first, std::move(image));
             }
-            image.push_back(0);
-            module_images.emplace(pair.first, std::move(image));
+            modules_loaded = apic_load_graph_cuda_setup(graph, context, module_images, memory_ptr, memory_size);
         }
-        if (!apic_load_graph_cuda_setup(graph, context, module_images, memory_ptr, memory_size)) {
+        if (!modules_loaded) {
             delete graph;
             return nullptr;
         }
@@ -3426,7 +4559,10 @@ static APICGraph* apic_load_graph_from_image(
         delete graph;
         return nullptr;
     }
-    apic_fixup_ptr_locations(graph);
+    if (!apic_fixup_ptr_locations(graph, memory_ptr)) {
+        delete graph;
+        return nullptr;
+    }
 
     graph->operation_count = operation_count;
     graph->operation_stream = std::move(operation_stream);
@@ -3435,10 +4571,14 @@ static APICGraph* apic_load_graph_from_image(
     return graph;
 }
 
-APICGraph* wp_apic_load_graph(void* context, const char* path, int device_type)
+static APICGraph* apic_load_graph_impl(void* context, const char* path, int device_type, const char* warp_include_dir)
 {
     if (!path) {
         wp::set_error_string("Warp APIC error: Path is null");
+        return nullptr;
+    }
+    if (device_type != APIC_DEVICE_CUDA && device_type != APIC_DEVICE_CPU) {
+        wp::set_error_string("Warp APIC error: Unknown requested APIC device type: %d", device_type);
         return nullptr;
     }
 
@@ -3476,11 +4616,22 @@ APICGraph* wp_apic_load_graph(void* context, const char* path, int device_type)
         return true;
     };
 
-    APICGraph* graph
-        = apic_load_graph_from_image(context, file_data.data(), file_data.size(), resolve_module, device_type);
+    APICGraph* graph = apic_load_graph_from_image(
+        context, file_data.data(), file_data.size(), resolve_module, device_type, modules_dir.c_str(), warp_include_dir
+    );
     if (graph)
         graph->base_path = base_name;
     return graph;
+}
+
+APICGraph* wp_apic_load_graph(void* context, const char* path, int device_type)
+{
+    return apic_load_graph_impl(context, path, device_type, nullptr);
+}
+
+APICGraph* wp_apic_load_graph_ex(void* context, const char* path, int device_type, const char* warp_include_dir)
+{
+    return apic_load_graph_impl(context, path, device_type, warp_include_dir);
 }
 
 APICGraph* wp_apic_load_graph_from_bytes(

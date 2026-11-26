@@ -31,6 +31,12 @@ import warp.config
 from warp._src.deterministic import DeterministicCodegen, WarpDeterminismError
 from warp._src.logger import log_debug, log_warning
 from warp._src.types import *
+from warp._src.types import (
+    _ARRAY_ANNOTATION_MAP,
+    _ArrayAnnotationBase,
+    _resolve_array_family,
+    _validate_array_subclass_descriptor,
+)
 
 # used as a globally accessible copy
 # of current compile options (block_dim) etc
@@ -364,6 +370,42 @@ class StructInstance:
         return tuple(npvalue)
 
 
+def _substitute_nodes(root, replacements, ancestors):
+    """Return a copy of ``root`` with ``replacements`` (node -> new node) applied.
+
+    Only ``ancestors`` (the nodes on the paths to replaced nodes) are copied;
+    every other subtree is aliased from the original, so substituting into a
+    shared tree is cheap and never mutates it. Keying by node identity requires
+    a proper tree, as produced by ``ast.parse``.
+    """
+
+    def rebuild(node):
+        new = replacements.get(node)
+        if new is not None:
+            return new
+        if node not in ancestors:
+            return node
+        fields = {}
+        for name, value in ast.iter_fields(node):
+            if isinstance(value, list):
+                # A loop, not a comprehension: comprehensions add a frame per level before Python 3.12.
+                items = []
+                for item in value:
+                    items.append(rebuild(item) if isinstance(item, ast.AST) else item)
+                fields[name] = items
+            elif isinstance(value, ast.AST):
+                fields[name] = rebuild(value)
+            else:
+                fields[name] = value
+        clone = type(node)(**fields)
+        for attr in node._attributes:
+            if hasattr(node, attr):
+                setattr(clone, attr, getattr(node, attr))
+        return clone
+
+    return rebuild(root)
+
+
 _IDENTIFIER_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\Z")
 
 
@@ -443,7 +485,7 @@ def iter_ast_nodes_of_types(root: ast.AST, *types: type):
 
 def _uses_tid_call(adj) -> bool:
     """Return whether ``adj`` calls ``wp.tid()`` directly or through an alias."""
-    local_variables = adj.assigned_name_ids()
+    local_variables = adj.syntax().assigned_name_ids
     tid_aliases = resolve_reference_tid_aliases(adj, local_variables)
     callable_arg_values = getattr(adj, "callable_arg_values", None) or {}
     return any(
@@ -490,7 +532,43 @@ def _make_struct_field_constructor(field: str, var_type: type):
         return lambda ctype: var_type()
 
 
+def _validate_array_parameter_annotation(annotation, context):
+    """Keep application subclasses out of source-level array annotations."""
+    cls = type(annotation)
+    if issubclass(cls, _ArrayAnnotationBase):
+        return
+    try:
+        family = _resolve_array_family(annotation)
+    except TypeError as error:
+        raise TypeError(f"{context}: {error}") from error
+    if family is fixedarray and cls is not fixedarray:
+        raise TypeError(
+            f"{context} uses a fixedarray subclass instance as an annotation; "
+            "use a built-in wp.fixedarray type descriptor instead"
+        )
+    if family in _ARRAY_ANNOTATION_MAP and cls is not family:
+        raise TypeError(
+            f"{context} uses an array subclass instance as an annotation; "
+            f"use the native parent annotation wp.{family.__name__}[dtype] instead"
+        )
+
+
 def _make_struct_field_setter(cls, field: str, var_type: type):
+    def check_array_family(value, family, description):
+        try:
+            actual_family = _resolve_array_family(value)
+        except TypeError as error:
+            raise TypeError(f"Struct field '{field}': {error}") from error
+        if actual_family is not family:
+            raise TypeError(f"Struct field '{field}' expects {description}, got {type(value).__name__}")
+
+    def get_array_descriptor(value, family):
+        try:
+            descriptor = value.__ctype__()
+            return _validate_array_subclass_descriptor(value, descriptor, family, var_type.ndim)
+        except Exception as error:
+            raise TypeError(f"Struct field '{field}': {error}") from error
+
     def check_array_ndim(value):
         if var_type.ndim is not Any and value.ndim != var_type.ndim:
             raise TypeError(
@@ -504,14 +582,15 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
             setattr(inst._ctype, field, array_t())
         else:
             # wp.array
-            if not isinstance(value, array):
-                raise TypeError(f"Struct field '{field}' expects a Warp array, got {type(value).__name__}")
+            if type(value) is not array:
+                check_array_family(value, array, "a Warp array")
             if not types_equal(value.dtype, var_type.dtype):
                 raise TypeError(
                     f"Struct field '{field}' expects dtype {type_repr(var_type.dtype)}, got {type_repr(value.dtype)}"
                 )
             check_array_ndim(value)
-            setattr(inst._ctype, field, value.__ctype__())
+            descriptor = value.__ctype__() if type(value) is array else get_array_descriptor(value, array)
+            setattr(inst._ctype, field, descriptor)
 
         # Keep gradient buffers alive while the struct's native array
         # descriptor may reference them. Clear any previous keepalive when
@@ -529,14 +608,15 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
         if value is None:
             setattr(inst._ctype, field, var_type.__ctype__())
         else:
-            if not isinstance(value, indexedarray):
-                raise TypeError(f"Struct field '{field}' expects a Warp indexed array, got {type(value).__name__}")
+            if type(value) is not indexedarray:
+                check_array_family(value, indexedarray, "a Warp indexed array")
             if not types_equal(value.dtype, var_type.dtype):
                 raise TypeError(
                     f"Struct field '{field}' expects dtype {type_repr(var_type.dtype)}, got {type_repr(value.dtype)}"
                 )
             check_array_ndim(value)
-            setattr(inst._ctype, field, value.__ctype__())
+            descriptor = value.__ctype__() if type(value) is indexedarray else get_array_descriptor(value, indexedarray)
+            setattr(inst._ctype, field, descriptor)
 
         # workaround to prevent gradient buffers being garbage collected
         # (indexedarray_t embeds an array_t)
@@ -554,14 +634,15 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
         if value is None:
             setattr(inst._ctype, field, var_type.__ctype__())
         else:
-            if not isinstance(value, fabricarray):
-                raise TypeError(f"Struct field '{field}' expects a Warp Fabric array, got {type(value).__name__}")
+            if type(value) is not fabricarray:
+                check_array_family(value, fabricarray, "a Warp Fabric array")
             if not types_equal(value.dtype, var_type.dtype):
                 raise TypeError(
                     f"Struct field '{field}' expects dtype {type_repr(var_type.dtype)}, got {type_repr(value.dtype)}"
                 )
             check_array_ndim(value)
-            setattr(inst._ctype, field, value.__ctype__())
+            descriptor = value.__ctype__() if type(value) is fabricarray else get_array_descriptor(value, fabricarray)
+            setattr(inst._ctype, field, descriptor)
 
         cls.__setattr__(inst, field, value)
 
@@ -570,16 +651,19 @@ def _make_struct_field_setter(cls, field: str, var_type: type):
         if value is None:
             setattr(inst._ctype, field, var_type.__ctype__())
         else:
-            if not isinstance(value, indexedfabricarray):
-                raise TypeError(
-                    f"Struct field '{field}' expects a Warp indexed Fabric array, got {type(value).__name__}"
-                )
+            if type(value) is not indexedfabricarray:
+                check_array_family(value, indexedfabricarray, "a Warp indexed Fabric array")
             if not types_equal(value.dtype, var_type.dtype):
                 raise TypeError(
                     f"Struct field '{field}' expects dtype {type_repr(var_type.dtype)}, got {type_repr(value.dtype)}"
                 )
             check_array_ndim(value)
-            setattr(inst._ctype, field, value.__ctype__())
+            descriptor = (
+                value.__ctype__()
+                if type(value) is indexedfabricarray
+                else get_array_descriptor(value, indexedfabricarray)
+            )
+            setattr(inst._ctype, field, descriptor)
 
         cls.__setattr__(inst, field, value)
 
@@ -691,6 +775,7 @@ class Struct:
 
         annotations = get_annotations(self.cls)
         for label, type_ in annotations.items():
+            _validate_array_parameter_annotation(type_, f"Struct field '{label}'")
             self.vars[label] = Var(label, type_)
 
         fields = []
@@ -1098,6 +1183,8 @@ class Var:
         # the adjoint storage pointer on demand.
         self.ref_origin: _LValueOrigin | None = None
         self.array_slot: _ArraySlot | None = None
+        # Array and index count of an array element reference, so that loading it can use the array.
+        self.element_source: tuple[Var, int] | None = None
 
         # Used to associate the variable with the Python statement that resulted in it being created.
         self.relative_lineno = relative_lineno
@@ -1132,10 +1219,10 @@ class Var:
             classstr = f"wp::{concrete_array_type(t).__name__}"
             return f"{classstr}_t<{dtypestr}>"
         elif get_origin(t) is tuple:
-            dtypestr = ", ".join(Var.dtype_to_ctype(x) for x in get_args(t))
+            dtypestr = ", ".join(Var.type_to_ctype(x) for x in get_args(t))
             return f"wp::tuple_t<{dtypestr}>"
         elif is_tuple(t):
-            dtypestr = ", ".join(Var.dtype_to_ctype(x) for x in t.types)
+            dtypestr = ", ".join(Var.type_to_ctype(x) for x in t.types)
             classstr = f"wp::{type(t).__name__}"
             return f"{classstr}<{dtypestr}>"
         elif is_tile(t):
@@ -1211,6 +1298,13 @@ class Block:
         self.body_forward = []
         self.body_replay = []
         self.body_reverse = []
+        # Track the calls that actually execute during backward so validation
+        # catches unsafe mutations without rejecting forward-only calls protected
+        # by custom callbacks. Each edge is (function, call_adjoint). Keeping edges
+        # with their statements also handles loop conditions, whose reverse
+        # statements are discarded while their replay statements still execute.
+        self.replay_calls = set()
+        self.reverse_calls = set()
 
         # list of vars declared in this block
         self.vars = []
@@ -1233,13 +1327,31 @@ def apply_defaults(
     bound_args.arguments = dict(new_arguments)
 
 
+def _plain_parameter_count(signature: inspect.Signature) -> int | None:
+    """Return the number of parameters if all are positional-or-keyword without a default, else ``None``."""
+    params = signature.parameters.values()
+    if all(p.kind is p.POSITIONAL_OR_KEYWORD and p.default is p.empty for p in params):
+        return len(params)
+    return None
+
+
 def func_match_args(func, arg_types, kwarg_types, allow_erasure=False):
+    signature = func.signature
+    if type(arg_types) is tuple and kwarg_types == {} and func.defaults == {}:
+        # binding positional arguments to such parameters succeeds exactly when the counts are equal,
+        # so skip Signature.bind(), which is costly on this hot path
+        count = func.__dict__.get("_plain_parameter_count")
+        if count is None or count[0] is not signature:
+            count = func._plain_parameter_count = (signature, _plain_parameter_count(signature))
+        if count[1] is not None:
+            return len(arg_types) == count[1] and _match_bound_arg_types(func, arg_types, allow_erasure)
+
     try:
         # Try to bind the given arguments to the function's signature.
         # This is not checking whether the argument types are matching,
         # rather it's just assigning each argument to the corresponding
         # function parameter.
-        bound_arg_types = func.signature.bind(*arg_types, **kwarg_types)
+        bound_arg_types = signature.bind(*arg_types, **kwarg_types)
     except TypeError:
         return False
 
@@ -1250,8 +1362,10 @@ def func_match_args(func, arg_types, kwarg_types, allow_erasure=False):
         if k not in bound_arg_types.arguments
     }
     apply_defaults(bound_arg_types, default_arg_types)
-    bound_arg_types = tuple(bound_arg_types.arguments.values())
+    return _match_bound_arg_types(func, tuple(bound_arg_types.arguments.values()), allow_erasure)
 
+
+def _match_bound_arg_types(func, bound_arg_types, allow_erasure):
     # Check the given argument types against the ones defined on the function.
     for bound_arg_type, func_arg_type in zip(bound_arg_types, func.input_types.values(), strict=True):
         # Let the `value_func` callback infer the type.
@@ -1308,11 +1422,18 @@ def is_regular_builtin_callable_target(func):
     they need special codegen behavior that cannot be represented by replacing a
     callable parameter with a direct function call.
 
+    User functions registered as extra overloads of a built-in, such as the jet
+    overloads added by :class:`warp.JetSpace`, do not disqualify it: a call
+    through the parameter resolves among all overloads like a direct call to the
+    built-in, and a matching user overload is emitted as a regular user function
+    call.
+
     Args:
         func: Function object to check.
 
     Returns:
-        ``True`` if every overload of ``func`` is supported as a function target.
+        ``True`` if every built-in overload of ``func`` is supported as a function
+        target.
     """
 
     if not isinstance(func, warp._src.context.Function) or not func.is_builtin():
@@ -1320,9 +1441,11 @@ def is_regular_builtin_callable_target(func):
 
     overloads = getattr(func, "overloads", None) or (func,)
     for overload in overloads:
+        if not overload.is_builtin():
+            continue
+
         if (
-            not overload.is_builtin()
-            or overload.variadic
+            overload.variadic
             or overload.dispatch_func is not None
             or overload.lto_dispatch_func is not None
             or overload.skip_replay
@@ -1570,6 +1693,16 @@ def resolve_reference_call_func(adj, call_node, callable_arg_values=None):
     return func
 
 
+def resolve_reference_call_func_once(adj, call_node, key, call_funcs, callable_arg_values):
+    """Resolve the function called by ``call_node``, once per callee name ``key`` in ``call_funcs``."""
+    if key in call_funcs:
+        return call_funcs[key]
+    func = resolve_reference_call_func(adj, call_node, callable_arg_values)
+    if key is not None:
+        call_funcs[key] = func
+    return func
+
+
 def resolve_reference_tid_aliases(adj, local_variables) -> frozenset[str]:
     """Return local names that can resolve to ``wp.tid()`` during reference scans."""
 
@@ -1588,7 +1721,7 @@ def resolve_reference_tid_aliases(adj, local_variables) -> frozenset[str]:
 
     # Seed direct ``wp.tid()`` aliases and record local-to-local edges in reverse
     # so resolved sources can propagate to their dependent names.
-    for node in adj.reference_nodes():
+    for node in adj.syntax().reference_nodes:
         if not isinstance(node, ast.Assign):
             continue
 
@@ -1635,6 +1768,21 @@ def iter_call_callable_arg_targets(adj, func, call_node, callable_arg_values=Non
         return
 
     arg_types, kwarg_types, resolved = resolve_call_arg_types(adj, call_node, callable_arg_values)
+
+    # Binding is costly; skip it unless an overload can take a function. Templates can when
+    # instantiated, and a custom get_overload() may dispatch anywhere. Checked after resolving
+    # the arguments, since resolving them may register overloads.
+    if (
+        type(func).get_overload is warp._src.context.Function.get_overload
+        and not func.user_templates
+        and not any(
+            warp._src.types.is_warp_function_annotation(arg_type)
+            for candidate in (func, *func.user_overloads.values())
+            for arg_type in candidate.input_types.values()
+        )
+    ):
+        return
+
     if resolved:
         overload = func.get_overload(arg_types, kwarg_types)
         func_candidates = (overload or func,)
@@ -1727,13 +1875,11 @@ def specialize_callable_func(func, callable_arg_values):
 def get_arg_type(arg: Var | Any) -> type:
     arg = strip_reference(arg)
 
-    # `Any` marks an unspecialized generic parameter. Return it unchanged so
-    # downstream signature logic can treat it as generic. Before Python 3.11
-    # `Any` is a `typing._SpecialForm` instance rather than a `type`, so the
-    # `isinstance(arg, type)` check below would otherwise fall through to
-    # `type(arg)` and yield `typing._SpecialForm`.
-    if arg is Any:
-        return Any
+    if isinstance(arg, Var):
+        if get_origin(arg.type) is tuple:
+            return get_args(arg.type)
+
+        return get_arg_type(arg.type)
 
     if isinstance(arg, str):
         return str
@@ -1756,12 +1902,6 @@ def get_arg_type(arg: Var | Any) -> type:
         ),
     ):
         return arg
-
-    if isinstance(arg, Var):
-        if get_origin(arg.type) is tuple:
-            return get_args(arg.type)
-
-        return get_arg_type(arg.type)
 
     if isinstance(arg, Sequence):
         return tuple(get_arg_type(x) for x in arg)
@@ -1840,24 +1980,103 @@ class _ArraySlot(NamedTuple):
     type: object
 
 
+class _NonUnrolledConstantRange(NamedTuple):
+    """A constant ``range()`` lowered as a loop instead of being unrolled."""
+
+    start: int
+    stop: int
+    step: int
+
+    @property
+    def last(self):
+        """Return the last value visited by the range."""
+        return range(self.start, self.stop, self.step)[-1]
+
+    def forward_exit_condition(self, iterator):
+        """Return the C++ condition that terminates forward iteration."""
+        comparison = ">=" if self.step > 0 else "<="
+        return f"{iterator} {comparison} {self.stop}"
+
+    def reverse_exit_condition(self, iterator):
+        """Return the C++ condition that terminates reverse iteration."""
+        comparison = "<" if self.step > 0 else ">"
+        return f"{iterator} {comparison} {self.start}"
+
+
+def _dotted_name(node) -> str | None:
+    """Return ``"a.b.c"`` for a ``Name``-rooted attribute chain, else ``None``."""
+    parts = []
+    while type(node) is ast.Attribute:
+        parts.append(node.attr)
+        node = node.value
+    if type(node) is not ast.Name:
+        return None
+    parts.append(node.id)
+    return ".".join(reversed(parts))
+
+
+class _TreeSyntax:
+    """Syntax-only facts about a function tree: pure functions of the tree, so shareable across adjoints."""
+
+    __slots__ = (
+        "assigned_name_ids",
+        "assignment_call_dims",
+        "assignment_call_name_ids",
+        "reference_keys",
+        "reference_nodes",
+    )
+
+    def __init__(self, tree):
+        self.reference_nodes = tuple(iter_ast_nodes_of_types(tree, ast.Name, ast.Attribute, ast.Call, ast.Assign))
+        # per node, the dotted name it resolves (a call's callee); scans resolve each one once, so
+        # resolution must depend on nothing else from the node
+        self.reference_keys = tuple(
+            _dotted_name(node.func if type(node) is ast.Call else node) if type(node) is not ast.Assign else None
+            for node in self.reference_nodes
+        )
+        names = set()
+        # Unpacking arity of direct assignment calls, for ``wp.tid()`` dimension inference, and
+        # their bare callee names, so ``get_references()`` only resolves tid aliases when needed.
+        call_dims = {}
+        call_name_ids = set()
+        for node in self.reference_nodes:
+            if not isinstance(node, ast.Assign):
+                continue
+            pending = list(node.targets)
+            while pending:
+                target = pending.pop()
+                if isinstance(target, ast.Name):
+                    names.add(target.id)
+                elif isinstance(target, (ast.Tuple, ast.List)):
+                    pending.extend(target.elts)
+            if isinstance(node.value, ast.Call):
+                target = node.targets[0]
+                call_dims[node.value] = len(target.elts) if isinstance(target, ast.Tuple) else 1
+                if isinstance(node.value.func, ast.Name):
+                    call_name_ids.add(node.value.func.id)
+        self.assigned_name_ids = frozenset(names)
+        self.assignment_call_dims = call_dims
+        self.assignment_call_name_ids = frozenset(call_name_ids)
+
+
 class _SharedFunctionSource:
     """Extraction products shared by every Adjoint built from one code object.
 
-    Source, tree, and reference nodes are pure functions of the code object;
+    Source, tree, and syntax are pure functions of the code object;
     only reference *resolution* is rebind-sensitive and stays per-adjoint.
-    Sharing requires an unmutated tree, so transformers, explicit ``source=``,
-    and ``wp.static`` (which rewrites the tree) exclude an adjoint.
+    ``wp.static`` substitution never mutates this tree: it produces a
+    per-adjoint view (see ``replace_static_expressions``). Sharing requires
+    an unmutated tree, so transformers and explicit ``source=`` exclude an
+    adjoint.
     """
 
-    __slots__ = ("assigned_name_ids", "assignment_call_metadata", "fun_lineno", "reference_nodes", "source", "tree")
+    __slots__ = ("fun_lineno", "source", "syntax", "tree")
 
     def __init__(self, source, fun_lineno, tree):
         self.source = source
         self.fun_lineno = fun_lineno
         self.tree = tree
-        self.reference_nodes = None
-        self.assigned_name_ids = None
-        self.assignment_call_metadata = None
+        self.syntax = None
 
 
 def _shared_source_for_code(code):
@@ -1879,6 +2098,39 @@ def _store_shared_source(code, entry):
             del _shared_function_sources[_key]
 
     _shared_function_sources[key] = (weakref.ref(code, _remove), entry)
+
+
+class AdjointUnsupportedError(TypeError):
+    """Raised by an ``lto_dispatch_func`` that cannot build adjoint LTOs for the call it was given.
+
+    The error only reaches the user if the adjoint of the calling code is emitted, see
+    :meth:`Adjoint.lto_dispatch`.
+    """
+
+
+class LtoDispatchOptions(Mapping):
+    """Options for an ``lto_dispatch_func`` that note whether it was told to skip adjoint LTOs.
+
+    Not every dispatch has adjoint LTOs to build. Reading ``enable_backward``, or iterating
+    over the options, counts as asking.
+    """
+
+    def __init__(self, options: dict[str, Any]):
+        self._options = options
+        self.skipped_backward = False
+        """Whether the dispatch asked for ``enable_backward`` and the answer was ``False``."""
+
+    def __getitem__(self, key: str) -> Any:
+        if key == "enable_backward" and not self._options[key]:
+            self.skipped_backward = True
+        return self._options[key]
+
+    def __iter__(self) -> Iterator[str]:
+        self.skipped_backward = not self._options["enable_backward"]
+        return iter(self._options)
+
+    def __len__(self) -> int:
+        return len(self._options)
 
 
 class Adjoint:
@@ -1927,9 +2179,7 @@ class Adjoint:
                 adj._shared_source = shared
             else:
                 adj.source, adj.fun_lineno, adj.tree = adj.extract_function_source(func)
-                # The substring check conservatively matches the replace_static_expressions
-                # gate below; any wp.static kernel rewrites its tree and must not share it.
-                if code is not None and not transformers and "static" not in adj.source:
+                if code is not None and not transformers:
                     adj._shared_source = _SharedFunctionSource(adj.source, adj.fun_lineno, adj.tree)
                     _store_shared_source(code, adj._shared_source)
         else:
@@ -1990,7 +2240,11 @@ class Adjoint:
         for name, type in adj.arg_types.items():
             # skip return hint
             if name == "return":
+                if issubclass(builtins.type(type), fixedarray):
+                    _validate_array_parameter_annotation(type, f"Return annotation of '{adj.fun_name}'")
                 continue
+
+            _validate_array_parameter_annotation(type, f"Argument '{name}' of '{adj.fun_name}'")
 
             # add variable for argument
             arg = Var(name, type, requires_grad=False)
@@ -2031,16 +2285,14 @@ class Adjoint:
         # paths do not need to coordinate deterministic internals directly.
         adj.deterministic = DeterministicCodegen(adj)
 
-        # Caches derived from the AST. Reset all three if ``adj.tree`` is ever
-        # mutated after any cache is populated.
-        adj._reference_nodes = None
-        adj._assigned_name_ids = None
-        adj._assignment_call_metadata = None
+        # Derived from ``adj.tree``; reset if the tree is mutated after it is populated.
+        adj._syntax = None
 
-    # allocate extra space for a function call that requires its
+    # allocate extra space for a builtin call that requires its
     # own shared memory space, we treat shared memory as a stack
-    # where each function pushes and pops space off, the extra
-    # quantity is the 'roofline' amount required for the entire kernel
+    # where each call pushes and pops space off, the extra
+    # quantity is the 'roofline' amount required for the entire kernel;
+    # user-function calls are added by get_total_required_shared()
     def alloc_shared_extra(adj, num_bytes):
         adj.max_required_extra_shared_memory = max(adj.max_required_extra_shared_memory, num_bytes)
 
@@ -2062,8 +2314,20 @@ class Adjoint:
     # returns the total number of bytes for a function
     # based on it's own requirements + worst case
     # requirements of any dependent functions
-    def get_total_required_shared(adj):
-        return adj.get_own_required_shared() + adj.max_required_extra_shared_memory
+    def get_total_required_shared(adj, memo=None):
+        # callee frames are read here rather than at the call site: a tile returned by a callee shares its
+        # type with the caller's variable, so the caller can still move it to shared storage afterwards
+        if memo is None:
+            # per traversal by default, so a callee is walked once and no total outlives a storage change;
+            # pass one memo to several calls only when no storage can change between them
+            memo = {}
+        total = memo.get(adj)
+        if total is None:
+            extra = adj.max_required_extra_shared_memory
+            for callee in adj.called_user_functions:
+                extra = max(extra, callee.adj.get_total_required_shared(memo))
+            total = memo[adj] = adj.get_own_required_shared() + extra
+        return total
 
     # backward counterpart of get_total_required_shared();
     # callee frames come from ModuleBuilder._propagate_backward_shared_memory
@@ -2229,6 +2493,10 @@ class Adjoint:
         adj.symbols = {}  # map from symbols to adjoint variables
         adj.variables = []  # list of local variables (in order)
         adj.deferred_static_expressions = []
+        # A constant range above max_unroll can justify a linear/contiguous
+        # CPU source specialization. LLVM's loop vectorizer runs independently
+        # at O2/O3; this flag does not restrict which loops it may vectorize.
+        adj.has_non_unrolled_constant_loop = False
 
         adj.return_var = None  # return type for function or kernel
         adj.loop_symbols = []  # symbols at the start of each loop
@@ -2257,6 +2525,7 @@ class Adjoint:
 
         # Exact launch metadata derived from calls reached by this build.
         adj.uses_tid = False
+        adj.uses_scalar_tid = False
 
         # wp.ref[T] callees lacking a manual adjoint; rejected post-build, once used_by_backward_kernel is final
         adj.unvalidated_ref_calls = []
@@ -2286,16 +2555,9 @@ class Adjoint:
 
         except Exception as original_exc:
             try:
-                lineno = adj.lineno + adj.fun_lineno
-                line = adj.source_lines[adj.lineno]
-                msg = f'Error while parsing function "{adj.fun_name}" at {adj.filename}:{lineno}:\n{line}\n'
-
-                # Combine the new message with the original exception's arguments
-                new_args = (";".join([msg] + [str(a) for a in original_exc.args]),)
-
                 # Enhance the original exception with parser context before re-raising.
                 # 'from None' is used to suppress Python's chained exceptions for a cleaner error output.
-                raise type(original_exc)(*new_args).with_traceback(original_exc.__traceback__) from None
+                raise adj.with_location(original_exc).with_traceback(original_exc.__traceback__) from None
             finally:
                 adj.builder = None
 
@@ -2303,9 +2565,7 @@ class Adjoint:
             for a in adj.args:
                 if isinstance(a.type, Struct):
                     builder.build_struct_recursive(a.type)
-                elif warp._src.types.matches_array_class(a.type, warp._src.types.array) and isinstance(
-                    a.type.dtype, Struct
-                ):
+                elif warp._src.types.is_array(a.type) and isinstance(a.type.dtype, Struct):
                     builder.build_struct_recursive(a.type.dtype)
 
             # release builder reference for GC
@@ -2370,7 +2630,7 @@ class Adjoint:
         return s
 
     # generates a list of formatted args
-    def format_args(adj, prefix, args):
+    def format_args(adj, prefix, args, *, call_mode="forward"):
         arg_strs = []
 
         for a in args:
@@ -2379,7 +2639,10 @@ class Adjoint:
             elif isinstance(a, warp._src.context.Function):
                 # functions don't have a var_ prefix so strip it off here
                 if prefix == "var":
-                    arg_strs.append(f"{a.namespace}{a.native_func}")
+                    if call_mode == "forward":
+                        arg_strs.append(f"{a.namespace}{a.native_func}")
+                    else:
+                        arg_strs.append(adj.replay_function(a, reverse=call_mode == "reverse"))
                 else:
                     arg_strs.append(f"{a.namespace}{prefix}_{a.native_func}")
             elif is_reference(a.type):
@@ -2391,9 +2654,19 @@ class Adjoint:
 
         return arg_strs
 
+    def replay_function(adj, func, native_name=None, *, reverse=False):
+        """Select the emitted replay target and record any automatic forward call."""
+        name = native_name or func.native_func
+        if func.custom_replay_func is not None or func.replay_snippet is not None:
+            return f"{func.namespace}replay_{name}"
+        if not func.is_builtin() or getattr(func, "_external_builtin_contract", None) is not None:
+            calls = adj.blocks[-1].reverse_calls if reverse else adj.blocks[-1].replay_calls
+            calls.add((func, False))
+        return f"{func.namespace}{name}"
+
     # generates argument string for a forward function call
-    def format_forward_call_args(adj, args, use_initializer_list):
-        arg_str = ", ".join(adj.format_args("var", args))
+    def format_forward_call_args(adj, args, use_initializer_list, *, replay=False):
+        arg_str = ", ".join(adj.format_args("var", args, call_mode="replay" if replay else "forward"))
         if use_initializer_list:
             return f"{{{arg_str}}}"
         return arg_str
@@ -2411,7 +2684,9 @@ class Adjoint:
     ):
         if extra_args is None:
             extra_args = []
-        formatted_var = adj.format_args("var", args_var)
+        # Native adjoints can invoke their primal callable to recompute outputs.
+        # Use its replay implementation while retaining adj_<original> below.
+        formatted_var = adj.format_args("var", args_var, call_mode="reverse")
         formatted_extra = adj.format_args("var", extra_args)
         formatted_out = []
         if has_output_args and (require_original_output_arg or len(args_out) > 1):
@@ -2594,7 +2869,11 @@ class Adjoint:
 
     def load(adj, var):
         if is_reference(var.type):
-            var = adj.add_builtin_call("load", [var])
+            if var.element_source is None:
+                var = adj.add_builtin_call("load", [var])
+            else:
+                array, ndim = var.element_source
+                var = adj.add_builtin_call("load", [var, array, adj.add_constant(ndim)])
         return var
 
     def add_comp(adj, op_strings, left, comps):
@@ -2841,6 +3120,59 @@ class Adjoint:
 
         return func, bound_args, bound_arg_nodes
 
+    def emits_adjoint(adj) -> bool:
+        """Return whether the adjoint of this function is generated.
+
+        A custom gradient replaces the generated adjoint of its function, and a function that
+        calls ``wp.grad()`` has none. Whether a kernel with the backward pass enabled or
+        ``wp.grad()`` reaches the function is only final once
+        :class:`~warp._src.context.ModuleBuilder` has built the whole module.
+
+        This does not describe a kernel, whose adjoint follows its ``enable_backward`` option.
+        """
+        if adj.skip_reverse_codegen or adj.custom_reverse_mode:
+            return False
+        return (adj.used_by_backward_kernel or adj.force_adjoint_codegen) and not adj.uses_grad_call
+
+    def with_location(adj, error: Exception) -> Exception:
+        """Return a copy of ``error`` whose message starts with the line of this code being built."""
+        lineno = adj.lineno + adj.fun_lineno
+        line = adj.source_lines[adj.lineno]
+        msg = f'Error while parsing function "{adj.fun_name}" at {adj.filename}:{lineno}:\n{line}\n'
+        return type(error)(";".join([msg] + [str(a) for a in error.args]))
+
+    def lto_dispatch_options(adj) -> LtoDispatchOptions:
+        """Return the options for a builtin's ``lto_dispatch_func`` called while building this code.
+
+        These are the builder options with ``enable_backward`` replaced by whether this code's
+        adjoint can be emitted, which decides whether the dispatch builds adjoint LTOs. The module
+        option alone misses a kernel's own ``enable_backward``.
+        """
+        # builds without a module builder only infer types and metadata, and their code is not compiled
+        enable_backward = adj.builder is not None and adj.builder.lto_enable_backward(adj)
+        return LtoDispatchOptions(adj.builder_options | {"enable_backward": enable_backward})
+
+    def lto_dispatch(adj, func, return_type, output_list, bound_args):
+        """Return the result of a builtin's ``lto_dispatch_func`` for a call in this code.
+
+        A dispatch that cannot build the adjoint LTOs it is asked for raises
+        :class:`AdjointUnsupportedError`. That only matters if the adjoint of this code is emitted,
+        so the builder gets the error and the dispatch runs again without adjoint LTOs.
+        """
+        options = adj.lto_dispatch_options()
+        args = (func.input_types, return_type, output_list, bound_args)
+        try:
+            dispatched = func.lto_dispatch_func(*args, options=options, builder=adj.builder)
+        except AdjointUnsupportedError as refusal:
+            adj.builder.adjoint_unsupported(adj, TypeError(*refusal.args))
+            options = LtoDispatchOptions(adj.builder_options | {"enable_backward": False})
+            dispatched = func.lto_dispatch_func(*args, options=options, builder=adj.builder)
+
+        # only a dispatch that asked can have left out adjoint LTOs
+        if adj.builder is not None and options.skipped_backward:
+            adj.builder.adjoints_without_adjoint_ltos.add(adj)
+        return dispatched
+
     def add_call(
         adj,
         func,
@@ -2863,6 +3195,8 @@ class Adjoint:
             kwarg_nodes=kwarg_nodes,
         )
 
+        func_is_builtin = func.is_builtin()
+
         def return_value(output):
             if return_resolved:
                 return output, func, bound_args
@@ -2878,7 +3212,7 @@ class Adjoint:
         # returned here, and a const-qualified C++ variable cannot be passed
         # by non-const reference to functions that write through it.
         if (
-            func.is_builtin()
+            func_is_builtin
             and func.value_type in (float64, int64, uint64)
             and func.native_func == func.value_type.__name__
             and len(bound_args) == 1
@@ -2890,17 +3224,27 @@ class Adjoint:
                 if type(raw) in warp._src.types.scalar_types:
                     raw = raw.value
                 if isinstance(raw, builtins.int) or (isinstance(raw, builtins.float) and not math.isnan(raw)):
-                    # Repurpose the original arg variable: change its type to
-                    # the 64-bit target and clear its constant so it emits as
-                    # an uninitialized variable of the correct type, avoiding
-                    # compiler warnings from narrowing a 64-bit literal.
-                    arg.type = func.value_type
-                    arg.constant = None
-                    adj.add_forward(f"var_{arg} = {constant_str(func.value_type(raw))};")
-                    return return_value(arg)
+                    # A literal argument's Var belongs to this call alone, so
+                    # repurpose it as the 64-bit output: it then never emits a
+                    # narrowing constant initializer. Any other constant Var
+                    # (a named or global constant, an unrolled loop index) is
+                    # shared through the symbol table, and retyping it would
+                    # change every other use, e.g. `BINS - 1` after
+                    # `wp.float64(BINS)`; give the result its own Var instead.
+                    arg_node = next(iter(bound_arg_nodes.values()), None)
+                    owned_literal = isinstance(arg_node, ast.Constant) or (
+                        isinstance(arg_node, ast.UnaryOp)
+                        and isinstance(arg_node.op, ast.USub)
+                        and isinstance(arg_node.operand, ast.Constant)
+                    )
+                    output = arg if owned_literal else adj.add_var(func.value_type)
+                    output.type = func.value_type
+                    output.constant = None
+                    adj.add_forward(f"var_{output} = {constant_str(func.value_type(raw))};")
+                    return return_value(output)
 
         # if it is a user-function then build it recursively
-        if not func.is_builtin():
+        if not func_is_builtin:
             # record the call-graph edge for the post-build propagation passes
             adj.called_user_functions.setdefault(func, None)
             # If the function called is a user function,
@@ -2915,14 +3259,6 @@ class Adjoint:
 
             elif func not in adj.builder.functions:
                 adj.builder.build_function(func)
-                # add custom grad, replay functions to the list of functions
-                # to be built later (invalid code could be generated if we built them now)
-                # so that they are not missed when only the forward function is imported
-                # from another module
-                if func.custom_grad_func:
-                    adj.builder.deferred_functions.append(func.custom_grad_func)
-                if func.custom_replay_func:
-                    adj.builder.deferred_functions.append(func.custom_replay_func)
 
             adj.deterministic.include_function_call(func, bound_args)
 
@@ -2981,8 +3317,8 @@ class Adjoint:
         extra_shared_memory = 0
         func_arg_names = tuple(bound_args.keys())
         if func.lto_dispatch_func is not None:
-            func_args, template_args, _ltoirs, extra_shared_memory = func.lto_dispatch_func(
-                func.input_types, return_type, output_list, bound_args, options=adj.builder_options, builder=adj.builder
+            func_args, template_args, _ltoirs, extra_shared_memory = adj.lto_dispatch(
+                func, return_type, output_list, bound_args
             )
         elif func.dispatch_func is not None:
             func_args, template_args = func.dispatch_func(func.input_types, return_type, bound_args)
@@ -2990,7 +3326,7 @@ class Adjoint:
             func_arg_names = tuple(
                 name
                 for name in bound_args
-                if func.is_builtin() or not warp._src.types.is_warp_function_annotation(func.input_types.get(name))
+                if func_is_builtin or not warp._src.types.is_warp_function_annotation(func.input_types.get(name))
             )
             func_args = tuple(bound_args[name] for name in func_arg_names)
             # Function parameters are specialization inputs, not C++ arguments.
@@ -3000,14 +3336,22 @@ class Adjoint:
         func_name = compute_type_str(func.native_func, template_args)
         use_initializer_list = func.initializer_list_func(bound_args, return_type)
 
-        # For user functions, check which parameters are wp.ref[T] / Reference(T)
-        # so we can pass pointer-shaped IR through without creating copies.
-        parameter_types = func.input_types if not func.is_builtin() else {}
+        # User functions take pointer-shaped references. External native functions
+        # bind the same addressable storage through ordinary C++ reference parameters.
+        external_builtin = getattr(func, "_external_builtin_contract", None) is not None
+        parameter_types = func.input_types if not func_is_builtin or external_builtin else {}
         func_has_ref_params = any(is_reference(t) for t in parameter_types.values())
+
+        # Non-differentiable external calls still run during replay. Record mutable
+        # references independently of reverse-call generation so backward use is
+        # rejected after the full call graph is known.
+        if external_builtin and func_has_ref_params:
+            adj.unvalidated_ref_calls.append(func)
 
         fwd_args = []
         reverse_adj_args = []
         reverse_prelude = []
+        callable_args = ()
         for i, func_arg in enumerate(func_args):
             arg_name = func_arg_names[i] if i < len(func_arg_names) else None
             parameter_type = parameter_types.get(arg_name)
@@ -3021,17 +3365,29 @@ class Adjoint:
                     expected_type=parameter_type,
                     purpose=f"wp.ref[{type_repr(parameter_type.value_type)}] parameter",
                 )
-                reverse_arg_var = Var(
-                    adj.emit_ref_adjoint_pointer(func_arg_var, prelude=reverse_prelude),
-                    parameter_type,
-                    prefix=False,
-                )
+                if external_builtin:
+                    func_arg_var = Var(f"*({func_arg_var.emit()})", parameter_type.value_type, prefix=False)
+                    reverse_arg_var = func_arg_var
+                else:
+                    reverse_arg_var = Var(
+                        adj.emit_ref_adjoint_pointer(func_arg_var, prelude=reverse_prelude),
+                        parameter_type,
+                        prefix=False,
+                    )
             elif not isinstance(func_arg, (Reference, warp._src.context.Function)):
                 func_arg_var = adj.load(func_arg)
                 reverse_arg_var = strip_reference(func_arg)
             else:
                 func_arg_var = func_arg
                 reverse_arg_var = strip_reference(func_arg)
+
+            if isinstance(func_arg_var, warp._src.context.Function):
+                callable_args += (func_arg_var,)
+                adj.validate_external_adjoint(func_arg_var)
+                if getattr(func_arg_var, "_external_builtin_contract", None) is not None and any(
+                    is_reference(typ) for typ in func_arg_var.input_types.values()
+                ):
+                    adj.unvalidated_ref_calls.append(func_arg_var)
 
             # if the argument is a function (and not a builtin), then build it recursively
             if isinstance(func_arg_var, warp._src.context.Function) and not func_arg_var.is_builtin():
@@ -3056,57 +3412,89 @@ class Adjoint:
         det_args = adj.deterministic.call_args(func, bound_args)
         replay_det_args = adj.deterministic.replay_call_args(func, bound_args, det_args)
 
-        if return_type is None:
-            # handles expression (zero output) functions, e.g.: void do_something();
-            forward_call = f"{func.namespace}{func_name}({adj.format_forward_call_args(fwd_args + det_args, use_initializer_list)});"
+        # Select the same replay target for void, scalar, and multiple outputs.
+        # Function-valued arguments follow that selection too, including when
+        # the enclosing native implementation invokes them during its adjoint.
+        call_outputs = output_list if len(output_list) > 1 else []
+        assignment = f"var_{output} = " if len(output_list) == 1 else ""
+        forward_args = adj.format_forward_call_args(fwd_args + det_args + call_outputs, use_initializer_list)
+        forward_call = f"{assignment}{func.namespace}{func_name}({forward_args});"
+        if func.skip_replay:
             replay_call = forward_call
-            if func.custom_replay_func is not None or func.replay_snippet is not None:
-                replay_call = f"{func.namespace}replay_{func_name}({adj.format_forward_call_args(fwd_args + replay_det_args, use_initializer_list)});"
-
-        elif not isinstance(return_type, Sequence) or len(return_type) == 1:
-            # handle simple function (one output)
-            forward_call = f"var_{output} = {func.namespace}{func_name}({adj.format_forward_call_args(fwd_args + det_args, use_initializer_list)});"
+        elif (
+            not callable_args
+            and replay_det_args == det_args
+            and func.custom_replay_func is None
+            and func.replay_snippet is None
+        ):
+            # Most calls replay verbatim. Reuse their formatted arguments and
+            # record only calls whose bodies need backward-safety validation.
             replay_call = forward_call
-            if func.custom_replay_func is not None:
-                replay_call = f"var_{output} = {func.namespace}replay_{func_name}({adj.format_forward_call_args(fwd_args + replay_det_args, use_initializer_list)});"
-
+            if not func_is_builtin or external_builtin:
+                adj.blocks[-1].replay_calls.add((func, False))
         else:
-            # handle multiple value functions
-            forward_call = f"{func.namespace}{func_name}({adj.format_forward_call_args(fwd_args + det_args + output, use_initializer_list)});"
-            replay_call = forward_call
+            replay_name = adj.replay_function(func, func_name)
+            replay_args = adj.format_forward_call_args(
+                fwd_args + replay_det_args + call_outputs, use_initializer_list, replay=True
+            )
+            replay_call = f"{assignment}{replay_name}({replay_args});"
 
         forward_call, replay_call = adj.deterministic.wrap_unintercepted_side_effect_atomic(
             func, forward_call, replay_call, return_value_used=return_value_used
         )
-
-        if func.skip_replay:
-            adj.add_forward(forward_call, replay="// " + replay_call)
-        else:
-            adj.add_forward(forward_call, replay=replay_call)
+        adj.add_forward(forward_call, replay="// " + replay_call if func.skip_replay else replay_call)
 
         # Skip reverse call generation for functions that use warp.grad() - they don't have
         # meaningful adjoints (the gradient of a gradient call is not supported).
-        skip_reverse = not func.is_builtin() and func.adj.uses_grad_call
+        skip_reverse = not func_is_builtin and func.adj.uses_grad_call
         # Higher-order built-ins pass callable args to native adjoint helpers.
         # Only generate the reverse call when those callables have adjoints.
-        has_nondifferentiable_callable_arg = any(
-            isinstance(arg, warp._src.context.Function) and not arg.is_differentiable for arg in func_args
-        )
-        has_native_value = any(
-            isinstance(arg, Var) and adj.type_contains_native_value(arg.type) for arg in (*func_args, *output_list)
-        )
+        has_nondifferentiable_callable_arg = callable_args and any(not arg.is_differentiable for arg in callable_args)
+        if external_builtin and func.is_differentiable:
+            adj.validate_external_adjoint(
+                func, (arg.type for arg in (*func_args, *output_list) if isinstance(arg, Var))
+            )
 
+        requests_reverse = (
+            func.is_differentiable and func_args and not skip_reverse and not has_nondifferentiable_callable_arg
+        )
+        # Ordinary Warp calls need no native-boundary analysis. Native snippets
+        # also need the deeper check for native values nested in Warp structs.
+        supports_native_adjoint = requests_reverse and (
+            (
+                func.native_snippet is None
+                and not any(
+                    isinstance(arg, Var) and adj.type_contains_native_value(arg.type)
+                    for arg in (*func_args, *output_list)
+                )
+            )
+            or adj.supports_native_adjoint(
+                func,
+                (arg.type for arg in func_args if isinstance(arg, Var)),
+                (out.type for out in output_list),
+            )
+        )
         if (
-            func.is_differentiable
-            and func_args
-            and not skip_reverse
-            and not has_nondifferentiable_callable_arg
-            and not has_native_value
+            requests_reverse
+            and not supports_native_adjoint
+            and not func_is_builtin
+            and (
+                any(not adj.type_contains_native_value(out.type) for out in output_list)
+                or any(adj.type_has_ordinary_array(arg.type) for arg in func_args if isinstance(arg, Var))
+            )
         ):
+            # Ordinary return values and potential array writes must not lose
+            # derivatives at an unsupported boundary. Native-only results are
+            # inactive, but do not establish that array arguments are read-only.
+            # Validate this requested edge only if backward execution reaches
+            # it; calls used forward inside custom callbacks remain legal.
+            adj.blocks[-1].reverse_calls.add((func, True))
+
+        if requests_reverse and supports_native_adjoint:
             # Ref-param functions are not automatically differentiable and a silent skip would
             # produce wrong gradients, but used_by_backward_kernel is not known yet (callers may
             # still be built); ModuleBuilder rejects the recorded calls once it is final
-            if func_has_ref_params and not adj.has_manual_ref_adjoint(func):
+            if func_has_ref_params and not external_builtin and not adj.has_manual_ref_adjoint(func):
                 adj.unvalidated_ref_calls.append(func)
             adj_args = tuple(reverse_adj_args)
             reverse_has_output_args = (
@@ -3128,19 +3516,21 @@ class Adjoint:
                 else:
                     adj_func_name = func.native_func
                 reverse_call = f"{func.namespace}adj_{adj_func_name}({arg_str});"
-                if adj.deterministic.enabled and func.is_builtin() and func.key == "address":
+                if adj.deterministic.enabled and func_is_builtin and func.key == "address":
                     reverse_call = adj.deterministic.adjoint_address_call(fwd_args, output_list, reverse_call)
                 adj.add_reverse(reverse_call)
+                if not func_is_builtin:
+                    adj.blocks[-1].reverse_calls.add((func, True))
+                for target in callable_args:
+                    if not target.is_builtin():
+                        adj.blocks[-1].reverse_calls.add((target, True))
                 for statement in reversed(reverse_prelude):
                     adj.add_reverse(statement)
 
-        # update our smem roofline requirements based on any
-        # shared memory required by the dependent function call
-        if not func.is_builtin():
-            adj.alloc_shared_extra(func.adj.get_total_required_shared() + extra_shared_memory)
-        else:
-            adj.alloc_shared_extra(extra_shared_memory)
-        # user-function callee frames are folded in post-build by ModuleBuilder._propagate_backward_shared_memory
+        # update our smem roofline requirements based on any shared memory required by the builtin;
+        # user-function callee frames are added by get_total_required_shared() in the forward pass
+        # and folded in post-build by ModuleBuilder._propagate_backward_shared_memory in the backward pass
+        adj.alloc_shared_extra(extra_shared_memory)
         # x2: the builtin's adjoint needs LTO workspace too; matches the previous blanket backward sizing
         adj.alloc_shared_extra_backward(extra_shared_memory * 2)
 
@@ -3149,6 +3539,77 @@ class Adjoint:
     def add_builtin_call(adj, func_name, args, min_outputs=None, return_value_used=True):
         func = warp._src.context.builtin_functions[func_name]
         return adj.add_call(func, args, {}, {}, min_outputs=min_outputs, return_value_used=return_value_used)
+
+    @staticmethod
+    def supports_native_adjoint(func, input_types, output_types):
+        """Keep native context inactive without suppressing generated Warp derivatives."""
+        if not warp._src.types._native_value_types:
+            return True
+        input_types = tuple(input_types)
+        output_types = tuple(output_types)
+        if func.custom_grad_func is not None or func.adj_native_snippet is not None:
+            return True
+        # Warp structs can hold differentiable fields beside native context.
+        # That context still needs an explicit derivative in native snippets.
+        if func.native_snippet is not None and any(
+            Adjoint.type_contains_native_context(typ) for typ in (*input_types, *output_types)
+        ):
+            return False
+        native_output = any(Adjoint.type_contains_native_value(typ) for typ in output_types)
+        if not native_output and not any(Adjoint.type_contains_native_value(typ) for typ in input_types):
+            return True
+        if native_output and (
+            func.is_builtin() or any(not Adjoint.type_contains_native_value(typ) for typ in output_types)
+        ):
+            return False
+        if not func.is_builtin():
+            # Native-only returns stay inactive, but a Warp body may also write
+            # ordinary arrays whose derivatives must not be suppressed.
+            return True
+        # Generated struct adjoints already omit native fields while retaining
+        # ordinary differentiable fields. Other builtins need a native contract.
+        return any(isinstance(typ, Struct) and func is typ.value_constructor for typ in output_types)
+
+    @staticmethod
+    def type_contains_native_context(var_type):
+        """Include native fields inside otherwise differentiable Warp aggregates."""
+        var_type = strip_reference(var_type)
+        if is_array(var_type):
+            return Adjoint.type_contains_native_context(var_type.dtype)
+        if isinstance(var_type, Struct):
+            return any(Adjoint.type_contains_native_context(var.type) for var in var_type.vars.values())
+        if isinstance(var_type, tuple_t):
+            return any(Adjoint.type_contains_native_context(typ) for typ in var_type.types)
+        return warp._src.types.is_native_type(var_type)
+
+    @staticmethod
+    def type_has_ordinary_array(var_type):
+        """Find potential ordinary array outputs, including nested Warp fields."""
+        var_type = strip_reference(var_type)
+        if is_array(var_type):
+            return not Adjoint.type_contains_native_value(var_type)
+        if isinstance(var_type, Struct):
+            return any(Adjoint.type_has_ordinary_array(var.type) for var in var_type.vars.values())
+        if isinstance(var_type, tuple_t):
+            return any(Adjoint.type_has_ordinary_array(typ) for typ in var_type.types)
+        return False
+
+    @staticmethod
+    def validate_external_adjoint(func, argument_types=()):
+        """Reject native-value signatures without an external adjoint contract."""
+        if (
+            getattr(func, "_external_builtin_contract", None) is not None
+            and func.is_differentiable
+            and any(
+                Adjoint.type_contains_native_value(typ)
+                for typ in (*func.input_types.values(), func.value_type, *argument_types)
+            )
+        ):
+            raise WarpCodegenError(
+                f"External function '{func.key}' uses native value types without adjoint storage; "
+                "register it as non-differentiable and use a @wp.func_grad wrapper "
+                "to differentiate its Warp arguments."
+            )
 
     def add_grad_call(adj, func, args, kwargs):
         """Generate code for calling the gradient of a function via warp.grad().
@@ -3186,6 +3647,8 @@ class Adjoint:
         if not func.is_builtin():
             # Force adjoint code generation for the function.
             func.adj.force_adjoint_codegen = True
+            if adj.builder is not None:
+                adj.builder.wp_grad_targets.add(func)
 
             # Build the function if not already built
             if adj.builder is None:
@@ -3222,26 +3685,37 @@ class Adjoint:
         # Determine if we need to include the forward output in the adjoint call.
         # Builtins with require_original_output_arg=True or multiple outputs need it.
         # User functions don't include it (unless multiple outputs).
-        include_fwd_output = func.require_original_output_arg or len(return_types) > 1
+        adj.validate_external_adjoint(func, (*bound_arg_types.values(), *return_types))
+        if any(adj.type_contains_native_value(typ) for typ in return_types):
+            raise WarpCodegenError(
+                f"Cannot compute gradient of '{func.key}': native value outputs do not have a gradient seed."
+            )
+
+        if not adj.supports_native_adjoint(func, bound_arg_types.values(), return_types):
+            raise WarpCodegenError(
+                f"Cannot compute gradient of '{func.key}': native context requires a Warp function body "
+                "or an explicit custom gradient."
+            )
+
+        include_fwd_output = (
+            func.require_original_output_arg or len(return_types) > 1
+        ) and func.custom_grad_func is None
 
         # Call the forward function first to get the output value(s)
         # (needed for adjoint functions that require the original output)
         fwd_output_vars = []
         if include_fwd_output:
-            if len(return_types) == 1:
-                # Single return value
-                fwd_out = adj.add_var(return_types[0])
-                fwd_args_str = ", ".join(arg.emit() for arg in fwd_args_loaded)
-                adj.add_forward(f"{fwd_out.emit()} = {func.namespace}{func.native_func}({fwd_args_str});")
-                fwd_output_vars.append(fwd_out)
-            else:
-                # Multiple return values
-                for ret_type in return_types:
-                    fwd_out = adj.add_var(ret_type)
-                    fwd_output_vars.append(fwd_out)
-                fwd_args_str = ", ".join(arg.emit() for arg in fwd_args_loaded)
-                out_args_str = ", ".join(v.emit() for v in fwd_output_vars)
-                adj.add_forward(f"{func.namespace}{func.native_func}({fwd_args_str}, {out_args_str});")
+            if not func.is_builtin():
+                adj.called_user_functions.setdefault(func, None)
+            fwd_output_vars = [adj.add_var(typ) for typ in return_types]
+            call_outputs = fwd_output_vars if len(return_types) > 1 else []
+            assignment = f"{fwd_output_vars[0].emit()} = " if len(return_types) == 1 else ""
+            arg_str = ", ".join(arg.emit() for arg in (*fwd_args_loaded, *call_outputs))
+            replay_name = adj.replay_function(func)
+            adj.add_forward(
+                f"{assignment}{func.namespace}{func.native_func}({arg_str});",
+                replay=f"{assignment}{replay_name}({arg_str});",
+            )
 
         # Create local variables for adjoint inputs initialized to 0
         adj_input_vars = []
@@ -3254,8 +3728,7 @@ class Adjoint:
         adj_ret_vars = []
         for ret_type in return_types:
             local_var = adj.add_var(ret_type)
-            ctype = Var.type_to_ctype(ret_type)
-            adj.add_forward(f"{local_var.emit()} = {ctype}(1);")
+            adj.add_forward(f"{local_var.emit()} = {local_var.ctype()}(1);")
             adj_ret_vars.append(local_var)
 
         # Build arguments for calling the adjoint function.
@@ -3300,11 +3773,13 @@ class Adjoint:
             adj.add_forward("return;", f"goto label{adj.label_count};")
         elif len(var) == 1:
             adj.add_forward(f"return {var[0].emit()};", f"goto label{adj.label_count};")
-            adj.add_reverse("adj_" + str(var[0]) + " += adj_ret;")
+            if not adj.type_contains_native_value(var[0].type):
+                adj.add_reverse("adj_" + str(var[0]) + " += adj_ret;")
         else:
             for i, v in enumerate(var):
                 adj.add_forward(f"ret_{i} = {v.emit()};")
-                adj.add_reverse(f"adj_{v} += adj_ret_{i};")
+                if not adj.type_contains_native_value(v.type):
+                    adj.add_reverse(f"adj_{v} += adj_ret_{i};")
             adj.add_forward("return;", f"goto label{adj.label_count};")
 
         adj.add_reverse(f"label{adj.label_count}:;")
@@ -3327,8 +3802,13 @@ class Adjoint:
         adj.add_reverse(f"if ({cond.emit()}) {{")
 
     def begin_else(adj, cond):
-        cond = adj.load(cond)
-        adj.add_forward(f"if (!{cond.emit()}) {{")
+        # Reference guards can emit loads between branches; keep them as paired ifs.
+        if is_reference(cond.type):
+            cond = adj.load(cond)
+            adj.add_forward(f"if (!{cond.emit()}) {{")
+        else:
+            # A real else avoids excess reconvergence and register copies in CUDA loops.
+            adj.add_forward("else {")
         adj.add_reverse("}")
 
         adj.indent()
@@ -3341,23 +3821,35 @@ class Adjoint:
         adj.add_reverse(f"if (!{cond.emit()}) {{")
 
     # define a for-loop
-    def begin_for(adj, iter):
+    def begin_for(adj, iter, constant_range=None):
+        if constant_range is not None:
+            adj.add_forward(f"{iter.emit()} = {constant_range.start};")
+
         cond_block = adj.begin_block("for")
         adj.loop_blocks.append(cond_block)
         adj.add_forward(f"start_{cond_block.label}:;")
         adj.indent()
 
         # evaluate cond
-        adj.add_forward(f"if (iter_cmp({iter.emit()}) == 0) goto end_{cond_block.label};")
+        if constant_range is None:
+            adj.add_forward(f"if (iter_cmp({iter.emit()}) == 0) goto end_{cond_block.label};")
+        else:
+            exit_condition = constant_range.forward_exit_condition(iter.emit())
+            adj.add_forward(f"if ({exit_condition}) goto end_{cond_block.label};")
 
         # evaluate iter
-        val = adj.add_builtin_call("iter_next", [iter])
+        if constant_range is None:
+            val = adj.add_builtin_call("iter_next", [iter])
+        else:
+            val = adj.add_var(int32)
+            adj.add_forward(f"{val.emit()} = {iter.emit()};")
+            adj.add_forward(f"{iter.emit()} += {constant_range.step};")
 
         adj.begin_block()
 
         return val
 
-    def end_for(adj, iter):
+    def end_for(adj, iter, constant_range=None, value=None):
         body_block = adj.end_block()
         cond_block = adj.end_block()
         adj.loop_blocks.pop()
@@ -3381,11 +3873,18 @@ class Adjoint:
 
         reverse = []
 
-        # reverse iterator
-        reverse.append(adj.indentation + f"{iter.emit()} = wp::iter_reverse({iter.emit()});")
-
-        for i in cond_block.body_forward:
-            reverse.append(i)
+        if constant_range is None:
+            # reverse iterator
+            reverse.append(adj.indentation + f"{iter.emit()} = wp::iter_reverse({iter.emit()});")
+            for i in cond_block.body_forward:
+                reverse.append(i)
+        else:
+            reverse.append(adj.indentation + f"{iter.emit()} = {constant_range.last};")
+            reverse.append(adj.indentation + f"start_{cond_block.label}:;")
+            exit_condition = constant_range.reverse_exit_condition(iter.emit())
+            reverse.append(adj.indentation + f"\tif ({exit_condition}) goto end_{cond_block.label};")
+            reverse.append(adj.indentation + f"\t{value.emit()} = {iter.emit()};")
+            reverse.append(adj.indentation + f"\t{iter.emit()} -= {constant_range.step};")
 
         # zero adjoints
         for i in body_block.vars:
@@ -3411,6 +3910,12 @@ class Adjoint:
         reverse.append(adj.indentation + f"end_{cond_block.label}:;")
 
         adj.blocks[-1].body_reverse.extend(reversed(reverse))
+        adj.blocks[-1].reverse_calls.update(body_block.replay_calls | body_block.reverse_calls)
+
+        # An enclosing loop must also zero this loop's adjoints at each of its reverse iterations:
+        # a later sibling loop that reassigns one of these vars reads its adjoint via adj_assign.
+        adj.blocks[-1].vars.extend(cond_block.vars)
+        adj.blocks[-1].vars.extend(body_block.vars)
 
     # define a while loop
     def begin_while(adj, cond):
@@ -3418,12 +3923,12 @@ class Adjoint:
         # so we can control replay
         cond_block = adj.begin_block("while")
         adj.loop_blocks.append(cond_block)
-        cond_block.body_forward.append(f"start_{cond_block.label}:;")
+        adj.add_forward(f"start_{cond_block.label}:;")
 
         c = adj.eval(cond)
         c = adj.load(c)
 
-        cond_block.body_forward.append(f"if (({c.emit()}) == false) goto end_{cond_block.label};")
+        adj.add_forward(f"if (({c.emit()}) == false) goto end_{cond_block.label};")
 
         # being block around loop
         adj.begin_block()
@@ -3451,8 +3956,8 @@ class Adjoint:
         # reverse pass
         reverse = []
 
-        # cond
-        for i in cond_block.body_forward:
+        # Re-evaluate the condition using its replay calls, including callbacks.
+        for i in cond_block.body_replay:
             reverse.append(i)
 
         # zero adjoints of local vars
@@ -3480,6 +3985,8 @@ class Adjoint:
 
         # output
         adj.blocks[-1].body_reverse.extend(reversed(reverse))
+        adj.blocks[-1].reverse_calls.update(body_block.replay_calls | body_block.reverse_calls)
+        adj.blocks[-1].reverse_calls.update(cond_block.replay_calls)
 
     def emit_FunctionDef(adj, node):
         adj.fun_def_lineno = node.lineno
@@ -3528,6 +4035,12 @@ class Adjoint:
                 for stmt in node.orelse:
                     adj.eval(stmt)
             return None
+
+        if not is_reference(cond.type) and any(var is cond for var in adj.symbols.values()):
+            # A dynamic loop can overwrite a named value guard. Snapshot it so branch
+            # execution, merging, and reverse guards share the same decision. Unnamed
+            # guards cannot be overwritten, and extra copies can slow CUDA compilation.
+            cond = adj.add_builtin_call("copy", [cond])
 
         # save the symbol map from before the conditional
         symbols_prev = adj.symbols.copy()
@@ -3666,7 +4179,7 @@ class Adjoint:
 
     def emit_Name(adj, node):
         # a static expression that resolved to a Warp function is rewritten to an `__warp_func__`
-        # Name node carrying the function on `warp_func` (see StaticExpressionReplacer). Return it
+        # Name node carrying the function on `warp_func` (see replace_static_expressions). Return it
         # directly so it can be bound to a local, e.g. `func = wp.static(...)`.
         if hasattr(node, "warp_func"):
             return node.warp_func
@@ -3743,6 +4256,9 @@ class Adjoint:
 
     @staticmethod
     def type_contains_native_value(var_type):
+        # Read the live registry so later addon registrations activate these checks.
+        if not warp._src.types._native_value_types:
+            return False
         var_type = strip_reference(var_type)
         if warp._src.types.is_native_type(var_type):
             return True
@@ -3876,6 +4392,14 @@ class Adjoint:
                 adj.deterministic.propagate_attribute_reference(attr, aggregate, attr_var, attr_type)
                 adj.apply_struct_array_field_metadata(attr, aggregate, (attr_var.label,))
 
+                # Native members are primal context, including when reached
+                # through a Warp struct. Their placeholder adjoints stay inactive.
+                if warp._src.types.is_native_type(aggregate_type) or adj.type_contains_native_value(attr_type):
+                    return attr
+                # Skip placeholder adjoints for descriptor fields to preserve the
+                # shape and pointer used for gradient writes to the adjoint array.
+                if is_array(aggregate_type):
+                    return attr
                 if adj.is_differentiable_value_type(strip_reference(attr_type)):
                     adj.add_reverse(f"{aggregate.emit_adj()}.{attr_var.label} += {adj_cast}{attr.emit_adj()};")
                 else:
@@ -4055,24 +4579,52 @@ class Adjoint:
 
         return warp._src.types.is_int(obj), obj
 
-    # detects whether a loop contains a break (or continue) statement
-    def contains_break(adj, body):
-        for s in body:
-            if isinstance(s, ast.Break):
+    def contains_loop_control(adj, body, control_type):
+        """Check for a transfer targeting this loop, excluding nested loops."""
+        for statement in body:
+            if isinstance(statement, control_type):
                 return True
-            elif isinstance(s, ast.Continue):
+            if isinstance(statement, ast.If) and (
+                adj.contains_loop_control(statement.body, control_type)
+                or adj.contains_loop_control(statement.orelse, control_type)
+            ):
                 return True
-            elif isinstance(s, ast.If):
-                if adj.contains_break(s.body):
-                    return True
-                if adj.contains_break(s.orelse):
-                    return True
-            else:
-                # note that nested for or while loops containing a break statement
-                # do not affect the current loop
-                pass
-
         return False
+
+    def lower_unrolled_continues(adj, body, active_name):
+        """Guard the remainder of an unrolled iteration after each continue.
+
+        Ordinary conditionals preserve SSA versions for reverse-mode AD, including
+        writes before a continue. Each remaining statement is emitted only once.
+        Nested loops handle their own transfers. Copy modified nodes because the
+        original AST is shared by subsequent builds and specializations.
+        """
+        result = []
+        for index, statement in enumerate(body):
+            if isinstance(statement, ast.Continue):
+                assignment = ast.Assign(
+                    targets=[ast.Name(id=active_name, ctx=ast.Store())], value=ast.Constant(value=False)
+                )
+                result.append(ast.copy_location(assignment, statement))
+                return result, True
+
+            may_continue = False
+            if isinstance(statement, ast.If):
+                conditional = shallowcopy(statement)
+                conditional.body, body_continues = adj.lower_unrolled_continues(statement.body, active_name)
+                conditional.orelse, else_continues = adj.lower_unrolled_continues(statement.orelse, active_name)
+                may_continue = body_continues or else_continues
+                result.append(conditional)
+            else:
+                result.append(statement)
+
+            if may_continue:
+                tail, _ = adj.lower_unrolled_continues(body[index + 1 :], active_name)
+                if tail:
+                    guard = ast.If(test=ast.Name(id=active_name, ctx=ast.Load()), body=tail, orelse=[])
+                    result.append(ast.copy_location(guard, body[index + 1]))
+                return result, True
+        return result, False
 
     # returns a constant range() if unrollable, otherwise None
     def get_unroll_range(adj, loop):
@@ -4103,6 +4655,7 @@ class Adjoint:
             constant_range = range(*arg_values)
             max_iters = len(constant_range)
 
+            # test if we're above max unroll count
             max_unroll = adj.builder_options.get("max_unroll", 16)
 
             ok_to_unroll = True
@@ -4130,17 +4683,25 @@ class Adjoint:
 
             # Apply max_unroll check only for regular loops (no static expressions)
             if max_iters > max_unroll:
+                adj.has_non_unrolled_constant_loop = True
                 log_debug(
                     f"Warning: fixed-size loop count of {max_iters} is larger than the module 'max_unroll' limit of {max_unroll}, will generate dynamic loop."
                 )
                 ok_to_unroll = False
 
-            elif adj.contains_break(loop.body):
-                log_debug("Warning: 'break' or 'continue' found in loop body, will generate dynamic loop.")
+            elif adj.contains_loop_control(loop.body, ast.Break):
+                log_debug("Warning: 'break' found in loop body, will generate dynamic loop.")
                 ok_to_unroll = False
 
             if ok_to_unroll:
                 return constant_range
+
+            if not adj.contains_loop_control(loop.body, (ast.Break, ast.Continue)):
+                return _NonUnrolledConstantRange(
+                    constant_range.start,
+                    constant_range.stop,
+                    constant_range.step,
+                )
 
         # Unroll is not possible, range needs to be valuated dynamically
         range_call = adj.add_builtin_call(
@@ -4166,26 +4727,44 @@ class Adjoint:
             if unroll_range:
                 adj.record_constant_iter_symbol(const_iter_sym)
 
-            # unroll static for-loop
-            for i in unroll_range:
-                const_iter = adj.add_constant(i)
-                adj.symbols[const_iter_sym] = const_iter
+            body = node.body
+            active_name = None
+            if unroll_range and adj.contains_loop_control(body, ast.Continue):
+                names = {n.id for n in ast.walk(node) if isinstance(n, ast.Name)} | adj.symbols.keys()
+                active_name = f"_wp_continue_{adj.label_count}"
+                while active_name in names:
+                    adj.label_count += 1
+                    active_name = f"_wp_continue_{adj.label_count}"
+                adj.label_count += 1
+                body, _ = adj.lower_unrolled_continues(body, active_name)
 
-                # eval body
-                for s in node.body:
-                    adj.eval(s)
+            try:
+                # Unroll with a fresh continuation condition for each iteration.
+                for i in unroll_range:
+                    adj.symbols[const_iter_sym] = adj.add_constant(i)
+                    if active_name is not None:
+                        adj.symbols[active_name] = adj.add_constant(True)
+                    for statement in body:
+                        adj.eval(statement)
+            finally:
+                if active_name is not None:
+                    adj.symbols.pop(active_name, None)
 
         # otherwise generate a dynamic loop
         else:
             # evaluate the Iterable -- only if not previously evaluated when trying to unroll
-            if unroll_range is not None:
+            if isinstance(unroll_range, _NonUnrolledConstantRange):
+                iter = adj.add_var(int32)
+            elif unroll_range is not None:
                 # Range has already been evaluated when trying to unroll, do not re-evaluate
                 iter = unroll_range
             else:
                 iter = adj.eval(node.iter)
 
             adj._promote_mutated_iter_constants(node.body)
-            adj.symbols[node.target.id] = adj.begin_for(iter)
+            constant_range = unroll_range if isinstance(unroll_range, _NonUnrolledConstantRange) else None
+            loop_value = adj.begin_for(iter, constant_range)
+            adj.symbols[node.target.id] = loop_value
 
             # for loops should be side-effect free, here we store a copy
             adj.loop_symbols.append(adj.symbols.copy())
@@ -4197,7 +4776,7 @@ class Adjoint:
             adj.materialize_redefinitions(adj.loop_symbols[-1])
             adj.loop_symbols.pop()
 
-            adj.end_for(iter)
+            adj.end_for(iter, constant_range, loop_value)
 
     def emit_Break(adj, node):
         adj.materialize_redefinitions(adj.loop_symbols[-1])
@@ -4581,6 +5160,8 @@ class Adjoint:
 
         if func is warp._src.context.builtin_functions["tid"]:
             adj.uses_tid = True
+            if min_outputs is None or min_outputs <= 1:
+                adj.uses_scalar_tid = True
 
         # Evaluate positional arguments.
         args = []
@@ -4768,7 +5349,9 @@ class Adjoint:
                         origin.extend_array(indices) if origin is not None else None,
                     )
                 # handles array loads (where each dimension has an index specified)
-                out = adj.add_builtin_call("address", [target, *indices])
+                array = adj.load(target)
+                out = adj.add_builtin_call("address", [array, *indices])
+                out.element_source = (array, len(indices))
                 adj.deterministic.track_array_reference(out, target)
                 if origin := adj.reference_origin_for_var(target):
                     out.ref_origin = origin.extend_array(indices)
@@ -5957,6 +6540,20 @@ class Adjoint:
                 else:
                     adj.add_builtin_call("assign_inplace", [target, *indices, rhs])
 
+        elif isinstance(target_type, Struct) and not is_reference(target.type) and isinstance(lhs.value, ast.Name):
+            # A local struct value supports subscript assignment only through an
+            # ``assign_copy`` overload registered for it, such as a forward-mode
+            # jet. The copy is rebound to the assigned name only: after ``b = a``
+            # both names share one variable, and ``b[i] = x`` must leave ``a`` alone.
+            try:
+                out = adj.add_builtin_call("assign_copy", [target, *indices, rhs])
+            except WarpCodegenError as e:
+                raise WarpCodegenError(
+                    f"Can only subscript assign array, vector, quaternion, transformation, and matrix types, "
+                    f"or structs with a matching 'assign_copy' overload, got {type_repr(target_type)}: {e}"
+                ) from e
+            adj.symbols[lhs.value.id] = out
+
         else:
             raise WarpCodegenError(
                 f"Can only subscript assign array, vector, quaternion, transformation, and matrix types, got {target_type}"
@@ -6771,14 +7368,26 @@ class Adjoint:
         # ``visit_Call`` (where ``None`` means "no replacement, recurse normally").
         # ``_walk_children`` replaces ``generic_visit``: same DFS over
         # ``node._fields``, but dispatching Calls/Fors inline by class identity
-        # (no ``'visit_' + cls.__name__`` + ``getattr``) and mutating list
-        # fields in place only when a replacement actually occurred.
-        # Replacements are collected as ``(container, key, new_node)`` and
-        # applied after the walk so the walk sees an unmutated tree.
+        # (no ``'visit_' + cls.__name__`` + ``getattr``) and never descending
+        # into a replaced call.
+        # Replacements are collected and applied after the walk. A shared tree
+        # is never mutated: it gets a per-adjoint *view* instead (see
+        # ``_substitute_nodes``).
         loop_vars = {}  # was: self.loop_vars
-        replacements = []  # (container, key, new_node); applied after the walk
+        replacements = []  # (container, key, old_node, new_node); applied after the walk
+        path = []  # nodes enclosing the one being walked
+        ancestors = set()  # nodes on the paths to replacements; only these are copied
+
+        def record(container, key, old_node, new_node):
+            replacements.append((container, key, old_node, new_node))
+            # A node already recorded implies all of its ancestors are too.
+            for parent in reversed(path):
+                if parent in ancestors:
+                    break
+                ancestors.add(parent)
 
         def _walk_children(node):
+            path.append(node)
             for field_name in node._fields:
                 value = getattr(node, field_name, None)
                 if value is None:
@@ -6791,7 +7400,7 @@ class Adjoint:
                         if cls is ast.Call:
                             result = visit_Call(child)
                             if result is not None:
-                                replacements.append((value, i, result))
+                                record(value, i, child, result)
                                 continue
                         elif cls is ast.For:
                             visit_For(child)
@@ -6802,12 +7411,13 @@ class Adjoint:
                     if cls is ast.Call:
                         result = visit_Call(value)
                         if result is not None:
-                            replacements.append((node, field_name, result))
+                            record(node, field_name, value, result)
                             continue
                     elif cls is ast.For:
                         visit_For(value)
                         continue
                     _walk_children(value)
+            path.pop()
 
         def visit_For(node):
             # Track loop variable while visiting loop body (simple names only;
@@ -6840,7 +7450,7 @@ class Adjoint:
                     if code is not None:
                         adj.resolved_static_expressions[code] = obj
                         if isinstance(obj, warp._src.context.Function):
-                            name_node = ast.Name("__warp_func__")
+                            name_node = ast.Name("__warp_func__", ctx=ast.Load())
                             # we add a pointer to the Warp function here so that we can refer to it later at
                             # codegen time (note that the function key itself is not sufficient to uniquely
                             # identify the function, as the function may be redefined between the current time
@@ -6864,14 +7474,25 @@ class Adjoint:
 
             return None  # was: return self.generic_visit(node)
 
-        # Walk the tree, then apply replacements in one pass. ``adj.tree`` is
+        # Walk the tree, then substitute in one pass. ``adj.tree`` is
         # always a Module, so we go straight into ``_walk_children``.
         _walk_children(adj.tree)
-        for container, key, new_node in replacements:
-            if isinstance(container, list):
-                container[key] = new_node
-            else:
-                setattr(container, key, new_node)
+        if not replacements:
+            return
+        if adj._shared_source is None:
+            # A private tree may come from a transformer that reuses nodes or attaches
+            # custom attributes, which a view keyed by node identity can't reproduce.
+            for container, key, _old_node, new_node in replacements:
+                if isinstance(container, list):
+                    container[key] = new_node
+                else:
+                    setattr(container, key, new_node)
+        else:
+            adj.tree = _substitute_nodes(
+                adj.tree, {old_node: new_node for _, _, old_node, new_node in replacements}, ancestors
+            )
+            # The view's nodes differ from the shared tree's, so caches derived from it can't be shared.
+            adj._shared_source = None
 
     # Evaluates a static expression that does not depend on runtime values
     # if eval_types is True, try resolving the path using evaluated type information as well
@@ -6944,93 +7565,28 @@ class Adjoint:
         # return the Python code corresponding to the given AST node
         return ast.get_source_segment(adj.source, node)
 
-    def reference_nodes(adj) -> tuple[ast.AST, ...]:
-        """Return the cached ``Name``/``Attribute``/``Call``/``Assign`` nodes of ``adj.tree``.
+    def syntax(adj) -> _TreeSyntax:
+        """Return the syntax-only facts of ``adj.tree``, walked once and shared per tree.
 
-        Both ``Adjoint.get_references`` (module hashing) and ``Module._find_references``
-        (dependency tracking) walk the kernel AST to find references. They run at different
-        times (hashing versus registration), so they cannot share the resolution of those
-        nodes, but they can share the traversal: the tree is walked once here and the node
-        tuple is reused, each caller resolving from it at its own time.
+        ``Adjoint.get_references`` (module hashing) and ``Module._find_references`` (dependency
+        tracking) share this traversal but resolve its nodes separately, each at its own time:
+        resolving at hash time would miss transitive dependency edges at registration, and
+        resolving at registration would make hashes stale if a referenced global is rebound
+        before the first build.
 
-        Sharing the resolution would be wrong in either direction. Resolving at hash time and
-        reusing the result for dependency tracking would miss the dependency edges of modules
-        that are only reached transitively, so reloading such a module would not unload its
-        dependents. Resolving at registration time and reusing the result for hashing would
-        make a regular kernel's hash stale if a referenced global or constant is rebound
-        before the kernel is first built.
-
-        This cache assumes ``adj.tree`` is structurally final before the first call; adjoints
-        whose tree is mutated (transformers, ``wp.static`` rewriting) never share it. Any new
-        code that mutates ``adj.tree`` afterwards must reset ``adj._reference_nodes`` -- and
-        ``adj._shared_source.reference_nodes``, ``assigned_name_ids``, and
-        ``assignment_call_metadata`` when set, which invalidates every adjoint sharing the tree
-        -- or better, exclude the adjoint from sharing like the cases above.
+        Assumes ``adj.tree`` is structurally final before the first call. Adjoints whose tree is
+        transformed never share it, and ``wp.static`` substitution gives the adjoint its own
+        tree view and detaches it from the shared entry.
         """
-        if adj._reference_nodes is None:
+        if adj._syntax is None:
             shared = adj._shared_source
-            if shared is not None and shared.reference_nodes is not None:
-                adj._reference_nodes = shared.reference_nodes
+            if shared is None:
+                adj._syntax = _TreeSyntax(adj.tree)
             else:
-                adj._reference_nodes = tuple(
-                    iter_ast_nodes_of_types(adj.tree, ast.Name, ast.Attribute, ast.Call, ast.Assign)
-                )
-                if shared is not None:
-                    shared.reference_nodes = adj._reference_nodes
-        return adj._reference_nodes
-
-    def assigned_name_ids(adj) -> frozenset[str]:
-        """Return names made local by assignments anywhere in the function."""
-
-        if adj._assigned_name_ids is None:
-            shared = adj._shared_source
-            if shared is not None and shared.assigned_name_ids is not None:
-                adj._assigned_name_ids = shared.assigned_name_ids
-            else:
-                names = set()
-                for node in adj.reference_nodes():
-                    if not isinstance(node, ast.Assign):
-                        continue
-                    pending = list(node.targets)
-                    while pending:
-                        target = pending.pop()
-                        if isinstance(target, ast.Name):
-                            names.add(target.id)
-                        elif isinstance(target, (ast.Tuple, ast.List)):
-                            pending.extend(target.elts)
-                adj._assigned_name_ids = frozenset(names)
-                if shared is not None:
-                    shared.assigned_name_ids = adj._assigned_name_ids
-        return adj._assigned_name_ids
-
-    def assignment_call_metadata(adj) -> tuple[dict[ast.Call, int], frozenset[str]]:
-        """Return direct assignment calls by unpacking arity and their bare callee names."""
-
-        if adj._assignment_call_metadata is None:
-            # Shared-source adjoints use identical AST nodes, so ``ast.Call`` keys
-            # remain valid when this metadata is reused.
-            shared = adj._shared_source
-            if shared is not None and shared.assignment_call_metadata is not None:
-                adj._assignment_call_metadata = shared.assignment_call_metadata
-            else:
-                # Record unpacking arity for ``wp.tid()`` dimension inference. Bare
-                # callee names let ``get_references()`` skip alias resolution unless
-                # a locally assigned name is actually called on an assignment RHS.
-                call_dims = {}
-                call_name_ids = set()
-                for node in adj.reference_nodes():
-                    if not isinstance(node, ast.Assign) or not isinstance(node.value, ast.Call):
-                        continue
-
-                    target = node.targets[0]
-                    call_dims[node.value] = len(target.elts) if isinstance(target, ast.Tuple) else 1
-                    if isinstance(node.value.func, ast.Name):
-                        call_name_ids.add(node.value.func.id)
-
-                adj._assignment_call_metadata = (call_dims, frozenset(call_name_ids))
-                if shared is not None:
-                    shared.assignment_call_metadata = adj._assignment_call_metadata
-        return adj._assignment_call_metadata
+                if shared.syntax is None:
+                    shared.syntax = _TreeSyntax(shared.tree)
+                adj._syntax = shared.syntax
+        return adj._syntax
 
     def get_references(adj) -> tuple[dict[str, Any], dict[Any, Any], dict[warp._src.context.Function, Any]]:
         """Traverse ``adj.tree`` for referenced constants, types, and user-defined functions.
@@ -7042,24 +7598,34 @@ class Adjoint:
         code generation records exact reachability before an oversized launch is rejected.
         """
 
-        # ``reference_nodes()`` is breadth-first, not source-ordered. Collect locals
+        # ``syntax.reference_nodes`` is breadth-first, not source-ordered. Collect locals
         # up front to match Python's function-scope semantics and avoid resolving a
         # local call target as an unrelated global before visiting its assignment.
-        local_variables = adj.assigned_name_ids()
+        syntax = adj.syntax()
+        local_variables = syntax.assigned_name_ids
 
         constants: dict[str, Any] = {}
         types: dict[Struct | type, Any] = {}
         functions: dict[warp._src.context.Function, Any] = {}
         max_dim = 0  # thread-grid dimension, inferred from wp.tid() unpack arity
-        assignment_call_dims, assignment_call_name_ids = adj.assignment_call_metadata()
-        if local_variables.isdisjoint(assignment_call_name_ids):
+        assignment_call_dims = syntax.assignment_call_dims
+        if local_variables.isdisjoint(syntax.assignment_call_name_ids):
             tid_aliases = frozenset()
         else:
             tid_aliases = resolve_reference_tid_aliases(adj, local_variables)
         tid_func = warp._src.context.builtin_functions["tid"]
         callable_arg_values = getattr(adj, "callable_arg_values", None) or {}
-        # Shared single traversal (see reference_nodes()); resolved here at hash time.
-        for node in adj.reference_nodes():
+        # Shared single traversal (see syntax()); resolved here at hash time. A dotted name resolves
+        # to the same object throughout a scan, as the module hash assumes until code generation,
+        # so each is resolved once.
+        resolved_names = set()
+        call_funcs = {}
+        for node, key in zip(syntax.reference_nodes, syntax.reference_keys, strict=True):
+            if key is not None and type(node) is not ast.Call:
+                if key in resolved_names:
+                    continue
+                resolved_names.add(key)
+
             if isinstance(node, ast.Name) and node.id not in local_variables:
                 # look up in closure/global variables
                 obj = adj.resolve_external_reference(node.id)
@@ -7077,7 +7643,7 @@ class Adjoint:
                     if func is None and node.func.id in tid_aliases:
                         func = tid_func
                 else:
-                    func = resolve_reference_call_func(adj, node, callable_arg_values)
+                    func = resolve_reference_call_func_once(adj, node, key, call_funcs, callable_arg_values)
 
                 if func is tid_func:
                     call_dim = assignment_call_dims.get(node)
@@ -7095,12 +7661,7 @@ class Adjoint:
                         # module dependency discovery because they have no module.
                         for callable_func in iter_call_callable_arg_targets(adj, func, node, callable_arg_values):
                             functions[callable_func] = None
-                    elif func._has_external_builtin_contract or any(
-                        overload.adjoint_uses_template_args for overload in func.overloads
-                    ):
-                        # External builtins and templated native adjoints can change
-                        # generated calls without changing the kernel source.
-                        # Other Warp builtins use the versioned cache directory.
+                    elif _builtin_affects_module_hash(func):
                         functions[func] = None
                 elif isinstance(func, Struct):
                     # calling struct constructor
@@ -7120,9 +7681,7 @@ class Adjoint:
                     if path and rhs_func is warp:
                         rhs_func = warp._src.context.builtin_functions.get(path[-1])
                     if isinstance(rhs_func, warp._src.context.Function) and (
-                        not rhs_func.is_builtin()
-                        or rhs_func._has_external_builtin_contract
-                        or any(overload.adjoint_uses_template_args for overload in rhs_func.overloads)
+                        not rhs_func.is_builtin() or _builtin_affects_module_hash(rhs_func)
                     ):
                         functions[rhs_func] = None
 
@@ -7133,6 +7692,18 @@ class Adjoint:
         # the coordinate limit pay for metadata-only code generation.
         adj.tid_extent_limit_candidate = _TID_MAX_EXTENT
         return constants, types, functions
+
+
+def _builtin_affects_module_hash(func) -> bool:
+    """Return whether a builtin's metadata must be part of the hash of modules that call it.
+
+    External builtins, LTO-dispatched calls, and templated native adjoints can change the
+    generated calls without changing the kernel source. Other Warp builtins rely on the
+    versioned cache directory instead.
+    """
+    return func._has_external_builtin_contract or any(
+        overload.adjoint_uses_template_args or overload.lto_dispatch_func is not None for overload in func.overloads
+    )
 
 
 # ----------------
@@ -7154,7 +7725,7 @@ cpu_module_header = """
 #include "builtin.h"
 #include "deterministic.h"
 
-#define builtin_tid1d() wp::tid(task_index, dim)
+#define builtin_tid1d() wp::linear_tid<wp_linear_tid>(task_index, dim)
 #define builtin_tid2d(x, y) wp::tid(x, y, task_index, dim)
 #define builtin_tid3d(x, y, z) wp::tid(x, y, z, task_index, dim)
 #define builtin_tid4d(x, y, z, w) wp::tid(x, y, z, w, task_index, dim)
@@ -7229,13 +7800,16 @@ static CUDA_CALLABLE void adj_{name}({reverse_args})
 {{
 {reverse_body}}}
 
-// Required when compiling adjoints.
-CUDA_CALLABLE {name} add(const {name}& a, const {name}& b)
+// Required when compiling adjoints. Struct helpers are static: a generated
+// struct may be instantiated in more than one translation unit that is later
+// linked into one program (e.g. two Warp foreign functions sharing a struct),
+// so they must not be strong external symbols.
+static CUDA_CALLABLE {name} add(const {name}& a, const {name}& b)
 {{
 {add_body}
 }}
 
-CUDA_CALLABLE void adj_atomic_add({name}* p, {name} t)
+static CUDA_CALLABLE void adj_atomic_add({name}* p, {name} t)
 {{
 {atomic_add_body}}}
 
@@ -7260,38 +7834,38 @@ tile_struct_member_ops_template = """
 tile_struct_helpers_template = """
 // Required by tile templates. The overloads are found by ADL when tile.h is
 // instantiated with a generated struct type.
-CUDA_CALLABLE void adj_add(const {name}& a, const {name}& b, {name}& adj_a, {name}& adj_b, const {name}& adj_ret)
+static CUDA_CALLABLE void adj_add(const {name}& a, const {name}& b, {name}& adj_a, {name}& adj_b, const {name}& adj_ret)
 {{
     adj_a += adj_ret;
     adj_b += adj_ret;
 }}
 
-CUDA_CALLABLE {name} sub(const {name}& a, const {name}& b)
+static CUDA_CALLABLE {name} sub(const {name}& a, const {name}& b)
 {{
     {name} ret = a;
     ret -= b;
     return ret;
 }}
 
-CUDA_CALLABLE void adj_sub(const {name}& a, const {name}& b, {name}& adj_a, {name}& adj_b, const {name}& adj_ret)
+static CUDA_CALLABLE void adj_sub(const {name}& a, const {name}& b, {name}& adj_a, {name}& adj_b, const {name}& adj_ret)
 {{
     adj_a += adj_ret;
     adj_b -= adj_ret;
 }}
 
-CUDA_CALLABLE {name} atomic_add({name}* p, {name} t)
+static CUDA_CALLABLE {name} atomic_add({name}* p, {name} t)
 {{
     {name} old {{}};
 {atomic_add_forward_body}
     return old;
 }}
 
-CUDA_CALLABLE {name} tile_atomic_add_value({name}* p, {name} t)
+static CUDA_CALLABLE {name} tile_atomic_add_value({name}* p, {name} t)
 {{
     return atomic_add(p, t);
 }}
 
-CUDA_CALLABLE {name} tile_adj_atomic_add_value({name}* p, {name} t)
+static CUDA_CALLABLE {name} tile_adj_atomic_add_value({name}* p, {name} t)
 {{
     // Tile adjoint struct atomics accumulate only for side effects; callers
     // currently ignore the returned old value, so avoid a second atomic here.
@@ -7301,14 +7875,14 @@ CUDA_CALLABLE {name} tile_adj_atomic_add_value({name}* p, {name} t)
 }}
 
 #if defined(__CUDA_ARCH__)
-CUDA_CALLABLE {name} warp_shuffle_down({name} val, int offset, int mask)
+static CUDA_CALLABLE {name} warp_shuffle_down({name} val, int offset, int mask)
 {{
     {name} ret {{}};
 {shuffle_down_body}
     return ret;
 }}
 
-CUDA_CALLABLE {name} warp_shuffle_xor({name} val, int lane_mask)
+static CUDA_CALLABLE {name} warp_shuffle_xor({name} val, int lane_mask)
 {{
     {name} ret {{}};
 {shuffle_xor_body}
@@ -7364,12 +7938,12 @@ cuda_kernel_template_forward = """
 {line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {max_registers_str}{forward_name}(
     {forward_args})
 {{
-{forward_smem_spilling_str}{line_directive}    wp::tile_shared_storage_t tile_mem;
+{forward_smem_spilling_str}{line_directive}    {forward_tile_storage_str}
 
 {line_directive}    const size_t _idx = static_cast<size_t>(blockIdx.z * gridDim.y + blockIdx.y) * static_cast<size_t>(gridDim.x * blockDim.x) + static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x);
 {line_directive}    if (_idx >= dim.size) return;
             // reset shared memory allocator
-{line_directive}    wp::tile_shared_storage_t::init();
+{line_directive}    {forward_tile_reset_str}
 
 {forward_body}{line_directive}}}
 
@@ -7380,12 +7954,12 @@ cuda_kernel_template_backward = """
 {line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {max_registers_str}{backward_name}(
     {reverse_args})
 {{
-{backward_smem_spilling_str}{line_directive}    wp::tile_shared_storage_t tile_mem;
+{backward_smem_spilling_str}{line_directive}    {backward_tile_storage_str}
 
 {line_directive}    const size_t _idx = static_cast<size_t>(blockIdx.z * gridDim.y + blockIdx.y) * static_cast<size_t>(gridDim.x * blockDim.x) + static_cast<size_t>(blockIdx.x * blockDim.x + threadIdx.x);
 {line_directive}    if (_idx >= dim.size) return;
             // reset shared memory allocator
-{line_directive}    wp::tile_shared_storage_t::init();
+{line_directive}    {backward_tile_reset_str}
 
 {reverse_body}{line_directive}}}
 
@@ -7396,14 +7970,14 @@ cuda_kernel_template_forward_grid_stride = """
 {line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {max_registers_str}{forward_name}(
     {forward_args})
 {{
-{forward_smem_spilling_str}{line_directive}    wp::tile_shared_storage_t tile_mem;
+{forward_smem_spilling_str}{line_directive}    {forward_tile_storage_str}
 
 {line_directive}    for (size_t _idx = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
 {line_directive}         _idx < dim.size;
 {line_directive}         _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
     {{
             // reset shared memory allocator
-{line_directive}        wp::tile_shared_storage_t::init();
+{line_directive}        {forward_tile_reset_str}
 
 {forward_body}{line_directive}    }}
 {line_directive}}}
@@ -7415,14 +7989,14 @@ cuda_kernel_template_backward_grid_stride = """
 {line_directive}extern "C" {launch_bounds_str}{cluster_dims_str}__global__ void {max_registers_str}{backward_name}(
     {reverse_args})
 {{
-{backward_smem_spilling_str}{line_directive}    wp::tile_shared_storage_t tile_mem;
+{backward_smem_spilling_str}{line_directive}    {backward_tile_storage_str}
 
 {line_directive}    for (size_t _idx = static_cast<size_t>(blockDim.x) * static_cast<size_t>(blockIdx.x) + static_cast<size_t>(threadIdx.x);
 {line_directive}         _idx < dim.size;
 {line_directive}         _idx += static_cast<size_t>(blockDim.x) * static_cast<size_t>(gridDim.x))
     {{
             // reset shared memory allocator
-{line_directive}        wp::tile_shared_storage_t::init();
+{line_directive}        {backward_tile_reset_str}
 
 {reverse_body}{line_directive}    }}
 {line_directive}}}
@@ -7454,31 +8028,83 @@ def cuda_kernel_backward_name(kernel, name=None):
 
 cpu_kernel_template_forward = """
 
+template <bool wp_linear_contiguous>
 static void {name}_cpu_kernel_forward(
     {forward_args},
     wp_args_{name} *_wp_args)
 {{
+    static constexpr bool wp_linear_tid = wp_linear_contiguous;
+{forward_array_setup}
 {forward_body}}}
 
 """
 
 cpu_kernel_template_backward = """
 
+template <bool wp_linear_contiguous>
 static void {name}_cpu_kernel_backward(
     {reverse_args},
     wp_args_{name} *_wp_args,
     wp_args_{name} *_wp_adj_args)
 {{
+    static constexpr bool wp_linear_tid = wp_linear_contiguous;
+{backward_array_setup}
 {reverse_body}}}
 
 """
 
+
+def cpu_linear_tid_specialization_candidate(adj):
+    """Return whether a generated kernel can use the linear CPU entry point."""
+    if adj.has_non_unrolled_constant_loop:
+        return True
+    return any(is_tile(var.type) or is_tile_stack(var.type) for var in adj.variables)
+
+
+def cpu_linear_contiguous_specialization_candidate(adj, block_dim):
+    """Return whether a CPU kernel can specialize both coordinates and array strides."""
+    array_args = [arg for arg in adj.args if matches_array_class(arg.type, array)]
+    # Simple 1D kernels benefit even without rolled loops; mixed-dimensional
+    # kernels retain the original loop and tile profitability gate.
+    return (
+        block_dim == 1
+        and adj.kernel_dim == 1
+        and adj.uses_scalar_tid
+        and any(arg.type.ndim == 1 for arg in array_args)
+        and (cpu_linear_tid_specialization_candidate(adj) or all(arg.type.ndim == 1 for arg in array_args))
+    )
+
+
+# Inline task wrappers before LLVM's general optimization passes. Otherwise
+# the compiler spends time optimizing both the wrappers and the merged entry.
 cpu_module_template_forward = """
 
-extern "C" {{
+template <bool wp_linear_contiguous>
+static WP_FORCEINLINE void {name}_cpu_forward_tasks(
+    wp::launch_bounds_t<{launch_ndim}> *dim,
+    wp_args_{name} *_wp_args)
+{{
+    // Private launch state cannot alias stores through kernel array arguments.
+    const auto bounds = *dim;
+    auto args = *_wp_args;
+    if constexpr (wp_linear_contiguous)
+    {{
+        // A signed counter keeps array addresses affine after wp.tid() casts to int.
+        for (int task_index = 0; task_index < (int)bounds.size; ++task_index)
+        {{
+            {name}_cpu_kernel_forward<wp_linear_contiguous>(bounds, (size_t)task_index, &args);
+        }}
+    }}
+    else
+    {{
+        for (size_t task_index = 0; task_index < bounds.size; ++task_index)
+        {{
+            {name}_cpu_kernel_forward<wp_linear_contiguous>(bounds, task_index, &args);
+        }}
+    }}
+}}
 
-// Python CPU entry points
-WP_API void {name}_cpu_forward(
+static WP_FORCEINLINE void {name}_cpu_forward_dispatch(
     wp::launch_bounds_t<{launch_ndim}> *dim,
     wp_args_{name} *_wp_args)
 {{
@@ -7487,13 +8113,8 @@ WP_API void {name}_cpu_forward(
     wp::shared_tile_storage = &tile_mem;
 #endif
 
-    for (size_t task_index = 0; task_index < dim->size; ++task_index)
-    {{
-        {name}_cpu_kernel_forward(*dim, task_index, _wp_args);
-    }}
+{forward_dispatch}
 }}
-
-}} // extern C
 
 """
 
@@ -7513,15 +8134,27 @@ static void {name}_cpu_block_thunk_forward(
     {name}_cpu_block_payload_forward* payload = ({name}_cpu_block_payload_forward*)payload_ptr;
     wp::tile_shared_storage_t::bind(payload->tile_mem);
     const size_t task_index = payload->block_first + (size_t)lane;
-    {name}_cpu_kernel_forward(*dim, task_index, payload->args);
+    {name}_cpu_kernel_forward<false>(*dim, task_index, payload->args);
 }}
 
+"""
+
+cpu_module_entry_template_forward = """\
 extern "C" {{
 
+// Python CPU entry points
 WP_API void {name}_cpu_forward(
     wp::launch_bounds_t<{launch_ndim}> *dim,
     wp_args_{name} *_wp_args)
 {{
+{forward_entry_body}
+}}
+
+}} // extern C
+
+"""
+
+cpu_block_entry_body_forward = """\
     constexpr size_t block_dim = (size_t)WP_TILE_BLOCK_DIM;
     const size_t total = dim->size;
     size_t block_first = 0;
@@ -7539,17 +8172,39 @@ WP_API void {name}_cpu_forward(
         block_first += (size_t)active_count;
         ++block_id;
     }}
-}}
-
-}} // extern C
-
 """
 
 cpu_module_template_backward = """
 
-extern "C" {{
+template <bool wp_linear_contiguous>
+static WP_FORCEINLINE void {name}_cpu_backward_tasks(
+    wp::launch_bounds_t<{launch_ndim}> *dim,
+    wp_args_{name} *_wp_args,
+    wp_args_{name} *_wp_adj_args)
+{{
+    // Hoist both primal and adjoint descriptors out of the task loop.
+    const auto bounds = *dim;
+    auto args = *_wp_args;
+    auto adj_args = *_wp_adj_args;
+    if constexpr (wp_linear_contiguous)
+    {{
+        for (int task_index = 0; task_index < (int)bounds.size; ++task_index)
+        {{
+            {name}_cpu_kernel_backward<wp_linear_contiguous>(
+                bounds, (size_t)task_index, &args, &adj_args);
+        }}
+    }}
+    else
+    {{
+        for (size_t task_index = 0; task_index < bounds.size; ++task_index)
+        {{
+            {name}_cpu_kernel_backward<wp_linear_contiguous>(
+                bounds, task_index, &args, &adj_args);
+        }}
+    }}
+}}
 
-WP_API void {name}_cpu_backward(
+static WP_FORCEINLINE void {name}_cpu_backward_dispatch(
     wp::launch_bounds_t<{launch_ndim}> *dim,
     wp_args_{name} *_wp_args,
     wp_args_{name} *_wp_adj_args)
@@ -7559,13 +8214,8 @@ WP_API void {name}_cpu_backward(
     wp::shared_tile_storage = &tile_mem;
 #endif
 
-    for (size_t task_index = 0; task_index < dim->size; ++task_index)
-    {{
-        {name}_cpu_kernel_backward(*dim, task_index, _wp_args, _wp_adj_args);
-    }}
+{backward_dispatch}
 }}
-
-}} // extern C
 
 """
 
@@ -7586,9 +8236,12 @@ static void {name}_cpu_block_thunk_backward(
     {name}_cpu_block_payload_backward* payload = ({name}_cpu_block_payload_backward*)payload_ptr;
     wp::tile_shared_storage_t::bind(payload->tile_mem);
     const size_t task_index = payload->block_first + (size_t)lane;
-    {name}_cpu_kernel_backward(*dim, task_index, payload->args, payload->adj_args);
+    {name}_cpu_kernel_backward<false>(*dim, task_index, payload->args, payload->adj_args);
 }}
 
+"""
+
+cpu_module_entry_template_backward = """\
 extern "C" {{
 
 WP_API void {name}_cpu_backward(
@@ -7596,6 +8249,14 @@ WP_API void {name}_cpu_backward(
     wp_args_{name} *_wp_args,
     wp_args_{name} *_wp_adj_args)
 {{
+{backward_entry_body}
+}}
+
+}} // extern C
+
+"""
+
+cpu_block_entry_body_backward = """\
     constexpr size_t block_dim = (size_t)WP_TILE_BLOCK_DIM;
     const size_t total = dim->size;
     size_t block_first = 0;
@@ -7613,10 +8274,6 @@ WP_API void {name}_cpu_backward(
         block_first += (size_t)active_count;
         ++block_id;
     }}
-}}
-
-}} // extern C
-
 """
 
 
@@ -7904,7 +8561,7 @@ def codegen_func_forward(adj, func_type="kernel", device="cpu", grid_stride=Fals
         lines += ["// argument vars\n"]
 
         for var in adj.args:
-            lines += [f"{var.ctype()} {var.emit()} = _wp_args->{var.label};\n"]
+            lines += [f"{var.ctype()} {var.emit()} = _wp_args->{var.emit()};\n"]
 
     # primal vars
     lines += ["//---------\n"]
@@ -7915,6 +8572,8 @@ def codegen_func_forward(adj, func_type="kernel", device="cpu", grid_stride=Fals
             lines += [f"{var.ctype()} {var.emit()} = {var.type.cinit(requires_grad=False)};\n"]
         elif is_tile_stack(var.type):
             lines += [f"{var.ctype()} {var.emit()} = {var.type.cinit()};\n"]
+        elif isinstance(var.type, fixedarray):
+            lines += [f"{var.ctype()} {var.emit()}{{wp::no_init_t{{}}}};\n"]
         elif var.constant is None:
             lines += [f"{var.ctype()} {var.emit()};\n"]
         else:
@@ -7960,10 +8619,10 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu", grid_stride=Fals
         lines += ["// argument vars\n"]
 
         for var in adj.args:
-            lines += [f"{var.ctype()} {var.emit()} = _wp_args->{var.label};\n"]
+            lines += [f"{var.ctype()} {var.emit()} = _wp_args->{var.emit()};\n"]
 
         for var in adj.args:
-            lines += [f"{var.ctype()} {var.emit_adj()} = _wp_adj_args->{var.label};\n"]
+            lines += [f"{var.ctype()} {var.emit_adj()} = _wp_adj_args->{var.emit()};\n"]
 
     # primal vars
     lines += ["//---------\n"]
@@ -7974,6 +8633,8 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu", grid_stride=Fals
             lines += [f"{var.ctype()} {var.emit()} = {var.type.cinit(requires_grad=True)};\n"]
         elif is_tile_stack(var.type):
             lines += [f"{var.ctype()} {var.emit()} = {var.type.cinit()};\n"]
+        elif isinstance(var.type, fixedarray):
+            lines += [f"{var.ctype()} {var.emit()}{{wp::no_init_t{{}}}};\n"]
         elif var.constant is None:
             lines += [f"{var.ctype()} {var.emit()};\n"]
         else:
@@ -8184,9 +8845,7 @@ def codegen_func(
             # - force_adjoint_codegen is True (set by warp.grad() to ensure adjoint exists)
             # Note: Functions using warp.grad() won't have their adjoints called anyway
             # (the reverse call is skipped in add_call), so we can skip generating them.
-            should_generate_adjoint = adj.used_by_backward_kernel or adj.force_adjoint_codegen
-            should_generate_adjoint = should_generate_adjoint and not adj.uses_grad_call
-            if should_generate_adjoint:
+            if adj.emits_adjoint():
                 reverse_body = codegen_func_reverse(adj, func_type="function", device=device)
             else:
                 reverse_body = "\t// reverse mode disabled (no backward-enabled kernel depends on this function)\n"
@@ -8341,8 +9000,10 @@ def codegen_kernel(kernel, device, options):
     args_struct = ""
     if device == "cpu":
         args_struct = f"struct wp_args_{kernel.get_mangled_name()} {{\n"
+        # Field names use the emitted var_ names so that argument names that are
+        # C++ keywords or macros, such as `new` or `NAN`, stay valid (GH-2427).
         for i in adj.args:
-            args_struct += f"    {i.ctype()} {i.label};\n"
+            args_struct += f"    {i.ctype()} {i.emit()};\n"
         args_struct += "};\n"
 
     # Build line directive for function definition (subtract 1 to account for 1-indexing of AST line numbers)
@@ -8387,7 +9048,9 @@ def codegen_kernel(kernel, device, options):
             "external entry-point runtimes such as OptiX do not accept Warp's shared-memory allocator."
         )
 
+    cpu_linear_contiguous = False
     if device == "cpu":
+        cpu_linear_contiguous = cpu_linear_contiguous_specialization_candidate(adj, options["block_dim"])
         template_forward = cpu_kernel_template_forward
         template_backward = cpu_kernel_template_backward
     elif is_external_constant_params_entry:
@@ -8411,6 +9074,47 @@ def codegen_kernel(kernel, device, options):
         "launch_ndim": kernel.adj.kernel_dim,
         "constant_params_alias": "",
     }
+
+    contiguous_args = [arg for arg in adj.args if matches_array_class(arg.type, array) and arg.type.ndim == 1]
+    forward_array_setup = ""
+    backward_array_setup = ""
+    if device == "cpu" and cpu_linear_contiguous:
+        args_type = f"wp_args_{kernel.get_mangled_name()}"
+        forward_lines = [
+            f"    {args_type} wp_contiguous_args;",
+            "    if constexpr (wp_linear_contiguous)",
+            "    {",
+            "        wp_contiguous_args = *_wp_args;",
+        ]
+        for arg in contiguous_args:
+            dtype = Var.dtype_to_ctype(arg.type.dtype)
+            forward_lines.append(f"        wp_contiguous_args.{arg.emit()}.strides[0] = sizeof({dtype});")
+        forward_lines.extend(("        _wp_args = &wp_contiguous_args;", "    }"))
+        forward_array_setup = "\n".join(forward_lines)
+
+        backward_lines = [
+            f"    {args_type} wp_contiguous_args;",
+            f"    {args_type} wp_contiguous_adj_args;",
+            "    if constexpr (wp_linear_contiguous)",
+            "    {",
+            "        wp_contiguous_args = *_wp_args;",
+            "        wp_contiguous_adj_args = *_wp_adj_args;",
+        ]
+        for arg in contiguous_args:
+            dtype = Var.dtype_to_ctype(arg.type.dtype)
+            backward_lines.append(f"        wp_contiguous_args.{arg.emit()}.strides[0] = sizeof({dtype});")
+            backward_lines.append(f"        wp_contiguous_adj_args.{arg.emit()}.strides[0] = sizeof({dtype});")
+        backward_lines.extend(
+            (
+                "        _wp_args = &wp_contiguous_args;",
+                "        _wp_adj_args = &wp_contiguous_adj_args;",
+                "    }",
+            )
+        )
+        backward_array_setup = "\n".join(backward_lines)
+
+    template_fmt_args["forward_array_setup"] = forward_array_setup
+    template_fmt_args["backward_array_setup"] = backward_array_setup
 
     # Generate launch_bounds string for CUDA kernels
     launch_bounds_str = ""
@@ -8440,6 +9144,12 @@ def codegen_kernel(kernel, device, options):
         and adj.get_total_required_shared() == 0
     ):
         forward_smem_spilling_str = "    WP_ENABLE_SMEM_SPILLING();\n"
+
+    # The tile allocator keeps per-thread offsets in static shared memory, so only entry points that use it get one.
+    forward_tile_storage_str = forward_tile_reset_str = ""
+    if adj.get_total_required_shared() > 0:
+        forward_tile_storage_str = "wp::tile_shared_storage_t tile_mem;"
+        forward_tile_reset_str = "wp::tile_shared_storage_t::init();"
 
     # Generate cluster_dims string for CUDA kernels.
     # 1 is the implicit default and is treated as a no-op so that
@@ -8491,6 +9201,8 @@ def codegen_kernel(kernel, device, options):
             "cluster_dims_str": cluster_dims_str,
             "max_registers_str": max_registers_str,
             "forward_smem_spilling_str": forward_smem_spilling_str,
+            "forward_tile_storage_str": forward_tile_storage_str,
+            "forward_tile_reset_str": forward_tile_reset_str,
         }
     )
     template += template_forward
@@ -8523,11 +9235,17 @@ def codegen_kernel(kernel, device, options):
             and adj.get_total_required_shared_backward() == 0
         ):
             backward_smem_spilling_str = "    WP_ENABLE_SMEM_SPILLING();\n"
+        backward_tile_storage_str = backward_tile_reset_str = ""
+        if adj.get_total_required_shared_backward() > 0:
+            backward_tile_storage_str = "wp::tile_shared_storage_t tile_mem;"
+            backward_tile_reset_str = "wp::tile_shared_storage_t::init();"
         template_fmt_args.update(
             {
                 "reverse_args": indent(reverse_args),
                 "reverse_body": reverse_body,
                 "backward_smem_spilling_str": backward_smem_spilling_str,
+                "backward_tile_storage_str": backward_tile_storage_str,
+                "backward_tile_reset_str": backward_tile_reset_str,
             }
         )
         template += template_backward
@@ -8544,19 +9262,65 @@ def codegen_module(kernel, device, options):
     options = options | kernel.options
 
     template = ""
+    name = kernel.get_mangled_name()
     template_fmt_args = {
-        "name": kernel.get_mangled_name(),
+        "name": name,
         "launch_ndim": kernel.adj.kernel_dim,
     }
 
     if options["block_dim"] == 1:
+        if cpu_linear_contiguous_specialization_candidate(kernel.adj, options["block_dim"]):
+            contiguous_args = [
+                arg for arg in kernel.adj.args if matches_array_class(arg.type, array) and arg.type.ndim == 1
+            ]
+            forward_conditions = []
+            backward_conditions = []
+            for arg in contiguous_args:
+                dtype = Var.dtype_to_ctype(arg.type.dtype)
+                forward_conditions.append(f"_wp_args->{arg.emit()}.strides[0] == (int)sizeof({dtype})")
+                backward_conditions.append(f"_wp_args->{arg.emit()}.strides[0] == (int)sizeof({dtype})")
+                backward_conditions.append(f"_wp_adj_args->{arg.emit()}.strides[0] == (int)sizeof({dtype})")
+
+            # Read independent packed stride checks eagerly. A short-circuit chain can
+            # make LLVM classify the contiguous task loop as cold and prevent inlining.
+            # Retain the outer coordinate short circuit and keep launches larger than
+            # INT_MAX on the size_t task loop.
+            forward_condition = " & ".join(f"({condition})" for condition in forward_conditions)
+            backward_condition = " & ".join(f"({condition})" for condition in backward_conditions)
+            template_fmt_args["forward_dispatch"] = (
+                "    const bool wp_linear_contiguous = dim->coord_mult == 1 && dim->size <= 0x7fffffff\n"
+                f"        && ({forward_condition});\n"
+                "    if (wp_linear_contiguous)\n"
+                f"        {name}_cpu_forward_tasks<true>(dim, _wp_args);\n"
+                "    else\n"
+                f"        {name}_cpu_forward_tasks<false>(dim, _wp_args);"
+            )
+            template_fmt_args["backward_dispatch"] = (
+                "    const bool wp_linear_contiguous = dim->coord_mult == 1 && dim->size <= 0x7fffffff\n"
+                f"        && ({backward_condition});\n"
+                "    if (wp_linear_contiguous)\n"
+                f"        {name}_cpu_backward_tasks<true>(dim, _wp_args, _wp_adj_args);\n"
+                "    else\n"
+                f"        {name}_cpu_backward_tasks<false>(dim, _wp_args, _wp_adj_args);"
+            )
+        else:
+            template_fmt_args["forward_dispatch"] = f"    {name}_cpu_forward_tasks<false>(dim, _wp_args);"
+            template_fmt_args["backward_dispatch"] = (
+                f"    {name}_cpu_backward_tasks<false>(dim, _wp_args, _wp_adj_args);"
+            )
+
+        template_fmt_args["forward_entry_body"] = f"    {name}_cpu_forward_dispatch(dim, _wp_args);"
+        template_fmt_args["backward_entry_body"] = f"    {name}_cpu_backward_dispatch(dim, _wp_args, _wp_adj_args);"
         template += cpu_module_template_forward
-        if options["enable_backward"]:
-            template += cpu_module_template_backward
     else:
+        template_fmt_args["forward_entry_body"] = cpu_block_entry_body_forward.format(name=name).rstrip("\n")
+        template_fmt_args["backward_entry_body"] = cpu_block_entry_body_backward.format(name=name).rstrip("\n")
         template += cpu_block_module_template_forward
-        if options["enable_backward"]:
-            template += cpu_block_module_template_backward
+
+    template += cpu_module_entry_template_forward
+    if options["enable_backward"]:
+        template += cpu_module_template_backward if options["block_dim"] == 1 else cpu_block_module_template_backward
+        template += cpu_module_entry_template_backward
 
     s = template.format(**template_fmt_args)
     return s

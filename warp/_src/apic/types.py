@@ -29,6 +29,15 @@ APIC_OP_REDUCTION = 16
 APIC_OP_BVH_REFIT = 17
 APIC_OP_BVH_REBUILD = 18
 APIC_OP_HASH_GRID_UPDATE = 19
+APIC_OP_BSR_COMPRESS = 20
+APIC_OP_CHILD_GRAPH = 21
+APIC_OP_ARRAY_FILL = 22
+APIC_OP_MESH_REFIT = 23
+APIC_OP_MESH_SET_POINTS = 24
+APIC_OP_MESH_SET_VELOCITIES = 25
+APIC_OP_VOLUME_REBUILD = 26
+APIC_OP_VOLUME_GET_TILES = 27
+APIC_OP_VOLUME_GET_VOXELS = 28
 
 
 # Scalar element types (must match APICType in apic_types.h).
@@ -46,6 +55,41 @@ APIC_RELOC_HANDLE = 2  # wp.handle / mesh id: write handle_ptr_remap[region_offs
 APIC_RELOC_NULL = 3  # Explicit zero (null array data/grad, absent indexedarray dim)
 
 
+# CUDA artifact metadata (must match apic_types.h).
+APIC_CUDA_BINARY_NONE = 0
+APIC_CUDA_BINARY_PTX = 1
+APIC_CUDA_BINARY_CUBIN = 2
+
+APIC_CUDA_ARCH_SUFFIX_NONE = 0
+APIC_CUDA_ARCH_SUFFIX_A = 1
+APIC_CUDA_ARCH_SUFFIX_F = 2
+
+APIC_CUDA_FALLBACK_AVAILABLE = 0
+APIC_CUDA_FALLBACK_SOURCE_UNAVAILABLE = 1
+APIC_CUDA_FALLBACK_EXTERNAL_INCLUDES = 2
+APIC_CUDA_FALLBACK_LLVM_CUDA = 3
+APIC_CUDA_FALLBACK_LINK_INPUTS = 4
+APIC_CUDA_FALLBACK_EXPORT_FAILED = 5
+APIC_CUDA_FALLBACK_RECIPE_UNAVAILABLE = 6
+
+
+class APICCudaCompileRecipe(ctypes.Structure):
+    """Semantic NVRTC options needed for APIC guest compilation."""
+
+    _pack_ = 1
+    _layout_ = "ms"
+    _fields_ = [
+        ("debug", ctypes.c_uint8),
+        ("optimization_level", ctypes.c_uint8),
+        ("verify_fp", ctypes.c_uint8),
+        ("fast_math", ctypes.c_uint8),
+        ("fuse_fp", ctypes.c_uint8),
+        ("lineinfo", ctypes.c_uint8),
+        ("arch_suffix", ctypes.c_uint8),
+        ("_reserved", ctypes.c_uint8 * 9),
+    ]
+
+
 class APICLaunchParamRecord(ctypes.Structure):
     """One entry per kernel argument (16 bytes, packed). Matches apic_types.h.
 
@@ -57,6 +101,7 @@ class APICLaunchParamRecord(ctypes.Structure):
     """
 
     _pack_ = 1
+    _layout_ = "ms"
     _fields_ = [
         ("param_index", ctypes.c_uint16),
         ("num_relocs", ctypes.c_uint16),
@@ -81,6 +126,7 @@ class APICLaunchPtrLocation(ctypes.Structure):
     """
 
     _pack_ = 1
+    _layout_ = "ms"
     _fields_ = [
         ("value_byte_offset", ctypes.c_uint32),
         ("region_id", ctypes.c_int32),

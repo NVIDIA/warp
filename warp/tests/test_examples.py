@@ -17,6 +17,7 @@ To skip tests if the optional dependencies are not found, use the following keys
 - {"usd_required": True} (requires usd-core)
 - {"torch_required": True} (requires torch)
 - {"pillow_required": True} (requires pillow)
+- {"cutile_required": True} (requires cuda.tile, cuda.tile_preview, and a supported tileiras; skipped on Windows)
 
 Use the "num_frames" and "train_iters" keys to control the number of steps.
 
@@ -34,8 +35,11 @@ from typing import Any
 import warp as wp
 import warp.tests.unittest_utils
 from warp.tests.unittest_utils import (
+    CUTILE_SKIP_REASON,
+    CUTILE_WINDOWS_SKIP_REASON,
     USD_AVAILABLE,
     add_function_test,
+    cutile_toolchain_available,
     get_selected_cuda_test_devices,
     get_selected_cuda_test_devices_with_mempool,
     get_test_devices,
@@ -105,6 +109,16 @@ def add_example_test(
                 import PIL  # noqa: PLC0415,F401
             except ImportError:
                 test.skipTest("Requires pillow")
+
+        # Mark the test as skipped if the cuTile toolchain is not installed but required
+        cutile_required = options.pop("cutile_required", False)
+        if cutile_required:
+            if sys.platform == "win32":
+                test.skipTest(CUTILE_WINDOWS_SKIP_REASON)
+            if not cutile_toolchain_available():
+                test.skipTest(CUTILE_SKIP_REASON)
+            if wp.get_device(device).arch < 80:
+                test.skipTest("cuTile requires an Ampere or newer GPU")
 
         env_vars = os.environ.copy()
 
@@ -292,6 +306,12 @@ add_example_test(
     devices=test_devices,
     test_options={"usd_required": True},
 )
+add_example_test(
+    TestGeometryExamples,
+    name="geometry.example_oriented_bounding_box",
+    devices=test_devices,
+    test_options={"usd_required": True},
+)
 
 
 class TestOptimExamples(unittest.TestCase):
@@ -329,13 +349,24 @@ add_example_test(
     TestOptimExamples,
     name="optim.example_particle_repulsion",
     devices=cuda_test_devices,
-    test_options={"headless": True, "num_frames": 100},
+    test_options={"headless": True, "num_frames": 100, "pillow_required": True},
 )
 add_example_test(
     TestOptimExamples,
     name="optim.example_navier_stokes_perturbation",
     devices=cuda_test_devices_with_mempool,
     test_options={"headless": True, "train_iters": 5, "lead_steps": 5, "spin_up_steps": 10},
+)
+add_example_test(
+    TestOptimExamples,
+    name="optim.example_implicit_projection",
+    devices=test_devices,
+    test_options={"headless": True, "num_points": 16, "steps": 8},
+)
+add_example_test(
+    TestOptimExamples,
+    name="optim.example_quat_shape_align",
+    devices=test_devices,
 )
 
 
@@ -391,7 +422,7 @@ add_example_test(
     TestTileExamples,
     name="tile.example_tile_mlp",
     devices=cuda_test_devices,
-    test_options_cuda={"train_iters": 10, "headless": True},
+    test_options_cuda={"train_iters": 10, "headless": True, "pillow_required": True},
 )
 add_example_test(
     TestTileExamples,
@@ -403,6 +434,26 @@ add_example_test(
     TestTileExamples,
     name="tile.example_tile_stream_compaction",
     devices=cuda_test_devices,
+)
+
+
+class TestInteropExamples(unittest.TestCase):
+    pass
+
+
+add_example_test(
+    TestInteropExamples,
+    name="interop.example_cutile_neural_sdf",
+    devices=cuda_test_devices,
+    test_options={
+        "headless": True,
+        "train_iters": 50,
+        "grid": 16,
+        "resolution": 32,
+        "usd_required": True,
+        "pillow_required": True,
+        "cutile_required": True,
+    },
 )
 
 

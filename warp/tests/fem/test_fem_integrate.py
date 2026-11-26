@@ -1225,7 +1225,7 @@ def test_triplet_assembly_unused_restriction_slots(test, device):
         assert_np_equal(values, np.array([0.125, 0.125, 0.25]))
 
 
-def test_capturability(test, device):
+def _check_integrate_capturability(device, bsr_options):
     A = bsr_zeros(0, 0, block_type=wp.float32, device=device)
 
     def test_body():
@@ -1252,6 +1252,7 @@ def test_capturability(test, device):
             fields={"v": test_field, "u": trial_field},
             kernel_options={"enable_backward": False},
             output=A,
+            bsr_options=bsr_options,
         )
 
     with wp.ScopedDevice(device):
@@ -1269,6 +1270,12 @@ def test_capturability(test, device):
         assert A.nnz_sync() == nnz_ref
         assert_np_equal(A.values.numpy()[:nnz_ref], values_ref)
         assert_np_equal(A.columns.numpy()[:nnz_ref], columns_ref)
+
+
+def test_capturability(test, device):
+    _check_integrate_capturability(device, bsr_options=None)
+    # Row compression assembles candidate blocks in place, then compresses them with bsr_compress().
+    _check_integrate_capturability(device, bsr_options={"construction": "row_compress"})
 
 
 def test_restriction_rebuild(test, device):
@@ -1312,7 +1319,7 @@ def test_restriction_rebuild(test, device):
 
 devices = get_test_devices()
 cuda_devices = get_selected_cuda_test_devices()
-cuda_devices_with_mempool = get_selected_cuda_test_devices_with_mempool()
+devices_with_graph_capture_allocation = get_test_devices_with_graph_capture_allocation()
 
 
 def test_integrate_scalar_output_layouts(test, device):
@@ -1355,6 +1362,79 @@ def test_integrate_scalar_output_layouts(test, device):
         out_3d = wp.zeros((node_count, dof_count, 1), dtype=wp.float32)
         with test.assertRaisesRegex(RuntimeError, "one- or two-dimensional"):
             fem.integrate(vector_component_form, fields={"v": test_field}, output=out_3d)
+
+
+@integrand
+def _test_at_field_nodes(s: Sample, w: Field, v: Field):
+    total = float(0.0)
+    for k in range(fem.node_count(w, s)):
+        total += v(fem.at_node(w, s, k))
+    return total
+
+
+@integrand
+def _test_times_field_node_values(s: Sample, w: Field, v: Field):
+    total = float(0.0)
+    for k in range(fem.node_count(w, s)):
+        total += w(fem.at_node(w, s, k), k)
+    return v(s) * total
+
+
+@integrand
+def _test_at_lookup(s: Sample, domain: Domain, v: Field):
+    return v(fem.lookup(domain, domain(s)))
+
+
+@integrand
+def _test_at_free_sample(s: Sample, v: Field):
+    return v(fem.make_free_sample(s.element_index, s.element_coords))
+
+
+@integrand
+def _vector_test_at_free_sample(s: Sample, v: Field):
+    sample = fem.make_free_sample(s.element_index, s.element_coords)
+    return wp.dot(v(sample), wp.vec2(1.0)) + wp.trace(grad(v, sample))
+
+
+def test_lookup_test_field(test, device):
+    """Test functions vanish at samples without a degree of freedom, such as those returned by lookup()."""
+    with wp.ScopedDevice(device):
+        geo = fem.Grid2D(res=wp.vec2i(3))
+        space = fem.make_polynomial_space(geo, degree=1)
+        test_field = fem.make_test(space)
+        for form in (_test_at_lookup, _test_at_free_sample):
+            for assembly in ("generic", "dispatch"):
+                result = fem.integrate(form, fields={"v": test_field}, assembly=assembly)
+                np.testing.assert_array_equal(result.numpy(), 0.0, err_msg=f"{form.name} {assembly}")
+
+        # Vector-valued shape functions also vanish there
+        for element_basis in (fem.ElementBasis.RAVIART_THOMAS, fem.ElementBasis.NEDELEC_FIRST_KIND):
+            test_field = fem.make_test(fem.make_polynomial_space(geo, element_basis=element_basis))
+            for assembly in ("generic", "dispatch"):
+                result = fem.integrate(_vector_test_at_free_sample, fields={"v": test_field}, assembly=assembly)
+                np.testing.assert_array_equal(result.numpy(), 0.0, err_msg=f"{element_basis} {assembly}")
+
+
+def test_at_node_test_field(test, device):
+    """Test functions are not defined at samples returned by at_node() on another field."""
+    with wp.ScopedDevice(device):
+        geo = fem.Grid2D(res=wp.vec2i(3))
+        space = fem.make_polynomial_space(geo, degree=2)
+        test_field = fem.make_test(space)
+        field = space.make_field()
+        fem.interpolate(bilinear_field, dest=field)
+        fields = {"w": field, "v": test_field}
+
+        # Reading another field at its nodes is fine, as long as the test function is evaluated at the sample itself
+        generic = fem.integrate(_test_times_field_node_values, fields=fields, assembly="generic")
+        dispatch = fem.integrate(_test_times_field_node_values, fields=fields, assembly="dispatch")
+        np.testing.assert_allclose(dispatch.numpy(), generic.numpy(), rtol=1.0e-5, atol=1.0e-6)
+        test.assertGreater(np.abs(generic.numpy()).max(), 0.0)
+
+        # The sample returned by at_node() carries no test degree of freedom, so the test function vanishes there
+        for assembly in ("generic", "dispatch"):
+            result = fem.integrate(_test_at_field_nodes, fields=fields, assembly=assembly)
+            np.testing.assert_array_equal(result.numpy(), 0.0, err_msg=assembly)
 
 
 class TestFemIntegrate(unittest.TestCase):
@@ -1424,8 +1504,12 @@ add_function_test(TestFemIntegrate, "test_interpolate_reduction", test_interpola
 add_function_test(
     TestFemIntegrate, "test_interpolate_first_row_compression", test_interpolate_first_row_compression, devices=devices
 )
-add_function_test(TestFemIntegrate, "test_capturability", test_capturability, devices=cuda_devices_with_mempool)
+add_function_test(
+    TestFemIntegrate, "test_capturability", test_capturability, devices=devices_with_graph_capture_allocation
+)
 add_function_test(TestFemIntegrate, "test_restriction_rebuild", test_restriction_rebuild, devices=devices)
+add_function_test(TestFemIntegrate, "test_at_node_test_field", test_at_node_test_field, devices=devices)
+add_function_test(TestFemIntegrate, "test_lookup_test_field", test_lookup_test_field, devices=devices)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2, failfast=True)

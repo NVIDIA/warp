@@ -38,7 +38,7 @@ This approach allows you to:
 This example runs from within the Warp repository.
 
 **Requirements:**
-- **Python 3.10+**
+- **Python 3.11+**
 - **CUDA Toolkit 12.0+** (includes `nvcc` compiler)
 - **NVIDIA GPU** (Warp automatically compiles for your GPU architecture)
 - **Build System**: GNU Make (Unix/Linux) or CMake 3.20+ (cross-platform)
@@ -92,7 +92,7 @@ The Python script compiles a SAXPY kernel to CUBIN:
 
 ```python
 @wp.kernel
-def saxpy(alpha: wp.float32, x: wp.array(dtype=wp.float32), y: wp.array(dtype=wp.float32)):
+def saxpy(alpha: wp.float32, x: wp.array[wp.float32], y: wp.array[wp.float32]):
     """SAXPY: Single-Precision A·X Plus Y
 
     Computes: y = alpha * x + y

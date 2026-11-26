@@ -10,6 +10,12 @@ Guides in this section
   integrate autograd, and call Warp kernels from custom operators.
 * :doc:`JAX <interoperability/jax>`: Convert arrays, call Warp kernels through
   FFI, and use Warp with JAX transformations and distributed computation.
+* :doc:`Array function overrides <interoperability/array_function_overrides>`: Let
+  array subclasses and wrappers intercept supported Warp host APIs, such as
+  :func:`wp.launch <warp.launch>` and :func:`wp.copy <warp.copy>`, through
+  ``__warp_function__``.
+* :doc:`cuTile Python <interoperability/cutile>`: Call Warp functions from
+  kernels written in cuTile Python through an experimental foreign-function bridge.
 
 Quick Reference
 ---------------
@@ -51,13 +57,76 @@ For full framework coverage, see:
 
 * :doc:`interoperability/pytorch`
 * :doc:`interoperability/jax`
+* :doc:`interoperability/cutile`
 
 Paddle is documented inline below. NumPy, CuPy, Numba, and DLPack interop is protocol-level and covered in the sections that follow.
+
+.. _array-subclass-migration:
 
 Pass Arrays Directly
 --------------------
 
-Any object that implements ``__array_interface__`` (CPU) or ``__cuda_array_interface__`` (GPU) can be passed to :func:`wp.launch <warp.launch>` inputs without calling a conversion function. This is the fastest on-ramp for most use cases.
+External objects that implement ``__array_interface__`` (CPU) or
+``__cuda_array_interface__`` (GPU) can be passed to concrete regular-array
+parameters of :func:`wp.launch <warp.launch>` without calling a conversion
+function. This is the fastest on-ramp for most use cases.
+
+Warp arrays and their :ref:`subclasses <array-subclasses>` use their native Warp
+descriptor when launched. Warp checks their native family, dtype, and ndim
+instead of reinterpreting an inherited or overridden array interface. Their
+gradient pointer and ``retain_grad`` flag follow the parent's behavior. Code
+that previously reached the external-interface fallback for a Warp subclass
+must account for these changes:
+
+* Native gradient pointers and flags are preserved. Tape gradients for
+  overwritten outputs or in-place writes can therefore change to match the
+  parent array's behavior, and ``retain_grad=True`` is honored.
+* Native storage is used even when a subclass overrides its array interface.
+  The kernel no longer receives storage, a dtype, or a shape supplied by that
+  alternate interface. Struct and ``bfloat16`` arrays use their native dtype
+  support without requiring an array-interface representation.
+* Family, dtype, and dimensionality mismatches are rejected through normal
+  Warp array validation. Use :meth:`array.view() <warp.array.view>` for a
+  supported dtype reinterpretation, or :meth:`array.reshape() <warp.array.reshape>`
+  and :meth:`array.flatten() <warp.array.flatten>` to change shape explicitly.
+  Use a typed Warp array and a conversion such as :func:`warp.utils.array_cast`
+  when element values need to be converted rather than reinterpreted.
+  Explicit conversion expresses the intended element layout; it does not
+  reproduce accidental strided reads from a rank mismatch. For example,
+  float32 data of shape ``(4, 3)`` can use ``a.view(wp.vec3)`` for a
+  ``wp.array[wp.vec3]`` parameter. A vec3 array can use
+  ``a.view(wp.float32).flatten()`` for a one-dimensional scalar parameter,
+  while a two-dimensional scalar array can use ``a.flatten()``.
+* Device-access validation follows
+  :attr:`warp.config.launch_array_access_mode`. The default ``RELAXED`` mode
+  performs no pre-launch access checks; ``CHECKED`` diagnoses known-invalid
+  access and warns when access cannot be verified, while ``STRICT`` requires
+  arrays to be allocated on the launch device. See
+  :ref:`Checked Launch Validation <launch_array_access_checks>`.
+  Wrong-device storage that the interface path previously rejected can now
+  reach a kernel unchecked in ``RELAXED`` mode, just as for a parent array.
+  Move arrays to the launch device or select an appropriate validation mode.
+* The subclass's ``__ctype__()`` method is now called by concrete launches.
+  Overrides must describe the object's own storage and preserve the native
+  descriptor contract. Fully initialize the parent and allow its descriptor
+  cache and bookkeeping writes; a shell that only forwards public attributes
+  through an array interface is insufficient.
+* Classification uses actual inheritance. A ``weakref.proxy`` or a wrapper
+  whose ``__class__`` property advertises a Warp class is not a Warp array at
+  native-family boundaries. Pass the referenced Warp array for struct fields,
+  indexed/strided copies, and explicit adjoint arguments. Its separate external
+  array interface can still be used for concrete regular-array launch parameters.
+* Recorded commands from ``wp.launch(..., record_cmd=True)`` retain arguments.
+  Manually constructing ``wp.Launch`` does not retain the incidental owner
+  reference previously supplied by the interface fallback; use recorded commands
+  or keep the arrays alive explicitly.
+
+A separate, non-Warp object that owns or references an array and exposes an
+array interface continues to use the external-interface path for concrete
+regular-array parameters. Keep its storage owner alive according to that
+protocol's requirements. CPU ``array.numpy()`` and ``np.asarray`` still use the
+array interface for interface-compatible dtypes. CUDA ``array.numpy()`` copies
+native Warp storage instead.
 
 .. code:: python
 
@@ -87,6 +156,70 @@ On CUDA, the same pattern works with CuPy, PyTorch, or any framework that expose
     wp.launch(saxpy, dim=n, inputs=[x, y, 1.0], device="cuda:0")
 
 When passing CUDA arrays, ensure the device on which the arrays reside matches the device on which the kernel is launched.
+
+.. _object_handle_interop:
+
+Object Handle Arrays
+--------------------
+
+External integer arrays do not carry Warp object-reference metadata.
+When sharing :class:`~warp.Mesh`, :class:`~warp.Volume`, :class:`~warp.Bvh`, or
+:class:`~warp.HashGrid` IDs, create a Warp array with
+``dtype=wp.handle`` or an explicit :meth:`array.view(wp.handle) <warp.array.view>`
+before passing it to a kernel annotated with ``wp.array[wp.handle]``.
+
+For example, construct a handle array from NumPy data with an explicit dtype:
+
+.. code:: python
+
+    # Keep the Mesh objects alive while these IDs are used.
+    numpy_ids = np.array([mesh.id for mesh in meshes], dtype=np.uint64)
+    mesh_ids = wp.array(numpy_ids, dtype=wp.handle, device="cpu")
+
+For an existing Warp array of 64-bit integer IDs, ``mesh_ids = integer_ids.view(wp.handle)``
+returns a zero-copy view; the original array keeps its dtype.
+
+Warp's NumPy imports accept ``dtype=wp.handle`` directly. PyTorch, JAX, Paddle, and DLPack imports
+require an integer dtype followed by a handle view. The table uses ``source`` for
+the external array and ``handles`` for a Warp array with ``dtype=wp.handle``.
+Use ``np.uint64`` storage for the NumPy row and signed 64-bit integer storage for
+the other rows. Call ``jax.config.update("jax_enable_x64", True)`` before
+creating JAX arrays to preserve all 64 bits of each ID. The integer views
+reinterpret the bits without a numeric cast.
+
+.. list-table::
+   :header-rows: 1
+   :widths: 12 48 40
+
+   * - Interface
+     - Import into Warp
+     - Export from Warp
+   * - NumPy
+     - ``wp.from_numpy(source, dtype=wp.handle)`` or
+       ``wp.array(source, dtype=wp.handle, device="cpu")``
+     - ``handles.numpy()``
+   * - PyTorch
+     - ``wp.from_torch(source, dtype=wp.int64).view(wp.handle)``
+     - ``wp.to_torch(handles.view(wp.int64))``
+   * - JAX
+     - ``wp.from_jax(source, dtype=wp.int64).view(wp.handle)``
+     - ``wp.to_jax(handles.view(wp.int64))``
+   * - Paddle
+     - ``wp.from_paddle(source, dtype=wp.int64).view(wp.handle)``
+     - ``wp.to_paddle(handles.view(wp.int64))``
+   * - DLPack
+     - ``wp.from_dlpack(source, dtype=wp.int64).view(wp.handle)``
+     - ``wp.to_dlpack(handles.view(wp.int64))``
+
+The DLPack export returns a single-use capsule for the receiving framework's
+consumer. Consult each converter's dtype, device, and ownership rules.
+Direct handle support in the converters is tracked in
+`GH-2292 <https://github.com/NVIDIA/warp/issues/2292>`_.
+
+External integer storage does not identify referenced objects or keep them alive, and sharing
+an ID does not make it valid in another process.
+See :ref:`object_handle_arrays` for kernel and struct declarations and :ref:`apic_save_load`
+for the mesh-only resource serialization currently supported by API Capture.
 
 NumPy
 -----
@@ -245,3 +378,5 @@ The framework-specific converters (:func:`warp.to_torch`, :func:`warp.to_paddle`
 
    interoperability/pytorch
    interoperability/jax
+   interoperability/array_function_overrides
+   interoperability/cutile

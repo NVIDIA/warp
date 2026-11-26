@@ -3,6 +3,8 @@
 
 import unittest
 
+import numpy as np
+
 import warp as wp
 from warp.tests.unittest_utils import *
 
@@ -266,7 +268,23 @@ devices = get_test_devices()
 
 
 class TestOperators(unittest.TestCase):
-    pass
+    def test_unot_python_scope(self):
+        """Compute the logical NOT of booleans and integers at the Python scope."""
+        self.assertIs(wp.unot(True), False)
+        self.assertIs(wp.unot(False), True)
+        self.assertIs(wp.unot(wp.bool(True)), False)
+        self.assertIs(wp.unot(wp.bool(False)), True)
+        self.assertIs(wp.unot(0), True)
+        self.assertIs(wp.unot(5), False)
+
+        for dtype in wp._src.types.int_types:
+            info = np.iinfo(wp.dtype_to_numpy(dtype))
+            # Only the top bit set, so converting to a narrower type would lose it.
+            top_bit = info.min if info.min < 0 else info.max // 2 + 1
+            with self.subTest(dtype=dtype.__name__):
+                self.assertIs(wp.unot(dtype(0)), True)
+                self.assertIs(wp.unot(dtype(1)), False)
+                self.assertIs(wp.unot(dtype(top_bit)), False)
 
 
 add_kernel_test(TestOperators, test_operators_scalar_float, dim=1, devices=devices)

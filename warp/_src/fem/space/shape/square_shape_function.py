@@ -44,6 +44,8 @@ class SquareShapeFunction(ShapeFunction):
 class SquareBipolynomialShapeFunctions(SquareShapeFunction):
     """Bipolynomial (tensor-product Lagrange) shape functions on quadrilateral elements."""
 
+    INTERPOLATORY = True
+
     def __init__(self, degree: int, family: Polynomial, scalar_type: type = wp.float32):
         self.family = family
         self.scalar_type = scalar_type
@@ -341,6 +343,8 @@ class SquareSerendipityShapeFunctions(SquareShapeFunction):
     Side shape functions are usual Lagrange shape functions times a linear function in the normal direction.
     Corner shape functions are bilinear shape functions times a function of (x^{d-1} + y^{d-1}).
     """
+
+    INTERPOLATORY = True
 
     def __init__(self, degree: int, family: Polynomial, scalar_type: type = wp.float32):
         if not is_closed(family):
@@ -650,6 +654,8 @@ class SquareSerendipityShapeFunctions(SquareShapeFunction):
 class SquareNonConformingPolynomialShapeFunctions(ShapeFunction):
     """Non-conforming polynomial shape functions on quadrilateral elements using embedded triangles."""
 
+    INTERPOLATORY = True
+
     # embeds the largest equilateral triangle centered at (0.5, 0.5) into the reference square
     _tri_height = 0.75
     _tri_side = 2.0 / math.sqrt(3.0) * _tri_height
@@ -888,6 +894,9 @@ class SquareNedelecFirstKindShapeFunctions(SquareShapeFunction):
             coords: Any,
             node_index_in_elt: int,
         ):
+            if node_index_in_elt < 0:
+                return mat22_type(scalar(0.0))
+
             node_type, type_instance, _type_index = self.node_type_and_type_index(node_index_in_elt)
 
             axis = node_type - SquareShapeFunction.EDGE_X
@@ -996,6 +1005,9 @@ class SquareRaviartThomasShapeFunctions(SquareShapeFunction):
             coords: Any,
             node_index_in_elt: int,
         ):
+            if node_index_in_elt < 0:
+                return vec2_type(scalar(0.0))
+
             node_type, type_instance, _type_index = self.node_type_and_type_index(node_index_in_elt)
 
             axis = node_type - SquareShapeFunction.EDGE_X
@@ -1018,6 +1030,9 @@ class SquareRaviartThomasShapeFunctions(SquareShapeFunction):
             coords: Any,
             node_index_in_elt: int,
         ):
+            if node_index_in_elt < 0:
+                return mat22_type(scalar(0.0))
+
             node_type, type_instance, _type_index = self.node_type_and_type_index(node_index_in_elt)
 
             axis = node_type - SquareShapeFunction.EDGE_X

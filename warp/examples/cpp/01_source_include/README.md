@@ -39,7 +39,7 @@ Workflow:
 This example runs from within the Warp repository.
 
 **Requirements:**
-- **Python 3.10+**
+- **Python 3.11+**
 - **CUDA Toolkit 12.8+** (includes `nvcc` compiler; 12.8+ required for `sm_120` support)
 - **NVIDIA GPU** (supports multiple architectures via multi-arch compilation)
 - **Build System**: GNU Make (Unix/Linux) or CMake 3.20+ (cross-platform)
@@ -106,10 +106,10 @@ Error:   Δa=0.022687, Δb=0.148992
 ```python
 @wp.kernel
 def compute_loss(
-    params: wp.array(dtype=wp.float32),
-    x: wp.array(dtype=wp.float32),
-    y_true: wp.array(dtype=wp.float32),
-    loss: wp.array(dtype=wp.float32),
+    params: wp.array[wp.float32],
+    x: wp.array[wp.float32],
+    y_true: wp.array[wp.float32],
+    loss: wp.array[wp.float32],
 ):
     tid = wp.tid()
     a, b = params[0], params[1]
@@ -119,7 +119,7 @@ def compute_loss(
 
 
 @wp.kernel
-def update_params(learning_rate: wp.float32, grads: wp.array(dtype=wp.float32), params: wp.array(dtype=wp.float32)):
+def update_params(learning_rate: wp.float32, grads: wp.array[wp.float32], params: wp.array[wp.float32]):
     tid = wp.tid()
     params[tid] -= learning_rate * grads[tid]
 

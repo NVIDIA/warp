@@ -7,7 +7,10 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 
 import ast
+import enum
+import functools
 import importlib
+import importlib.util
 import inspect
 import json
 import operator
@@ -15,7 +18,6 @@ import os
 import pkgutil
 import re
 import sys
-import types
 from typing import TypeVar
 
 import docutils
@@ -23,8 +25,12 @@ import sphinx
 import sphinx.util.logging
 from sphinx import addnodes
 from sphinx.environment.adapters.toctree import note_toctree
+from sphinx.ext.autodoc.preserve_defaults import update_defvalue
 from sphinx.ext.autosummary import autosummary_toc
 from sphinx.ext.autosummary.generate import AutosummaryRenderer
+from sphinx.util.inspect import signature as sphinx_signature
+from sphinx.util.inspect import stringify_signature
+from sphinx.util.typing import stringify_annotation
 
 _RE_WP_DOT = re.compile(r"\bwp\.")
 
@@ -133,6 +139,13 @@ nitpick_ignore_regex = [
     (r"py:obj", r"warp\.(Texture\w+|fixedarray|indexedarray|indexedfabricarray|fabricarray|fem\.).*"),
     # Members inherited from IsoSurfaceBase, listed in member tables but documented on the base class
     (r"py:obj", r"warp\.geometry\.IsoSurface(MarchingCubes|Nets)\.(resize|surface|extract)"),
+    # KrylovSolve inherits reset_stats from a private base; the user guide documents it.
+    (r"py:obj", r"warp\.optim\.linear\.KrylovSolve\.reset_stats"),
+    # MultiRHSOperator inherits these documented LinearOperator attributes.
+    (
+        "py:obj",
+        r"warp\.optim\.linear\.MultiRHSOperator\.(batch_count|batch_offsets|device|dtype|matvec|max_batch_length|scalar_type|shape)",
+    ),
     # FSAI inherits these attributes; their documentation is on LinearOperator.
     (
         r"py:obj",
@@ -281,8 +294,8 @@ autodoc_inherit_docstrings = False
 # unindented "alias of" line runs into the preceding ``.. autosummary::``
 # block and docutils reports "Explicit markup ends without a blank line".
 # Prepend a blank line so the generated reST stays well-formed. The private
-# ``_generate`` module was added in Sphinx 9, while Python <3.11 docs builds
-# still resolve to Sphinx 8 from ``uv.lock``.
+# ``_generate`` module was added in Sphinx 9. Keep the guard for environments
+# using an older Sphinx release.
 try:
     import sphinx.ext.autodoc._generate as _autodoc_generate
 except ModuleNotFoundError as e:
@@ -360,32 +373,60 @@ for _builtin_name in wp._src.context.builtin_functions:
 from docs._ext.warp_function_reference import describe_function, source_url  # noqa: E402
 
 
-def _is_inherited_builtin_member(cls, member):
+def _is_warp_module(module_name):
+    return module_name == "warp" or module_name.startswith("warp.")
+
+
+def _is_foreign_member(cls, member):
+    """Return whether ``member`` is first defined outside Warp, such as by ``int`` or ``enum.Enum``."""
     for owner in inspect.getmro(cls):
         if member in vars(owner):
-            return owner is not cls and owner.__module__ == "builtins"
+            return not _is_warp_module(owner.__module__)
 
+    # Instance attributes that the source analyzer found belong to Warp.
     return False
 
 
-def _hide_inherited_builtin_members(context):
+def _get_documented_class(context):
     module_name = context.get("module")
     object_name = context.get("objname")
     if not module_name or not object_name:
-        return
+        return None
 
     try:
         module = importlib.import_module(module_name)
         cls = operator.attrgetter(object_name)(module)
     except (AttributeError, ImportError):
-        return
+        return None
 
-    if not inspect.isclass(cls):
+    return cls if inspect.isclass(cls) else None
+
+
+def _get_class_alias_doc(context, cls):
+    """Return the docstring of a class documented under another name, such as ``warp.fem.ElementIndex``.
+
+    Autodoc renders such an alias as "alias of int", and looks for its docstring
+    only in the module that re-exports it. The docstring that follows the
+    assignment in ``warp._src`` never reaches the page, so the template adds it.
+    """
+    name = context["objname"].rpartition(".")[2]
+    if cls.__name__ == name:
+        return None
+
+    return find_constant_doc(context["fullname"])
+
+
+def _filter_class_members(context, cls):
+    if cls is wp.fixedarray:
+        # fixedarray is a compiler-only type descriptor. Its inherited array API
+        # and internal vars property are not part of its public interface.
+        context["methods"] = []
+        context["attributes"] = []
         return
 
     for member_group in ("methods", "attributes"):
         context[member_group] = [
-            member for member in context.get(member_group, ()) if not _is_inherited_builtin_member(cls, member)
+            member for member in context.get(member_group, ()) if not _is_foreign_member(cls, member)
         ]
 
 
@@ -408,8 +449,9 @@ class AutosummaryRenderer(AutosummaryRenderer):
         context["wp_annotation_override"] = AUTOSUMMARY_ANNOTATION_OVERRIDES.get(context.get("fullname"))
         context["wp_no_value"] = _is_type_var(context.get("fullname", ""))
 
-        if context.get("objtype") == "class":
-            _hide_inherited_builtin_members(context)
+        if context.get("objtype") == "class" and (cls := _get_documented_class(context)) is not None:
+            _filter_class_members(context, cls)
+            context["wp_alias_doc"] = _get_class_alias_doc(context, cls)
 
         # Autosummary classifies a `warp._src.context.Function` as data, which renders
         # its `repr()` in place of a signature.  Route the registered ones through the
@@ -496,12 +538,36 @@ intersphinx_timeout = 2
 linkcheck_anchors_ignore_for_url = [r"https://docs\.pytorch\.org/docs/stable/.*"]
 
 _sphinx_logger = sphinx.util.logging.getLogger(__name__)
+
+
+def _with_fallback_inventories(mapping, fallback_dir):
+    """Add cached inventories from ``fallback_dir`` as second locations.
+
+    CI can provide cached copies of the inventories, named ``<name>.inv``, so
+    that a slow or unreachable docs site does not fail a warnings-as-errors
+    build. Sphinx tries the URL first and reads the cached copy only if that
+    fails, which it reports at INFO level. The names must match the files CI
+    provides (``fetch-intersphinx-fallback`` in ``.gitlab/ci/common.yml``).
+    """
+    if not fallback_dir:
+        return mapping
+    result = {}
+    for name, (target_uri, inventory) in mapping.items():
+        cached = os.path.join(fallback_dir, f"{name}.inv")
+        result[name] = (target_uri, (inventory, cached)) if os.path.isfile(cached) else (target_uri, inventory)
+    with_fallback = sorted(name for name, (_, inventory) in result.items() if isinstance(inventory, tuple))
+    _sphinx_logger.info(f"intersphinx: cached fallback inventories for {', '.join(with_fallback) or 'none'}")
+    return result
+
+
 # WARP_DOCS_OFFLINE=1 skips external resolution entirely for known-offline builds.
 if os.environ.get("WARP_DOCS_OFFLINE") == "1":
     _sphinx_logger.info("intersphinx: WARP_DOCS_OFFLINE=1 set; skipping external cross-reference resolution.")
     intersphinx_mapping = {}
 else:
-    intersphinx_mapping = _intersphinx_mapping
+    intersphinx_mapping = _with_fallback_inventories(
+        _intersphinx_mapping, os.environ.get("WARP_INTERSPHINX_FALLBACK_DIR")
+    )
 
 
 # -- sphinx.ext.linkcode -----------------------------------------------------
@@ -546,23 +612,26 @@ copybutton_prompt_text = r">>> |\.\.\. |\$ "  # Prompts (>>>, ..., $) to strip w
 # -- Hooks -------------------------------------------------------------------
 
 
-BUILTIN_DOCSTRINGS = (
-    "Convert a string or number to a floating-point number",
-    "Return the integer represented by the given array of bytes",
-    "bool(x) -> bool",
-    "int([x]) -> integer",
-)
+def drop_value_type_docstrings(app, what, name, obj, options, lines):
+    """Drop a data docstring that autodoc read from the type of the value.
 
-
-def filter_builtin_docstrings(app, what, name, obj, options, lines):
-    """Remove docstrings inherited from Python built-in types."""
-    if not lines:
+    Without a docstring next to a re-export, autodoc falls back to
+    ``obj.__doc__``, which for values such as ``warp.PI``, ``warp.LOG_INFO``,
+    or ``warp.Scalar`` is the docstring of ``float``, ``int``, or
+    ``typing.TypeVar``. Clearing it lets ``populate_reexported_docstrings``
+    add the docstring of the Warp constant instead.
+    """
+    if what not in ("data", "attribute") or inspect.isclass(obj) or inspect.isroutine(obj):
         return
 
-    for prefix in BUILTIN_DOCSTRINGS:
-        if lines[0].startswith(prefix):
-            lines.clear()
-            return
+    # Compare with ``==``: built-in types build a new ``__doc__`` string on each access.
+    type_doc = getattr(type(obj), "__doc__", None)
+    if not isinstance(type_doc, str) or getattr(obj, "__doc__", None) != type_doc:
+        return
+
+    # A docstring that the source analyzer found for the attribute stays.
+    if "\n".join(lines).strip() == inspect.cleandoc(type_doc).strip():
+        lines.clear()
 
 
 def rewrite_wp_in_docstrings(app, what, name, obj, options, lines):
@@ -615,7 +684,12 @@ def rewrite_wp_in_docstrings(app, what, name, obj, options, lines):
 
 
 def build_constant_docs_cache():
-    """Build a cache of constant docstrings from all warp._src modules."""
+    """Map each documented constant in ``warp._src`` to its docstring, keyed by its qualified name.
+
+    A key names the module that assigns the constant, such as
+    ``warp._src.fem.types.Coords``, so that constants with the same name in
+    different modules keep their own docstrings.
+    """
     out = {}
 
     for _, modname, _ in pkgutil.walk_packages(warp._src.__path__, prefix=warp._src.__name__ + "."):
@@ -641,14 +715,14 @@ def build_constant_docs_cache():
             if isinstance(node, ast.Assign):
                 for target in node.targets:
                     if isinstance(target, ast.Name):
-                        out[target.id] = docstring
+                        out[f"{modname}.{target.id}"] = docstring
                     elif isinstance(target, ast.Tuple):
                         for elt in target.elts:
                             if isinstance(elt, ast.Name):
-                                out[elt.id] = docstring
+                                out[f"{modname}.{elt.id}"] = docstring
             # Handle annotated assignments (ast.AnnAssign), e.g. `x: int = 1`
             elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
-                out[node.target.id] = docstring
+                out[f"{modname}.{node.target.id}"] = docstring
 
     return out
 
@@ -656,31 +730,87 @@ def build_constant_docs_cache():
 CONSTANT_DOCS_CACHE = build_constant_docs_cache()
 
 
+def _find_import_source(module_name, name):
+    """Return the ``(module, name)`` that ``module_name`` imports ``name`` from, or ``None``."""
+    module = importlib.import_module(module_name)
+    try:
+        tree = ast.parse(inspect.getsource(module))
+    except (OSError, TypeError):
+        return None
+
+    # The last import that binds the name wins, as at runtime.
+    for node in reversed(tree.body):
+        if not isinstance(node, ast.ImportFrom):
+            continue
+
+        source = importlib.util.resolve_name("." * node.level + (node.module or ""), module.__package__)
+        for alias in node.names:
+            if alias.name == "*":
+                source_module = importlib.import_module(source)
+                # Without ``__all__``, a star import binds every name that doesn't start with an underscore.
+                exported_names = getattr(source_module, "__all__", None)
+                if exported_names is None:
+                    exported_names = [x for x in vars(source_module) if not x.startswith("_")]
+
+                if name in exported_names:
+                    return source, name
+            elif (alias.asname or alias.name) == name:
+                return source, alias.name
+
+    return None
+
+
+@functools.cache
+def find_constant_doc(fullname):
+    """Return the docstring of the constant that a public name, such as ``warp.fem.Coords``, refers to.
+
+    Follows the imports from the public module to the ``warp._src`` module
+    that assigns the constant. Warns when the imports stop outside
+    ``warp._src`` while a ``warp._src`` constant with the same name has a
+    docstring, since the page would otherwise lose it without notice.
+    """
+    module_name, _, name = fullname.rpartition(".")
+    while (qualname := f"{module_name}.{name}") not in CONSTANT_DOCS_CACHE:
+        source = _find_import_source(module_name, name)
+        if source is None:
+            # Inside ``warp._src``, the imports stop where the constant is defined, so it has no docstring.
+            # Elsewhere, a re-export that they can't follow, such as ``FOO = _x.FOO``, hides the docstring.
+            if f"{module_name}.".startswith("warp._src."):
+                return None
+
+            if candidates := sorted(x for x in CONSTANT_DOCS_CACHE if x.rpartition(".")[2] == name):
+                _sphinx_logger.warning(
+                    "cannot find the docstring of %s: its imports don't lead to %s. "
+                    "Re-export it with `from <module> import %s as %s`.",
+                    fullname,
+                    " or ".join(candidates),
+                    name,
+                    fullname.rpartition(".")[2],
+                )
+            return None
+
+        module_name, name = source
+
+    return CONSTANT_DOCS_CACHE[qualname]
+
+
 def populate_reexported_docstrings(app, what, name, obj, options, lines):
     """Populate docstrings for re-exported module-level constants.
 
     When a constant is re-exported via `from module import X as X`, Sphinx's
-    autodoc cannot find its docstring. This function looks up the docstring
-    from the source module using string literals that follow constant
-    assignments.
+    autodoc cannot find its docstring. This function follows the imports from
+    the public name to the module that assigns the constant, and uses the
+    string literal that follows the assignment.
     """
     if what != "data":
         return
-
-    if isinstance(obj, (TypeVar, types.UnionType)) and obj.__doc__ == type(obj).__doc__:
-        # Type annotation objects inherit their class docstring, such as the
-        # ``typing.TypeVar`` one, which says nothing about this annotation.
-        lines.clear()
 
     if lines:
         # Already has a docstring, nothing to do
         return
 
-    # Extract the simple name from the full qualified name
-    simple_name = name.split(".")[-1]
-
-    if simple_name in CONSTANT_DOCS_CACHE:
-        lines.extend(CONSTANT_DOCS_CACHE[simple_name].splitlines())
+    if (docstring := find_constant_doc(name)) is not None:
+        lines.extend(docstring.splitlines())
 
 
 def rewrite_internal_module_paths(app, doctree, docname):
@@ -692,6 +822,77 @@ def rewrite_internal_module_paths(app, doctree, docname):
         if "._src.lang." in node.astext():
             new_text = node.astext().replace("._src.lang.", ".")
             node.parent.replace(node, docutils.nodes.Text(new_text))
+
+
+def _is_pass_through(func):
+    """Return whether ``func`` takes only ``*args, **kwargs`` after its first parameter."""
+    try:
+        params = tuple(inspect.signature(func).parameters.values())[1:]
+    except (TypeError, ValueError):
+        return False
+
+    return tuple(param.kind for param in params) == (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
+
+
+def _get_hidden_init(cls):
+    """Return the Warp ``__init__`` hidden behind a Warp ``__new__`` that passes its arguments through."""
+    new, init = cls.__new__, cls.__init__
+    if not inspect.isfunction(new) or not _is_warp_module(new.__module__) or not _is_pass_through(new):
+        return None
+
+    if not inspect.isfunction(init) or not _is_warp_module(init.__module__) or _is_pass_through(init):
+        return None
+
+    return init
+
+
+def format_class_signature(app, what, name, obj, options, signature, return_annotation):
+    """Replace class signatures that come from Python or hide the constructor arguments.
+
+    Enums get ``(*values)`` from :class:`enum.EnumType`, and protocols get
+    ``(*args, **kwargs)`` from :class:`typing.Protocol`. Neither is how Warp
+    users create them, so these classes show no signature.
+
+    Some Warp classes define ``__new__(cls, *args, **kwargs)`` only to preset
+    attributes that ``__del__`` reads. Sphinx and :func:`inspect.signature`
+    prefer ``__new__`` over ``__init__``, so these classes show the signature
+    and the parameter types of their ``__init__`` instead.
+    """
+    if what != "class" or not inspect.isclass(obj):
+        return None
+
+    if issubclass(obj, enum.Enum) or getattr(obj, "_is_protocol", False):
+        return "", return_annotation
+
+    init = _get_hidden_init(obj)
+    # Sphinx's own store for the parameter types it lists in the description.
+    # It's undocumented: if it moves, keep Sphinx's signature rather than fail.
+    annotations = getattr(getattr(app.env, "current_document", None), "autodoc_annotations", None)
+    if init is None or annotations is None:
+        return None
+
+    update_defvalue(app, init, bound_method=True)
+    sig = sphinx_signature(init, bound_method=True, type_aliases=app.config.autodoc_type_aliases)
+
+    # Sphinx has already recorded the parameter types of `__new__`, before this
+    # event; record those of `__init__` the same way.
+    short = app.config.autodoc_typehints_format == "short"
+    short_literals = app.config.python_display_short_literal_types
+    recorded = annotations.setdefault(name, {})
+    for param in sig.parameters.values():
+        if param.annotation is not param.empty:
+            recorded[param.name] = stringify_annotation(
+                param.annotation, "smart" if short else "fully-qualified", short_literals=short_literals
+            )
+
+    args = stringify_signature(
+        sig,
+        show_annotation=app.config.autodoc_typehints not in ("none", "description"),
+        show_return_annotation=False,
+        unqualified_typehints=short,
+        short_literals=short_literals,
+    )
+    return _RE_WP_DOT.sub("warp.", args), return_annotation
 
 
 def rewrite_wp_aliases(app, what, name, obj, options, signature, return_annotation):
@@ -875,6 +1076,14 @@ DOC_REDIRECTS = {
     "user_guide/publications": "project/publications.html",
     "deep_dive/memory_access": "user_guide/execution_and_performance/memory_management.html",
     "user_guide/devices": "user_guide/runtime.html#devices",
+    # `warp.build_experimental` moved to `warp.experimental.build` in Warp 1.20.
+    "api_reference/warp_build_experimental": "api_reference/warp_experimental_build.html",
+    "api_reference/_generated/warp.build_experimental.add_builtin": (
+        "api_reference/_generated/warp.experimental.build.add_builtin.html"
+    ),
+    "api_reference/_generated/warp.build_experimental.add_native_type": (
+        "api_reference/_generated/warp.experimental.build.add_native_type.html"
+    ),
 }
 
 # Legacy fragments whose content moved to a different page or whose generated
@@ -962,9 +1171,14 @@ def setup(app):
     # reference .rst files exist before autosummary scans for stub directives.
     app.connect("builder-inited", generate_reference_docs, priority=400)
     app.connect("html-page-context", hide_generated_api_edit_link)
-    app.connect("autodoc-process-docstring", filter_builtin_docstrings)
+    # Before napoleon (priority 500) rewrites the docstring of the value's type,
+    # and before `populate_reexported_docstrings` fills the cleared lines.
+    app.connect("autodoc-process-docstring", drop_value_type_docstrings, priority=400)
     app.connect("autodoc-process-docstring", rewrite_wp_in_docstrings)
     app.connect("autodoc-process-docstring", populate_reexported_docstrings)
+    # Sphinx keeps the first handler result, and `rewrite_wp_aliases` always
+    # returns one, so this handler must run before it.
+    app.connect("autodoc-process-signature", format_class_signature, priority=400)
     app.connect("autodoc-process-signature", rewrite_wp_aliases)
     app.connect("missing-reference", resolve_wp_aliases)
     app.connect("missing-reference", resolve_public_builtin_aliases)

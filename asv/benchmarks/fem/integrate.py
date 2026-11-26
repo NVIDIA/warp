@@ -329,6 +329,13 @@ class FemCorotatedElasticitySparseAssembly:
         wp.synchronize_device(self.device)
 
     def make_sparse_assembly_func(self, space: fem.FunctionSpace, fn: str, assembly: str):
+        # With the default release threshold of zero, the memory pool returns freed
+        # blocks to the driver at every synchronization, so each timed call would
+        # also time the driver mapping memory for the operation's temporaries,
+        # which depends on the pool's state. Keep freed blocks in the pool.
+        if self.device.is_mempool_supported:
+            wp.set_mempool_release_threshold(self.device, 1.0)
+
         integrate_hessian = _make_corotated_hessian_integrator(space, assembly)
 
         if fn == "hessian":

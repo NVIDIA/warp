@@ -3,6 +3,10 @@
 .. currentmodule:: {{ module }}
 
 .. autoclass:: {{ objname }}
+{%- if wp_alias_doc %}
+
+   {{ wp_alias_doc | indent(width=3, first=false, blank=true) }}
+{% endif %}
    {% block methods %}
    {%- set documented_methods = [] %}
    {%- for item in methods if item != "__init__" %}

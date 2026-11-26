@@ -4,7 +4,13 @@
 """Benchmarks for atomic operations under high thread contention.
 
 All threads write to a single output location (index 0) to maximize contention
-and measure worst-case atomic operation performance.
+and measure worst-case atomic operation performance. For float32, the atomic is a
+compare-and-swap loop that returns early when the output already holds a better
+value. The inputs are sorted so that each thread's value improves on those of the
+threads launched before it, which makes most threads attempt the compare-and-swap
+instead of returning early. With unsorted inputs, how many threads attempt it
+depends on how quickly the running result reaches the other threads, which varies
+from run to run.
 """
 
 import math
@@ -13,6 +19,8 @@ from typing import Any
 import numpy as np
 
 import warp as wp
+
+from .benchmarks_utils import CudaEventTimer
 
 # Map string parameter names to warp dtypes
 DTYPE_MAP = {
@@ -37,8 +45,8 @@ _LAUNCH_CACHE = {}
 
 @wp.kernel
 def max_kernel(
-    vals: wp.array(dtype=Any),
-    out: wp.array(dtype=Any),
+    vals: wp.array[Any],
+    out: wp.array[Any],
 ):
     tid = wp.tid()
     val = vals[tid]
@@ -47,8 +55,8 @@ def max_kernel(
 
 @wp.kernel
 def min_kernel(
-    vals: wp.array(dtype=Any),
-    out: wp.array(dtype=Any),
+    vals: wp.array[Any],
+    out: wp.array[Any],
 ):
     tid = wp.tid()
     val = vals[tid]
@@ -88,20 +96,14 @@ def _get_launch(kernel, vals_np, dtype, device, init_value):
 
 
 class AtomicMax:
-    """Benchmark wp.atomic_max() with high thread contention.
-
-    Uses 4x larger arrays (128M elements) to reduce measurement variation,
-    as atomic_max showed ~10% variation with the default 32M elements.
-    """
+    """Benchmark wp.atomic_max() with high thread contention."""
 
     params = ["float32", "int32"]
     param_names = ["dtype"]
 
-    repeat = 50
-    number = 15
-
-    # Use 4x more elements to reduce measurement variation
-    num_elements = 4 * NUM_ELEMENTS
+    timer = CudaEventTimer()
+    repeat = 20
+    number = 1
 
     def setup_cache(self):
         rng = np.random.default_rng(42)
@@ -109,9 +111,9 @@ class AtomicMax:
         vals_np_dict = {}
         for dtype_str_key, dtype in DTYPE_MAP.items():
             if dtype == wp.float32:
-                vals_np = rng.random(self.num_elements).astype(np.float32)
+                vals_np = np.sort(rng.random(NUM_ELEMENTS).astype(np.float32))
             elif dtype == wp.int32:
-                vals_np = rng.integers(0, 2**31 - 1, size=self.num_elements, dtype=np.int32)
+                vals_np = np.sort(rng.integers(0, 2**31 - 1, size=NUM_ELEMENTS, dtype=np.int32))
             else:
                 vals_np = None
             vals_np_dict[dtype_str_key] = vals_np
@@ -132,20 +134,17 @@ class AtomicMax:
     def time_cuda(self, vals_np_dict, dtype_str):
         self.out.fill_(self.init_value)
         self.cmd.launch()
-        wp.synchronize_device(self.device)
 
 
 class AtomicMin:
-    """Benchmark wp.atomic_min() with high thread contention.
-
-    Uses standard array size (32M elements) as measurements are already stable.
-    """
+    """Benchmark wp.atomic_min() with high thread contention."""
 
     params = ["float32", "int32"]
     param_names = ["dtype"]
 
-    repeat = 100
-    number = 25
+    timer = CudaEventTimer()
+    repeat = 20
+    number = 1
 
     def setup_cache(self):
         rng = np.random.default_rng(42)
@@ -153,9 +152,9 @@ class AtomicMin:
         vals_np_dict = {}
         for dtype_str_key, dtype in DTYPE_MAP.items():
             if dtype == wp.float32:
-                vals_np = rng.random(NUM_ELEMENTS).astype(np.float32)
+                vals_np = np.sort(rng.random(NUM_ELEMENTS).astype(np.float32))[::-1].copy()
             elif dtype == wp.int32:
-                vals_np = rng.integers(0, 2**31 - 1, size=NUM_ELEMENTS, dtype=np.int32)
+                vals_np = np.sort(rng.integers(0, 2**31 - 1, size=NUM_ELEMENTS, dtype=np.int32))[::-1].copy()
             else:
                 vals_np = None
             vals_np_dict[dtype_str_key] = vals_np
@@ -176,4 +175,3 @@ class AtomicMin:
     def time_cuda(self, vals_np_dict, dtype_str):
         self.out.fill_(self.init_value)
         self.cmd.launch()
-        wp.synchronize_device(self.device)

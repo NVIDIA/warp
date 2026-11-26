@@ -185,7 +185,7 @@ class BlockCholeskySolver:
         )  # array to hold active matrix size
         self.active_matrix_size_external = None
 
-    def factorize(self, A: wp.array(dtype=float, ndim=2), num_active_equations: int):
+    def factorize(self, A: wp.array2d[float], num_active_equations: int):
         """Compute the Cholesky factorization of a symmetric positive definite matrix ``A`` in blocks.
 
         It returns a lower-triangular matrix ``L`` such that ``A = L L^T``.
@@ -216,7 +216,7 @@ class BlockCholeskySolver:
         self.active_matrix_size_external = None
         self.active_matrix_size_int = num_active_equations
 
-    def factorize_dynamic(self, A: wp.array(dtype=float, ndim=2), num_active_equations: wp.array(dtype=int, ndim=1)):
+    def factorize_dynamic(self, A: wp.array2d[float], num_active_equations: wp.array[int]):
         """Compute the Cholesky factorization of a symmetric positive definite matrix ``A`` in blocks.
 
         It returns a lower-triangular matrix ``L`` such that ``A = L L^T``.
@@ -233,7 +233,7 @@ class BlockCholeskySolver:
             device=self.device,
         )
 
-    def solve(self, rhs: wp.array(dtype=float, ndim=2), result: wp.array(dtype=float, ndim=2)):
+    def solve(self, rhs: wp.array2d[float], result: wp.array2d[float]):
         """Solve ``A x = b`` given the Cholesky factor ``L (A = L L^T)`` using blocked forward and backward substitution.
 
         ``b`` must be a 2-D column vector.

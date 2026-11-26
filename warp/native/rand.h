@@ -257,8 +257,7 @@ inline CUDA_CALLABLE uint32 random_poisson_mult(uint32& state, float lam)
  */
 inline CUDA_CALLABLE uint32 random_poisson(uint32& state, float lam)
 {
-    uint32 k;
-    float U, V, slam, loglam, a, b, invalpha, vr, us;
+    float U, V, slam, loglam, a, b, invalpha, vr, us, k;
 
     slam = sqrt(lam);
     loglam = log(lam);
@@ -271,15 +270,18 @@ inline CUDA_CALLABLE uint32 random_poisson(uint32& state, float lam)
         U = randf(state) - 0.5f;
         V = randf(state);
         us = 0.5f - abs(U);
-        k = uint32(floor((2.f * a / us + b) * U + lam + 0.43f));
+        // Keep the candidate in floating point until it is known to be non-negative: converting
+        // a negative float to uint32 is undefined behavior; CUDA and ARM CPUs saturate it to 0,
+        // which biased the samples toward zero.
+        k = floor((2.f * a / us + b) * U + lam + 0.43f);
         if ((us >= 0.07f) && (V <= vr)) {
-            return k;
+            return uint32(k);
         }
-        if ((us < 0.013f) && (V > us)) {
+        if ((k < 0.f) || ((us < 0.013f) && (V > us))) {
             continue;
         }
-        if ((log(V) + log(invalpha) - log(a / (us * us) + b)) <= (-lam + k * loglam - random_loggam(k + 1))) {
-            return k;
+        if ((log(V) + log(invalpha) - log(a / (us * us) + b)) <= (-lam + k * loglam - random_loggam(k + 1.f))) {
+            return uint32(k);
         }
     }
 }

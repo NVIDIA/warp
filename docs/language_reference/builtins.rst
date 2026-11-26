@@ -56,6 +56,7 @@ Scalar Math
    tan
    tanh
    trunc
+   value
 
 Vector Math
 -----------
@@ -200,10 +201,12 @@ Tile Primitives
    tile_from_thread
    tile_full
    tile_ifft
+   tile_ldlt
    tile_load
    tile_load_indexed
    tile_lower_solve
    tile_lower_solve_inplace
+   tile_lu
    tile_map
    tile_matmul
    tile_max
@@ -381,6 +384,7 @@ Utility
    block_dim
    breakpoint
    cast
+   empty
    expect_near
    len
    lerp

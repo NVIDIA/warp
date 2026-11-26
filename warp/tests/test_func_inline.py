@@ -61,11 +61,15 @@ class TestFuncInline(unittest.TestCase):
 
             for device in ("cpu", "cuda"):
                 with self.subTest(device=device, inline=inline):
-                    # NOTE: match on each macro's use, not its name -- the module header
-                    # #defines both regardless of whether any function requested them.
+                    # Match the helper definition: CPU kernel wrappers can carry their own
+                    # inline attributes, and the module header defines both macros.
                     source = module_source(uses_helper, device)
-                    emitted = [m for m in ("WP_NOINLINE", "WP_FORCEINLINE") if f"static {m} " in source]
-                    self.assertEqual(emitted, [macro] if macro else [])
+                    helper_name = re.compile(rf"\b(?:adj_)?{re.escape(helper.native_func)}\w*\($")
+                    definitions = [line for line in source.splitlines() if helper_name.search(line)]
+                    self.assertTrue(definitions, "expected generated definitions for the helper")
+                    for definition in definitions:
+                        emitted = [m for m in ("WP_NOINLINE", "WP_FORCEINLINE") if m in definition]
+                        self.assertEqual(emitted, [macro] if macro else [], definition)
 
     def test_inline_attr_applied_to_adjoint(self):
         """Apply the inline attribute to the generated adjoint as well as the forward function."""

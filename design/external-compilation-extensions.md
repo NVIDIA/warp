@@ -27,8 +27,8 @@ general C++ build system.
 | R1  | Add CPU and CUDA include directories and source preambles per module | Must | `wp.ModuleBuildOptions` |
 | R2  | Recompile when an explicitly listed external dependency changes | Must | `extra_build_dependencies`, content-hashed |
 | R3  | Compose build inputs from multiple addons without mutation | Must | `ModuleBuildOptions.merged()` |
-| R4  | Register an external C++ function through a small public API | Must | `wp.build_experimental.add_builtin()` |
-| R5  | Register opaque and field-described external C++ value types | Must | `wp.build_experimental.add_native_type()` |
+| R4  | Register an external C++ function through a small public API | Must | `wp.experimental.build.add_builtin()` |
+| R5  | Register opaque and field-described external C++ value types | Must | `wp.experimental.build.add_native_type()` |
 | R6  | Validate host/native ABI assumptions during compilation | Must | Generated `static_assert`s |
 | R7  | Support selectable external entry-point ABIs | Must | `@wp.kernel(entry_point_abi=...)` |
 | R8  | Return AOT artifact paths instead of requiring cache-name reconstruction | Must | `wp.compile_aot_module()` |
@@ -74,7 +74,7 @@ wp.set_module_options(options: dict[str, Any], module: Any = None) -> None
 wp.get_module_options(module: Any = None) -> dict[str, Any]
 
 # --- External C++ functions and value types (process-global registries) ------------
-wp.build_experimental.add_builtin(
+wp.experimental.build.add_builtin(
     name: str,
     input_types: Mapping[str, type] | None = None,
     value_type: type | None = None,
@@ -83,7 +83,7 @@ wp.build_experimental.add_builtin(
     doc: str = "",
 ) -> wp.Function
 
-wp.build_experimental.add_native_type(
+wp.experimental.build.add_native_type(
     ctype: type[ctypes.Structure],
     *,
     native_name: str,
@@ -123,13 +123,13 @@ class Color(ctypes.Structure):
     ]
 
 
-wp.build_experimental.add_native_type(
+wp.experimental.build.add_native_type(
     Color,
     native_name="my_addon::Color",
     fields={"r": wp.float32, "g": wp.float32, "b": wp.float32},
     initializer="aggregate",
 )
-wp.build_experimental.add_builtin(
+wp.experimental.build.add_builtin(
     "my_addon_scale_color",
     {"value": Color, "factor": wp.float32},
     Color,
@@ -189,7 +189,7 @@ point.
 
 #### External builtins
 
-`wp.build_experimental.add_builtin()` is a narrow wrapper over Warp's internal builtin registration,
+`wp.experimental.build.add_builtin()` is a narrow wrapper over Warp's internal builtin registration,
 exposing only the parameters that have a stable external meaning.
 
 `name` is how the function is called in kernels (`wp.<name>`). `native_name` is the exact
@@ -210,7 +210,7 @@ dispatch callbacks, and export controls stay private.
 
 #### Native value types
 
-`wp.build_experimental.add_native_type()` registers a `ctypes.Structure` subclass. That one class is both
+`wp.experimental.build.add_native_type()` registers a `ctypes.Structure` subclass. That one class is both
 the host ABI declaration and the Warp annotation / array `dtype`, which avoids a parallel
 wrapper hierarchy and keeps ctypes and NumPy interoperability direct.
 
@@ -305,7 +305,7 @@ previous `None` return are unaffected.
 
 #### Where the code lives
 
-- `warp/build_experimental.py` — public re-exports for `add_builtin` and `add_native_type`.
+- `warp/experimental/build.py` — public re-exports for `add_builtin` and `add_native_type`.
 - `warp/_src/external_build.py` — external registration implementation and registry state.
 - `warp/_src/context.py` — module options, hashing, ABI assertion emission, AOT naming and
   compilation.
@@ -315,14 +315,15 @@ previous `None` return are unaffected.
 - `warp/_src/build.py` and `warp/native/clang/clang.cpp` — passing resolved include directories
   to the CPU (Clang) and CUDA (NVRTC) compilers.
 
-`warp.build_experimental` makes the provisional status visible at import sites. If these APIs
+`warp.experimental.build` makes the provisional status visible at import sites. It moved from
+`warp.build_experimental` in 1.20, which remains a deprecated alias until 1.24. If these APIs
 later meet Warp's stability and support bar, they could be promoted to a stable `warp.build`
 namespace, as `warp.jax_experimental` was promoted to `warp.jax`. Any promotion would define its
 own compatibility and deprecation plan.
 
 Native metadata is attached to the ctypes class as `_wp_native_type_` / `_wp_native_vars_` so
 existing struct-oriented code generation stays generic. These attributes are private, not an
-extension protocol; addons should use `wp.build_experimental` only.
+extension protocol; addons should use `wp.experimental.build` only.
 
 ### Alternatives Considered
 

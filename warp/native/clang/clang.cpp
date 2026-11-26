@@ -379,6 +379,9 @@ static std::unique_ptr<clang::CompilerInstance> create_compiler(
 )
 {
     auto compiler_instance = std::make_unique<clang::CompilerInstance>();
+    const int effective_optimization_level = get_effective_optimization_level(debug, optimization_level);
+    bool enable_loop_vectorization = effective_optimization_level >= 2;
+    bool enable_slp_vectorization = effective_optimization_level >= 2;
     // Compilation arguments
     std::vector<const char*> args;
     args.push_back(input_file.c_str());
@@ -391,7 +394,7 @@ static std::unique_ptr<clang::CompilerInstance> create_compiler(
     }
     args.push_back("-std=c++17");
 
-    switch (get_effective_optimization_level(debug, optimization_level)) {
+    switch (effective_optimization_level) {
     case 0:
         args.push_back("-O0");
         break;
@@ -431,6 +434,12 @@ static std::unique_ptr<clang::CompilerInstance> create_compiler(
                         args.push_back("-target-feature");
                         args.push_back(feat.c_str());
                     }
+                } else if (strcmp(*flag, "-fno-vectorize") == 0) {
+                    // This driver option disables the loop vectorizer. Warp invokes cc1 directly.
+                    enable_loop_vectorization = false;
+                } else if (strcmp(*flag, "-fno-slp-vectorize") == 0) {
+                    // This driver option disables the SLP vectorizer. Warp invokes cc1 directly.
+                    enable_slp_vectorization = false;
                 } else {
                     args.push_back(*flag);
                 }
@@ -481,6 +490,13 @@ static std::unique_ptr<clang::CompilerInstance> create_compiler(
 
     auto& compiler_invocation = compiler_instance->getInvocation();
     clang::CompilerInvocation::CreateFromArgs(compiler_invocation, args, *diagnostic_engine);
+
+    // The Clang driver normally enables these passes for -O2/-O3, but Warp calls
+    // cc1 directly. Keep optimized CPU compilation consistent with the driver.
+    if (!is_cuda) {
+        compiler_invocation.getCodeGenOpts().VectorizeLoop = enable_loop_vectorization;
+        compiler_invocation.getCodeGenOpts().VectorizeSLP = enable_slp_vectorization;
+    }
 
     if (debug) {
 #if LLVM_VERSION_MAJOR >= 18
@@ -1366,6 +1382,8 @@ WP_API const char* wp_llvm_version()
     snprintf(version, sizeof(version), "%d.%d.%d", LLVM_VERSION_MAJOR, LLVM_VERSION_MINOR, LLVM_VERSION_PATCH);
     return version;
 }
+
+WP_API const char* wp_get_cpu_target_triple() { return target_triple; }
 
 WP_API const char* wp_get_host_cpu_name() { return get_host_cpu_info().name.c_str(); }
 

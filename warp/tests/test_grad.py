@@ -60,6 +60,77 @@ def test_for_loop_grad(test, device):
     assert_np_equal(tape.gradients[x].numpy(), 2.0 * val)
 
 
+@wp.kernel
+def for_loop_strided_grad(n: int, stride: int, x: wp.array[float], s: wp.array[float]):
+    tid = wp.tid()
+    sum = float(0.0)
+
+    # grid-stride loops; threads with tid >= n have empty ranges
+    for i in range(tid, n, stride):
+        sum = sum + x[i] * 2.0
+
+    for i in range(n - 1 - tid, -1, -stride):
+        sum = sum + x[i] * 3.0
+
+    wp.atomic_add(s, 0, sum)
+
+
+def test_for_loop_strided_grad(test, device):
+    n = 8
+    stride = 12
+
+    # padded so that a spurious adjoint iteration with i >= n is observable
+    x = wp.ones(16, dtype=float, device=device, requires_grad=True)
+    s = wp.zeros(1, dtype=float, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(for_loop_strided_grad, dim=stride, inputs=[n, stride, x], outputs=[s], device=device)
+
+    assert_np_equal(s.numpy(), np.array([5.0 * n]))
+
+    tape.backward(loss=s)
+
+    expected = np.zeros(16, dtype=np.float32)
+    expected[:n] = 5.0
+    assert_np_equal(x.grad.numpy(), expected)
+
+
+@wp.kernel
+def for_loop_reversed_strided_grad(n: int, stride: int, x: wp.array[float], s: wp.array[float]):
+    tid = wp.tid()
+    sum = float(0.0)
+
+    for i in reversed(range(tid, n, stride)):
+        sum = sum + x[i] * 2.0
+
+    wp.atomic_add(s, 0, sum)
+
+
+def test_for_loop_reversed_strided_grad(test, device):
+    n = 8
+    stride = 3
+    dim = 12
+
+    x = wp.ones(16, dtype=float, device=device, requires_grad=True)
+    s = wp.zeros(1, dtype=float, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(for_loop_reversed_strided_grad, dim=dim, inputs=[n, stride, x], outputs=[s], device=device)
+
+    # number of threads tid whose range(tid, n, stride) visits each index
+    visits = np.zeros(16, dtype=np.float32)
+    for tid in range(dim):
+        visits[tid:n:stride] += 1.0
+
+    assert_np_equal(s.numpy(), np.array([2.0 * visits.sum()]))
+
+    tape.backward(loss=s)
+
+    assert_np_equal(x.grad.numpy(), 2.0 * visits)
+
+
 def test_for_loop_graph_grad(test, device):
     wp.load_module(device=device)
 
@@ -166,6 +237,35 @@ def test_for_loop_nested_for_grad(test, device):
 
     assert_np_equal(s.numpy(), np.array([9.0]))
     assert_np_equal(tape.gradients[x].numpy(), np.arange(0.0, 9.0, 1.0))
+
+
+@wp.kernel
+def for_loop_sibling_reassign(n: int, x: wp.array[float], y: wp.array[float]):
+    for i in range(n):
+        s = float(0.0)
+        for j in range(n):
+            v = 2.0 * x[j]
+            s += v
+        # reassigns the first inner loop's v
+        for k in range(n):
+            v = 3.0 * x[k]
+            s += v
+        y[i] = s
+
+
+def test_for_loop_sibling_reassign_grad(test, device):
+    n = 4
+    x = wp.ones(n, dtype=float, device=device, requires_grad=True)
+    y = wp.zeros(n, dtype=float, device=device, requires_grad=True)
+
+    tape = wp.Tape()
+    with tape:
+        wp.launch(for_loop_sibling_reassign, dim=1, inputs=[n, x, y], device=device)
+
+    tape.backward(grads={y: wp.ones_like(y)})
+
+    assert_np_equal(y.numpy(), np.full(n, 5.0 * n))
+    assert_np_equal(x.grad.numpy(), np.full(n, 5.0 * n))
 
 
 # differentiating thought most while loops is not supported
@@ -724,6 +824,53 @@ def test_gradient_precedence(test, device):
         assert_np_equal(a.grad.numpy(), np.array([0.0, 0.0, 0.0]))  # unused
 
 
+@wp.kernel
+def shape_after_index_kernel(x: wp.array[float], y: wp.array[float]):
+    tid = wp.tid()
+    # Use a negative index to exercise wrapping against the adjoint array's length.
+    v = x[tid - 3]
+    # Read the shape after indexing so its reverse statement would run first.
+    n = x.shape[0]
+    y[tid] = v * float(n)
+
+
+@wp.kernel
+def ptr_after_index_kernel(x: wp.array[float], y: wp.array[float], ptrs: wp.array[wp.uint64]):
+    tid = wp.tid()
+    y[tid] = 2.0 * x[tid]
+    ptrs[tid] = x.ptr
+
+
+def test_gradient_array_descriptor_attributes(test, device):
+    """Verify gradient writes when a kernel reads ``shape`` or ``ptr`` after indexing the array."""
+    with wp.ScopedDevice(device):
+        # The gradient is a view into a zeroed guard buffer, so a gradient written below
+        # index 0 lands in the guard instead of outside the allocation.
+        x = wp.array([1.0, 2.0, 3.0], dtype=float, requires_grad=True)
+        guard = wp.zeros(6, dtype=float)
+        x.grad = guard[3:]
+        y = wp.zeros(3, dtype=float, requires_grad=True)
+        tape = wp.Tape()
+        with tape:
+            wp.launch(shape_after_index_kernel, dim=3, inputs=[x], outputs=[y])
+        tape.backward(grads={y: wp.ones(3, dtype=float)})
+        assert_np_equal(guard.numpy(), np.array([0.0, 0.0, 0.0, 3.0, 3.0, 3.0]))
+
+        # Verify that the explicit adjoint buffer receives the gradient.
+        x = wp.array([1.0, 2.0, 3.0], dtype=float, requires_grad=True)
+        x_adj = wp.zeros(3, dtype=float)
+        ptrs = wp.zeros(3, dtype=wp.uint64)
+        wp.launch(
+            ptr_after_index_kernel,
+            dim=3,
+            inputs=[x, y, ptrs],
+            adjoint=True,
+            adj_inputs=[x_adj, wp.ones(3, dtype=float), None],
+        )
+        assert_np_equal(x_adj.numpy(), np.array([2.0, 2.0, 2.0]))
+        assert_np_equal(x.grad.numpy(), np.array([0.0, 0.0, 0.0]))
+
+
 def test_gradient_slice_2d(test, device):
     with wp.ScopedDevice(device):
         a = wp.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]], dtype=float, requires_grad=True)
@@ -847,8 +994,11 @@ class TestGrad(unittest.TestCase):
 
 # add_function_test(TestGrad, "test_while_loop_grad", test_while_loop_grad, devices=devices)
 add_function_test(TestGrad, "test_for_loop_nested_for_grad", test_for_loop_nested_for_grad, devices=devices)
+add_function_test(TestGrad, "test_for_loop_sibling_reassign_grad", test_for_loop_sibling_reassign_grad, devices=devices)
 add_function_test(TestGrad, "test_scalar_grad", test_scalar_grad, devices=devices)
 add_function_test(TestGrad, "test_for_loop_grad", test_for_loop_grad, devices=devices)
+add_function_test(TestGrad, "test_for_loop_strided_grad", test_for_loop_strided_grad, devices=devices)
+add_function_test(TestGrad, "test_for_loop_reversed_strided_grad", test_for_loop_reversed_strided_grad, devices=devices)
 add_function_test(
     TestGrad, "test_for_loop_graph_grad", test_for_loop_graph_grad, devices=get_selected_cuda_test_devices()
 )
@@ -866,6 +1016,9 @@ add_function_test(TestGrad, "test_aliasing", test_aliasing, devices=devices)
 add_function_test(TestGrad, "test_gradient_internal", test_gradient_internal, devices=devices)
 add_function_test(TestGrad, "test_gradient_external", test_gradient_external, devices=devices)
 add_function_test(TestGrad, "test_gradient_precedence", test_gradient_precedence, devices=devices)
+add_function_test(
+    TestGrad, "test_gradient_array_descriptor_attributes", test_gradient_array_descriptor_attributes, devices=devices
+)
 add_function_test(TestGrad, "test_gradient_slice_2d", test_gradient_slice_2d, devices=devices)
 add_function_test(TestGrad, "test_gradient_slice_3d_1d", test_gradient_slice_3d_1d, devices=devices)
 add_function_test(TestGrad, "test_gradient_slice_3d_2d", test_gradient_slice_3d_2d, devices=devices)

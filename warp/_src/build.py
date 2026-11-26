@@ -280,9 +280,11 @@ def init_kernel_cache(path=None):
 def clear_kernel_cache() -> None:
     """Clear the kernel cache directory of previously generated source code and compiler artifacts.
 
-    Only directories beginning with ``wp_`` will be deleted.
+    Directories beginning with ``wp_`` and the ``cutile`` foreign-function
+    artifact directory will be deleted.
     This function only clears the cache for the current Warp version.
-    LTO artifacts are not affected.
+    The separate ``lto`` cache directory is not affected (see
+    :func:`clear_lto_cache`).
     """
 
     warp._src.context.init()
@@ -295,6 +297,11 @@ def clear_kernel_cache() -> None:
         if os.path.isdir(item_path) and item.startswith("wp_"):
             # Remove the directory and its contents
             shutil.rmtree(item_path, ignore_errors=True)
+
+    # cuTile foreign-function artifacts (LTOIR files and tilelibs)
+    cutile_path = os.path.join(warp.config.kernel_cache_dir, "cutile")
+    if os.path.isdir(cutile_path):
+        shutil.rmtree(cutile_path, ignore_errors=True)
 
 
 def clear_lto_cache() -> None:
@@ -816,7 +823,7 @@ def build_lto_solver(
     a_arrangement = cusolverdx_arrangement_map(alayout)
     b_arrangement = cusolverdx_arrangement_map(blayout)
 
-    lto_symbol = f"{solver}_{M}_{N}_{K}_{arch}_{num_threads}_{a_arrangement}_{b_arrangement}_{precision_enum}_{side_enum if side_enum >= 0 else 'x'}_{diag_enum if diag_enum >= 0 else 'x'}_{fill_mode}"
+    lto_symbol = f"{solver}_{M}_{N}_{K}_{arch}_{num_threads}_{a_arrangement}_{b_arrangement}_{precision_enum}_{side_enum if side_enum >= 0 else 'x'}_{diag_enum if diag_enum >= 0 else 'x'}_{fill_mode if fill_mode >= 0 else 'x'}"
 
     def compile_lto_solver(temp_paths):
         # compile LTO

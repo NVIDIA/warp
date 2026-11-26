@@ -7,6 +7,7 @@
 import ctypes
 
 import warp
+from warp._src.function_dispatch import warp_function
 from warp._src.thirdparty.dlpack import (
     DLDataType,
     DLDataTypeCode,
@@ -219,6 +220,7 @@ def strides_to_dlpack(strides, dtype):
     return a
 
 
+@warp_function
 def to_dlpack(wp_array: warp.array):
     """Convert a Warp array to another type of DLPack-compatible array.
 
@@ -464,6 +466,7 @@ def _from_dlpack(capsule, dtype=None, hint=None) -> warp.array | warp.Texture:
     return obj
 
 
+@warp_function
 def from_dlpack(source, dtype=None, hint=None) -> warp.array | warp.Texture:
     """Convert a source array or DLPack capsule into a Warp array without copying.
 

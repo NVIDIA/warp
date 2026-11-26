@@ -42,6 +42,8 @@ struct bvh_query_thread_block_t {
     int* last_valid_shared_mem;  // [1]
     static const int result_buffer_capacity = WP_TILE_BLOCK_DIM * 5;
     static const int stack_capacity = 64 * BVH_QUERY_STACK_SIZE;
+    // Headroom for single-node steps near a full stack, which grow it by at most the tree depth
+    static const int stack_reserve = 2 * BVH_QUERY_STACK_SIZE;
 
     // inputs
     wp::vec3 input_lower;
@@ -175,7 +177,7 @@ bvh_get_node_index_at_depth(bvh_query_thread_block_t& query, int node_index, int
     return node_index;
 }
 
-// block_size should be a power of 2. 2^num_expansion_steps should be less than or equal to block_size.
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline bool bvh_query_next_thread_block_impl(bvh_query_thread_block_t& query, int& index)
 {
     int block_size = blockDim.x;
@@ -195,43 +197,37 @@ CUDA_CALLABLE inline bool bvh_query_next_thread_block_impl(bvh_query_thread_bloc
         return true;
     }
 
-    int num_expansion_steps = 0;
-    int pow_2 = 1;
-    while (pow_2 < block_size) {
-        pow_2 *= 2;
-        num_expansion_steps += 1;
-    }
-
     BVH bvh = query.bvh;
     int* stack = query.stack_shared_mem;
     int* count = query.count_shared_mem;
-    __shared__ bool direct_mode_shared[1];
 
     index = -1;
 
     // Navigate through the bvh, find the first overlapping leaf node.
     while (count[0] > 0 && query.result_counter_shared_mem[0] < block_size) {
-        __syncthreads();
-        if (lane_id == 0) {
-            if (count[0] < block_size) {
-                count[0] -= 1;
-                direct_mode_shared[0] = false;
-            } else {
-                count[0] -= block_size;
-                direct_mode_shared[0] = true;
-            }
-        }
+        // Limit the nodes taken in this step so that their children fit on the stack
+        const int snapshot = count[0];
+        const int stack_room
+            = bvh_query_thread_block_t::stack_capacity - bvh_query_thread_block_t::stack_reserve - snapshot;
+        const int budget = max(1, min(block_size, stack_room / 2));
+        const bool direct_mode = snapshot >= block_size;
+        const int stack_count = direct_mode ? snapshot - budget : snapshot - 1;
 
+        // Wait until every thread has read the counter
         __syncthreads();
-        int stack_count = count[0];
+        if (lane_id == 0)
+            count[0] = stack_count;
 
-        int node_index;
-        if (direct_mode_shared[0])
-            node_index = stack[stack_count + lane_id];
-        else {
+        int node_index = -1;
+        if (direct_mode) {
+            if (lane_id < budget)
+                node_index = stack[stack_count + lane_id];
+        } else {
+            const int num_expansion_steps = 31 - __clz(budget);
+
             __syncthreads();
             node_index = bvh_get_node_index_at_depth(query, stack[stack_count], lane_id, num_expansion_steps);
-            if (node_index < 0) {
+            if (node_index < 0 && lane_id < budget) {
                 // Check if there is something on the stack that could be taken instead
                 int id = atomicAdd(&count[0], -1) - 1;
                 if (id >= 0) {
@@ -325,6 +321,7 @@ bvh_query_aabb_thread_block_impl(uint64_t id, const vec3& lower, const vec3& upp
 
 // CPU version: single-threaded. bvh_query_thread_block_t is just bvh_query_t and is shared
 // by the AABB and ray tiled entry points, so dispatch on the query's stored kind.
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline bool bvh_query_next_thread_block_impl(bvh_query_thread_block_t& query, int& index)
 {
     return bvh_query_next_dynamic(query, index, FLT_MAX);
@@ -346,6 +343,7 @@ template <int Length> CUDA_CALLABLE inline auto tile_bvh_query_next_impl(bvh_que
 }
 
 // Wrapper that works for any block size
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline auto tile_bvh_query_next(bvh_query_thread_block_t& query)
 {
     return tile_bvh_query_next_impl<WP_TILE_BLOCK_DIM>(query);
@@ -361,12 +359,14 @@ CUDA_CALLABLE inline bool tile_query_valid(const bvh_query_thread_block_t& query
 }
 
 // New tile-based alias for the query function
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline bvh_query_thread_block_t tile_bvh_query_aabb(uint64_t id, const vec3& lower, const vec3& upper)
 {
     return bvh_query_aabb_thread_block_impl(id, lower, upper);
 }
 
 // New tile-based ray query function
+WP_COMPILE_IF_USED
 CUDA_CALLABLE inline bvh_query_thread_block_t tile_bvh_query_ray(uint64_t id, const vec3& start, const vec3& dir)
 {
     return bvh_query_thread_block(id, true, start, 1.0f / dir);
@@ -396,6 +396,7 @@ template <int Length> inline auto tile_bvh_query_next_impl(bvh_query_thread_bloc
     return result;
 }
 
+WP_COMPILE_IF_USED
 inline auto tile_bvh_query_next(bvh_query_thread_block_t& query)
 {
     return tile_bvh_query_next_impl<WP_TILE_BLOCK_DIM>(query);
@@ -404,6 +405,7 @@ inline auto tile_bvh_query_next(bvh_query_thread_block_t& query)
 inline bool tile_query_valid(const bvh_query_thread_block_t& query) { return query.last_query_valid; }
 
 // CPU version: tile_bvh_query_aabb just creates a regular query
+WP_COMPILE_IF_USED
 inline bvh_query_thread_block_t tile_bvh_query_aabb(uint64_t id, const vec3& lower, const vec3& upper)
 {
     // On CPU, this is just bvh_query_aabb since bvh_query_thread_block_t = bvh_query_t
@@ -411,6 +413,7 @@ inline bvh_query_thread_block_t tile_bvh_query_aabb(uint64_t id, const vec3& low
 }
 
 // CPU version: tile_bvh_query_ray just creates a regular ray query
+WP_COMPILE_IF_USED
 inline bvh_query_thread_block_t tile_bvh_query_ray(uint64_t id, const vec3& start, const vec3& dir)
 {
     // On CPU, this is just bvh_query_ray since bvh_query_thread_block_t = bvh_query_t

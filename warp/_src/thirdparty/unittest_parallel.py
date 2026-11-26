@@ -25,6 +25,7 @@ import warp.tests.unittest_utils
 from warp._src.thirdparty import appdirs
 from warp.tests.unittest_utils import (  # NVIDIA modification
     ParallelJunitTestResult,
+    synchronize_after_test,
     write_junit_results,
 )
 
@@ -38,9 +39,7 @@ except ImportError:
 
 # The following variables are NVIDIA Modifications
 START_DIRECTORY = os.path.join(os.path.dirname(__file__), "..")  # The directory to start test discovery
-_SUITE_TIMEOUT = (
-    3600  # Timeout in seconds: total wall-clock limit for parallel execution, per-suite limit during isolated fallback
-)
+_DEFAULT_TIMEOUT = 3600  # Default for --timeout, in seconds
 _WARP_CACHE_PATH_ENV = "WARP_CACHE_PATH"
 
 
@@ -161,7 +160,7 @@ def main(argv=None):
     group_parallel.add_argument(
         "--isolate-test-processes",
         action="store_true",
-        help="Run each test suite in a fresh process (requires Python 3.11 or newer).",
+        help="Run each test suite in a fresh process.",
     )
     group_parallel.add_argument(
         "--serial-fallback",
@@ -176,6 +175,14 @@ def main(argv=None):
         help="If parallel execution fails, re-run each test suite one-at-a-time in "
         "isolated single-process pools. Slow; mainly to salvage partial results. "
         "Off by default: a crash fails loudly instead.",
+    )  # NVIDIA Modification
+    group_parallel.add_argument(
+        "--timeout",
+        metavar="SECONDS",
+        type=int,
+        default=_DEFAULT_TIMEOUT,
+        help="Total wall-clock limit for parallel execution, and the per-suite limit "
+        f"with --fallback-on-crash (default is {_DEFAULT_TIMEOUT})",
     )  # NVIDIA Modification
     group_coverage = parser.add_argument_group("coverage options")
     group_coverage.add_argument("--coverage", action="store_true", help="Run tests with coverage")
@@ -195,12 +202,17 @@ def main(argv=None):
         "--no-shared-cache", action="store_true", help="Use a separate kernel cache per test process."
     )
     group_warp.add_argument("--warp-debug", action="store_true", help="Set warp.config.mode to 'debug'")
+    group_warp.add_argument(
+        "--warp-llvm-cuda",
+        action="store_true",
+        help="Set warp.config.llvm_cuda to True to compile CUDA kernels with Clang instead of NVRTC",
+    )
     args = parser.parse_args(args=argv)
 
-    if args.isolate_test_processes and sys.version_info < (3, 11):
-        parser.error("--isolate-test-processes requires Python 3.11 or newer")
     if args.isolate_test_processes and args.serial_fallback:
         parser.error("--isolate-test-processes cannot be used with --serial-fallback")
+    if args.timeout <= 0:
+        parser.error("--timeout must be positive")
 
     if args.coverage_branch:
         args.coverage = args.coverage_branch
@@ -295,7 +307,7 @@ def main(argv=None):
                     test_manager = ParallelTestManager(manager, args, temp_dir)
                     # Iterate results explicitly so we can report which suite timed out
                     try:
-                        for result in executor.map(test_manager.run_tests, test_suites, timeout=_SUITE_TIMEOUT):
+                        for result in executor.map(test_manager.run_tests, test_suites, timeout=args.timeout):
                             results.append(result)
                     except concurrent.futures.TimeoutError:
                         _kill_process_pool(executor)
@@ -306,7 +318,7 @@ def main(argv=None):
                 total = len(test_suites)
                 suite_name = _get_suite_name(test_suites[pending_index]) if pending_index < total else "unknown"
                 print(
-                    f"Warning: Parallel execution timed out (total timeout={_SUITE_TIMEOUT}s). "
+                    f"Warning: Parallel execution timed out (total timeout={args.timeout}s). "
                     f"Next pending result was suite "
                     f"{pending_index + 1}/{total} ({suite_name}), "
                     f"but a different suite may be the actual blocker.",
@@ -361,17 +373,17 @@ def main(argv=None):
                         ) as executor:
                             future = executor.submit(fallback_manager.run_tests, suite)
                             try:
-                                result = future.result(timeout=_SUITE_TIMEOUT)
+                                result = future.result(timeout=args.timeout)
                                 results.append(result)
                             except concurrent.futures.TimeoutError:
                                 _kill_process_pool(executor)
                                 suite_name = _get_suite_name(suite)
                                 print(
-                                    f"Warning: Isolated test suite {i + 1}/{len(test_suites)} ({suite_name}) timed out (timeout={_SUITE_TIMEOUT}s). Marking tests as crashed.",
+                                    f"Warning: Isolated test suite {i + 1}/{len(test_suites)} ({suite_name}) timed out (timeout={args.timeout}s). Marking tests as crashed.",
                                     file=sys.stderr,
                                 )
                                 crash_result = create_crash_result(
-                                    suite, reason=f"Process timed out (timeout={_SUITE_TIMEOUT}s)"
+                                    suite, reason=f"Process timed out (timeout={args.timeout}s)"
                                 )
                                 results.append(crash_result)
                             except BrokenProcessPool:
@@ -405,6 +417,8 @@ def main(argv=None):
 
             if args.warp_debug:
                 wp.config.mode = "debug"
+            if args.warp_llvm_cuda:
+                wp.config.llvm_cuda = True
 
             # Run the tests in serial
             start_time = time.perf_counter()
@@ -486,7 +500,7 @@ def main(argv=None):
         if args.coverage:
             # Combine the coverage files
             cov_options = {}
-            cov_options["config_file"] = True  # Grab configuration from pyproject.toml (must install coverage[toml])
+            cov_options["config_file"] = True  # Read configuration from pyproject.toml.
             cov = coverage.Coverage(**cov_options)
             cov.combine(data_paths=[os.path.join(temp_dir, x) for x in os.listdir(temp_dir)])
 
@@ -528,7 +542,7 @@ def _coverage(args, temp_dir):
             "data_file": coverage_file.name,
             # NVIDIA Modification removed unneeded options
         }
-        cov_options["config_file"] = True  # Grab configuration from pyproject.toml (must install coverage[toml])
+        cov_options["config_file"] = True  # Read configuration from pyproject.toml.
         cov = coverage.Coverage(**cov_options)
         try:
             # Start measuring code coverage
@@ -681,6 +695,9 @@ class ParallelTextTestResult(unittest.TextTestResult):
         super(unittest.TextTestResult, self).startTest(test)
 
     def stopTest(self, test):
+        # NVIDIA modification: addSuccess() already reported CUDA errors from passing tests.
+        # For any other outcome, keep it and only note the error so later failures can name this test.
+        synchronize_after_test(test, test_failed=True)
         super().stopTest(test)
         # Force garbage collection of CPU-side allocations to reduce peak
         # host RSS in parallel test runs.
@@ -696,6 +713,13 @@ class ParallelTextTestResult(unittest.TextTestResult):
         self.stream.flush()
 
     def addSuccess(self, test):
+        # NVIDIA modification: runs after tearDown() and cleanups, so a CUDA error from work
+        # the test left outstanding fails the test that caused it
+        try:
+            synchronize_after_test(test)
+        except Exception:
+            self.addError(test, sys.exc_info())
+            return
         super(unittest.TextTestResult, self).addSuccess(test)
         self._add_helper(test, ".", "ok")
 
@@ -741,6 +765,8 @@ def initialize_test_process(lock, shared_index, args, temp_dir):
 
         if args.warp_debug:
             wp.config.mode = "debug"
+        if args.warp_llvm_cuda:
+            wp.config.llvm_cuda = True
 
         warp_cache_base_path = _get_warp_cache_base_path()
 

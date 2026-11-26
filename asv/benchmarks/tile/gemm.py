@@ -14,7 +14,7 @@ def create_mlp_kernel(m, n, k):
     TILE_K = k
 
     @wp.kernel
-    def mlp(x: wp.array2d(dtype=float), weights_wp: wp.array2d(dtype=float), n_k: int, output: wp.array2d(dtype=float)):
+    def mlp(x: wp.array2d[float], weights_wp: wp.array2d[float], n_k: int, output: wp.array2d[float]):
         i_m, i_n = wp.tid()
         sum = wp.tile_zeros(shape=(TILE_M, TILE_N), dtype=wp.float32)
         for count in range(n_k):

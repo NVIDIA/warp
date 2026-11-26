@@ -12,7 +12,7 @@ on:
         type: boolean
         default: false
       retain-wheel-artifacts:
-        description: Retain NVIDIA/warp wheel artifacts for seven days instead of one
+        description: Retain NVIDIA/warp wheel artifacts for seven days instead of one; release branches and v* tags always keep them for 30 days
         required: false
         type: boolean
         default: false
@@ -27,7 +27,7 @@ on:
   workflow_dispatch:
     inputs:
       retain-wheel-artifacts:
-        description: Retain NVIDIA/warp wheel artifacts for seven days instead of one
+        description: Retain NVIDIA/warp wheel artifacts for seven days instead of one; release branches and v* tags always keep them for 30 days
         required: false
         type: boolean
         default: false
@@ -114,7 +114,7 @@ jobs:
             python_request: cpython-3.12-windows-aarch64-none
             cuda-version: "13.4.2"
             cuda-platform: windows-arm64
-            build-args: --no-use-libmathdx
+            build-args: ""
             artifact-name: build-artifact-windows-aarch64-cuda13
           - os: ubuntu-24.04
             platform: ubuntu-x86_64
@@ -156,7 +156,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
-          version: "0.13.0"
+          version: "0.13.6"
       
       - name: Set up Python
         run: uv python install
@@ -249,7 +249,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
-          version: "0.13.0"
+          version: "0.13.6"
 
       - name: Set up Python
         run: uv python install
@@ -279,7 +279,7 @@ jobs:
           name: ${{ matrix.wheel_artifact_name }}
           path: _build/wheel/*.whl
           if-no-files-found: error
-          retention-days: ${{ github.repository == 'NVIDIA/warp' && (github.event_name == 'schedule' || inputs.retain-wheel-artifacts) && 7 || 1 }}
+          retention-days: ${{ github.repository == 'NVIDIA/warp' && (startsWith(github.ref, 'refs/heads/release-') || startsWith(github.ref, 'refs/tags/v')) && 30 || github.repository == 'NVIDIA/warp' && (github.event_name == 'schedule' || inputs.retain-wheel-artifacts) && 7 || 1 }}
 
   test-windows-import-libraries:
     if: github.event_name != 'schedule' || github.repository == 'NVIDIA/warp'
@@ -316,7 +316,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
-          version: "0.13.0"
+          version: "0.13.6"
 
       - name: Set up Python
         run: uv python install
@@ -391,7 +391,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
-          version: "0.13.0"
+          version: "0.13.6"
 
       - name: Set up Python
         run: uv python install 3.14t
@@ -455,7 +455,7 @@ jobs:
             cuda-version: "13.4.2"
             cuda-platform: windows-arm64
             warp-enable-cuda: "ON"
-            warp-use-libmathdx: "OFF"
+            warp-use-libmathdx: "ON"
             msvc-component: Microsoft.VisualStudio.Component.VC.Tools.ARM64
             msvc-host-arch: arm64
             msvc-target-arch: arm64
@@ -484,7 +484,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
-          version: "0.13.0"
+          version: "0.13.6"
 
       - name: Set up Python
         run: uv python install
@@ -613,7 +613,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
-          version: "0.13.0"
+          version: "0.13.6"
 
       - name: Set up Python
         run: uv python install
@@ -667,7 +667,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
-          version: "0.13.0"
+          version: "0.13.6"
       
       - name: Set up Python
         run: uv python install
@@ -714,7 +714,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
-          version: "0.13.0"
+          version: "0.13.6"
       
       - name: Set up Python
         run: uv python install
@@ -803,34 +803,31 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # CUDA 13 rows install the cutile extra and the locked tests-cu13
+          # group (JAX, RMM) instead of `--with` overlays: cuTile Python finds
+          # the pip tileiras only in the first `nvidia.cu13` path entry, and an
+          # overlay environment puts JAX's nvidia-* wheels ahead of it. This
+          # matches the GitLab CUDA 13 test jobs.
           - runner-label: linux-amd64-gpu-h100-latest-1
             gpu-name: h100
             artifact-name: build-artifact-ubuntu-x86_64-cuda13
             python-version: "3.12"
-            torch-extra: torch-cu13
-            jax-extra: jax[cuda13]
-            rmm-args: ""
+            test-deps: --extra torch-cu13 --extra cutile --group tests-cu13
           - runner-label: linux-amd64-gpu-rtxpro6000-latest-1
             gpu-name: rtxpro6000
             artifact-name: build-artifact-ubuntu-x86_64-cuda13
             python-version: "3.12"
-            torch-extra: torch-cu13
-            jax-extra: jax[cuda13]
-            rmm-args: ""
+            test-deps: --extra torch-cu13 --extra cutile --group tests-cu13
           - runner-label: linux-amd64-gpu-l4-earliest-1
             gpu-name: l4
             artifact-name: build-artifact-ubuntu-x86_64-cuda12
             python-version: "3.12"
-            torch-extra: torch-cu12
-            jax-extra: jax[cuda12]
-            rmm-args: --with rmm-cu12
+            test-deps: --extra torch-cu12 --with "jax[cuda12]>=0.5" --with rmm-cu12
           - runner-label: linux-arm64-gpu-l4-latest-1
             gpu-name: l4-arm64
             artifact-name: build-artifact-ubuntu-aarch64-cuda13
             python-version: "3.14"
-            torch-extra: torch-cu13
-            jax-extra: jax[cuda13]
-            rmm-args: --with rmm-cu13
+            test-deps: --extra torch-cu13 --extra cutile --group tests-cu13
     container:
       image: ubuntu:24.04
       options: -u root --security-opt seccomp=unconfined --shm-size 16g
@@ -869,7 +866,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
-          version: "0.13.0"
+          version: "0.13.6"
 
       - name: Set up Python
         run: uv python install
@@ -884,10 +881,10 @@ jobs:
         # Warp counterpart to nvidia-smi: dump the build, CUDA, driver, and device
         # snapshot into the log, then fail loudly if Warp enumerated no GPU (otherwise
         # the test suite silently falls back to CPU-only and still passes green).
-        run: uv run --extra dev --extra ${{ matrix.torch-extra }} --with "${{ matrix.jax-extra }}" ${{ matrix.rmm-args }} python -c "import warp as wp; wp.print_diagnostics(); assert wp.get_cuda_devices(), 'No CUDA device visible to Warp'"
+        run: uv run --locked --extra dev ${{ matrix.test-deps }} python -c "import warp as wp; wp.print_diagnostics(); assert wp.get_cuda_devices(), 'No CUDA device visible to Warp'"
 
       - name: Run Tests
-        run: uv run --extra dev --extra ${{ matrix.torch-extra }} --with "${{ matrix.jax-extra }}" ${{ matrix.rmm-args }} -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
+        run: uv run --locked --extra dev ${{ matrix.test-deps }} -m warp.tests --junit-report-xml rspec.xml --coverage --coverage-xml coverage.xml -s autodetect
 
       - name: Test Summary
         uses: test-summary/action@37b508cfee6d4d080eedd00b5bb240a6a784a6a5  # v2.6
@@ -916,6 +913,78 @@ jobs:
           files: ./coverage.xml
           flags: test-warp-gpu-linux-${{ matrix.gpu-name }}
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  # Compile CUDA kernels with Clang instead of NVRTC. NVRTC treats native
+  # functions without CUDA_CALLABLE as device functions, so only Clang-based
+  # toolchains reject them.
+  test-warp-llvm-cuda:
+    runs-on: linux-amd64-gpu-rtxpro6000-latest-1
+    needs: [build-warp, gpu-changes]
+    if: |
+      github.repository == 'NVIDIA/warp' && (
+        github.event_name == 'schedule' ||
+        github.event_name == 'workflow_dispatch' ||
+        startsWith(github.ref, 'refs/tags/') ||
+        github.ref == 'refs/heads/main' ||
+        startsWith(github.ref, 'refs/heads/release-') ||
+        needs.gpu-changes.outputs.gpu_relevant == 'true'
+      )
+    permissions:
+      contents: read
+    container:
+      image: ubuntu:24.04
+      options: -u root --security-opt seccomp=unconfined --shm-size 16g
+      env:
+        NVIDIA_VISIBLE_DEVICES: ${{ env.NVIDIA_VISIBLE_DEVICES }}
+    timeout-minutes: 45
+    steps:
+      - name: Display GPU information
+        run: nvidia-smi
+
+      - name: Setup proxy cache
+        uses: nv-gha-runners/setup-proxy-cache@main
+        with:
+          enable-apt: true
+
+      - name: Install system dependencies
+        run: |
+          apt-get update
+          apt-get install -y git git-lfs
+          git lfs install
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
+        with:
+          persist-credentials: false
+          lfs: true
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
+        with:
+          version: "0.13.6"
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Download Warp build artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c  # v8.0.1
+        with:
+          name: build-artifact-ubuntu-x86_64-cuda13
+          path: .
+
+      - name: Report Warp diagnostics
+        # See the note in test-warp-gpu-linux; the Warp counterpart to nvidia-smi.
+        run: uv run --extra dev python -c "import warp as wp; wp.print_diagnostics(); assert wp.get_cuda_devices(), 'No CUDA device visible to Warp'"
+
+      - name: Run Clang CUDA Tests
+        run: uv run --extra dev -m warp.tests --junit-report-xml rspec.xml --suite llvm-cuda --warp-llvm-cuda --failfast
+
+      - name: Test Summary
+        uses: test-summary/action@37b508cfee6d4d080eedd00b5bb240a6a784a6a5  # v2.6
+        with:
+          paths: "rspec.xml"
+          show: "fail"
+        if: always()
 
   test-warp-gpu-linux-gh200:
     # GH200 capacity is intentionally limited to one scheduled nightly job.
@@ -955,7 +1024,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
-          version: "0.13.0"
+          version: "0.13.6"
 
       - name: Set up Python
         run: uv python install
@@ -1045,7 +1114,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
-          version: "0.13.0"
+          version: "0.13.6"
 
       - name: Set up Python
         run: uv python install 3.14t
@@ -1126,7 +1195,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
-          version: "0.13.0"
+          version: "0.13.6"
 
       - name: Set up Python
         run: uv python install
@@ -1137,10 +1206,12 @@ jobs:
           name: build-artifact-ubuntu-x86_64-cuda13
           path: .
 
+      # MuJoCo Warp's uv sources pull nightly mujoco-core; use the PyPI
+      # release, which upstream keeps MuJoCo Warp main compatible with.
       - name: Install Python dependencies
         run: |
           uv venv
-          uv pip install -e . mujoco "git+https://github.com/google-deepmind/mujoco_warp@main" pytest pytest-xdist "jax[cuda13]"
+          uv pip install --no-sources-package mujoco-core -e . "git+https://github.com/google-deepmind/mujoco_warp@main" pytest pytest-xdist "jax[cuda13]"
 
       - name: Report MuJoCo dependencies
         run: |
@@ -1149,16 +1220,16 @@ jobs:
           import json
           import os
 
-          mujoco_version = importlib.metadata.version("mujoco")
+          mujoco_core_version = importlib.metadata.version("mujoco-core")
           mujoco_warp = importlib.metadata.distribution("mujoco-warp")
           origin = json.loads(mujoco_warp.read_text("direct_url.json"))
           commit = origin["vcs_info"]["commit_id"]
 
-          print(f"MuJoCo: {mujoco_version}")
+          print(f"mujoco-core: {mujoco_core_version}")
           print(f"MuJoCo Warp commit: {commit}")
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
               summary.write("### MuJoCo dependencies\n\n")
-              summary.write(f"- MuJoCo: `{mujoco_version}`\n")
+              summary.write(f"- mujoco-core (PyPI): `{mujoco_core_version}`\n")
               summary.write(
                   f"- MuJoCo Warp (`main`): [`{commit}`](https://github.com/google-deepmind/mujoco_warp/commit/{commit})\n"
               )
@@ -1240,7 +1311,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
-          version: "0.13.0"
+          version: "0.13.6"
 
       - name: Set up Python
         run: uv python install 3.15
@@ -1270,7 +1341,7 @@ jobs:
           show: "fail"
         if: always()
 
-  test-warp-gpu-linux-mgpu-python310:
+  test-warp-gpu-linux-mgpu-python311:
     runs-on: linux-amd64-gpu-rtxpro6000-latest-2
     needs: [build-warp, gpu-changes]
     if: |
@@ -1290,8 +1361,8 @@ jobs:
       env:
         NVIDIA_VISIBLE_DEVICES: ${{ env.NVIDIA_VISIBLE_DEVICES }}
     env:
-      UV_PYTHON: "3.10"
-      WARP_CACHE_PATH: /tmp/warp-cache-${{ github.run_id }}-${{ github.run_attempt }}-mgpu-python310
+      UV_PYTHON: "3.11"
+      WARP_CACHE_PATH: /tmp/warp-cache-${{ github.run_id }}-${{ github.run_attempt }}-mgpu-python311
     timeout-minutes: 60
     steps:
       - name: Display GPU information
@@ -1318,7 +1389,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
-          version: "0.13.0"
+          version: "0.13.6"
 
       - name: Set up Python
         run: uv python install
@@ -1353,7 +1424,7 @@ jobs:
           disable_search: true
           files: ./rspec.xml
           report_type: test_results
-          flags: test-warp-gpu-linux-mgpu-python310
+          flags: test-warp-gpu-linux-mgpu-python311
           token: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Upload coverage reports to Codecov
@@ -1363,7 +1434,7 @@ jobs:
         with:
           disable_search: true
           files: ./coverage.xml
-          flags: test-warp-gpu-linux-mgpu-python310
+          flags: test-warp-gpu-linux-mgpu-python311
           token: ${{ secrets.CODECOV_TOKEN }}
 
   test-warp-gpu-windows:
@@ -1394,7 +1465,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
-          version: "0.13.0"
+          version: "0.13.6"
 
       - name: Set up Python
         run: uv python install
@@ -1496,7 +1567,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
-          version: "0.13.0"
+          version: "0.13.6"
 
       - name: Set up Python
         run: uv python install
@@ -1530,7 +1601,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
-          version: "0.13.0"
+          version: "0.13.6"
       - name: Set up Python
         run: uv python install
       - name: Download Warp binaries
@@ -1824,7 +1895,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
         with:
-          version: "0.13.0"
+          version: "0.13.6"
       - name: Set up Python
         run: uv python install
       - name: Run pyright on stub file

@@ -1,9 +1,11 @@
 # SPDX-FileCopyrightText: Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import concurrent.futures
 import contextlib
 import io
 import os
+import socket
 import subprocess
 import sys
 import tempfile
@@ -16,8 +18,6 @@ from unittest import mock
 import numpy as np
 
 import warp as wp
-from warp._src.jax import get_jax_device
-from warp._src.jax.ffi import register_ffi_callback
 from warp.tests.unittest_utils import *
 
 # Prevent JAX from preallocating GPU memory before any module-level version checks import it.
@@ -935,9 +935,6 @@ def test_ffi_jax_kernel_scale_vec_constant(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_scale_vec_static(test, device):
-    if device.ordinal > 0:
-        test.skipTest("Flaky on device ordinal > 0: JAX FFI jit() returns zeros instead of scaled values")
-
     # multiply vectors by scalar (static arg)
     jp = _import_jax_numpy()
 
@@ -1493,6 +1490,28 @@ def _run_ffi_jax_cpu_subprocess(test):
                 test.assertEqual(result.returncode, 0, msg=f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}")
 
 
+def _run_jax_distributed_device_lookup(test, process_envs, require_gpu=False):
+    """Run ``aux_test_jax_distributed_devices.py`` as two ``jax.distributed`` processes and check that both pass."""
+    with socket.socket() as s:  # a free port for the JAX coordinator
+        s.bind(("127.0.0.1", 0))
+        coordinator = f"127.0.0.1:{s.getsockname()[1]}"
+    script = os.path.join(os.path.dirname(__file__), "aux_test_jax_distributed_devices.py")
+
+    def run(process_id):
+        command = [sys.executable, script, coordinator, str(process_id)]
+        if require_gpu:
+            command.append("--require-gpu")
+        return subprocess.run(
+            command, env=process_envs[process_id], capture_output=True, text=True, timeout=120, check=False
+        )
+
+    # Both processes wait for each other in jax.distributed.initialize(), so they must run at the same time.
+    with concurrent.futures.ThreadPoolExecutor(2) as pool:
+        results = list(pool.map(run, (0, 1)))
+    for process_id, result in enumerate(results):
+        test.assertEqual(result.returncode, 0, msg=f"process {process_id}:\n{result.stdout}\n{result.stderr}")
+
+
 def _get_two_device_jax_cpu_mesh(test):
     jax = _import_jax()
     try:
@@ -1631,9 +1650,6 @@ def test_ffi_shard_map_vma_rank_change(test, _device):
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
-@unittest.skip(
-    "Flaky: race condition in multi-device JAX pmap with FFI - second device output occasionally returns zeros"
-)
 def test_ffi_jax_callable_pmap_mul(test, device):
     jax = _import_jax()
     jp = _import_jax_numpy()
@@ -1658,9 +1674,6 @@ def test_ffi_jax_callable_pmap_mul(test, device):
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
-@unittest.skip(
-    "Flaky: race condition in multi-device JAX pmap with FFI - second device output occasionally returns zeros"
-)
 def test_ffi_jax_callable_pmap_multi_output(test, device):
     jax = _import_jax()
     jp = _import_jax_numpy()
@@ -1699,9 +1712,6 @@ def test_ffi_jax_callable_pmap_multi_output(test, device):
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
-@unittest.skip(
-    "Flaky: race condition in multi-device JAX pmap with FFI - second device output occasionally returns zeros"
-)
 def test_ffi_jax_callable_pmap_multi_stage(test, device):
     jax = _import_jax()
     jp = _import_jax_numpy()
@@ -1742,70 +1752,40 @@ def test_ffi_jax_callable_pmap_multi_stage(test, device):
     assert_np_equal(np.asarray(combined), ref)
 
 
-@unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
-def test_ffi_callback(test, device):
-    if device.ordinal > 0:
-        test.skipTest("Flaky on device ordinal > 0: JAX FFI segfaults intermittently")
-
-    # in-out arguments
+@unittest.skipUnless(_jax_version() >= JAX_SHARD_MAP_MIN_VERSION, "JAX version too old")
+def test_ffi_jax_callable_shard_map_graph_modes(test, device):
+    """Capture and replay Warp graphs for the same call on every device of one process."""
+    jax = _import_jax()
     jp = _import_jax_numpy()
 
-    # the Python function to call
-    def warp_func(inputs, outputs, attrs, ctx):
-        # input arrays
-        a = inputs[0]
-        b = inputs[1]
+    devices = jax.local_devices()
+    if len(devices) < 2:
+        test.skipTest("At least two local JAX devices are required")
 
-        # scalar attributes
-        s = attrs["scale"]
+    mesh = jax.sharding.Mesh(np.array(devices), ("devices",))
+    spec = jax.sharding.PartitionSpec("devices")
+    per_device = 64
+    x = jp.arange(len(devices) * per_device, dtype=jp.float32)
 
-        # output arrays
-        c = outputs[0]
-        d = outputs[1]
+    def on_each_device(jax_double):
+        return jax.jit(jax.shard_map(lambda v: jax_double(v)[0], mesh=mesh, in_specs=spec, out_specs=spec))
 
-        device = wp.device_from_jax(get_jax_device())
-        stream = wp.Stream(device, cuda_stream=ctx.stream)
+    for graph_mode in (
+        wp.JaxCallableGraphMode.WARP,
+        wp.JaxCallableGraphMode.WARP_STAGED,
+        wp.JaxCallableGraphMode.WARP_STAGED_EX,
+    ):
+        with test.subTest(graph_mode=graph_mode):
+            double = on_each_device(wp.jax_callable(double_func, graph_mode=graph_mode))
 
-        with wp.ScopedStream(stream):
-            # launch with arrays of scalars
-            wp.launch(scale_kernel, dim=a.shape, inputs=[a, s], outputs=[c])
-
-            # launch with arrays of vec2
-            # NOTE: the input shapes are from JAX arrays, we need to strip the inner dimension for vec2 arrays
-            wp.launch(scale_vec_kernel, dim=b.shape[0], inputs=[b, s], outputs=[d])
-
-    # register callback
-    register_ffi_callback("warp_func", warp_func)
-
-    n = ARRAY_SIZE
-
-    with jax.default_device(wp.device_to_jax(device)):
-        # inputs
-        a = jp.arange(n, dtype=jp.float32)
-        b = jp.arange(n, dtype=jp.float32).reshape((n // 2, 2))  # array of wp.vec2
-        s = 2.0
-
-        # set up call
-        out_types = [
-            jax.ShapeDtypeStruct(a.shape, jp.float32),
-            jax.ShapeDtypeStruct(b.shape, jp.float32),  # array of wp.vec2
-        ]
-        call = jax.ffi.ffi_call("warp_func", out_types)
-
-        # call it
-        c, d = call(a, b, scale=s)
-
-    jax.block_until_ready([c, d])
-
-    assert_np_equal(c, 2 * np.arange(ARRAY_SIZE, dtype=np.float32))
-    assert_np_equal(d, 2 * np.arange(ARRAY_SIZE, dtype=np.float32).reshape((ARRAY_SIZE // 2, 2)))
+            # the first call captures a graph on each device, the second replays them
+            for scale in (1.0, 3.0):
+                y = double(scale * x)
+                assert_np_equal(np.asarray(y), 2.0 * scale * np.asarray(x))
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_autodiff_simple(test, device):
-    if device.ordinal > 0:
-        test.skipTest("Flaky on device ordinal > 0: JAX FFI jit(grad()) returns zeros")
-
     jax = _import_jax()
     jp = _import_jax_numpy()
 
@@ -1868,7 +1848,7 @@ def test_ffi_jax_kernel_block_dim_autodiff(test, device):
                 jax.block_until_ready((output, gradient))
 
                 if block_dim is None:
-                    multiplier = 1.0 if device.is_cpu else 256.0
+                    multiplier = 256.0 if device.is_cuda or wp.config.enable_cpu_blocks else 1.0
                 else:
                     multiplier = float(block_dim) if device.is_cuda or wp.config.enable_cpu_blocks else 1.0
                 np.testing.assert_allclose(np.asarray(output), input_data * multiplier)
@@ -1880,9 +1860,6 @@ def test_ffi_jax_kernel_block_dim_autodiff(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_autodiff_jit_of_grad_simple(test, device):
-    if device.ordinal > 0:
-        test.skipTest("Flaky on device ordinal > 0: JAX FFI jit(grad()) returns zeros")
-
     jax = _import_jax()
     jp = _import_jax_numpy()
 
@@ -1920,9 +1897,6 @@ def test_ffi_jax_kernel_autodiff_jit_of_grad_simple(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_autodiff_multi_output(test, device):
-    if device.ordinal > 0:
-        test.skipTest("Flaky on device ordinal > 0: JAX FFI jit(grad()) returns zeros")
-
     jax = _import_jax()
     jp = _import_jax_numpy()
 
@@ -1965,9 +1939,6 @@ def test_ffi_jax_kernel_autodiff_multi_output(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_autodiff_jit_of_grad_multi_output(test, device):
-    if device.ordinal > 0:
-        test.skipTest("Flaky on device ordinal > 0: JAX FFI jit(grad()) returns zeros")
-
     jax = _import_jax()
     jp = _import_jax_numpy()
 
@@ -2084,9 +2055,6 @@ def test_ffi_jax_kernel_autodiff_mat22(test, device):
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_autodiff_static_required(test, device):
-    if device.ordinal > 0:
-        test.skipTest("Flaky on device ordinal > 0: JAX FFI jit(grad()) returns zeros")
-
     jax = _import_jax()
     jp = _import_jax_numpy()
 
@@ -2143,9 +2111,6 @@ def test_ffi_jax_kernel_autodiff_pmap_triple(test, device):
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
-@unittest.skip(
-    "Flaky: race condition in multi-device JAX pmap with FFI - second device output occasionally returns zeros"
-)
 def test_ffi_jax_kernel_autodiff_pmap_multi_output(test, device):
     jax = _import_jax()
     jp = _import_jax_numpy()
@@ -2703,9 +2668,6 @@ def test_ffi_jax_kernel_subscript_vec(test, device):
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "Jax version too old")
 def test_ffi_jax_kernel_subscript_autodiff(test, device):
     """Test jax_kernel with subscript syntax and enable_backward=True."""
-    if device.ordinal > 0:
-        test.skipTest("Flaky on device ordinal > 0: JAX FFI jit(grad()) returns zeros")
-
     jax = _import_jax()
     jp = _import_jax_numpy()
 
@@ -2792,6 +2754,43 @@ class TestJax(unittest.TestCase):
         self.assertEqual(jax_kernel_256.block_dim, 256)
         self.assertEqual(jax_kernel_autodiff_64.block_dim, 64)
         self.assertIsNone(jax_kernel_autodiff_default.block_dim)
+
+    @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
+    def test_ffi_jax_kernel_autodiff_retains_cpu_block_dim(self):
+        """Keep forward and adjoint launches on the construction-time CPU block dimension."""
+        jax = _import_jax()
+        jnp = _import_jax_numpy()
+        jax_cpu = self._get_jax_cpu_device()
+        input_data = np.arange(257, dtype=np.float32)
+
+        with jax.default_device(jax_cpu):
+            values = jnp.asarray(input_data)
+            for enabled in (False, True):
+                for block_dim in (None, 1, 64):
+                    for forward_enabled in (enabled, not enabled):
+                        with self.subTest(enabled=enabled, block_dim=block_dim, forward_enabled=forward_enabled):
+                            with mock.patch.object(wp.config, "enable_cpu_blocks", enabled):
+                                wrapper = wp.jax_kernel(
+                                    block_dim_scale_kernel,
+                                    num_outputs=1,
+                                    block_dim=block_dim,
+                                    enable_backward=True,
+                                    module_preload_mode=wp.JaxModulePreloadMode.NONE,
+                                )
+
+                            with mock.patch.object(wp.config, "enable_cpu_blocks", forward_enabled):
+                                output, pullback = jax.vjp(lambda x, wrapper=wrapper: wrapper(x)[0], values)
+                                jax.block_until_ready(output)
+
+                            with mock.patch.object(wp.config, "enable_cpu_blocks", not forward_enabled):
+                                (gradient,) = pullback(jnp.ones_like(output))
+                                jax.block_until_ready(gradient)
+
+                            expected = (256 if block_dim is None else block_dim) if enabled else 1
+                            np.testing.assert_allclose(np.asarray(output), input_data * expected)
+                            np.testing.assert_allclose(
+                                np.asarray(gradient), np.full(input_data.size, expected, dtype=np.float32)
+                            )
 
     @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
     def test_ffi_jax_kernel_cpu_shaped_tile_store(self):
@@ -2987,46 +2986,28 @@ class TestJax(unittest.TestCase):
         fake_jax = mock.Mock()
         fake_jax.local_devices.side_effect = lambda *, backend: jax_devices_by_backend[backend]
 
-        module = _RecordingFfiModule()
-        with (
-            mock.patch.object(ffi_module, "_get_jax", return_value=fake_jax),
-            mock.patch.object(
-                ffi_module.wp,
-                "device_from_jax",
-                side_effect=warp_devices_by_jax_device.__getitem__,
-            ),
-        ):
-            ffi_module._preload_ffi_module(
-                module,
-                wp.JaxModulePreloadMode.ALL_DEVICES,
-                block_dim=JAX_TILE_BLOCK_DIM,
-            )
+        for enabled in (False, True):
+            for requested in (None, JAX_TILE_BLOCK_DIM):
+                with self.subTest(enabled=enabled, requested=requested):
+                    module = _RecordingFfiModule()
+                    with (
+                        mock.patch.object(ffi_module, "_get_jax", return_value=fake_jax),
+                        mock.patch.object(
+                            ffi_module.wp,
+                            "device_from_jax",
+                            side_effect=warp_devices_by_jax_device.__getitem__,
+                        ),
+                        mock.patch.object(wp.config, "enable_cpu_blocks", enabled),
+                    ):
+                        ffi_module._preload_ffi_module(
+                            module,
+                            wp.JaxModulePreloadMode.ALL_DEVICES,
+                            block_dim=requested,
+                        )
 
-        self.assertEqual(
-            module.load_calls,
-            [(warp_cpu, 1), (warp_cuda, JAX_TILE_BLOCK_DIM)],
-        )
-
-        module = _RecordingFfiModule()
-        with (
-            mock.patch.object(ffi_module, "_get_jax", return_value=fake_jax),
-            mock.patch.object(
-                ffi_module.wp,
-                "device_from_jax",
-                side_effect=warp_devices_by_jax_device.__getitem__,
-            ),
-            mock.patch.object(wp.config, "enable_cpu_blocks", True),
-        ):
-            ffi_module._preload_ffi_module(
-                module,
-                wp.JaxModulePreloadMode.ALL_DEVICES,
-                block_dim=JAX_TILE_BLOCK_DIM,
-            )
-
-        self.assertEqual(
-            module.load_calls,
-            [(warp_cpu, JAX_TILE_BLOCK_DIM), (warp_cuda, JAX_TILE_BLOCK_DIM)],
-        )
+                    cuda_block_dim = 256 if requested is None else requested
+                    cpu_block_dim = cuda_block_dim if enabled else 1
+                    self.assertEqual(module.load_calls, [(warp_cpu, cpu_block_dim), (warp_cuda, cuda_block_dim)])
 
     @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
     def test_ffi_module_preload_load_error(self):
@@ -3081,6 +3062,81 @@ class TestJax(unittest.TestCase):
         separate processes.
         """
         _run_ffi_jax_cpu_subprocess(self)
+
+    @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
+    def test_device_from_jax_uses_process_local_ordinal(self):
+        """Map JAX GPUs by their process-local ordinal, not their global device ID."""
+        jax = _import_jax()
+        local_gpu = mock.Mock(platform="gpu", id=5, process_index=1, local_hardware_id=0)
+        other_process_gpu = mock.Mock(platform="gpu", id=0, process_index=0, local_hardware_id=None)
+        warp_gpu = object()
+        with (
+            mock.patch.object(jax, "process_index", return_value=1),
+            mock.patch.object(wp, "get_cuda_device", return_value=warp_gpu) as get_cuda_device,
+        ):
+            self.assertIs(wp.device_from_jax(local_gpu), warp_gpu)
+            get_cuda_device.assert_called_once_with(0)
+            with self.assertRaisesRegex(RuntimeError, "belongs to process 0"):
+                wp.device_from_jax(other_process_gpu)
+
+    @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
+    def test_device_to_jax_returns_process_local_devices(self):
+        """Match Warp devices to JAX devices of the current process by process-local ordinal."""
+        jax = _import_jax()
+        # With local_device_ids, local JAX devices need not be ordered by their ordinal.
+        local_gpus = [mock.Mock(local_hardware_id=1), mock.Mock(local_hardware_id=0)]
+        local_cpu = mock.Mock()
+        warp_devices = {
+            "cuda:0": mock.Mock(is_cuda=True, ordinal=0),
+            "cuda:2": mock.Mock(is_cuda=True, ordinal=2),
+            "cpu": mock.Mock(is_cuda=False),
+        }
+
+        local_devices = {"cuda": local_gpus, "cpu": [local_cpu]}
+
+        with (
+            mock.patch.object(jax, "local_devices", side_effect=lambda backend: local_devices[backend]),
+            mock.patch.object(wp, "get_device", side_effect=warp_devices.__getitem__),
+        ):
+            self.assertIs(wp.device_to_jax("cuda:0"), local_gpus[1])
+            self.assertIs(wp.device_to_jax("cpu"), local_cpu)
+            with self.assertRaisesRegex(RuntimeError, "not available"):
+                wp.device_to_jax("cuda:2")
+
+    @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
+    @unittest.skipIf(sys.platform == "win32", "JAX's multi-process CPU backend requires Linux or macOS")
+    def test_device_lookup_jax_distributed_cpu(self):
+        """Look up JAX CPU devices in a two-process ``jax.distributed`` program."""
+        env = {**os.environ, "CUDA_VISIBLE_DEVICES": "", "JAX_PLATFORMS": "cpu"}
+        _run_jax_distributed_device_lookup(self, [env, env])
+
+    @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
+    def test_device_lookup_jax_distributed_cuda(self):
+        """Look up JAX GPUs in a two-process ``jax.distributed`` program with one GPU per process."""
+        if wp.get_cuda_device_count() < 2:
+            self.skipTest("Requires at least two CUDA devices")
+
+        # Set the JAX platforms explicitly so that a JAX_PLATFORMS setting in the environment can't hide the GPUs.
+        # Newer XLA refuses to start jax.distributed when the processes' GPUs are different models. These checks
+        # don't run anything across processes, so allow machines with mixed GPU models.
+        env = {**os.environ, "JAX_PLATFORMS": "cuda,cpu", "XLA_PJRT_GPU_VALIDATE_TOPOLOGY": "false"}
+        gpus = (os.environ.get("CUDA_VISIBLE_DEVICES") or "0,1").split(",")[:2]
+        process_envs = [{**env, "CUDA_VISIBLE_DEVICES": gpu} for gpu in gpus]
+
+        # Skip if JAX can't use CUDA, such as with a CPU-only JAX installation.
+        probe = subprocess.run(
+            [sys.executable, "-c", "import jax; jax.devices('cuda')"],
+            env=process_envs[0],
+            capture_output=True,
+            text=True,
+            timeout=120,
+            check=False,
+        )
+        if probe.returncode != 0:
+            error = probe.stderr.strip().splitlines() or [f"exit code {probe.returncode}"]
+            self.skipTest(f"JAX can't use CUDA: {error[-1]}")
+
+        _run_jax_distributed_device_lookup(self, process_envs, require_gpu=True)
 
 
 # try adding Jax tests if Jax is installed correctly
@@ -3260,6 +3316,7 @@ else:
                 test_ffi_jax_callable_pmap_multi_output,
                 test_ffi_jax_callable_pmap_mul,
                 test_ffi_jax_callable_pmap_multi_stage,
+                test_ffi_jax_callable_shard_map_graph_modes,
                 test_ffi_jax_kernel_autodiff_pmap_triple,
                 test_ffi_jax_kernel_autodiff_pmap_multi_output,
             )
@@ -3286,7 +3343,6 @@ else:
             test_ffi_jax_callable_graph_cache,
             test_ffi_jax_callable_graph_replay_skips_module_load,
             test_ffi_jax_cuda_requires_cuda_support,
-            test_ffi_callback,
         )
         for test_func in cuda_only_jax_tests:
             add_function_test(

@@ -3799,6 +3799,9 @@ inline CUDA_CALLABLE mat_t<Rows, Cols, Type> outer(const vec_t<Rows, Type>& a, c
 {
     // col 0 = a * b[0] etc...
     mat_t<Rows, Cols, Type> ret;
+#if defined(__clang__) && !defined(__CUDA_ARCH__)
+#pragma clang loop vectorize(disable)
+#endif
     for (unsigned row = 0; row < Rows; ++row) {
         for (unsigned col = 0; col < Cols; ++col)  // columns
         {
@@ -4603,7 +4606,7 @@ inline CUDA_CALLABLE void adj_mat_t(
 {
     for (unsigned i = 0; i < Rows; ++i) {
         for (unsigned j = 0; j < Cols; ++j) {
-            adj_other.data[i][j] += adj_ret.data[i][j];
+            adj_other.data[i][j] += static_cast<OtherType>(adj_ret.data[i][j]);
         }
     }
 }

@@ -52,7 +52,15 @@ from warp._src.fem.types import (
 )
 from warp._src.fem.utils import type_zero_element
 from warp._src.logger import log_warning
-from warp._src.types import is_array, type_length, type_repr, type_scalar_type, type_size, type_to_warp
+from warp._src.types import (
+    concrete_array_type,
+    is_array,
+    type_length,
+    type_repr,
+    type_scalar_type,
+    type_size,
+    type_to_warp,
+)
 from warp._src.utils import array_cast, array_scan
 from warp.sparse import (
     BsrMatrix,
@@ -2142,8 +2150,7 @@ def integrate(
     if values is None:
         values = {}
 
-    if device is None:
-        device = wp.get_device()
+    device = wp.get_device(device)
 
     if not isinstance(integrand, Integrand):
         raise ValueError("integrand must be tagged with @warp.fem.integrand decorator")
@@ -2199,6 +2206,17 @@ def integrate(
 
         if test is None:
             raise ValueError("Nodal integration requires specifying a test function")
+
+        if not test.space.basis.supports_nodal_assembly or (
+            trial is not None and not trial.space.basis.supports_nodal_assembly
+        ):
+            raise ValueError(
+                "Nodal assembly is not supported for a constrained basis, since hanging nodes are not nodes of "
+                "this basis. For Dirichlet projectors and values, assemble with assembly='nodal' on a function "
+                "space built from the basis's 'raw_basis', then restrict the results with its "
+                "'reduce_dirichlet_projector()' and 'gather_independent_values()' methods. For other forms, use "
+                "generic or dispatch assembly"
+            )
 
         if trial is not None and test.space_partition != trial.space_partition:
             raise ValueError(
@@ -2902,7 +2920,7 @@ def _generate_interpolate_kernel(
     # Check if kernel exist in cache
     field_names = tuple((k, f.name) for k, f in arguments.field_args.items())
 
-    kernel_suffix = ("itp", *field_names, domain.name, type(dest).__name__)
+    kernel_suffix = ("itp", *field_names, domain.name, concrete_array_type(dest).__name__)
 
     if space_restriction is not None:
         kernel_suffix = (kernel_suffix, space_restriction.space_partition.name, reduction)
@@ -3515,8 +3533,7 @@ def interpolate(
     if values is None:
         values = {}
 
-    if device is None:
-        device = wp.get_device()
+    device = wp.get_device(device)
 
     if not isinstance(integrand, Integrand):
         raise ValueError("integrand must be tagged with @integrand decorator")

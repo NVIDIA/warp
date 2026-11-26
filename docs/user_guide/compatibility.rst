@@ -2,10 +2,11 @@
 Compatibility & Support
 ########################
 
-This page is organized into two main sections:
+This page is organized into three main sections:
 
 1. **Platform compatibility**: What platforms, operating systems, and hardware Warp currently supports
-2. **Support policies**: How Warp evolves over time, including versioning, deprecation, and lifecycle management
+2. **Array subclass compatibility**: How initialized array subclasses interact with Warp APIs, including requirements and limitations
+3. **Support policies**: How Warp evolves over time, including versioning, deprecation, and lifecycle management
 
 Platform compatibility
 ======================
@@ -38,15 +39,16 @@ on platforms with NVIDIA CUDA support. The following table summarizes platform s
     | **macOS**           | ``x86-64``   | Intel-based Mac      | Discontinued       | None                |
     +---------------------+--------------+----------------------+--------------------+---------------------+
 
-Windows on Arm supports CPU execution and experimental CUDA acceleration through source builds.
-See :ref:`windows-arm64-builds` for requirements and current limitations.
+Windows on Arm supports CPU execution and experimental CUDA acceleration. Starting with Warp 1.19.0,
+PyPI releases and release candidates include a Windows on Arm wheel; nightly builds do not.
+See :ref:`windows-on-arm` for current limitations.
 
 Runtime requirements
 --------------------
 
 The following requirements apply when running Warp:
 
-**Python**: Version 3.10 or newer
+**Python**: Version 3.11 or newer
 
 **Dependencies**: `NumPy <https://numpy.org>`__ (required)
 
@@ -88,10 +90,9 @@ see the :ref:`cuda-12-arm-limitation`.
   * Warp packages built with CUDA Toolkit 13.x require an NVIDIA R580-series or newer driver.
   * Builds using ``--quick`` can require a newer driver; see :ref:`cuda-requirements`.
 
-* **Advanced Features**: Half-precision (``float16``) atomic operations require compute capability 7.0+ (Volta).
-  On older GPUs, these operations return zero. Double-precision (``float64``) atomic addition
-  requires compute capability 6.0+ (Pascal). When targeting older GPUs, it returns zero without modifying
-  the target memory.
+* **Advanced Features**: ``float16`` and ``bfloat16`` atomic operations require compute capability 7.0+ (Volta).
+  ``float64`` atomic addition and subtraction require compute capability 6.0+ (Pascal).
+  Kernels compiled for older GPUs skip these updates without raising an error.
 
 * **CPU-only execution** is supported on all supported platforms for users without a compatible GPU or driver.
 
@@ -108,7 +109,7 @@ To build Warp from source, you need:
 
 **Core Tools:**
 
-* Python 3.10+
+* Python 3.11+
 * `Git LFS <https://git-lfs.com>`__ (for assets used in tests, examples, and documentation)
 * NumPy
 
@@ -151,6 +152,150 @@ Warp from source. These scripts have no versioning guarantees:
 
 Users building Warp from source should expect build script interfaces to change between releases and
 use ``--help`` to discover current options.
+
+.. _array-subclasses:
+
+Array subclass compatibility
+============================
+
+.. versionadded:: 1.19
+
+Initialized subclasses of :class:`warp.array`, :class:`warp.indexedarray`,
+:class:`warp.fabricarray`, and :class:`warp.indexedfabricarray` can be passed
+wherever their respective parent family is accepted. This includes kernel
+arguments and outputs, function overloads, :func:`warp.map` inputs and explicit
+outputs, Python array operators, struct fields, and allocation/copy helpers.
+Each operation retains its parent's dtype, dimensionality, layout, device,
+and other restrictions; subclassing does not add capabilities to a family.
+
+.. list-table:: Capabilities by Native Family
+   :header-rows: 1
+   :widths: 30 70
+
+   * - Family
+     - Capabilities and limitations
+   * - ``array``
+     - Strided views, gradient storage and Tape, and NumPy/DLPack protocols.
+   * - ``indexedarray``
+     - Indexed views of regular arrays; no gradient storage or direct
+       NumPy/DLPack sharing.
+   * - ``fabricarray`` / ``indexedfabricarray``
+     - Views of externally owned Fabric buckets, optionally indexed or jagged;
+       no gradient storage or direct NumPy/DLPack sharing.
+
+Copying, cloning, NumPy conversion, and filling remain unsupported for
+two-dimensional Fabric arrays of arrays. Interoperability conversions keep
+their existing dtype, layout, and device requirements; for example, CUDA
+``array.numpy()`` copies to CPU rather than sharing storage.
+
+A subclass can attach Python metadata while using ordinary array annotations:
+
+.. testcode:: array-subclass
+
+    from typing import Any
+
+    import warp as wp
+
+    class TaggedArray(wp.array):
+        def __init__(self, data, *, tag, **kwargs):
+            super().__init__(data, **kwargs)
+            self.tag = tag
+
+    @wp.kernel
+    def square(values: wp.array[Any], result: wp.array[Any]):
+        i = wp.tid()
+        result[i] = values[i] * values[i]
+
+    values = TaggedArray([2.0, 3.0], tag="sensor", dtype=wp.float32, device="cpu")
+    result = wp.empty_like(values)
+    wp.launch(square, dim=values.size, inputs=[values], outputs=[result], device="cpu")
+    print(result.numpy())
+    print(values.tag)
+
+.. testoutput:: array-subclass
+
+    [4. 9.]
+    sensor
+
+Warp specializes kernels using the native parent family, dtype, and ndim.
+The subclass name and metadata do not create a distinct specialization, and
+type inference does not call the subclass constructor. Use built-in family
+annotations such as ``wp.array[float]`` or ``wp.array[Any]``. Annotation
+objects describe parameter types and cannot be used as runtime array
+arguments or array-valued struct fields. Bare subclass
+classes, ``TaggedArray[float]``, and subclass instances used as kernel/function
+parameter or struct-field annotations are unsupported. :class:`warp.fixedarray`
+describes stack arrays inside compiled functions and is outside this host-subclass
+contract. It cannot be passed as a host argument or used as a kernel overload
+descriptor. Use built-in fixedarray descriptors for supported compiler
+annotations; fixedarray subclass instances are rejected as parameter, field,
+and return annotations.
+
+The subclass must fully initialize its parent and preserve its storage,
+gradient, and descriptor behavior. Added attributes must not shadow storage
+members, such as an indexed array's ``data`` or ``indices``. Parent bookkeeping
+must remain writable, including descriptor caching (``ctype``) and autodiff read
+tracking (``_is_read``), array-interface caching (``_array_interface``), and CUDA
+memory-kind caching (``_memory_kind``). Attribute-access overrides must raise
+``AttributeError`` for unknown names; returning a proxy for missing private
+attributes can break capture or cleanup.
+
+Equality and hashing must remain identity-based when using :class:`warp.Tape`.
+Defining ``__eq__`` without ``__hash__`` makes a subclass unhashable; value-based
+equality and hashing can silently merge distinct arrays in Tape bookkeeping.
+For borrowed storage, keep a strong reference to its owner, for example in a
+``deleter=`` closure, and pass ``grad=owner.grad`` when the alias must accumulate
+gradients into the owner. Do not use Python's ``copy.copy()`` to create an array
+alias: it can duplicate allocation ownership and cause a double free. Use Warp
+views or :func:`warp.clone` as appropriate.
+
+Combining unrelated native array families through multiple inheritance is
+rejected at kernel inference/packing, struct assignment, and :func:`warp.map`
+boundaries because their native descriptor layouts differ. Other host methods
+do not provide a general validity check for malformed subclasses.
+
+An already initialized array can also be converted to a subclass by assigning
+``__class__`` when Python permits that assignment and the native family is
+unchanged. The array's storage and bookkeeping must still satisfy the contract
+above. Warp does not guarantee that future versions will preserve a particular
+Python object layout or ``__dict__`` representation for class reassignment.
+
+Launches use the subclass's native ``__ctype__()`` descriptor, preserving its
+gradient pointer and flags. An overridden array interface does not replace that
+descriptor during launch. At kernel packing and struct assignment, descriptor
+overrides must preserve the parent's descriptor class and layout size; regular
+and indexed arrays are also checked for rank. Compatible ctypes subclasses are
+accepted and packed as the built-in descriptor type. Invalid descriptors are
+rejected at these boundaries, without falling back to the array interface.
+These checks do not apply to every host operation and cannot prove pointer
+validity, storage extent, or ownership.
+
+An override must describe the array's own storage, including its pointer,
+shape/strides, gradient state, and backing references. API Capture (APIC) records
+the Python storage fields and backing references rather than an arbitrary
+redirected descriptor, and rejects a regular-array data or gradient pointer that
+differs from the object's ``ptr`` or ``grad.ptr``. Changing storage attributes after ``__ctype__()`` has
+cached ``ctype`` can leave the descriptor stale; prefer Warp's view and reshape
+operations to direct storage mutation.
+
+New allocations and views have no subclass or metadata propagation guarantee.
+Existing operations that return the input for a no-op retain that identity,
+and an explicit ``out`` buffer remains the caller's object. Python metadata and
+helper methods are unavailable inside kernels. Subclassing alone adds no
+operation interception hooks. To intercept supported host APIs and apply
+its own metadata propagation policy, a subclass can implement the opt-in
+:ref:`__warp_function__ protocol <array-function-overrides>`.
+
+Differentiation, interoperability, and capture follow the parent's capabilities
+and ownership rules. Python metadata is not serialized as capture state.
+Live API Capture (APIC) graphs can retain backing arrays and their metadata,
+while recorded commands created by ``wp.launch(..., record_cmd=True)`` retain
+their original arguments. Keep storage alive according to the parent's rules
+for plain CUDA graphs. Directly constructing ``wp.Launch`` does not provide the
+recorded-command ownership guarantee.
+
+See :ref:`array-subclass-migration` for behavior changes when upgrading code
+that previously launched a subclass through its array interface.
 
 Support policies
 ================
@@ -195,7 +340,8 @@ All supported components (e.g. API functions, Python versions, GPU architectures
 
 * **Experimental**: A new feature that is still under active development.
   It is available for early adopters to test and provide feedback, but its design may change with little or no notice,
-  including in bugfix releases.
+  including in bugfix releases. Experimental modules live under :mod:`warp.experimental` and must be imported
+  explicitly (for example, ``import warp.experimental.build``).
 * **Stable**: The default state for most features. Changes to stable features follow our deprecation timeline 
   and backward compatibility guarantees.
 * **Deprecated**: A feature that is scheduled for removal in a future release.
@@ -222,8 +368,8 @@ only in feature releases, never in bugfix releases.
   flags the upcoming removal in the next release.
 * ``v1.12.0`` (month 4): Feature is removed. Using it will result in an error.
 
-While we strive to abide by the above deprecation timeline, there may be circumstances in which a feature is removed
-with a briefer or longer deprecation period.
+Python versions that have already reached end-of-life may follow a shorter announced deprecation
+schedule. Other circumstances may also require a briefer or longer deprecation period.
 
 How deprecations are communicated
 ---------------------------------
@@ -258,8 +404,8 @@ What to do when you see a deprecation warning
 2. Check the **Deprecated** section of :doc:`/project/changelog` to find the release in which the
    deprecation was first announced. Combined with the deprecation timeline above, this tells you
    roughly when the feature will be removed.
-3. Migrate your code to the replacement API. The deprecated feature will remain functional for at
-   least 4 months, giving you multiple feature releases to complete the migration.
+3. Migrate your code to the replacement API. Deprecated features typically remain functional for at
+   least 4 months, unless a different removal timeline is explicitly announced.
 4. If migration is blocked by a gap in the replacement, raise a `GitHub issue
    <https://github.com/NVIDIA/warp/issues>`__.
 
@@ -311,8 +457,10 @@ Support for newly released Python versions is added in the next Warp feature rel
 Python version's stable release (e.g., if Python 3.15.0 is released during the Warp 1.10.x series,
 support will be added in Warp 1.11.0).
 
-When a Python version reaches end-of-life, we follow the deprecation timeline described above
-before dropping support, allowing users time to migrate.
+Once a Python version has reached end-of-life, Warp may deprecate and remove support on a shorter
+announced schedule than the usual four-month period. These versions no longer receive upstream
+security fixes. The deprecation notice states the Warp release targeted for removal, and deprecations
+and removals still occur only in feature releases.
 
 Dependencies
 ~~~~~~~~~~~~

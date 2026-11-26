@@ -31,8 +31,8 @@ def intersect(
     mesh_0: wp.uint64,
     mesh_1: wp.uint64,
     num_faces: int,
-    xforms: wp.array(dtype=wp.transform),
-    result: wp.array(dtype=int),
+    xforms: wp.array[wp.transform],
+    result: wp.array[int],
 ):
     tid = wp.tid()
 
@@ -72,7 +72,7 @@ def intersect(
 
 
 @wp.kernel
-def init_xforms(kernel_seed: int, xforms: wp.array(dtype=wp.transform)):
+def init_xforms(kernel_seed: int, xforms: wp.array[wp.transform]):
     i = wp.tid()
 
     state = wp.rand_init(kernel_seed, i)

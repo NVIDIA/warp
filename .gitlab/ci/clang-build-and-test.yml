@@ -24,6 +24,11 @@ include:
 
 workflow:
   rules:
+    # Child pipelines don't inherit the parent's workflow:auto_cancel, so
+    # repeat its opt-out for main (the nightly schedule also runs on main).
+    - if: $CI_PIPELINE_SOURCE == "parent_pipeline" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      auto_cancel:
+        on_new_commit: none
     - if: $CI_PIPELINE_SOURCE == "parent_pipeline"
 
 stages:
@@ -101,6 +106,7 @@ linux-x86_64 cu13 clang test:
     - .save_test_report_artifact
   before_script:
     - df -h
+    - !reference [.snippets, print-cpu-info]
     - !reference [.snippets, move-linux-x86_64-binaries]
   script:
     - uv run --extra dev --extra torch-cu13 --with "jax[cuda13]" --with rmm-cu13 -m warp.tests --junit-report-xml rspec.xml -s autodetect --failfast

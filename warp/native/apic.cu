@@ -15,8 +15,20 @@
 #include "apic.h"
 #include "apic_internal.h"
 #include "mesh.h"
+#include "version.h"
 
 #include <algorithm>
+#include <atomic>
+#include <chrono>
+#include <filesystem>
+#include <sstream>
+#include <thread>
+
+#ifdef _WIN32
+#include <process.h>
+#else
+#include <unistd.h>
+#endif
 
 // Register a memory region, copying data from device memory to host for serialization.
 // Returns false (with an error string set) if the device-to-host copy fails, so the
@@ -95,8 +107,7 @@ bool wp_apic_register_mesh(APICState* state, uint64_t mesh_id)
     // the host-mesh helper in apic.cpp (mesh_id is a host pointer to wp::Mesh).
     wp::Mesh mesh;
     if (!wp::mesh_get_descriptor(mesh_id, mesh)) {
-        apic_register_cpu_mesh(state, mesh_id);
-        return true;
+        return apic_register_cpu_mesh(state, mesh_id);
     }
 
     // Device mesh: check-if-registered and register device arrays (cudaMemcpy D2H).
@@ -163,22 +174,15 @@ APICGraph::~APICGraph()
     for (uint64_t mesh_id : created_mesh_ids) {
         wp_mesh_destroy_device(mesh_id);
     }
-    if (cuda_graph_exec) {
-        cudaGraphExecDestroy((cudaGraphExec_t)cuda_graph_exec);
-    }
-    if (cuda_graph) {
-        cudaGraphDestroy((cudaGraph_t)cuda_graph);
-    }
-    for (auto& pair : regions) {
-        if (pair.second.ptr) {
-            cudaFree(pair.second.ptr);
-        }
-    }
-    for (auto& pair : modules) {
-        if (pair.second.cuda_module) {
-            cuModuleUnload_f(pair.second.cuda_module);
-        }
-    }
+    // a loaded graph can be garbage-collected during another capture
+    release_or_defer(ReleaseKind::GraphExec, cuda_context, (uint64_t)cuda_graph_exec);
+    release_or_defer(ReleaseKind::Graph, cuda_context, (uint64_t)cuda_graph);
+    for (auto& pair : regions)
+        release_or_defer(ReleaseKind::DeviceFree, cuda_context, (uint64_t)pair.second.ptr);
+    if (scan_temp_storage)
+        release_or_defer(ReleaseKind::DeviceFree, cuda_context, (uint64_t)scan_temp_storage);
+    for (auto& pair : modules)
+        release_or_defer(ReleaseKind::Module, cuda_context, (uint64_t)pair.second.cuda_module);
 }
 
 static bool apic_init_memory(const uint8_t* data, size_t size, APICGraph* graph)
@@ -207,25 +211,13 @@ static bool apic_init_memory(const uint8_t* data, size_t size, APICGraph* graph)
     return true;
 }
 
-// Per-offset handle fixup for a CUDA region: read the uint64 handle D2H,
-// look it up in handle_ptr_remap, write the new value back H2D. The outer
-// loop (apic_fixup_ptr_locations) lives in apic.cpp.
-bool apic_fixup_handle_cuda(APICGraph* graph, uint8_t* base, uint64_t offset)
+bool apic_fixup_handles_cuda(APICGraph* graph, void* dst, const void* src, size_t size)
 {
-    uint64_t old_val;
-    cudaError_t err = cudaMemcpy(&old_val, base + offset, sizeof(uint64_t), cudaMemcpyDeviceToHost);
+    ContextGuard guard(graph->cuda_context);
+    cudaError_t err = cudaMemcpy(dst, src, size, cudaMemcpyHostToDevice);
     if (err != cudaSuccess) {
-        fprintf(stderr, "Warp APIC error: handle fixup D2H cudaMemcpy failed: %s\n", cudaGetErrorString(err));
+        wp::set_error_string("Warp APIC error: Failed to restore handles: %s", cudaGetErrorString(err));
         return false;
-    }
-    auto remap_it = graph->handle_ptr_remap.find(old_val);
-    if (remap_it != graph->handle_ptr_remap.end()) {
-        uint64_t new_val = remap_it->second;
-        err = cudaMemcpy(base + offset, &new_val, sizeof(uint64_t), cudaMemcpyHostToDevice);
-        if (err != cudaSuccess) {
-            fprintf(stderr, "Warp APIC error: handle fixup H2D cudaMemcpy failed: %s\n", cudaGetErrorString(err));
-            return false;
-        }
     }
     return true;
 }
@@ -233,6 +225,10 @@ bool apic_fixup_handle_cuda(APICGraph* graph, uint8_t* base, uint64_t offset)
 // Forward declaration for a helper defined in apic.cpp; used by the
 // kernel-launch / memcpy / memset dispatch in apic_rebuild_cuda_graph below.
 void* apic_resolve_region_ptr(APICGraph* graph, int32_t region_id, uint64_t offset, size_t access_size);
+
+static bool apic_cuda_select_compile_target(
+    int device_arch, APICCudaArchSuffix suffix, int& target_arch, bool& use_ptx, std::string& diagnostic
+);
 
 static CUfunction apic_get_kernel_function(
     APICGraph* graph, const char* module_hash, size_t hash_len, const char* kernel_key, size_t key_len, bool is_forward
@@ -253,11 +249,22 @@ static CUfunction apic_get_kernel_function(
         return nullptr;
     }
 
-    const std::string& kernel_name = is_forward ? kern_it->second.forward_name : kern_it->second.backward_name;
+    const APICKernel& kernel_info = kern_it->second;
+    const std::string& kernel_name = is_forward ? kernel_info.forward_name : kernel_info.backward_name;
     CUfunction kernel;
     CUresult err = cuModuleGetFunction_f(&kernel, mod_it->second.cuda_module, kernel_name.c_str());
     if (err != CUDA_SUCCESS) {
         wp::set_error_string("Warp APIC error: Failed to get kernel function %s: %d", kernel_name.c_str(), err);
+        return nullptr;
+    }
+
+    // Reloaded modules do not retain the live kernel's dynamic shared-memory opt-in.
+    int smem_bytes = is_forward ? kernel_info.forward_smem_bytes : kernel_info.backward_smem_bytes;
+    if (!wp_cuda_configure_kernel_shared_memory(kernel, smem_bytes)) {
+        wp::set_error_string(
+            "Warp APIC error: Failed to configure %d bytes of dynamic shared memory for kernel %s", smem_bytes,
+            kernel_name.c_str()
+        );
         return nullptr;
     }
     return kernel;
@@ -536,6 +543,36 @@ static bool apic_replay_ops_into_cuda_capture(
             break;
         }
 
+        case APIC_OP_ARRAY_FILL: {
+            const APICArrayFillRecord* rec = reinterpret_cast<const APICArrayFillRecord*>(ptr);
+            // Larger values need capturable_tmp_alloc staging, which a rebuild cannot
+            // reproduce; capture never records them.
+            if (rec->value_size > WP_FILL_VALUE_INLINE_BYTES_2) {
+                wp::set_error_string(
+                    "Warp APIC error: array fill value of %u bytes exceeds the CUDA inline limit (op %u)",
+                    rec->value_size, i
+                );
+                success = false;
+                break;
+            }
+            auto resolve = [graph](int32_t region_id, uint64_t offset, uint64_t access_bytes) {
+                return apic_resolve_region_ptr(graph, region_id, offset, access_bytes);
+            };
+            wp::indexedarray_t<void> ia;
+            if (!apic_array_fill_descriptor(*rec, resolve, &ia)) {
+                wp::set_error_string("Warp APIC error: array fill failed to resolve region (op %u)", i);
+                success = false;
+                break;
+            }
+            // g_apic_state is null during rebuild, so this executes (not record)
+            // on the capture stream set as current above.
+            wp_array_fill_device(
+                graph->cuda_context, &ia, wp::ARRAY_TYPE_INDEXED, ptr + sizeof(APICArrayFillRecord),
+                static_cast<int>(rec->value_size)
+            );
+            break;
+        }
+
         case APIC_OP_SCAN: {
             const APICScanRecord* rec = reinterpret_cast<const APICScanRecord*>(ptr);
             size_t scalar_size = apic_type_size(rec->dtype);
@@ -550,27 +587,30 @@ static bool apic_replay_ops_into_cuda_capture(
             }
             // g_apic_state is null during rebuild, so these execute (not record)
             // on the capture stream set as current above. Same entry points
-            // wp.utils.array_scan() dispatches to.
+            // wp.utils.array_scan() dispatches to. The graph's preallocated scan
+            // scratch keeps them from allocating, which conditional bodies reject.
+            uint64_t temp = reinterpret_cast<uint64_t>(graph->scan_temp_storage);
+            size_t temp_bytes = graph->scan_temp_storage_bytes;
             bool scan_ok;
             if (rec->dtype == APIC_TYPE_INT32)
                 scan_ok = wp_array_scan_int_device(
                     reinterpret_cast<uint64_t>(src), reinterpret_cast<uint64_t>(dst), static_cast<int>(rec->length),
-                    rec->in_stride, rec->out_stride, rec->type_len, rec->inclusive != 0
+                    rec->in_stride, rec->out_stride, rec->type_len, rec->inclusive != 0, temp, temp_bytes
                 );
             else if (rec->dtype == APIC_TYPE_INT64)
                 scan_ok = wp_array_scan_int64_device(
                     reinterpret_cast<uint64_t>(src), reinterpret_cast<uint64_t>(dst), static_cast<int>(rec->length),
-                    rec->in_stride, rec->out_stride, rec->type_len, rec->inclusive != 0
+                    rec->in_stride, rec->out_stride, rec->type_len, rec->inclusive != 0, temp, temp_bytes
                 );
             else if (rec->dtype == APIC_TYPE_FLOAT32)
                 scan_ok = wp_array_scan_float_device(
                     reinterpret_cast<uint64_t>(src), reinterpret_cast<uint64_t>(dst), static_cast<int>(rec->length),
-                    rec->in_stride, rec->out_stride, rec->type_len, rec->inclusive != 0
+                    rec->in_stride, rec->out_stride, rec->type_len, rec->inclusive != 0, temp, temp_bytes
                 );
             else
                 scan_ok = wp_array_scan_double_device(
                     reinterpret_cast<uint64_t>(src), reinterpret_cast<uint64_t>(dst), static_cast<int>(rec->length),
-                    rec->in_stride, rec->out_stride, rec->type_len, rec->inclusive != 0
+                    rec->in_stride, rec->out_stride, rec->type_len, rec->inclusive != 0, temp, temp_bytes
                 );
             if (!scan_ok) {
                 // The scan has already recorded the CUDA reason; do not overwrite it.
@@ -862,6 +902,44 @@ static bool apic_replay_ops_into_cuda_capture(
             break;
         }
 
+        case APIC_OP_BSR_COMPRESS: {
+            const APICBsrCompressRecord* rec = reinterpret_cast<const APICBsrCompressRecord*>(ptr);
+            const size_t nnz = static_cast<size_t>(rec->nnz_upper_bound);
+            const size_t rowp1_bytes = (static_cast<size_t>(rec->row_count) + 1) * sizeof(int32_t);
+            const size_t values_bytes
+                = nnz * static_cast<size_t>(rec->block_size) * static_cast<size_t>(rec->scalar_size_in_bytes);
+            void* offsets = apic_resolve_region_ptr(graph, rec->offsets_region_id, rec->offsets_offset, rowp1_bytes);
+            void* row_counts = rec->row_counts_region_id >= 0
+                ? apic_resolve_region_ptr(
+                      graph, rec->row_counts_region_id, rec->row_counts_offset,
+                      static_cast<size_t>(rec->row_count) * sizeof(int32_t)
+                  )
+                : nullptr;
+            void* columns = rec->columns_region_id >= 0
+                ? apic_resolve_region_ptr(graph, rec->columns_region_id, rec->columns_offset, nnz * sizeof(int32_t))
+                : nullptr;
+            void* values = rec->values_region_id >= 0
+                ? apic_resolve_region_ptr(graph, rec->values_region_id, rec->values_offset, values_bytes)
+                : nullptr;
+            if (!offsets || (nnz > 0 && !columns) || (rec->row_counts_region_id >= 0 && !row_counts)
+                || (rec->values_region_id >= 0 && !values)) {
+                wp::set_error_string("Warp APIC error: bsr-compress failed to resolve region (op %u)", i);
+                success = false;
+                break;
+            }
+            // g_apic_state is null during rebuild, so this executes (not record)
+            // on the capture stream set as current above. Unlike the CPU replay,
+            // the row ranges are device memory that cannot be checked against
+            // the recorded storage here.
+            wp_bsr_compress_inplace_device(
+                rec->row_count, rec->col_count, rec->block_size, rec->scalar_size_in_bytes, rec->scalar_type,
+                rec->nnz_upper_bound, rec->prune_numerical_zeros != 0, rec->scalar_zero_mask, rec->make_compact != 0,
+                reinterpret_cast<int*>(offsets), reinterpret_cast<int*>(row_counts), reinterpret_cast<int*>(columns),
+                values, rec->compress_values != 0
+            );
+            break;
+        }
+
         case APIC_OP_IF: {
             const APICCondRecord* rec = reinterpret_cast<const APICCondRecord*>(ptr);
             const uint8_t* branch_a = ptr + sizeof(APICCondRecord);
@@ -987,6 +1065,96 @@ static bool apic_replay_ops_into_cuda_capture(
     return success;
 }
 
+static bool apic_cuda_graph_requires_helper_target(const APICGraph* graph)
+{
+    if (graph->operation_count == 0 || graph->operation_stream.empty())
+        return false;
+
+    const uint8_t* ptr = graph->operation_stream.data();
+    const uint8_t* end = ptr + graph->operation_stream.size();
+
+    // Nested conditionals necessarily have a top-level IF or WHILE ancestor,
+    // so scanning the validated outer stream is sufficient.
+    for (uint32_t i = 0; i < graph->operation_count && ptr < end; ++i) {
+        const APICOpHeader* header = reinterpret_cast<const APICOpHeader*>(ptr);
+        if (header->op_type == APIC_OP_IF || header->op_type == APIC_OP_WHILE)
+            return true;
+        ptr += header->total_size;
+    }
+    return false;
+}
+
+// Finds the largest temporary storage any scan op needs, including scans nested
+// in IF/WHILE bodies. The operation stream has already been validated.
+static bool apic_max_scan_temp_storage_size(
+    APICGraph* graph, const uint8_t* op_data, size_t op_size, uint32_t op_count, size_t& max_bytes
+)
+{
+    const uint8_t* ptr = op_data;
+    const uint8_t* end = ptr + op_size;
+
+    for (uint32_t i = 0; i < op_count && ptr < end; ++i) {
+        const APICOpHeader* header = reinterpret_cast<const APICOpHeader*>(ptr);
+
+        if (header->op_type == APIC_OP_SCAN) {
+            const APICScanRecord* rec = reinterpret_cast<const APICScanRecord*>(ptr);
+            int len = static_cast<int>(rec->length);
+            size_t bytes = 0;
+            bool ok;
+            if (rec->dtype == APIC_TYPE_INT32)
+                ok = wp_array_scan_int_device_temp_storage_size(graph->cuda_context, len, &bytes);
+            else if (rec->dtype == APIC_TYPE_INT64)
+                ok = wp_array_scan_int64_device_temp_storage_size(graph->cuda_context, len, &bytes);
+            else if (rec->dtype == APIC_TYPE_FLOAT32)
+                ok = wp_array_scan_float_device_temp_storage_size(graph->cuda_context, len, &bytes);
+            else
+                ok = wp_array_scan_double_device_temp_storage_size(graph->cuda_context, len, &bytes);
+            if (!ok)
+                return false;
+            max_bytes = std::max(max_bytes, bytes);
+        } else if (header->op_type == APIC_OP_IF || header->op_type == APIC_OP_WHILE) {
+            const APICCondRecord* rec = reinterpret_cast<const APICCondRecord*>(ptr);
+            const uint8_t* branch_a = ptr + sizeof(APICCondRecord);
+            const uint8_t* branch_b = branch_a + rec->branch_a_size;
+            if (!apic_max_scan_temp_storage_size(graph, branch_a, rec->branch_a_size, rec->branch_a_op_count, max_bytes)
+                || !apic_max_scan_temp_storage_size(
+                    graph, branch_b, rec->branch_b_size, rec->branch_b_op_count, max_bytes
+                ))
+                return false;
+        }
+
+        ptr += header->total_size;
+    }
+    return true;
+}
+
+// Allocates the scratch shared by the graph's scan ops. Must run outside capture.
+static bool apic_prepare_scan_temp_storage(APICGraph* graph)
+{
+    size_t required = 0;
+    if (!apic_max_scan_temp_storage_size(
+            graph, graph->operation_stream.data(), graph->operation_stream.size(), graph->operation_count, required
+        ))
+        return false;
+
+    if (required <= graph->scan_temp_storage_bytes)
+        return true;
+
+    void* ptr = nullptr;
+    cudaError_t err = cudaMalloc(&ptr, required);
+    if (err != cudaSuccess) {
+        wp::set_error_string(
+            "Warp APIC error: Failed to allocate %llu bytes of scan scratch: %d", (unsigned long long)required, err
+        );
+        return false;
+    }
+    if (graph->scan_temp_storage)
+        release_or_defer(ReleaseKind::DeviceFree, graph->cuda_context, (uint64_t)graph->scan_temp_storage);
+    graph->scan_temp_storage = ptr;
+    graph->scan_temp_storage_bytes = required;
+    return true;
+}
+
 static bool apic_rebuild_cuda_graph(APICGraph* graph, CUstream stream)
 {
     // The shared graph loader guarantees graph->operations_validated is true.
@@ -1002,8 +1170,35 @@ static bool apic_rebuild_cuda_graph(APICGraph* graph, CUstream stream)
     if (!apic_configure_kernel_cluster_attrs(graph))
         return false;
 
+    if (!apic_prepare_scan_temp_storage(graph))
+        return false;
+
+    int helper_target_arch = 0;
+    bool helper_use_ptx = false;
+    if (apic_cuda_graph_requires_helper_target(graph)) {
+        ContextInfo* context_info = get_context_info(static_cast<CUcontext>(graph->cuda_context));
+        if (!context_info || !context_info->device_info) {
+            wp::set_error_string(
+                "Warp APIC error: could not determine the guest CUDA architecture for conditional helper kernels"
+            );
+            return false;
+        }
+
+        std::string target_diagnostic;
+        if (!apic_cuda_select_compile_target(
+                context_info->device_info->arch, APIC_CUDA_ARCH_SUFFIX_NONE, helper_target_arch, helper_use_ptx,
+                target_diagnostic
+            )) {
+            wp::set_error_string(
+                "Warp APIC error: could not select the CUDA target for conditional helper kernels: %s",
+                target_diagnostic.c_str()
+            );
+            return false;
+        }
+    }
+
     // Use Warp's capture management (not a raw cudaStreamBeginCapture) so the
-    // allocator knows a capture is active. Extended ops (reduction/scan/sort/bsr) allocate
+    // allocator knows a capture is active. Extended ops (reduction/sort/bsr) allocate
     // CUB scratch during capture; the allocator only routes those allocs/frees
     // to graph memory nodes when it sees an active Warp capture, otherwise it
     // would cudaFreeAsync on the null stream and invalidate the capture.
@@ -1018,11 +1213,10 @@ static bool apic_rebuild_cuda_graph(APICGraph* graph, CUstream stream)
     void* prev_current_stream = wp_cuda_context_get_stream(graph->cuda_context);
     wp_cuda_context_set_stream(graph->cuda_context, (void*)stream, 0);
 
-    // use_ptx is only consulted for IF/WHILE conditional kernels; loaded .wrp
-    // graphs use the cubin path for the JIT-compiled set-condition kernels.
+    // The target policy is needed only by IF/WHILE conditional helper kernels.
     bool success = apic_replay_ops_into_cuda_capture(
         graph, stream, graph->operation_stream.data(), graph->operation_stream.size(), graph->operation_count,
-        graph->target_arch, false
+        helper_target_arch, helper_use_ptx
     );
 
     wp_cuda_context_set_stream(graph->cuda_context, prev_current_stream, 0);
@@ -1046,6 +1240,348 @@ static bool apic_rebuild_cuda_graph(APICGraph* graph, CUstream stream)
 // ============================================================================
 // CUDA-side graph load setup (called from apic_load_graph_from_image in apic.cpp)
 // ============================================================================
+
+static bool apic_init_cuda_graph_memory(APICGraph* graph, void* context, const uint8_t* memory_ptr, size_t memory_size)
+{
+    ContextGuard guard(context);
+
+    for (auto& pair : graph->regions) {
+        void* device_ptr = nullptr;
+        cudaError_t err = cudaMalloc(&device_ptr, pair.second.size);
+        if (err != cudaSuccess) {
+            wp::set_error_string(
+                "Warp APIC error: Failed to allocate %llu bytes: %d", (unsigned long long)pair.second.size, err
+            );
+            return false;
+        }
+        pair.second.ptr = device_ptr;
+    }
+
+    if (memory_ptr && !apic_init_memory(memory_ptr, memory_size, graph)) {
+        return false;
+    }
+
+    cudaDeviceSynchronize();
+    return true;
+}
+
+static const char* apic_cuda_fallback_reason_string(APICCudaFallbackReason reason)
+{
+    switch (reason) {
+    case APIC_CUDA_FALLBACK_SOURCE_UNAVAILABLE:
+        return "generated source is unavailable";
+    case APIC_CUDA_FALLBACK_EXTERNAL_INCLUDES:
+        return "the module requires external CUDA include directories that are not packaged";
+    case APIC_CUDA_FALLBACK_LLVM_CUDA:
+        return "the module was built with the unsupported LLVM CUDA backend";
+    case APIC_CUDA_FALLBACK_LINK_INPUTS:
+        return "the module requires LTO-IR or fatbin link inputs that are not packaged";
+    case APIC_CUDA_FALLBACK_EXPORT_FAILED:
+        return "capture_save could not export the generated source";
+    case APIC_CUDA_FALLBACK_RECIPE_UNAVAILABLE:
+        return "the exact CUDA compile recipe is unavailable";
+    default:
+        return "source fallback is unavailable";
+    }
+}
+
+static std::string apic_join_diagnostics(const std::vector<std::string>& diagnostics)
+{
+    std::ostringstream message;
+    for (size_t i = 0; i < diagnostics.size(); ++i) {
+        if (i)
+            message << "; ";
+        message << diagnostics[i];
+    }
+    return message.str();
+}
+
+static bool apic_cuda_select_compile_target(
+    int device_arch, APICCudaArchSuffix suffix, int& target_arch, bool& use_ptx, std::string& diagnostic
+)
+{
+    int count = 0;
+    nvrtcResult result = nvrtcGetNumSupportedArchs(&count);
+    if (result != NVRTC_SUCCESS || count <= 0) {
+        diagnostic = std::string("NVRTC architecture query failed: ") + nvrtcGetErrorString(result);
+        return false;
+    }
+    std::vector<int> supported(count);
+    result = nvrtcGetSupportedArchs(supported.data());
+    if (result != NVRTC_SUCCESS) {
+        diagnostic = std::string("NVRTC architecture query failed: ") + nvrtcGetErrorString(result);
+        return false;
+    }
+    std::sort(supported.begin(), supported.end());
+
+    const bool exact_supported = std::binary_search(supported.begin(), supported.end(), device_arch);
+    if (suffix == APIC_CUDA_ARCH_SUFFIX_A) {
+        if (device_arch < 90 || !exact_supported) {
+            diagnostic = "the architecture-specific recipe requires NVRTC support for the exact guest architecture sm_"
+                + std::to_string(device_arch) + "a";
+            return false;
+        }
+        target_arch = device_arch;
+        use_ptx = false;
+        return true;
+    }
+
+    if (suffix == APIC_CUDA_ARCH_SUFFIX_F) {
+#if CUDA_VERSION < 12090
+        diagnostic = "the family-specific recipe requires CUDA 12.9 or newer";
+        return false;
+#else
+        if (device_arch < 100) {
+            diagnostic
+                = "the family-specific recipe cannot target guest architecture sm_" + std::to_string(device_arch);
+            return false;
+        }
+        target_arch = 0;
+        for (int candidate : supported) {
+            if (candidate <= device_arch && candidate / 10 == device_arch / 10)
+                target_arch = candidate;
+        }
+        if (!target_arch) {
+            diagnostic = "NVRTC has no target in the guest GPU family for sm_" + std::to_string(device_arch) + "f";
+            return false;
+        }
+        use_ptx = target_arch != device_arch;
+        return true;
+#endif
+    }
+
+    if (exact_supported) {
+        target_arch = device_arch;
+        use_ptx = false;
+        return true;
+    }
+    target_arch = 0;
+    for (int candidate : supported) {
+        if (candidate <= device_arch)
+            target_arch = candidate;
+    }
+    if (!target_arch) {
+        diagnostic = "NVRTC has no target compatible with guest architecture sm_" + std::to_string(device_arch);
+        return false;
+    }
+    use_ptx = true;
+    return true;
+}
+
+static std::string
+apic_cuda_cache_path(const std::string& modules_dir, const APICModule& module, int target_arch, bool use_ptx)
+{
+    int nvrtc_major = 0;
+    int nvrtc_minor = 0;
+    nvrtcVersion(&nvrtc_major, &nvrtc_minor);
+    std::string key = module.module_hash;
+    key.push_back('\0');
+    key += module.binary_digest;
+    key.push_back('\0');
+    key += module.source_digest;
+    key.push_back('\0');
+    key += WP_VERSION_STRING;
+    key.push_back('\0');
+    key += std::to_string(nvrtc_major) + "." + std::to_string(nvrtc_minor);
+    key.push_back('\0');
+    key += std::to_string(target_arch);
+    key.push_back(static_cast<char>(module.compile_recipe.arch_suffix));
+    key.push_back(use_ptx ? 'p' : 'c');
+    key.append(
+        reinterpret_cast<const char*>(&module.compile_recipe),
+        reinterpret_cast<const char*>(&module.compile_recipe) + sizeof(module.compile_recipe)
+    );
+    const std::string digest = apic_sha256_hex(reinterpret_cast<const uint8_t*>(key.data()), key.size());
+    const char* suffix = module.compile_recipe.arch_suffix == APIC_CUDA_ARCH_SUFFIX_A
+        ? "a"
+        : (module.compile_recipe.arch_suffix == APIC_CUDA_ARCH_SUFFIX_F ? "f" : "");
+    std::filesystem::path path(modules_dir);
+    path /= "apic_guest_" + digest + ".sm" + std::to_string(target_arch) + suffix + (use_ptx ? ".ptx" : ".cubin");
+    return path.string();
+}
+
+static bool apic_publish_cuda_cache(const std::string& path, const std::vector<uint8_t>& data)
+{
+    static std::atomic<uint64_t> sequence { 0 };
+#ifdef _WIN32
+    const int process_id = _getpid();
+#else
+    const int process_id = getpid();
+#endif
+    const uint64_t thread_id = std::hash<std::thread::id> {}(std::this_thread::get_id());
+    const uint64_t nonce = static_cast<uint64_t>(std::chrono::steady_clock::now().time_since_epoch().count());
+    const std::string temporary_path = path + ".tmp." + std::to_string(process_id) + "." + std::to_string(thread_id)
+        + "." + std::to_string(nonce) + "." + std::to_string(sequence.fetch_add(1));
+
+    FILE* file = fopen(temporary_path.c_str(), "wb");
+    if (!file)
+        return false;
+    const bool wrote = data.empty() || fwrite(data.data(), 1, data.size(), file) == data.size();
+    const bool closed = fclose(file) == 0;
+    if (!wrote || !closed) {
+        std::error_code ignored;
+        std::filesystem::remove(temporary_path, ignored);
+        return false;
+    }
+
+    std::error_code error;
+    std::filesystem::rename(temporary_path, path, error);
+    if (error) {
+        // A concurrent loader may have won publication. Keep its usable entry;
+        // replace only an unloadable file on the next load.
+        std::filesystem::remove(temporary_path, error);
+        return std::filesystem::is_regular_file(path, error);
+    }
+    return true;
+}
+
+static bool apic_load_cuda_module(
+    void* context, const std::string& modules_dir, const char* warp_include_dir, APICModule& module, int device_arch
+)
+{
+    // Preserve the original packaged-module loading path for saves that did
+    // not opt into source fallback. Metadata validation requires all artifact
+    // fields to be empty when the binary digest is absent.
+    if (module.binary_digest.empty()) {
+        std::string binary_path = modules_dir + "/" + module.cubin_filename;
+#ifdef _WIN32
+        std::replace(binary_path.begin(), binary_path.end(), '/', '\\');
+#endif
+        module.cuda_module = static_cast<CUmodule>(wp_cuda_load_module(context, binary_path.c_str()));
+        if (!module.cuda_module) {
+            wp::set_error_string("Warp APIC error: Failed to load module %s", binary_path.c_str());
+            return false;
+        }
+        return true;
+    }
+
+    std::vector<std::string> diagnostics;
+    std::filesystem::path packaged_path(modules_dir);
+    packaged_path /= module.cubin_filename;
+    std::vector<uint8_t> packaged_data;
+    if (!apic_read_file(packaged_path.string().c_str(), packaged_data)) {
+        diagnostics.push_back("packaged binary " + packaged_path.string() + " was not found");
+    } else if (apic_sha256_hex(packaged_data.data(), packaged_data.size()) != module.binary_digest) {
+        diagnostics.push_back("packaged binary " + packaged_path.string() + " failed its SHA-256 check");
+    } else {
+        std::string load_diagnostic;
+        if (apic_cuda_load_module_data(
+                context, packaged_data.data(), packaged_data.size(), module.binary_kind == APIC_CUDA_BINARY_PTX,
+                &module.cuda_module, load_diagnostic
+            )) {
+            return true;
+        }
+        diagnostics.push_back("packaged binary was rejected: " + load_diagnostic);
+    }
+
+    if (module.fallback_reason != APIC_CUDA_FALLBACK_AVAILABLE) {
+        diagnostics.push_back(apic_cuda_fallback_reason_string(module.fallback_reason));
+        wp::set_error_string(
+            "Warp APIC error: APIC failed to resolve CUDA module %s: %s", module.module_name.c_str(),
+            apic_join_diagnostics(diagnostics).c_str()
+        );
+        return false;
+    }
+
+    int target_arch = 0;
+    bool use_ptx = false;
+    std::string target_diagnostic;
+    if (!apic_cuda_select_compile_target(
+            device_arch, static_cast<APICCudaArchSuffix>(module.compile_recipe.arch_suffix), target_arch, use_ptx,
+            target_diagnostic
+        )) {
+        diagnostics.push_back(target_diagnostic);
+        wp::set_error_string(
+            "Warp APIC error: APIC failed to resolve CUDA module %s: %s", module.module_name.c_str(),
+            apic_join_diagnostics(diagnostics).c_str()
+        );
+        return false;
+    }
+
+    const std::string cache_path = apic_cuda_cache_path(modules_dir, module, target_arch, use_ptx);
+    std::vector<uint8_t> cache_data;
+    bool cache_was_unloadable = false;
+    if (apic_read_file(cache_path.c_str(), cache_data)) {
+        std::string load_diagnostic;
+        if (apic_cuda_load_module_data(
+                context, cache_data.data(), cache_data.size(), use_ptx, &module.cuda_module, load_diagnostic
+            )) {
+            return true;
+        }
+        cache_was_unloadable = true;
+        diagnostics.push_back("cached guest binary was rejected: " + load_diagnostic);
+    }
+
+    if (!warp_include_dir || !warp_include_dir[0]) {
+        diagnostics.push_back(
+            "source fallback is available, but wp_apic_load_graph_ex() was not given the Warp native include directory"
+        );
+        wp::set_error_string(
+            "Warp APIC error: APIC failed to resolve CUDA module %s: %s", module.module_name.c_str(),
+            apic_join_diagnostics(diagnostics).c_str()
+        );
+        return false;
+    }
+
+    std::filesystem::path source_path(modules_dir);
+    source_path /= module.source_filename;
+    std::vector<uint8_t> source_data;
+    if (!apic_read_file(source_path.string().c_str(), source_data)) {
+        diagnostics.push_back("generated source " + source_path.string() + " was not found");
+        wp::set_error_string(
+            "Warp APIC error: APIC failed to resolve CUDA module %s: %s", module.module_name.c_str(),
+            apic_join_diagnostics(diagnostics).c_str()
+        );
+        return false;
+    }
+    if (apic_sha256_hex(source_data.data(), source_data.size()) != module.source_digest) {
+        diagnostics.push_back("generated source " + source_path.string() + " failed its SHA-256 check");
+        wp::set_error_string(
+            "Warp APIC error: APIC failed to resolve CUDA module %s: %s", module.module_name.c_str(),
+            apic_join_diagnostics(diagnostics).c_str()
+        );
+        return false;
+    }
+
+    std::string source(source_data.begin(), source_data.end());
+    std::vector<uint8_t> compiled_data;
+    std::string compile_diagnostic;
+    const char* arch_suffix = module.compile_recipe.arch_suffix == APIC_CUDA_ARCH_SUFFIX_A
+        ? "a"
+        : (module.compile_recipe.arch_suffix == APIC_CUDA_ARCH_SUFFIX_F ? "f" : "");
+    if (!apic_cuda_compile_program_to_memory(
+            source, module.source_filename.c_str(), target_arch, arch_suffix, warp_include_dir, use_ptx,
+            module.compile_recipe, compiled_data, compile_diagnostic
+        )) {
+        diagnostics.push_back("source compilation failed: " + compile_diagnostic);
+        wp::set_error_string(
+            "Warp APIC error: APIC failed to resolve CUDA module %s: %s", module.module_name.c_str(),
+            apic_join_diagnostics(diagnostics).c_str()
+        );
+        return false;
+    }
+
+    std::string load_diagnostic;
+    if (!apic_cuda_load_module_data(
+            context, compiled_data.data(), compiled_data.size(), use_ptx, &module.cuda_module, load_diagnostic
+        )) {
+        diagnostics.push_back("freshly compiled guest binary was rejected: " + load_diagnostic);
+        wp::set_error_string(
+            "Warp APIC error: APIC failed to resolve CUDA module %s: %s", module.module_name.c_str(),
+            apic_join_diagnostics(diagnostics).c_str()
+        );
+        return false;
+    }
+
+    if (cache_was_unloadable) {
+        std::error_code ignored;
+        std::filesystem::remove(cache_path, ignored);
+    }
+    if (!apic_publish_cuda_cache(cache_path, compiled_data)) {
+        fprintf(stderr, "Warp APIC warning: could not publish compiled module cache '%s'\n", cache_path.c_str());
+    }
+    return true;
+}
 
 bool apic_load_graph_cuda_setup(
     APICGraph* graph,
@@ -1074,26 +1610,37 @@ bool apic_load_graph_cuda_setup(
         pair.second.cuda_module = cuda_module;
     }
 
-    ContextGuard guard(context);
+    return apic_init_cuda_graph_memory(graph, context, memory_ptr, memory_size);
+}
 
-    for (auto& pair : graph->regions) {
-        void* device_ptr = nullptr;
-        cudaError_t err = cudaMalloc(&device_ptr, pair.second.size);
-        if (err != cudaSuccess) {
-            wp::set_error_string(
-                "Warp APIC error: Failed to allocate %llu bytes: %d", (unsigned long long)pair.second.size, err
-            );
+bool apic_load_graph_cuda_setup(
+    APICGraph* graph,
+    void* context,
+    const std::string& modules_dir,
+    const char* warp_include_dir,
+    const uint8_t* memory_ptr,
+    size_t memory_size
+)
+{
+    int device_arch = 0;
+    for (const auto& pair : graph->modules) {
+        if (!pair.second.binary_digest.empty()) {
+            ContextInfo* context_info = get_context_info(static_cast<CUcontext>(context));
+            if (!context_info || !context_info->device_info) {
+                wp::set_error_string("Warp APIC error: could not determine the guest CUDA device architecture");
+                return false;
+            }
+            device_arch = context_info->device_info->arch;
+            break;
+        }
+    }
+
+    for (auto& pair : graph->modules) {
+        if (!apic_load_cuda_module(context, modules_dir, warp_include_dir, pair.second, device_arch)) {
             return false;
         }
-        pair.second.ptr = device_ptr;
     }
-
-    if (memory_ptr && !apic_init_memory(memory_ptr, memory_size, graph)) {
-        return false;
-    }
-
-    cudaDeviceSynchronize();
-    return true;
+    return apic_init_cuda_graph_memory(graph, context, memory_ptr, memory_size);
 }
 
 // wp_apic_set_param / wp_apic_get_param are defined in apic.cpp; they

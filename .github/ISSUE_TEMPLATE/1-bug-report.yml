@@ -1,23 +1,51 @@
 name: Bug Report
 description: Create a report to help us improve Warp.
 labels: ["bug"]
+type: Bug
 body:
   - type: markdown
     attributes:
       value: |
         Thanks for taking the time to fill out this bug report!
   - type: textarea
+    id: bug-description
     attributes:
       label: Bug Description
       description: >-
-        Describe the bug and how to reproduce it. Self-contained code samples are welcome!
+        Describe what happened and what you expected.
+        Include a minimal, self-contained script or reproducible steps, along with the actual output
+        or full error traceback.
     validations:
       required: true
   - type: textarea
+    id: application-impact
+    attributes:
+      label: Application / Workflow Impact
+      description: >-
+        Briefly describe the project or workflow where you encountered this bug, and link to its
+        GitHub repository if available.
+        If you found the issue through code inspection or isolated testing rather than while working
+        on a project, say so.
+        Reports with demonstrated impact on a current application or workflow are more likely
+        to receive priority.
+    validations:
+      required: true
+  - type: input
+    id: warp-version
+    attributes:
+      label: Warp Version
+      description: >-
+        Run `python -c "import warp; print(warp.__version__)"` to check the version.
+        If you built Warp from source, include the commit SHA.
+    validations:
+      required: true
+  - type: textarea
+    id: system-information
     attributes:
       label: System Information
       description: >-
-        Provide some details about your environment, such as the Warp version, Python version, and OS.
+        Include your Python version, OS, and whether the problem occurs on CPU, CUDA, or both.
+        For CUDA problems, include the GPU model and driver version.
         You can also paste the output of `python -c "import warp; warp.print_diagnostics()"` (Warp 1.12+).
       placeholder: (Optional)
     validations:

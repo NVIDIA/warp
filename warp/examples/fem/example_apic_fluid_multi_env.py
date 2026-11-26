@@ -35,10 +35,10 @@ from warp.sparse import BsrMatrix, bsr_mm, bsr_mv, bsr_transposed
 
 @wp.kernel
 def apply_visual_offsets(
-    positions: wp.array(dtype=wp.vec3),
-    env_indices: wp.array(dtype=int),
-    visual_offsets: wp.array(dtype=wp.vec3),
-    render_positions: wp.array(dtype=wp.vec3),
+    positions: wp.array[wp.vec3],
+    env_indices: wp.array[int],
+    visual_offsets: wp.array[wp.vec3],
+    render_positions: wp.array[wp.vec3],
 ):
     p = wp.tid()
     render_positions[p] = positions[p] + visual_offsets[env_indices[p]]
@@ -46,11 +46,11 @@ def apply_visual_offsets(
 
 @wp.kernel
 def schur_inverse_diagonal_kernel(
-    divergence_mat_offsets: wp.array(dtype=int),
-    divergence_mat_columns: wp.array(dtype=int),
-    divergence_mat_values: wp.array(dtype=Any),
-    inv_volume: wp.array(dtype=float),
-    inv_diag: wp.array(dtype=float),
+    divergence_mat_offsets: wp.array[int],
+    divergence_mat_columns: wp.array[int],
+    divergence_mat_values: wp.array[Any],
+    inv_volume: wp.array[float],
+    inv_diag: wp.array[float],
 ):
     p = wp.tid()
 

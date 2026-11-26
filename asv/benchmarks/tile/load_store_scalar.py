@@ -29,7 +29,7 @@ def _create_kernel_1d(tile_dim, dtype):
     TILE = tile_dim
 
     @wp.kernel
-    def k(a: wp.array1d(dtype=dtype), b: wp.array1d(dtype=dtype)):
+    def k(a: wp.array[dtype], b: wp.array[dtype]):
         i = wp.tid()
         t = wp.tile_load(a, shape=(TILE,), offset=(i * TILE,), storage="shared")
         wp.tile_store(b, t, offset=(i * TILE,))
@@ -41,7 +41,7 @@ def _create_kernel_2d(tile_dim, dtype):
     TILE = tile_dim
 
     @wp.kernel
-    def k(a: wp.array2d(dtype=dtype), b: wp.array2d(dtype=dtype)):
+    def k(a: wp.array2d[dtype], b: wp.array2d[dtype]):
         i, j = wp.tid()
         t = wp.tile_load(a, shape=(TILE, TILE), offset=(i * TILE, j * TILE), storage="shared")
         wp.tile_store(b, t, offset=(i * TILE, j * TILE))
@@ -53,7 +53,7 @@ def _create_kernel_3d(tile_dim, dtype):
     TILE = tile_dim
 
     @wp.kernel
-    def k(a: wp.array3d(dtype=dtype), b: wp.array3d(dtype=dtype)):
+    def k(a: wp.array3d[dtype], b: wp.array3d[dtype]):
         i, j, kk = wp.tid()
         t = wp.tile_load(a, shape=(TILE, TILE, TILE), offset=(i * TILE, j * TILE, kk * TILE), storage="shared")
         wp.tile_store(b, t, offset=(i * TILE, j * TILE, kk * TILE))
