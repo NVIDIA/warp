@@ -21,8 +21,11 @@ minimum translation distance.
 
 Two pure Warp, inline, float32/float64 functions:
 
-- `closest_points_seg_seg(p0,p1,q0,q1)` returns `(s,t,distance_squared)`.
-- `closest_points_tri_seg(a,b,c,p,q)` returns `(bary,t,distance_squared)`.
+- `closest_point_seg_seg(p0,p1,q0,q1)` returns `(s,t,distance_squared)`.
+- `closest_point_seg_tri(p0,p1,v0,v1,v2)` returns `(t,bary,distance_squared)`.
+
+Names, argument order, and parameter names follow `intersect_seg_tri` and the
+singular `wp.closest_point_edge_edge`.
 
 The parameters reconstruct witnesses without adding redundant coordinate outputs.
 They remain differentiable for consumers that need more than distance. No

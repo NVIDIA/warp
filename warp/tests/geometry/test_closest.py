@@ -19,8 +19,8 @@ from warp.tests.unittest_utils import add_function_test, get_test_devices
 def pairs_kernel(points: wp.array2d[Any], coordinates: wp.array2d[Any], distances: wp.array[Any], triangle: bool):
     i = wp.tid()
     if triangle:
-        bary, t, d2 = wp.geometry.closest_points_tri_seg(
-            points[i, 0], points[i, 1], points[i, 2], points[i, 3], points[i, 4]
+        t, bary, d2 = wp.geometry.closest_point_seg_tri(
+            points[i, 3], points[i, 4], points[i, 0], points[i, 1], points[i, 2]
         )
         coordinates[i, 0] = bary[0]
         coordinates[i, 1] = bary[1]
@@ -28,7 +28,7 @@ def pairs_kernel(points: wp.array2d[Any], coordinates: wp.array2d[Any], distance
         coordinates[i, 3] = t
         distances[i] = d2
     else:
-        s, t, d2 = wp.geometry.closest_points_seg_seg(points[i, 0], points[i, 1], points[i, 2], points[i, 3])
+        s, t, d2 = wp.geometry.closest_point_seg_seg(points[i, 0], points[i, 1], points[i, 2], points[i, 3])
         coordinates[i, 0] = s
         coordinates[i, 1] = t
         coordinates[i, 2] = type(points[i, 0][0])(0.0)

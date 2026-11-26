@@ -55,7 +55,7 @@ def _segment_pair(p0: Any, p1: Any, q0: Any, q1: Any, scale_free: bool):
 
 
 @wp.func(inline=True)
-def closest_points_seg_seg(p0: wp.vec3, p1: wp.vec3, q0: wp.vec3, q1: wp.vec3):
+def closest_point_seg_seg(p0: wp.vec3, p1: wp.vec3, q0: wp.vec3, q1: wp.vec3):
     """Return closest-point parameters and squared distance between two closed segments.
 
     Args:
@@ -82,12 +82,12 @@ def closest_points_seg_seg(p0: wp.vec3, p1: wp.vec3, q0: wp.vec3, q1: wp.vec3):
 
 
 @wp.func(inline=True)
-def closest_points_seg_seg(p0: wp.vec3d, p1: wp.vec3d, q0: wp.vec3d, q1: wp.vec3d):
+def closest_point_seg_seg(p0: wp.vec3d, p1: wp.vec3d, q0: wp.vec3d, q1: wp.vec3d):
     return _segment_pair(p0, p1, q0, q1, False)
 
 
 @wp.func(inline=True)
-def _triangle_segment(a: Any, b: Any, c: Any, p: Any, q: Any, scale_free: bool):
+def _segment_triangle(p: Any, q: Any, a: Any, b: Any, c: Any, scale_free: bool):
     zero = type(a[0])(0.0)
     one = type(a[0])(1.0)
     ab = b - a
@@ -130,39 +130,39 @@ def _triangle_segment(a: Any, b: Any, c: Any, p: Any, q: Any, scale_free: bool):
         if u >= zero and v >= zero and w >= zero:
             bary = type(a)(u, v, w)
             delta = v * ab + w * ac - offset
-            return bary, t, wp.dot(delta, delta)
+            return t, bary, wp.dot(delta, delta)
 
-    s, t, best = closest_points_seg_seg(a, b, p, q)
+    s, t, best = closest_point_seg_seg(a, b, p, q)
     bary = type(a)(one - s, s, zero)
-    edge_s, edge_t, d2 = closest_points_seg_seg(b, c, p, q)
+    edge_s, edge_t, d2 = closest_point_seg_seg(b, c, p, q)
     if d2 < best:
         bary = type(a)(zero, one - edge_s, edge_s)
         t = edge_t
         best = d2
-    edge_s, edge_t, d2 = closest_points_seg_seg(c, a, p, q)
+    edge_s, edge_t, d2 = closest_point_seg_seg(c, a, p, q)
     if d2 < best:
         bary = type(a)(edge_s, zero, one - edge_s)
         t = edge_t
         best = d2
-    return bary, t, best
+    return t, bary, best
 
 
 @wp.func(inline=True)
-def closest_points_tri_seg(a: wp.vec3, b: wp.vec3, c: wp.vec3, p: wp.vec3, q: wp.vec3):
-    """Return closest-point coordinates and squared distance for a triangle and segment.
+def closest_point_seg_tri(p0: wp.vec3, p1: wp.vec3, v0: wp.vec3, v1: wp.vec3, v2: wp.vec3):
+    """Return closest-point coordinates and squared distance for a segment and triangle.
 
     Args:
-        a: First triangle vertex.
-        b: Second triangle vertex.
-        c: Third triangle vertex.
-        p: Segment start.
-        q: Segment end.
+        p0: Segment start.
+        p1: Segment end.
+        v0: First triangle vertex.
+        v1: Second triangle vertex.
+        v2: Third triangle vertex.
 
     Returns:
-        Tuple ``(bary, t, distance_squared)``. The witnesses are
-        ``bary[0]*a + bary[1]*b + bary[2]*c`` and ``p + t*(q-p)``.
-        Barycentric coordinates are nonnegative and sum to one; ``t`` lies in
-        [0, 1]. Degenerate triangles are treated as the union of their edges.
+        Tuple ``(t, bary, distance_squared)``. The witnesses are
+        ``p0 + t * (p1 - p0)`` and ``bary[0] * v0 + bary[1] * v1 + bary[2] * v2``.
+        ``t`` lies in [0, 1]; barycentric coordinates are nonnegative and sum to
+        one. Degenerate triangles are treated as the union of their edges.
 
     This finite feature query includes piercing, coplanar, and boundary cases.
     Nonunique minima use deterministic input-order tie breaking. Derivatives
@@ -173,13 +173,13 @@ def closest_points_tri_seg(a: wp.vec3, b: wp.vec3, c: wp.vec3, p: wp.vec3, q: wp
     not guarantee finite intermediate products in reverse mode, particularly at
     extreme scales.
     """
-    return _triangle_segment(a, b, c, p, q, True)
+    return _segment_triangle(p0, p1, v0, v1, v2, True)
 
 
 @wp.func(inline=True)
-def closest_points_tri_seg(a: wp.vec3d, b: wp.vec3d, c: wp.vec3d, p: wp.vec3d, q: wp.vec3d):
-    return _triangle_segment(a, b, c, p, q, False)
+def closest_point_seg_tri(p0: wp.vec3d, p1: wp.vec3d, v0: wp.vec3d, v1: wp.vec3d, v2: wp.vec3d):
+    return _segment_triangle(p0, p1, v0, v1, v2, False)
 
 
-register_api_function(closest_points_seg_seg, module="warp.geometry", python_callable=True, differentiable=True)
-register_api_function(closest_points_tri_seg, module="warp.geometry", python_callable=True, differentiable=True)
+register_api_function(closest_point_seg_seg, module="warp.geometry", python_callable=True, differentiable=True)
+register_api_function(closest_point_seg_tri, module="warp.geometry", python_callable=True, differentiable=True)

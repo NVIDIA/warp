@@ -151,7 +151,7 @@ def make_kernel(method, triangle, contact=False, precision="float32", capsule=Tr
                 coords = wp.vec3(1.0 - t, t, 0.0)
         else:
             if wp.static(triangle):
-                coords, t, d2 = wp.geometry.closest_points_tri_seg(a, b, c, p, q)
+                t, coords, d2 = wp.geometry.closest_point_seg_tri(p, q, a, b, c)
                 x = coords[0] * a + coords[1] * b + coords[2] * c
             else:
                 s = scalar(0.0)
@@ -161,7 +161,7 @@ def make_kernel(method, triangle, contact=False, precision="float32", capsule=Tr
                     t = result[1]
                     d2 = result[2] * result[2]
                 else:
-                    s, t, d2 = wp.geometry.closest_points_seg_seg(a, b, p, q)
+                    s, t, d2 = wp.geometry.closest_point_seg_seg(a, b, p, q)
                 coords = vector(scalar(1.0) - s, s, scalar(0.0))
                 x = a + s * (b - a)
             phi = wp.sqrt(d2) - scalar(0.5)
@@ -226,7 +226,7 @@ def make_segment_kernel(native=False, precision="float32"):
         if wp.static(native):
             out[i] = wp.closest_point_edge_edge(points[i, 0], points[i, 1], points[i, 2], points[i, 3], 0.0)
         else:
-            s, t, d2 = wp.geometry.closest_points_seg_seg(points[i, 0], points[i, 1], points[i, 2], points[i, 3])
+            s, t, d2 = wp.geometry.closest_point_seg_seg(points[i, 0], points[i, 1], points[i, 2], points[i, 3])
             out[i] = vector(s, t, wp.sqrt(d2))
 
     return kernel
