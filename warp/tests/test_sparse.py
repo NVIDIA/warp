@@ -1317,6 +1317,346 @@ def make_test_bsr_mv(block_shape, scalar_type):
     return test_bsr_mv
 
 
+def test_bsr_mv_mixed_precision(test, device):
+    """Check mixed-precision products for block shapes, padding, and transposition."""
+    rng = np.random.default_rng(2069)
+    scalar_types = (wp.float16, wp.float32, wp.float64)
+    tolerances = {wp.float16: 5e-3, wp.float32: 2e-6, wp.float64: 1e-12}
+    rows = wp.array([0, 0, 2, 3, 3, 4], dtype=int, device=device)
+    cols = wp.array([0, 3, 1, 2, 6, 4], dtype=int, device=device)
+    for matrix_type in scalar_types:
+        for block_shape in ((1, 1), (2, 3), (3, 3)):
+            block_type = matrix_type if block_shape == (1, 1) else wp.types.matrix(block_shape, matrix_type)
+            values = wp.array(rng.normal(size=(6, *block_shape)), dtype=block_type, device=device)
+            for padded in (False, True):
+                A = bsr_zeros(5, 7, block_type, device=device, row_capacity=4 if padded else None)
+                bsr_set_from_triplets(A, rows, cols, values, topology="padded" if padded else "compact")
+                dense = _bsr_to_dense(A)
+                if padded:
+                    # Inactive capacity must never be read, even by the transpose path.
+                    offsets, counts = A.offsets.numpy(), A.row_counts.numpy()
+                    poisoned_values, poisoned_cols = A.values.numpy(), A.columns.numpy()
+                    for row in range(A.nrow):
+                        unused = slice(offsets[row] + counts[row], offsets[row + 1])
+                        poisoned_values[unused] = np.nan
+                        poisoned_cols[unused] = -1
+                    A.values = wp.array(poisoned_values, dtype=block_type, device=device)
+                    A.columns = wp.array(poisoned_cols, dtype=int, device=device)
+                for vector_type in scalar_types:
+                    numpy_type = wp.dtype_to_numpy(vector_type)
+                    tol = tolerances[vector_type]
+                    # Convert stored matrix values before multiplication, including for downcasts.
+                    vector_dense = dense.astype(numpy_type)
+                    for transpose in (False, True):
+                        ref_A = vector_dense.T if transpose else vector_dense
+                        x_np = rng.normal(size=ref_A.shape[1]).astype(numpy_type)
+                        y_np = rng.normal(size=ref_A.shape[0]).astype(numpy_type)
+                        width = block_shape[0 if transpose else 1]
+                        x_type = vector_type if width == 1 else wp.types.vector(width, vector_type)
+                        x = wp.array(x_np.reshape(-1, width), dtype=x_type, device=device).flatten()
+                        alpha, beta = 1.0 + 2.0**-40, -0.375
+                        ref_product = numpy_type(alpha) * (ref_A @ x_np)
+                        ref = ref_product + numpy_type(beta) * y_np
+                        for tile_size in (-1, 0, 64) if device.is_cuda else (-1, 0):
+                            with test.subTest(
+                                matrix_type=matrix_type,
+                                vector_type=vector_type,
+                                block_shape=block_shape,
+                                padded=padded,
+                                transpose=transpose,
+                                tile_size=tile_size,
+                            ):
+                                y = wp.array(y_np, dtype=vector_type, device=device)
+                                result = bsr_mv(A * alpha, x, y, beta=beta, transpose=transpose, tile_size=tile_size)
+                                test.assertIs(result, y)
+                                test.assertTrue(np.isfinite(y.numpy()).all())
+                                np.testing.assert_allclose(y.numpy(), ref, rtol=tol, atol=tol)
+                        result = x @ (A * alpha) if transpose else (A * alpha) @ x
+                        test.assertEqual(result.numpy().dtype, np.dtype(numpy_type))
+                        np.testing.assert_allclose(result.numpy().ravel(), ref_product, rtol=tol, atol=tol)
+
+
+def test_bsr_mv_mixed_precision_bfloat16(test, device):
+    scalar_types = (wp.float16, wp.bfloat16, wp.float32, wp.float64)
+    rows = wp.array([0, 0, 1, 1, 2, 2], dtype=int, device=device)
+    cols = wp.array([0, 1, 1, 2, 0, 2], dtype=int, device=device)
+    # Exact results also permit comparison of raw bfloat16 storage without ml_dtypes.
+    for matrix_type in scalar_types:
+        A = bsr_from_triplets(
+            3,
+            3,
+            rows,
+            cols,
+            wp.array([1.5, 0.5, -2.0, 1.0, 0.25, 0.5], dtype=matrix_type, device=device),
+        )
+        for vector_type in scalar_types:
+            if matrix_type != wp.bfloat16 and vector_type != wp.bfloat16:
+                continue
+            x = wp.array([2.0, 3.0, 4.0], dtype=vector_type, device=device)
+            for transpose in (False, True):
+                product = [8.0, -10.0, 10.0] if transpose else [9.0, -4.0, 5.0]
+                expected = wp.array(np.array(product) - 0.5, dtype=vector_type, device=device).numpy()
+                for tile_size in (-1, 64) if device.is_cuda else (-1,):
+                    with test.subTest(
+                        matrix_type=matrix_type, vector_type=vector_type, transpose=transpose, tile_size=tile_size
+                    ):
+                        y = wp.ones(3, dtype=vector_type, device=device)
+                        bsr_mv(A * 2.0, x, y, beta=-0.5, transpose=transpose, tile_size=tile_size)
+                        np.testing.assert_array_equal(y.numpy(), expected)
+                result = x @ (A * 2.0) if transpose else (A * 2.0) @ x
+                test.assertEqual(result.dtype, vector_type)
+                expected_product = wp.array(product, dtype=vector_type, device=device).numpy()
+                np.testing.assert_array_equal(result.numpy(), expected_product)
+
+
+def test_bsr_mv_mixed_precision_arithmetic(test, device):
+    """Check that products, reductions, and scaling use the vector scalar type."""
+    # Casting after a lower-precision product or reduction would lose these contributions.
+    for matrix_type, vector_type, large_value in (
+        (wp.float16, wp.float32, 2.0**11),
+        (wp.float16, wp.float64, 2.0**11),
+        (wp.float32, wp.float64, 2.0**24),
+    ):
+        A = bsr_from_triplets(
+            1,
+            3,
+            wp.array([0, 0, 0], dtype=int, device=device),
+            wp.array([0, 1, 2], dtype=int, device=device),
+            wp.array([large_value, 1.0, -large_value], dtype=matrix_type, device=device),
+        )
+        x = wp.ones(3, dtype=vector_type, device=device)
+        for tile_size in (-1, 0, 32, 64) if device.is_cuda else (-1, 0):
+            with test.subTest(matrix_type=matrix_type, vector_type=vector_type, tile_size=tile_size):
+                np.testing.assert_array_equal(bsr_mv(A, x, tile_size=tile_size).numpy(), [1.0])
+
+    # These round differently if matrix values are converted after multiplication.
+    for matrix_type, vector_type, increment, expected_increment in (
+        (wp.float32, wp.float16, 2.0**-11 + 2.0**-20, 2.0**-8),
+        (wp.float64, wp.float16, 2.0**-11 + 2.0**-20, 2.0**-8),
+        (wp.float64, wp.float32, 2.0**-24 + 2.0**-50, 2.0**-21),
+    ):
+        A = bsr_diag(wp.array([1.0 + increment], dtype=matrix_type, device=device))
+        x = wp.full(1, 3.0, dtype=vector_type, device=device)
+        for transpose in (False, True):
+            for tile_size in (-1, 64) if device.is_cuda else (-1,):
+                with test.subTest(
+                    matrix_type=matrix_type, vector_type=vector_type, transpose=transpose, tile_size=tile_size
+                ):
+                    result = bsr_mv(A, x, transpose=transpose, tile_size=tile_size)
+                    np.testing.assert_array_equal(result.numpy(), [3.0 + expected_increment])
+
+    A = bsr_identity(3, block_type=wp.float32, device=device)
+    x_np = np.array([1.0 + 2.0**-40, 1.0 - 2.0**-40, -1.0 + 2.0**-40])
+    x = wp.array(x_np, dtype=wp.float64, device=device)
+    alpha, beta = 1.0 + 2.0**-35, 2.0**-38
+    for transpose in (False, True):
+        for tile_size in (-1, 64) if device.is_cuda else (-1,):
+            y = wp.ones(3, dtype=wp.float64, device=device)
+            bsr_mv(A * alpha, x, y, beta=beta, transpose=transpose, tile_size=tile_size)
+            np.testing.assert_allclose(y.numpy(), alpha * x_np + beta, rtol=1e-15, atol=0.0)
+            bsr_mv(A * wp.float32(2.0), x, y, alpha=wp.float64(alpha), transpose=transpose, tile_size=tile_size)
+            np.testing.assert_allclose(y.numpy(), 2.0 * alpha * x_np, rtol=1e-15, atol=0.0)
+
+
+def test_bsr_mv_mixed_precision_edges(test, device):
+    """Check mixed-precision aliasing, zero scaling, array views, and type validation."""
+    A = bsr_identity(3, block_type=wp.float32, device=device)
+    for transpose in (False, True):
+        for tile_size in (-1, 64) if device.is_cuda else (-1,):
+            x = wp.array([1.0, 2.0, 3.0], dtype=wp.float64, device=device)
+            work = wp.empty_like(x)
+            bsr_mv(A, x, x, alpha=2.0, beta=-0.5, transpose=transpose, tile_size=tile_size, work_buffer=work)
+            np.testing.assert_array_equal(x.numpy(), [1.5, 3.0, 4.5])
+            x.fill_(float("nan"))
+            y = wp.ones(3, dtype=wp.float64, device=device)
+            bsr_mv(A, x, y, alpha=0.0, beta=2.0, transpose=transpose, tile_size=tile_size)
+            np.testing.assert_array_equal(y.numpy(), [2.0, 2.0, 2.0])
+            x.fill_(1.0)
+            y.fill_(float("nan"))
+            bsr_mv(A, x, y, beta=0.0, transpose=transpose, tile_size=tile_size)
+            np.testing.assert_array_equal(y.numpy(), [1.0, 1.0, 1.0])
+            empty = bsr_zeros(3, 3, wp.float32, device=device)
+            bsr_mv(empty, x, y, beta=2.0, transpose=transpose, tile_size=tile_size)
+            np.testing.assert_array_equal(y.numpy(), [2.0, 2.0, 2.0])
+
+    # Preserve both strided scalar arrays and contiguous two-dimensional views.
+    x = wp.array(np.arange(6, dtype=np.float64), device=device)[::2]
+    y_storage = wp.full(6, -1.0, dtype=wp.float64, device=device)
+    bsr_mv(A, x, y_storage[::2])
+    np.testing.assert_array_equal(y_storage.numpy(), [0.0, -1.0, 2.0, -1.0, 4.0, -1.0])
+    y = wp.zeros((3, 1), dtype=wp.float64, device=device)
+    bsr_mv(A, x, y)
+    np.testing.assert_array_equal(y.numpy().ravel(), [0.0, 2.0, 4.0])
+
+    y32 = wp.full(3, 7.0, dtype=wp.float32, device=device)
+    with test.assertRaisesRegex(ValueError, "Incompatible 'y'"):
+        bsr_mv(A, x, y32)
+    np.testing.assert_array_equal(y32.numpy(), [7.0, 7.0, 7.0])
+
+
+def test_bsr_mv_mixed_precision_nonfloating(test, device):
+    for matrix_type, vector_type in (
+        (wp.float32, wp.int32),
+        (wp.int32, wp.float32),
+        (wp.int32, wp.int64),
+        (wp.int64, wp.int32),
+    ):
+        A = bsr_diag(wp.array([1.5, -2.75], dtype=matrix_type, device=device))
+        for transpose in (False, True):
+            for output in ("allocated", "provided", "alias"):
+                with test.subTest(matrix_type=matrix_type, vector_type=vector_type, transpose=transpose, output=output):
+                    x = wp.array([2, 3], dtype=vector_type, device=device)
+                    if output == "allocated":
+                        y = None
+                    elif output == "alias":
+                        y = x
+                    else:
+                        y = wp.array([7, 11], dtype=vector_type, device=device)
+                    before_x = x.numpy()
+                    before_y = None if y is None else y.numpy()
+                    # Reject before the transpose path scales y or an aliased input.
+                    with test.assertRaisesRegex(ValueError, "Incompatible 'x'"):
+                        bsr_mv(A, x, y, alpha=2, beta=3, transpose=transpose)
+                    np.testing.assert_array_equal(x.numpy(), before_x)
+                    if y is not None:
+                        np.testing.assert_array_equal(y.numpy(), before_y)
+
+    # Integer products remain supported when all operands have the same scalar type.
+    rows = wp.array([0, 0, 1], dtype=int, device=device)
+    cols = wp.array([0, 1, 1], dtype=int, device=device)
+    for scalar_type in (wp.int32, wp.int64):
+        A = bsr_from_triplets(2, 2, rows, cols, wp.array([2, 3, 4], dtype=scalar_type, device=device))
+        x = wp.array([5, 6], dtype=scalar_type, device=device)
+        for transpose in (False, True):
+            with test.subTest(scalar_type=scalar_type, transpose=transpose):
+                product = np.array([10, 39] if transpose else [28, 24])
+                y = wp.array([7, 11], dtype=scalar_type, device=device)
+                result = bsr_mv(A * 2, x, y, alpha=1, beta=3, transpose=transpose)
+                test.assertIs(result, y)
+                np.testing.assert_array_equal(y.numpy(), 2 * product + 3 * np.array([7, 11]))
+
+
+def test_bsr_mv_mixed_precision_capture(test, device):
+    """Check replay of captured mixed-precision products with aliased vectors."""
+    A = bsr_identity(3, block_type=wp.float32, device=device)
+    x = wp.ones(3, dtype=wp.float64, device=device)
+    work = wp.empty_like(x)
+    for transpose in (False, True):
+        bsr_mv(A, x, x, alpha=2.0, transpose=transpose, work_buffer=work)
+        x.fill_(1.0)
+        with wp.ScopedCapture(device=device) as capture:
+            bsr_mv(A, x, x, alpha=2.0, transpose=transpose, work_buffer=work)
+        wp.capture_launch(capture.graph)
+        np.testing.assert_array_equal(x.numpy(), [2.0, 2.0, 2.0])
+        wp.capture_launch(capture.graph)
+        np.testing.assert_array_equal(x.numpy(), [4.0, 4.0, 4.0])
+
+
+def test_bsr_mv_row_packed(test, device):
+    """Check packed products across scalar types, block shapes, and thread layouts."""
+    rng = np.random.default_rng(2069)
+    configurations = ((32, 8), (512, 128), (1024, 256), (64, 64), (64, 32), (128, 32), (128, 16), (256, 16), (256, 8))
+    for storage, compute in ((wp.float32, wp.float32), (wp.float64, wp.float64), (wp.float32, wp.float64)):
+        for shape in ((1, 1), (2, 3), (3, 3)):
+            block_type = storage if shape == (1, 1) else wp.types.matrix(shape, storage)
+            rows = np.repeat(np.arange(35), np.arange(35) % 7)
+            cols = (np.arange(len(rows)) * 13 % 43).astype(np.int32)
+            A = bsr_zeros(35, 43, block_type, device=device, row_capacity=8)
+            bsr_set_from_triplets(
+                A,
+                wp.array(rows, dtype=int, device=device),
+                wp.array(cols, dtype=int, device=device),
+                wp.array(rng.normal(size=(len(rows), *shape)), dtype=block_type, device=device),
+                topology="padded",
+            )
+            dense = _bsr_to_dense(A)
+            offsets, counts = A.offsets.numpy(), A.row_counts.numpy()
+            values, columns = A.values.numpy(), A.columns.numpy()
+            for row in range(A.nrow):
+                unused = slice(offsets[row] + counts[row], offsets[row + 1])
+                values[unused] = np.nan
+                columns[unused] = -1
+            A.values = wp.array(values, dtype=block_type, device=device)
+            A.columns = wp.array(columns, dtype=int, device=device)
+            x_type = compute if shape[1] == 1 else wp.types.vector(shape[1], compute)
+            y_type = compute if shape[0] == 1 else wp.types.vector(shape[0], compute)
+            x = wp.array(rng.normal(size=(43, shape[1])), dtype=x_type, device=device).flatten()
+            y_np = rng.normal(size=(35, shape[0])).astype(np.float32 if compute == wp.float32 else np.float64)
+            ref = -0.75 * (dense @ x.numpy().ravel()) + 0.25 * y_np.ravel()
+            tol = 2e-6 if compute == wp.float32 else 1e-12
+            for tile_size, rows_per_block in configurations:
+                with test.subTest(
+                    storage=storage, compute=compute, shape=shape, tile_size=tile_size, rows_per_block=rows_per_block
+                ):
+                    y = wp.array(y_np, dtype=y_type, device=device).flatten()
+                    bsr_mv(A, x, y, alpha=-0.75, beta=0.25, tile_size=tile_size, rows_per_block=rows_per_block)
+                    test.assertTrue(np.isfinite(y.numpy()).all())
+                    np.testing.assert_allclose(y.numpy().ravel(), ref, rtol=tol, atol=tol)
+
+
+def test_bsr_mv_row_packed_edges(test, device):
+    """Check packed products with aliasing, graph capture, empty matrices, and strides."""
+    A = bsr_identity(35, block_type=wp.float32, device=device)
+    x = wp.ones(35, dtype=wp.float64, device=device)
+    work = wp.empty_like(x)
+    options = {"tile_size": 128, "rows_per_block": 32}
+    bsr_mv(A, x, x, alpha=2.0, beta=0.5, work_buffer=work, **options)
+    np.testing.assert_array_equal(x.numpy(), np.full(35, 2.5))
+    x.fill_(1.0)
+    with wp.ScopedCapture(device=device) as capture:
+        bsr_mv(A, x, x, alpha=2.0, work_buffer=work, **options)
+    wp.capture_launch(capture.graph)
+    np.testing.assert_array_equal(x.numpy(), np.full(35, 2.0))
+    wp.capture_launch(capture.graph)
+    np.testing.assert_array_equal(x.numpy(), np.full(35, 4.0))
+    x.fill_(float("nan"))
+    y = wp.ones(35, dtype=wp.float64, device=device)
+    bsr_mv(A, x, y, alpha=0.0, beta=2.0, **options)
+    np.testing.assert_array_equal(y.numpy(), np.full(35, 2.0))
+    x.fill_(1.0)
+    y.fill_(float("nan"))
+    bsr_mv(A, x, y, **options)
+    np.testing.assert_array_equal(y.numpy(), np.ones(35))
+    empty = bsr_zeros(35, 35, wp.float32, device=device)
+    bsr_mv(empty, x, y, beta=2.0, **options)
+    np.testing.assert_array_equal(y.numpy(), np.full(35, 2.0))
+    empty = bsr_zeros(0, 35, wp.float32, device=device)
+    test.assertEqual(bsr_mv(empty, x, **options).size, 0)
+    storage = wp.full(70, -1.0, dtype=wp.float64, device=device)
+    bsr_mv(A, x, storage[::2], **options)
+    np.testing.assert_array_equal(storage.numpy()[::2], np.ones(35))
+    np.testing.assert_array_equal(storage.numpy()[1::2], -np.ones(35))
+    # Batches apply row packing to each vector through the loop strategy.
+    X = np.arange(3 * 35, dtype=np.float64).reshape(3, 35)
+    batch = wp.array(X, dtype=wp.float64, device=device)
+    np.testing.assert_array_equal(bsr_mv(A * 2.0, batch, **options).numpy(), 2.0 * X)
+    with test.assertRaisesRegex(ValueError, "tile_size applies"):
+        bsr_mv(A, wp.array(X, dtype=wp.float32, device=device), algorithm="rows", **options)
+
+
+def test_bsr_mv_row_packed_invalid(test, device):
+    """Check that invalid row-packing requests leave the output unchanged."""
+    A = bsr_identity(3, block_type=wp.float32, device=device)
+    x = wp.ones(3, dtype=wp.float32, device=device)
+    y = wp.full(3, 7.0, dtype=wp.float32, device=device)
+    options = [
+        {"rows_per_block": 0},
+        {"rows_per_block": -1},
+        {"rows_per_block": 1.5},
+        {"rows_per_block": 32},
+        {"rows_per_block": 3, "tile_size": 128},
+        {"rows_per_block": 256, "tile_size": 128},
+        {"rows_per_block": 2, "tile_size": 256},
+        {"rows_per_block": 32, "tile_size": 128, "transpose": True},
+    ]
+    if not device.is_cuda:
+        options.append({"rows_per_block": 32, "tile_size": 128})
+    for kwargs in options:
+        with test.subTest(kwargs=kwargs), test.assertRaisesRegex(ValueError, "rows_per_block|row-packed"):
+            bsr_mv(A, x, y, **kwargs)
+        np.testing.assert_array_equal(y.numpy(), [7.0, 7.0, 7.0])
+
+
 def make_test_bsr_multiply_deep(block_shape, scalar_type):
     def test_bsr_multiply_deep(test, device):
         """Test BSR matrix multiplication with deep matrices (many columns > 256)."""
@@ -2622,6 +2962,55 @@ def test_bsr_mv_batch_gradient(test, device):
     test.assertGreater(np.abs(A.values.grad.numpy()).max(), 0.0)
 
 
+def test_bsr_mv_mixed_precision_batch(test, device):
+    """Check that mixed-precision batches match separate single-vector products."""
+    device = wp.get_device(device)
+    rng = np.random.default_rng(2069)
+    for block in (1, 3):
+        A, dense = _batch_matrix(device, wp.float32, block, False)
+        dense = _bsr_to_dense(A).astype(np.float64)
+        X, Y = rng.normal(size=(2, 5, dense.shape[0]))
+        for transpose in (False, True):
+            ref_A = dense.T if transpose else dense
+            x = wp.array(X, dtype=wp.float64, device=device)
+            y = wp.array(Y, dtype=wp.float64, device=device)
+            bsr_mv(A, x, y, alpha=2.0, beta=0.5, transpose=transpose)
+            np.testing.assert_allclose(y.numpy(), 2.0 * X @ ref_A.T + 0.5 * Y, rtol=1e-12, atol=1e-12)
+            for algorithm in ("auto", "loop"):
+                result = bsr_mv(A, x, transpose=transpose, algorithm=algorithm)
+                test.assertEqual(result.dtype, wp.float64)
+                np.testing.assert_allclose(result.numpy(), X @ ref_A.T, rtol=1e-12, atol=1e-12)
+        # The row and column kernels require matching scalar types.
+        for algorithm in _batch_algorithms(device, A):
+            if algorithm in ("rows", "columns"):
+                with test.assertRaisesRegex(ValueError, "matching matrix and vector scalar types"):
+                    bsr_mv(A, x, algorithm=algorithm)
+
+
+def test_bsr_mv_mixed_precision_gradient(test, device):
+    """Check mixed-precision bsr_mv gradients for the matrix, x, and the input y against NumPy."""
+    rng = np.random.default_rng(2069)
+    alpha, beta = -1.5, 0.5
+    for block_shape in ((1, 1), (2, 3)):
+        for transpose in (False, True):
+            A = _make_gradient_test_bsr(4, 3, block_shape, wp.float32, "compact", rng, device)
+            op_dense = _bsr_to_dense(A).astype(np.float64)
+            op_dense = op_dense.T if transpose else op_dense
+            x = wp.array(rng.random(op_dense.shape[1]), dtype=wp.float64, device=device, requires_grad=True)
+            y = wp.array(rng.random(op_dense.shape[0]), dtype=wp.float64, device=device, requires_grad=True)
+            y_adj = rng.random(op_dense.shape[0])
+            x_np = x.numpy()
+
+            with wp.Tape() as tape:
+                bsr_mv(A, x, y, alpha=alpha, beta=beta, transpose=transpose)
+            tape.backward(grads={y: wp.array(y_adj, dtype=wp.float64, device=device)})
+
+            A_adj_expected = alpha * (np.outer(x_np, y_adj) if transpose else np.outer(y_adj, x_np))
+            assert_np_equal(_bsr_dense_grad(A), A_adj_expected * _bsr_dense_mask(A), tol=1.0e-5)
+            assert_np_equal(x.grad.numpy(), alpha * op_dense.T @ y_adj, tol=1.0e-12)
+            assert_np_equal(y.grad.numpy(), beta * y_adj, tol=1.0e-12)
+
+
 def test_bsr_mv_batch_selection(test, device):
     """Check which strategy AUTO selects and that explicit strategies reject what they cannot run."""
     from unittest import mock  # noqa: PLC0415
@@ -2910,7 +3299,37 @@ add_function_test(TestSparse, "test_csr_mv", make_test_bsr_mv((1, 1), wp.float32
 add_function_test(TestSparse, "test_bsr_mv_batch", test_bsr_mv_batch, devices=devices)
 add_function_test(TestSparse, "test_bsr_mv_batch_selection", test_bsr_mv_batch_selection, devices=devices)
 add_function_test(TestSparse, "test_bsr_mv_batch_gradient", test_bsr_mv_batch_gradient, devices=devices)
+add_function_test(TestSparse, "test_bsr_mv_mixed_precision_batch", test_bsr_mv_mixed_precision_batch, devices=devices)
+add_function_test(
+    TestSparse, "test_bsr_mv_mixed_precision_gradient", test_bsr_mv_mixed_precision_gradient, devices=devices
+)
 add_function_test(TestSparse, "test_bsr_mean_row_count_sync", test_bsr_mean_row_count_sync, devices=devices)
+add_function_test(TestSparse, "test_bsr_mv_row_packed", test_bsr_mv_row_packed, devices=cuda_test_devices)
+add_function_test(
+    TestSparse, "test_bsr_mv_row_packed_edges", test_bsr_mv_row_packed_edges, devices=cuda_test_devices_with_mempool
+)
+add_function_test(TestSparse, "test_bsr_mv_row_packed_invalid", test_bsr_mv_row_packed_invalid, devices=devices)
+add_function_test(TestSparse, "test_bsr_mv_mixed_precision", test_bsr_mv_mixed_precision, devices=devices)
+add_function_test(
+    TestSparse,
+    "test_bsr_mv_mixed_precision_bfloat16",
+    test_bsr_mv_mixed_precision_bfloat16,
+    devices=[device for device in devices if not device.is_cuda or device.arch >= 80],
+    check_output=False,
+)
+add_function_test(
+    TestSparse, "test_bsr_mv_mixed_precision_arithmetic", test_bsr_mv_mixed_precision_arithmetic, devices=devices
+)
+add_function_test(TestSparse, "test_bsr_mv_mixed_precision_edges", test_bsr_mv_mixed_precision_edges, devices=devices)
+add_function_test(
+    TestSparse, "test_bsr_mv_mixed_precision_nonfloating", test_bsr_mv_mixed_precision_nonfloating, devices=devices
+)
+add_function_test(
+    TestSparse,
+    "test_bsr_mv_mixed_precision_capture",
+    test_bsr_mv_mixed_precision_capture,
+    devices=cuda_test_devices_with_mempool,
+)
 add_function_test(TestSparse, "test_bsr_mv_1_3", make_test_bsr_mv((1, 3), wp.float32), devices=devices)
 add_function_test(TestSparse, "test_bsr_mv_3_3", make_test_bsr_mv((3, 3), wp.float64), devices=devices)
 

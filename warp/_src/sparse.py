@@ -17,9 +17,11 @@ from warp._src import sparse_multi_rhs as _multi_rhs
 from warp._src.types import (
     Array,
     Cols,
+    DType,
     Rows,
     Scalar,
     Vector,
+    float_types,
     is_array,
     scalar_types,
     type_is_matrix,
@@ -5067,6 +5069,7 @@ def _bsr_mm_forward(
 
 @cache
 def make_bsr_mv_kernel(block_cols: int):
+    """Create a scalar BSR product kernel specialized for the block column count."""
 
     @wp.kernel(enable_backward=False, module="unique")
     def bsr_mv_kernel(
@@ -5079,6 +5082,7 @@ def make_bsr_mv_kernel(block_cols: int):
         beta: Any,
         y: wp.array[Any],
     ):
+        """Compute each scalar output row in one thread using the vector scalar type."""
         row, subrow = wp.tid()
 
         block_rows = A_values.shape[1]
@@ -5095,7 +5099,7 @@ def make_bsr_mv_kernel(block_cols: int):
             for block in range(beg, end):
                 xs = A_columns[block] * block_cols
                 for col in range(wp.static(block_cols)):
-                    v += A_values[block, subrow, col] * x[xs + col]
+                    v += y.dtype(A_values[block, subrow, col]) * x[xs + col]
             v *= alpha
 
         if beta != scalar_zero:
@@ -5108,6 +5112,7 @@ def make_bsr_mv_kernel(block_cols: int):
 
 @cache
 def make_bsr_mv_tiled_kernel(tile_size: int):
+    """Create a BSR product kernel with one tile per scalar output row."""
 
     @wp.kernel(enable_backward=False, module="unique")
     def bsr_mv_tiled_kernel(
@@ -5120,6 +5125,7 @@ def make_bsr_mv_tiled_kernel(tile_size: int):
         beta: Any,
         y: wp.array[Any],
     ):
+        """Reduce each scalar row across a tile using the vector scalar type."""
         row, subrow, lane = wp.tid()
 
         scalar_zero = type(alpha)(0)
@@ -5147,7 +5153,7 @@ def make_bsr_mv_tiled_kernel(tile_size: int):
                 block += block_beg
 
                 xi = x[A_columns[block] * block_cols + block_col]
-                lane_sum += A_values[block, subrow, block_col] * xi
+                lane_sum += y.dtype(A_values[block, subrow, block_col]) * xi
 
             lane_sum *= alpha
             subrow_sum += wp.tile_sum(wp.tile(lane_sum))
@@ -5158,7 +5164,52 @@ def make_bsr_mv_tiled_kernel(tile_size: int):
 
 
 @cache
+def make_bsr_mv_row_packed_kernel(tile_size: int, rows_per_block: int, block_shape: tuple[int, int]):
+    """Create a CUDA BSR product kernel specialized for row packing and block shape."""
+    threads_per_row = tile_size // rows_per_block
+    block_rows, block_cols = block_shape
+
+    @wp.kernel(enable_backward=False, module="unique")
+    def bsr_mv_row_packed_kernel(
+        alpha: Any,
+        offsets: wp.array[int],
+        counts: wp.array[int],
+        columns: wp.array[int],
+        values: wp.array3d[Any],
+        x: wp.array[Any],
+        beta: Any,
+        y: wp.array[Any],
+    ):
+        """Reduce packed scalar rows while keeping padded lanes in the collective."""
+        thread = wp.tid()
+        group = thread // tile_size
+        lane = thread % threads_per_row
+        scalar_row = thread // threads_per_row
+        lane_sum = y.dtype(0)
+        if scalar_row < y.shape[0] and alpha != y.dtype(0):
+            row = scalar_row // block_rows
+            subrow = scalar_row % block_rows
+            begin = offsets[row]
+            count = offsets[row + 1] - begin
+            if counts:
+                count = counts[row]
+            for index in range(lane, count * block_cols, threads_per_row):
+                block = begin + index // block_cols
+                col = index % block_cols
+                lane_sum += y.dtype(values[block, subrow, col]) * x[columns[block] * block_cols + col]
+        # All lanes, including padded rows, must participate in the collective.
+        partials = wp.tile_reshape(wp.tile(lane_sum), shape=(rows_per_block, threads_per_row))
+        sums = alpha * wp.tile_sum(partials, axis=1)
+        if beta != y.dtype(0):
+            sums += beta * wp.tile_load(y, shape=rows_per_block, offset=group * rows_per_block)
+        wp.tile_store(y, sums, offset=group * rows_per_block)
+
+    return bsr_mv_row_packed_kernel
+
+
+@cache
 def make_bsr_mv_transpose_kernel(block_rows: int):
+    """Create a transposed BSR product kernel specialized for the block row count."""
 
     @wp.kernel(enable_backward=False, module="unique")
     def bsr_mv_transpose_kernel(
@@ -5171,6 +5222,7 @@ def make_bsr_mv_transpose_kernel(block_rows: int):
         x: wp.array[Any],
         y: wp.array[Any],
     ):
+        """Accumulate transposed block products atomically using the vector scalar type."""
         block, subcol = wp.tid()
 
         row = bsr_row_index(A_offsets, A_row_count, block, A_row_counts)
@@ -5183,7 +5235,7 @@ def make_bsr_mv_transpose_kernel(block_rows: int):
 
         col_sum = type(alpha)(0)
         for subrow in range(wp.static(block_rows)):
-            col_sum += A_block[subrow, subcol] * x[row * block_rows + subrow]
+            col_sum += y.dtype(A_block[subrow, subcol]) * x[row * block_rows + subrow]
 
         wp.atomic_add(y, A_columns[block] * block_cols + subcol, alpha * col_sum)
 
@@ -5221,7 +5273,8 @@ def make_bsr_mv_values_adjoint_kernel(transpose: bool):
         else:
             g = y_adj[row * block_rows + subrow] * x[col * block_cols + subcol]
 
-        A_values_adj[block, subrow, subcol] += alpha * g
+        # Mixed-precision products accumulate in the vector scalar type of x and y_adj.
+        A_values_adj[block, subrow, subcol] += A_values_adj.dtype(alpha * g)
 
     return bsr_mv_values_adjoint_kernel
 
@@ -5321,7 +5374,8 @@ def _bsr_mv_record_adjoint(
     # topology move it to new arrays first, so the captured ones are not overwritten.
     A_nrow, _, A_nnz, A_offsets, A_row_counts, A_columns, A_values = captured_A = _bsr_capture(A)
     block_shape = A.block_shape
-    scalar_type = A.scalar_type
+    # Vector scalar type, which may differ from that of A for mixed-precision products
+    scalar_type = type_scalar_type(y.dtype)
 
     def backward():
         with _ScopedTapePause():
@@ -5399,7 +5453,7 @@ def _vec_array_view(array: wp.array, dtype: type, expected_scalar_count: int) ->
 
 
 def bsr_mv(
-    A: BsrMatrixOrExpression[BlockType[Rows, Cols, Scalar]],
+    A: BsrMatrixOrExpression[BlockType[Rows, Cols, DType]],
     x: Array[Vector[Scalar, Cols] | Scalar],
     y: Array[Vector[Scalar, Rows] | Scalar] | None = None,
     alpha: Scalar = 1.0,
@@ -5408,10 +5462,15 @@ def bsr_mv(
     work_buffer: Array[Vector[Scalar, Rows] | Scalar] | None = None,
     tile_size: int = 0,
     algorithm: Literal["auto", "loop", "rows", "columns"] = "auto",
+    rows_per_block: int = 1,
 ) -> Array[Vector[Scalar, Rows] | Scalar]:
     """Perform the sparse matrix-vector product ``y := alpha * A * x + beta * y`` and return ``y``.
 
     The ``x`` and ``y`` vectors are allowed to alias.
+    Their scalar types must match. The matrix scalar type may differ when both
+    matrix and vector scalar types are floating-point.
+    Matrix coefficients are converted to the vector scalar type before multiplication.
+    Products, accumulation, and scaling use the vector scalar type, without converting the stored matrix.
 
     ``x`` may also be a batch: a contiguous 2D array whose rows each hold one vector
     with ``A``'s column dimension, for example of shape ``(count, A.shape[1])`` for a scalar
@@ -5422,7 +5481,8 @@ def bsr_mv(
     Args:
         A: Read-only, left matrix operand of the matrix-vector product.
         x: Read-only, right vector operand of the matrix-vector product.
-        y: Mutable affine operand and result vector. If ``y`` is not provided, it will be allocated and treated as zero.
+        y: Mutable affine operand and result vector. If omitted, allocate it with the scalar type of ``x``
+          and treat it as zero.
         alpha: Uniform scaling factor for ``x``. If zero, ``x`` will not be read and may be left uninitialized.
         beta: Uniform scaling factor for ``y``. If zero, ``y`` will not be read and may be left uninitialized.
         transpose: If ``True``, use the transpose of the matrix ``A``. In this case the result is **non-deterministic**.
@@ -5431,7 +5491,7 @@ def bsr_mv(
           otherwise a temporary allocation will be performed. For a batch with
           ``algorithm="loop"``, its first output-vector-sized part serves each row in turn. With
           ``"rows"`` or ``"columns"``, it is instead a contiguous
-          1D array of ``A``'s scalar type with at least ``count * A.shape[0]`` or
+          1D array of the scalar type of ``x`` with at least ``count * A.shape[0]`` or
           ``count * (A.shape[0] + A.shape[1])`` entries respectively, and reusing one avoids a
           temporary allocation on every call.
         tile_size: If a positive integer, use tiles of this size to compute the matrix-vector product.
@@ -5459,6 +5519,14 @@ def bsr_mv(
           Explicit choices always run the named strategy and raise :class:`ValueError` where it is
           unsupported, including for operands that require gradients, since ``"rows"`` and
           ``"columns"`` are forward-only. A single vector requires ``"auto"`` or ``"loop"``.
+          Mixed-precision batches also select ``"loop"`` and do not support ``"rows"`` or ``"columns"``.
+
+        rows_per_block: Number of scalar output rows processed together by a tiled thread block.
+          Values greater than one opt into row-packed computation on CUDA, without transposition.
+          This requires a power-of-two ``tile_size`` from 32 to 1024, divisible by ``rows_per_block``,
+          and 1, 2, 4, 8, 16, or 32 threads per row. The default processes one row per tiled block
+          and preserves automatic dispatch. Packing rows can help medium-length rows but may be
+          slower for short rows; benchmark the intended workload before selecting this option.
 
     When recorded on a :class:`warp.Tape`, the product is differentiable with respect to ``x``, the input ``y``
     and the values of ``A``, restricted to its non-zero topology. For a batch of vectors, ``"auto"`` and
@@ -5466,7 +5534,38 @@ def bsr_mv(
     """
 
     A, A_scale = _extract_matrix_and_scale(A)
-    alpha *= A_scale
+    if not isinstance(rows_per_block, int) or rows_per_block < 1:
+        raise ValueError("rows_per_block must be a positive integer")
+    if rows_per_block > 1:
+        if transpose or not A.device.is_cuda:
+            raise ValueError("row-packed bsr_mv requires CUDA and transpose=False")
+        if (
+            not isinstance(tile_size, int)
+            or tile_size < 32
+            or tile_size > 1024
+            or tile_size & (tile_size - 1)
+            or tile_size % rows_per_block
+            or tile_size // rows_per_block not in (1, 2, 4, 8, 16, 32)
+        ):
+            raise ValueError(
+                "row-packed bsr_mv requires a power-of-two tile_size from 32 to 1024 "
+                "and rows_per_block dividing it into 1, 2, 4, 8, 16, or 32 threads per row"
+            )
+
+    scalar_type = type_scalar_type(x.dtype)
+    if y is not None and type_scalar_type(y.dtype) != scalar_type:
+        raise ValueError("Incompatible 'y' vector for bsr_mv: x and y must have the same scalar type")
+
+    if scalar_type == A.scalar_type:
+        alpha *= A_scale
+    else:
+        if scalar_type not in float_types or A.scalar_type not in float_types:
+            raise ValueError(
+                "Incompatible 'x' vector for bsr_mv: mixed-precision products require floating-point "
+                f"matrix and vector scalar types, got {type_repr(A.scalar_type)} and {type_repr(scalar_type)}"
+            )
+        # Combine mixed-precision scaling factors without rounding to the matrix scalar type.
+        alpha = float(alpha) * float(A_scale)
 
     if transpose:
         block_shape = A.block_shape[1], A.block_shape[0]
@@ -5487,21 +5586,21 @@ def bsr_mv(
         y = wp.empty(
             shape=(x.shape[0], nrow * block_shape[0]),
             device=A.values.device,
-            dtype=A.scalar_type,
+            dtype=scalar_type,
             requires_grad=x.requires_grad or A.requires_grad,
         )
         beta = 0.0
     if y is None:
         # If no output array is provided, allocate one for convenience
         y_vec_len = block_shape[0]
-        y_dtype = A.scalar_type if y_vec_len == 1 else wp.types.vector(length=y_vec_len, dtype=A.scalar_type)
+        y_dtype = scalar_type if y_vec_len == 1 else wp.types.vector(length=y_vec_len, dtype=scalar_type)
         y = wp.empty(
             shape=(nrow,), device=A.values.device, dtype=y_dtype, requires_grad=x.requires_grad or A.requires_grad
         )
         beta = 0.0
 
-    alpha = A.scalar_type(alpha)
-    beta = A.scalar_type(beta)
+    alpha = scalar_type(alpha)
+    beta = scalar_type(beta)
 
     device = A.values.device
     if A.values.device != x.device or A.values.device != y.device:
@@ -5514,14 +5613,18 @@ def bsr_mv(
         _validate_tile_size(device, tile_size)
 
     if batched:
-        _bsr_mv_batch(A, x, y, alpha, beta, transpose, work_buffer, tile_size, algorithm, nrow, ncol, block_shape)
+        _bsr_mv_batch(
+            A, x, y, alpha, beta, transpose, work_buffer, tile_size, algorithm, nrow, ncol, block_shape, rows_per_block
+        )
         return y
     if algorithm not in ("auto", "loop"):
         raise ValueError(f"algorithm={algorithm!r} requires a 2D batch of vectors")
 
     tape = wp._src.context.runtime.tape
     if tape is None:
-        _bsr_mv_launch(A, x, y, alpha, beta, transpose, work_buffer, tile_size, block_shape, nrow, ncol, device)
+        _bsr_mv_launch(
+            A, x, y, alpha, beta, transpose, work_buffer, tile_size, block_shape, nrow, ncol, device, rows_per_block
+        )
         return y
 
     # The product kernels are not differentiable; launch them off the tape and record a custom adjoint.
@@ -5531,7 +5634,19 @@ def bsr_mv(
             # The backward pass needs the input values of y, which the product overwrites
             x_values = wp.clone(x, requires_grad=False)
         x_values = _bsr_mv_launch(
-            A, x_values, y, alpha, beta, transpose, work_buffer, tile_size, block_shape, nrow, ncol, device
+            A,
+            x_values,
+            y,
+            alpha,
+            beta,
+            transpose,
+            work_buffer,
+            tile_size,
+            block_shape,
+            nrow,
+            ncol,
+            device,
+            rows_per_block,
         )
 
     if y.grad is not None:
@@ -5553,8 +5668,12 @@ def _bsr_mv_launch(
     nrow: int,
     ncol: int,
     device: wp.DeviceLike,
+    rows_per_block: int = 1,
 ) -> wp.array:
     """Launch the forward kernels of :func:`bsr_mv` and return the scalar view of the ``x`` values they read."""
+
+    # Vector scalar type, which may differ from that of A for mixed-precision products
+    scalar_type = type_scalar_type(y.dtype)
 
     if x.ptr == y.ptr:
         # Aliasing case, need temporary storage
@@ -5572,11 +5691,11 @@ def _bsr_mv_launch(
         x = work_buffer
 
     try:
-        x_view = _vec_array_view(x, A.scalar_type, expected_scalar_count=ncol * block_shape[1])
+        x_view = _vec_array_view(x, scalar_type, expected_scalar_count=ncol * block_shape[1])
     except ValueError as err:
         raise ValueError("Incompatible 'x' vector for bsr_mv") from err
     try:
-        y_view = _vec_array_view(y, A.scalar_type, expected_scalar_count=nrow * block_shape[0])
+        y_view = _vec_array_view(y, scalar_type, expected_scalar_count=nrow * block_shape[0])
     except ValueError as err:
         raise ValueError("Incompatible 'y' vector for bsr_mv") from err
 
@@ -5606,6 +5725,14 @@ def _bsr_mv_launch(
                 dim=(A.nnz, block_shape[0]),
                 inputs=[alpha, A.nrow, A.offsets, A.row_counts, A.columns, A.scalar_values, x_view, y_view],
             )
+    elif rows_per_block > 1:
+        wp.launch(
+            kernel=make_bsr_mv_row_packed_kernel(tile_size, rows_per_block, block_shape),
+            device=device,
+            dim=((y_view.size + rows_per_block - 1) // rows_per_block) * tile_size,
+            block_dim=tile_size,
+            inputs=[alpha, A.offsets, A.row_counts, A.columns, A.scalar_values, x_view, beta, y_view],
+        )
     elif use_tiles:
         wp.launch(
             kernel=make_bsr_mv_tiled_kernel(tile_size),
@@ -5641,18 +5768,31 @@ def _batch_view(array, count, scalar_count, scalar_type, name):
     return array.reshape((count, scalar_count))
 
 
-def _bsr_mv_batch(A, x, y, alpha, beta, transpose, work_buffer, tile_size, algorithm, nrow, ncol, block_shape):
+def _bsr_mv_batch(
+    A, x, y, alpha, beta, transpose, work_buffer, tile_size, algorithm, nrow, ncol, block_shape, rows_per_block=1
+):
     count = x.shape[0]
     device = A.values.device
     alpha, beta = float(alpha.value), float(beta.value)
-    x_rows = _batch_view(x, count, ncol * block_shape[1], A.scalar_type, "x")
-    y_rows = _batch_view(y, count, nrow * block_shape[0], A.scalar_type, "y")
+    # Vector scalar type, which may differ from that of A for mixed-precision products
+    scalar_type = type_scalar_type(y.dtype)
+    x_rows = _batch_view(x, count, ncol * block_shape[1], scalar_type, "x")
+    y_rows = _batch_view(y, count, nrow * block_shape[0], scalar_type, "y")
     if algorithm == "auto" and tile_size != 0:
         # Tile sizes are a single-vector feature.
         algorithm = "loop"
     # Gradients only matter for products recorded on a tape.
     recording = wp._src.context.runtime.tape is not None
     requires_grad = recording and (A.requires_grad or x.requires_grad or y.requires_grad)
+    if scalar_type != A.scalar_type:
+        # Only the single-vector kernels convert matrix entries to the vector scalar type.
+        if algorithm == "auto":
+            algorithm = "loop"
+        elif algorithm != "loop":
+            raise ValueError(
+                f"algorithm={algorithm!r} requires matching matrix and vector scalar types, got "
+                f"{type_repr(A.scalar_type)} and {type_repr(scalar_type)}; use 'auto' or 'loop'"
+            )
     algorithm = _multi_rhs.resolve(algorithm, A, count, device, transpose, requires_grad)
     if algorithm == "loop":
         # Each aliased row needs exactly one row of scratch. The rows are scalar views, so view
@@ -5660,25 +5800,27 @@ def _bsr_mv_batch(A, x, y, alpha, beta, transpose, work_buffer, tile_size, algor
         row_buffer = None
         if work_buffer is not None:
             row_buffer = work_buffer.flatten()
-            if row_buffer.dtype != A.scalar_type and type_scalar_type(row_buffer.dtype) == A.scalar_type:
-                row_buffer = row_buffer.view(A.scalar_type).flatten()
+            if row_buffer.dtype != scalar_type and type_scalar_type(row_buffer.dtype) == scalar_type:
+                row_buffer = row_buffer.view(scalar_type).flatten()
             row_buffer = row_buffer[: y_rows.shape[1]]
         for r in range(count):
-            bsr_mv(A, x_rows[r], y_rows[r], alpha, beta, transpose, row_buffer, tile_size)
+            bsr_mv(
+                A, x_rows[r], y_rows[r], alpha, beta, transpose, row_buffer, tile_size, rows_per_block=rows_per_block
+            )
         return
     if tile_size != 0:
         raise ValueError(f"tile_size applies to algorithm='loop', not {algorithm!r}")
     needed = _multi_rhs.scratch_size(algorithm, A, count)
     if work_buffer is None:
-        work_buffer = wp.empty(needed, dtype=A.scalar_type, device=device)
+        work_buffer = wp.empty(needed, dtype=scalar_type, device=device)
     elif (
         work_buffer.ndim != 1
-        or work_buffer.dtype != A.scalar_type
+        or work_buffer.dtype != scalar_type
         or not work_buffer.is_contiguous
         or work_buffer.size < needed
     ):
         raise ValueError(
-            f"algorithm={algorithm!r} needs a contiguous 1D work buffer of {type_repr(A.scalar_type)} "
+            f"algorithm={algorithm!r} needs a contiguous 1D work buffer of {type_repr(scalar_type)} "
             f"with at least {needed} entries"
         )
     _multi_rhs.product(algorithm, A, x_rows, y_rows, y_rows, alpha, beta, work_buffer)
