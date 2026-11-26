@@ -1,0 +1,49 @@
+﻿warp.fem.BoundField
+===================
+
+.. currentmodule:: warp.fem
+
+.. autoclass:: BoundField
+   
+   
+   .. rubric:: Methods
+
+   .. autosummary::
+   
+      ~BoundField.divergence_valid
+      ~BoundField.eval_arg_value
+      ~BoundField.eval_degree
+      ~BoundField.eval_div_inner
+      ~BoundField.eval_div_outer
+      ~BoundField.eval_grad_inner
+      ~BoundField.eval_grad_outer
+      ~BoundField.eval_inner
+      ~BoundField.eval_outer
+      ~BoundField.eval_reference_grad_inner
+      ~BoundField.eval_reference_grad_outer
+      ~BoundField.fill_eval_arg
+      ~BoundField.gradient_valid
+      ~BoundField.make_deformed_geometry
+      ~BoundField.notify_operator_usage
+      ~BoundField.trace
+   
+   
+   
+   
+   .. rubric:: Attributes
+
+   .. autosummary::
+   
+      ~BoundField.call_operator
+      ~BoundField.degree
+      ~BoundField.divergence_dtype
+      ~BoundField.dtype
+      ~BoundField.element_kind
+      ~BoundField.geometry
+      ~BoundField.gradient_dtype
+      ~BoundField.name
+      ~BoundField.reference_gradient_dtype
+      ~BoundField.EvalArg
+      ~BoundField.ElementEvalArg
+   
+   

@@ -673,6 +673,76 @@ arbitrary operations are permitted. However, the result of the form must remain 
 This strategy is demonstrated in the <code class="docutils literal notranslate"><span class="pre">example_mixed_elasticity.py</span></code> example.</p>
 </div>
 </section>
+<section id="differentiating-an-energy">
+<h2>Differentiating an energy<a class="headerlink" href="#differentiating-an-energy" title="Link to this heading">#</a></h2>
+<p>Bind a valued field to test and trial directions to assemble variations from one
+scalar energy integrand:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@fem</span><span class="o">.</span><span class="n">integrand</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">energy</span><span class="p">(</span><span class="n">s</span><span class="p">:</span> <span class="n">fem</span><span class="o">.</span><span class="n">Sample</span><span class="p">,</span> <span class="n">u</span><span class="p">:</span> <span class="n">fem</span><span class="o">.</span><span class="n">Field</span><span class="p">):</span>
+    <span class="n">value</span> <span class="o">=</span> <span class="n">u</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+    <span class="k">return</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">value</span> <span class="o">*</span> <span class="n">value</span> <span class="o">+</span> <span class="mf">0.25</span> <span class="o">*</span> <span class="n">value</span> <span class="o">*</span> <span class="n">value</span> <span class="o">*</span> <span class="n">value</span> <span class="o">*</span> <span class="n">value</span>
+
+<span class="n">residual</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">integrate</span><span class="p">(</span>
+    <span class="n">energy</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s2">"u"</span><span class="p">:</span> <span class="n">fem</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="n">test</span><span class="o">=</span><span class="n">test</span><span class="p">)},</span> <span class="n">differentiation</span><span class="o">=</span><span class="s2">"jets"</span>
+<span class="p">)</span>
+<span class="n">tangent</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">integrate</span><span class="p">(</span>
+    <span class="n">energy</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s2">"u"</span><span class="p">:</span> <span class="n">fem</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="n">test</span><span class="o">=</span><span class="n">test</span><span class="p">,</span> <span class="n">trial</span><span class="o">=</span><span class="n">trial</span><span class="p">)},</span> <span class="n">differentiation</span><span class="o">=</span><span class="s2">"jets"</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>The binding makes <code class="docutils literal notranslate"><span class="pre">u(s)</span></code> and supported field operators evaluate the current
+field plus a multiple of each direction. <code class="docutils literal notranslate"><span class="pre">test</span></code> supplies residual rows and
+<code class="docutils literal notranslate"><span class="pre">trial</span></code> supplies tangent columns. For a mixed block, bind the test and trial
+directions to separate valued fields in the same energy. Plain fields and
+<code class="docutils literal notranslate"><span class="pre">values=</span></code> arguments stay fixed. Geometry, quadrature points, and weights are
+also held fixed during differentiation.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">differentiation=</span></code> argument is required and selects how the derivatives
+are computed:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;jets&quot;</span></code> evaluates bound fields as forward-mode jets (see <a class="reference internal" href="../api_reference/_generated/warp.JetSpace.html#warp.JetSpace" title="warp.JetSpace"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.JetSpace()</span></code></a>),
+so the derivatives are exact up to rounding. The energy, and any <code class="docutils literal notranslate"><span class="pre">&#64;wp.func</span></code> it
+calls with field values, must accept jets: annotate such arguments with <code class="docutils literal notranslate"><span class="pre">Any</span></code>.
+Residuals support scalar, <code class="docutils literal notranslate"><span class="pre">vec2</span></code>, <code class="docutils literal notranslate"><span class="pre">vec3</span></code>, and 2x2, 3x3, 2x3, and 3x2 matrix
+field values; <code class="docutils literal notranslate"><span class="pre">wp.ddot</span></code> and
+<code class="docutils literal notranslate"><span class="pre">wp.outer</span></code> have no jet overloads, so write, for instance,
+<code class="docutils literal notranslate"><span class="pre">wp.trace(wp.transpose(F)</span> <span class="pre">*</span> <span class="pre">F)</span></code> instead of <code class="docutils literal notranslate"><span class="pre">wp.ddot(F,</span> <span class="pre">F)</span></code>. Tangents use
+second-order jets (see <a class="reference internal" href="../api_reference/_generated/warp.JetSpace2.html#warp.JetSpace2" title="warp.JetSpace2"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.JetSpace2()</span></code></a>), which support scalar, <code class="docutils literal notranslate"><span class="pre">vec2</span></code>,
+and <code class="docutils literal notranslate"><span class="pre">vec3</span></code> values but not matrices, so tangents of energies of a vector field’s
+gradient are not yet available with jets.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;reverse_over_forward&quot;</span></code> computes the same exact residuals as <code class="docutils literal notranslate"><span class="pre">&quot;jets&quot;</span></code>. Tangents
+evaluate the energy with first-order jets along a trial direction, and differentiate
+that directional derivative in reverse mode with <a class="reference internal" href="../api_reference/_generated/warp.grad.html#warp.grad" title="warp.grad"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.grad()</span></code></a> with respect to the test
+directions. Only first-order jets are required, so tangents of energies of a vector
+field’s gradient (matrix-valued operators) are supported. It takes no
+<code class="docutils literal notranslate"><span class="pre">differentiation_options</span></code>. With dispatch assembly, one forward and reverse pass per
+local trial component yields a whole tangent column, and its cost is comparable to
+<code class="docutils literal notranslate"><span class="pre">&quot;jets&quot;</span></code>. With generic assembly, one pass is needed per pair of element nodes, which is
+not faster than finite differences. Kernels default to <code class="docutils literal notranslate"><span class="pre">enable_backward=False</span></code>.
+Because the reverse sweep runs inside the kernel, these tangents cannot be recorded on a
+<a class="reference internal" href="../api_reference/_generated/warp.Tape.html#warp.Tape" title="warp.Tape"><code class="xref py py-class docutils literal notranslate"><span class="pre">warp.Tape</span></code></a>. They leave the gradient buffers of the arrays they read untouched.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">&quot;finite_difference&quot;</span></code> uses centered differences and requires a <code class="docutils literal notranslate"><span class="pre">test_step</span></code>
+option in <code class="docutils literal notranslate"><span class="pre">differentiation_options</span></code>. Tangent matrices also require
+<code class="docutils literal notranslate"><span class="pre">trial_step</span></code>; residual calls may omit it. The step sizes must be positive and
+should be chosen for the scale and precision of the energy. Second differences
+can lose accuracy through cancellation, especially with float32 fields:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">options</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"test_step"</span><span class="p">:</span> <span class="mf">0.01</span><span class="p">,</span> <span class="s2">"trial_step"</span><span class="p">:</span> <span class="mf">0.01</span><span class="p">}</span>
+<span class="n">tangent</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">integrate</span><span class="p">(</span>
+    <span class="n">energy</span><span class="p">,</span> <span class="n">fields</span><span class="o">=</span><span class="p">{</span><span class="s2">"u"</span><span class="p">:</span> <span class="n">fem</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="n">test</span><span class="o">=</span><span class="n">test</span><span class="p">,</span> <span class="n">trial</span><span class="o">=</span><span class="n">trial</span><span class="p">)},</span>
+    <span class="n">differentiation</span><span class="o">=</span><span class="s2">"finite_difference"</span><span class="p">,</span> <span class="n">differentiation_options</span><span class="o">=</span><span class="n">options</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</li>
+</ul>
+<p>All methods support generic and dispatch assembly, and pick dispatch by default
+as for other forms. With dispatch, jets evaluate the energy once per quadrature
+point, carrying derivatives along every local value and gradient component of the
+test (and trial) functions, while finite differences evaluate it per pair of local
+components rather than per pair of element nodes. Finite differences evaluate the
+bound fields once per pair and reuse those values for all perturbed evaluations.
+<code class="docutils literal notranslate"><span class="pre">assembly=&quot;nodal&quot;</span></code> is not supported for bound fields. Supply a quadrature explicitly for nonlinear
+energies when the degree-based default is insufficient.</p>
+</section>
 <section id="introductory-examples">
 <h2>Introductory Examples<a class="headerlink" href="#introductory-examples" title="Link to this heading">#</a></h2>
 <p><a class="reference internal" href="../api_reference/warp_fem.html#module-warp.fem" title="warp.fem"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.fem</span></code></a> ships with a list of examples in the <code class="docutils literal notranslate"><span class="pre">warp/examples/fem</span></code> directory demonstrating how to solve classical model problems.</p>
@@ -697,6 +767,7 @@ This strategy is demonstrated in the <code class="docutils literal notranslate">
 <li><p><code class="docutils literal notranslate"><span class="pre">example_navier_stokes.py</span></code>: 2D Navier-Stokes flow using mixed <span class="math notranslate nohighlight">\(P_k/P_{k-1}\)</span> elements</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">example_mixed_elasticity.py</span></code>: 2D nonlinear elasticity using mixed continuous/discontinuous <span class="math notranslate nohighlight">\(S_k/P_{(k-1)d}\)</span> elements</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">example_distortion_energy.py</span></code>: Parameterization of a 3D surface minimizing a 2D nonlinear distortion energy</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">example_energy_differentiation.py</span></code>: Assemble an energy, residual, and tangent from one integrand</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">example_magnetostatics.py</span></code>: 2D magnetostatics using a curl-curl formulation</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">example_elastic_shape_optimization.py</span></code>: Shape optimization of a 2D elastic cantilever beam</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">example_darcy_ls_optimization.py</span></code>: Level-set-based optimization of a 2D Darcy flow</p></li>
@@ -1100,6 +1171,7 @@ This can be used to visualize discrete fields in VTK-aware viewers such as <code
     <ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#integrands">Integrands</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#basic-workflow">Basic Workflow</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#differentiating-an-energy">Differentiating an energy</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#introductory-examples">Introductory Examples</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#advanced-usages">Advanced Usages</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#high-order-curved-geometries">High-order (curved) geometries</a></li>

@@ -1,0 +1,6 @@
+﻿warp.fem.bind
+=============
+
+.. currentmodule:: warp.fem
+
+.. autofunction:: bind
