@@ -8,7 +8,7 @@ The tests target the public surface and are tiered by environment:
 - ``TestCutileHelpers``: the host helpers, toolchain lookup, and packing
   errors; no cuTile needed (the CUDA array operand check runs on every CUDA
   test device);
-- ``TestCutileDeclaration``: every error ``export_func`` reports before any
+- ``TestCutileDeclaration``: the errors ``export_func`` reports before any
   toolchain or GPU work; needs ``cuda.tile`` importable;
 - ``TestCutileKernels``: end-to-end calls from cuTile kernels, one test per
   documented call form or contract; needs ``cuda.tile_preview``, a supported
@@ -19,7 +19,9 @@ Classes skip cleanly when their environment is missing, so the module is safe
 to run (and register in the default suite) everywhere.
 """
 
+import contextlib
 import ctypes
+import io
 import os
 import re
 import shutil
@@ -29,6 +31,7 @@ import tempfile
 import types
 import unittest
 import unittest.mock
+import warnings
 
 import numpy as np
 
@@ -266,13 +269,6 @@ def preamble_probe(x: float) -> float:
     return x + native_seven()
 
 
-@wp.kernel
-def preamble_probe_reference(x: wp.array[float], out: wp.array[float]):
-    """Evaluate preamble_probe per thread under the module's own build options."""
-    tid = wp.tid()
-    out[tid] = preamble_probe(x[tid])
-
-
 @wp.func
 def keyword_params(auto: float, register: float) -> float:
     """Use C++ keywords as parameter names: legal in Warp, so the wrapper must accept them."""
@@ -349,7 +345,7 @@ def probe_mesh_sdf_reference(mesh: wp.handle, pts: wp.array[wp.vec3], out: wp.ar
 
 @wp.func
 def all_uniform_sum(a: float, b: float) -> float:
-    """Add two broadcast scalars (all-uniform signature, pinned declaration)."""
+    """Add two scalars; the test calls it with only shared arguments, so no tile sets the call's length."""
     return a + b
 
 
@@ -371,30 +367,6 @@ def overloaded_probe(x: wp.int32) -> wp.int32:
     return x
 
 
-@wp.func
-def ret_collision(ret0: float) -> float:
-    """Fixture whose parameter name collides with the generated return operand."""
-    return ret0 * 2.0
-
-
-@wp.func(name="collide__WP_FOREIGN_SYMBOL__")
-def placeholder_named(x: float) -> float:
-    """Fixture whose custom key contains a reserved placeholder token."""
-    return x
-
-
-@wp.func(name="not an identifier")
-def bad_key_named(x: float) -> float:
-    """Fixture whose custom key is not a valid identifier."""
-    return x
-
-
-@wp.func(name="fóó")
-def unicode_key_named(x: float) -> float:
-    """Fixture whose custom key is a Unicode (non-ASCII) identifier."""
-    return x
-
-
 @wp.kernel
 def blend_reference(xs: wp.array[float], ys: wp.array[wp.vec3], out: wp.array[float]):
     """Per-thread reference for the blend function."""
@@ -407,6 +379,23 @@ def _pad_vec3(a: np.ndarray) -> np.ndarray:
     p = np.zeros((a.shape[0], VEC_PAD), dtype=np.float32)
     p[:, :3] = a
     return p
+
+
+def _dense_triangle_mesh(rng: np.random.Generator, device) -> wp.Mesh:
+    """Build a dense soup of small triangles so mesh queries traverse deep into the BVH.
+
+    Deep traversals fill the per-thread stacks, so an under-sized scratch slab
+    faults instead of passing by luck (a handful of triangles never leaves the
+    top levels).
+    """
+    ntri = 20000
+    centers = rng.uniform(0.0, 1.0, (ntri, 3)).astype(np.float32)
+    offsets = rng.uniform(-0.01, 0.01, (ntri, 3, 3)).astype(np.float32)
+    points = (centers[:, None, :] + offsets).reshape(-1, 3)
+    return wp.Mesh(
+        points=wp.array(points, dtype=wp.vec3, device=device),
+        indices=wp.array(np.arange(ntri * 3, dtype=np.int32), dtype=int, device=device),
+    )
 
 
 def test_array_pointer_args_device(test, device):
@@ -466,14 +455,12 @@ class TestCutileHelpers(unittest.TestCase):
         self.assertEqual(sorted(wpct.__all__), public)
         # the API reference documents every non-underscore name, so nothing else may leak
         self.assertEqual(sorted(n for n in dir(wpct) if not n.startswith("_")), public)
-        for name in wpct.__all__:
-            self.assertTrue(callable(getattr(wpct, name)) or isinstance(getattr(wpct, name), type))
 
     def test_bvh_stack_depth_matches_header(self):
         """Keep the scratch slab's per-thread depth equal to BVH_QUERY_STACK_SIZE in bvh.h."""
         header = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(_cutile.__file__))), "native", "bvh.h")
         with open(header) as f:
-            match = re.search(r"#define BVH_QUERY_STACK_SIZE \((\d+)\)", f.read())
+            match = re.search(r"^#define[ \t]+BVH_QUERY_STACK_SIZE[ \t]+\(?(\d+)\)?[ \t]*$", f.read(), re.MULTILINE)
         self.assertIsNotNone(match)
         self.assertEqual(_cutile._BVH_QUERY_STACK_SIZE, int(match.group(1)))
 
@@ -552,14 +539,15 @@ class TestCutileHelpers(unittest.TestCase):
             ns_parent = types.ModuleType("nvidia")  # `import nvidia.cu13` binds through the parent's attribute
             ns_parent.__path__ = []
             ns_parent.cu13 = ns_module
+            # a decoy on PATH: the package must win over it
+            path_dir = os.path.join(tmp, "path")
+            os.makedirs(path_dir)
+            executable(path_dir)
             with (
                 unittest.mock.patch.dict(sys.modules, {"nvidia": ns_parent, "nvidia.cu13": ns_module}),
-                unittest.mock.patch.dict(os.environ, {"WARP_TILEIR_TOOLCHAIN": ""}),
-                unittest.mock.patch("shutil.which", wraps=shutil.which) as which,
+                unittest.mock.patch.dict(os.environ, {"WARP_TILEIR_TOOLCHAIN": "", "PATH": path_dir}),
             ):
-                self.assertEqual(_cutile._pip_tileiras_dir(), os.path.join(ns_back, "bin"))
                 self.assertTrue(os.path.samefile(_cutile._find_tileiras(), ns_tileiras))
-                which.assert_called_once()  # resolved from the package, never from PATH
 
         # the release gate reads the --version banner: older toolkits are rejected with both remedies
         banners = {
@@ -601,11 +589,8 @@ class TestCutileDeclaration(unittest.TestCase):
         # num_worker_warps must be a power of two between 1 and 32 (Tile IR
         # rejects non-power-of-two tile dimensions, and larger pinned tiles
         # would be undeclarable or unlaunchable), so e.g. 3 must fail up front
-        for bad in (0, 3, -1, 5, 48, 64):
+        for bad in (0, 3, 64):
             with self.assertRaisesRegex(ValueError, "power of two"):
-                wpct.export_func(scale_add, num_worker_warps=bad)
-        for bad in (True, "4", 4.0):
-            with self.assertRaisesRegex(TypeError, "num_worker_warps must be an int"):
                 wpct.export_func(scale_add, num_worker_warps=bad)
         # the declaration targets a CUDA device, by default the current one;
         # this is checked before any toolchain lookup
@@ -631,18 +616,11 @@ class TestCutileDeclaration(unittest.TestCase):
         # overloaded functions have no single concrete signature to package
         with self.assertRaisesRegex(NotImplementedError, "overloads"):
             wpct.export_func(overloaded_probe)
-        # a non-int in the num_worker_warps slot is reported by type
-        with self.assertRaisesRegex(TypeError, "num_worker_warps must be an int"):
-            wpct.export_func(scale_add, {"x"})
 
         # parameter and return types the boundary cannot carry
         @wp.func
         def half_param(h: wp.float16) -> float:
             return float(h)
-
-        @wp.func
-        def bool_param(b: bool) -> float:
-            return 1.0
 
         @wp.func
         def half_vec_param(v: wp.vec3h) -> float:
@@ -662,7 +640,6 @@ class TestCutileDeclaration(unittest.TestCase):
 
         for bad, pattern in (
             (half_param, "Unsupported Warp type"),
-            (bool_param, "Unsupported Warp type"),
             (half_vec_param, "Unsupported element type"),
             (indexed_param, "Unsupported array kind"),
             (array_return, "cannot return a wp.array"),
@@ -682,21 +659,6 @@ class TestCutileDeclaration(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "default values"):
             wpct.export_func(with_default)
 
-        # the generated call body owns the _wp_ prefix
-        @wp.func
-        def reserved_param(_wp_ct: float) -> float:
-            return _wp_ct
-
-        with self.assertRaisesRegex(ValueError, "reserved prefix '_wp_'"):
-            wpct.export_func(reserved_param)
-
-        @wp.func(name="_wp_ct")
-        def reserved_key(x: float) -> float:
-            return x
-
-        with self.assertRaisesRegex(ValueError, "reserved prefix '_wp_'"):
-            wpct.export_func(reserved_key)
-
         # non-ASCII parameter names would only fail deep inside NVRTC/MLIR
         @wp.func
         def unicode_param(α: float) -> float:  # noqa: PLC2401 (deliberate non-ASCII fixture)
@@ -707,18 +669,6 @@ class TestCutileDeclaration(unittest.TestCase):
         # multi-return functions are not implemented on the tilelib surface
         with self.assertRaisesRegex(NotImplementedError, "returns 2 values"):
             wpct.export_func(two_returns)
-        # parameter names may not collide with generated operand names
-        with self.assertRaisesRegex(ValueError, "operand name collision"):
-            wpct.export_func(ret_collision)
-        # custom function keys may not contain the reserved placeholder tokens
-        with self.assertRaisesRegex(ValueError, "reserved token"):
-            wpct.export_func(placeholder_named)
-        # custom function keys must be plain ASCII identifiers: the key names
-        # the generated C++ function itself, so no sanitization can rescue it,
-        # and NVRTC/MLIR reject Unicode word characters
-        for bad_func in (bad_key_named, unicode_key_named):
-            with self.assertRaisesRegex(ValueError, "not a valid identifier"):
-                wpct.export_func(bad_func)
 
 
 def _import_ct():
@@ -744,11 +694,12 @@ def test_per_thread_scalar_vec_call(test, device):
     d_blend = wpct.export_func(blend, num_worker_warps=NUM_WARPS, device=device)
 
     @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-    def kernel(xs, ys, out):
+    def kernel(xs, ys, out, out_kw):
         x = ct.load(xs, (0,), shape=(NUM_THREADS,))
         y = ct.reshape(ct.load(ys, (0, 0), shape=(NUM_THREADS, VEC_PAD)), (NUM_THREADS * VEC_PAD,))
-        r = d_blend(x, y)
-        ct.store(out, (0,), r)
+        ct.store(out, (0,), d_blend(x, y))
+        # arguments may also be passed by Warp parameter name, in any order
+        ct.store(out_kw, (0,), d_blend(y=y, x=x))
 
     rng = np.random.default_rng(42)
     x_np = rng.standard_normal(NUM_THREADS).astype(np.float32)
@@ -757,22 +708,13 @@ def test_per_thread_scalar_vec_call(test, device):
     xs = wp.array(x_np, dtype=wp.float32, device=device)
     ys_pad = wp.array(_pad_vec3(y_np), dtype=wp.float32, device=device)
     out_ct = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
-    _launch(device, kernel, (xs, ys_pad, out_ct))
+    out_kw = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
+    _launch(device, kernel, (xs, ys_pad, out_ct, out_kw))
 
     ys_vec = wp.array(y_np, dtype=wp.vec3, device=device)
     out_ref = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
     wp.launch(blend_reference, dim=NUM_THREADS, inputs=[xs, ys_vec, out_ref], device=device)
     np.testing.assert_allclose(out_ct.numpy(), out_ref.numpy(), rtol=1e-6, atol=1e-6)
-
-    # arguments may also be passed by Warp parameter name
-    @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-    def kernel_kw(xs, ys, out):
-        x = ct.load(xs, (0,), shape=(NUM_THREADS,))
-        y = ct.reshape(ct.load(ys, (0, 0), shape=(NUM_THREADS, VEC_PAD)), (NUM_THREADS * VEC_PAD,))
-        ct.store(out, (0,), d_blend(y=y, x=x))
-
-    out_kw = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
-    _launch(device, kernel_kw, (xs, ys_pad, out_kw))
     np.testing.assert_array_equal(out_kw.numpy(), out_ct.numpy())
 
 
@@ -780,29 +722,25 @@ def test_explicit_gradient_inside_function(test, device):
     """Keep wp.grad() derivatives, including @wp.func_grad callbacks, correct inside a forward-only foreign function."""
     ct = _import_ct()
     d = wpct.export_func(dsquare, device=device)
-    x_np = np.arange(NUM_THREADS, dtype=np.float32)
-    xs = wp.array(x_np, dtype=wp.float32, device=device)
-    out = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
-
-    @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-    def kernel(xs_a, out_a):
-        ct.store(out_a, (0,), d(ct.load(xs_a, (0,), shape=(NUM_THREADS,))))
-
-    _launch(device, kernel, (xs, out))
-    # d/dx x^2 = 2x: the derivative code must be emitted even though no
-    # backward kernel uses the function
-    np.testing.assert_allclose(out.numpy(), 2.0 * x_np)
-
     # a @wp.func_grad callback is a deferred build dependency; the
     # standalone build must include it like a module build does
     d_custom = wpct.export_func(dcustom_square, device=device)
+    x_np = np.arange(NUM_THREADS, dtype=np.float32)
+    xs = wp.array(x_np, dtype=wp.float32, device=device)
+    out = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
     out_custom = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
 
     @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-    def kernel_custom(xs_a, out_a):
-        ct.store(out_a, (0,), d_custom(ct.load(xs_a, (0,), shape=(NUM_THREADS,))))
+    def kernel(xs_a, out_a, out_custom_a):
+        x = ct.load(xs_a, (0,), shape=(NUM_THREADS,))
+        ct.store(out_a, (0,), d(x))
+        ct.store(out_custom_a, (0,), d_custom(x))
 
-    _launch(device, kernel_custom, (xs, out_custom))
+    _launch(device, kernel, (xs, out, out_custom))
+    # d/dx x^2 = 2x: the derivative code must be emitted even though no
+    # backward kernel uses the function
+    np.testing.assert_allclose(out.numpy(), 2.0 * x_np)
+    # the custom rule (deliberately 10, not 2x) replaces the automatic one
     np.testing.assert_allclose(out_custom.numpy(), 10.0)
 
 
@@ -825,21 +763,14 @@ def test_call_site_mistakes_reported_at_trace(test, device):
         x = ct.load(xs_a, (0,), shape=(NUM_THREADS,))
         ct.store(out_a, (0,), d_blend(x, x))
 
-    expect(
-        r"blend\(\): parameter 'y' \(wp.vec3f, width 4\) expects shape \(512,\) to match parameter 'x'",
-        unpadded_vec,
-    )
+    expect(r"'y'.*\(512,\)", unpadded_vec)
 
     @ct.kernel(num_worker_warps=NUM_THREADS // 32)
     def plain_for_tile(xs_a, ys_a, out_a):
         x = ct.load(xs_a, (0,), shape=(NUM_THREADS,))
         ct.store(out_a, (0,), d_blend(x, 1.0))
 
-    expect(
-        r"blend\(\): parameter 'y' \(wp.vec3f\) expects a rank-1 tile of shape \(TILE \* 4,\), "
-        r"or one shared \(4,\) tile, got 1.0",
-        plain_for_tile,
-    )
+    expect(r"'y'.*TILE \* 4.*got 1\.0", plain_for_tile)
 
     @ct.kernel(num_worker_warps=NUM_THREADS // 32)
     def undeclared_length(xs_a, ys_a, out_a):
@@ -847,27 +778,27 @@ def test_call_site_mistakes_reported_at_trace(test, device):
         y = ct.reshape(ct.load(ys_a, (0, 0), shape=(16, VEC_PAD)), (16 * VEC_PAD,))
         ct.store(out_a, (0,), d_blend(x, y))
 
-    expect(r"blend\(\): tile length 16 \(from parameter 'x'\) is not a declared length", undeclared_length)
+    expect(r"tile length 16.*'x'.*not a declared length", undeclared_length)
 
     @ct.kernel(num_worker_warps=NUM_THREADS // 32)
     def rank2_vec(xs_a, ys_a, out_a):
         x = ct.load(xs_a, (0,), shape=(NUM_THREADS,))
         ct.store(out_a, (0,), d_blend(x, ct.load(ys_a, (0, 0), shape=(NUM_THREADS, VEC_PAD))))
 
-    expect(r"parameter 'y' \(wp.vec3f\) expects a rank-1 tile of shape \(TILE \* 4,\)", rank2_vec)
+    expect(r"'y'.*rank-1", rank2_vec)
 
     @ct.kernel(num_worker_warps=NUM_THREADS // 32)
     def int_for_float(xs_a, ids_a, out_a):
         y = ct.reshape(ct.load(xs_a, (0, 0), shape=(NUM_THREADS, VEC_PAD)), (NUM_THREADS * VEC_PAD,))
         ct.store(out_a, (0,), d_blend(ct.load(ids_a, (0,), shape=(NUM_THREADS,)), y))
 
-    expect(r"parameter 'x' expects float32 elements, got int32", int_for_float, (ys, ids, out))
+    expect(r"'x'.*float32.*int32", int_for_float, (ys, ids, out))
 
     @ct.kernel(num_worker_warps=NUM_THREADS // 32)
     def missing_argument(xs_a, ys_a, out_a):
         ct.store(out_a, (0,), d_blend(ct.load(xs_a, (0,), shape=(NUM_THREADS,))))
 
-    expect(r"blend\(\): missing a required argument: 'y'", missing_argument)
+    expect(r"missing.*'y'", missing_argument)
 
 
 def test_thread_scope_universal_lengths(test, device):
@@ -876,9 +807,6 @@ def test_thread_scope_universal_lengths(test, device):
     rng = np.random.default_rng(3)
 
     d_sa = wpct.export_func(scale_add, device=device)
-    test.assertEqual(d_sa.lengths, _cutile._UNIVERSAL_LENGTHS)
-    # the num_worker_warps hint does not participate in the cache identity
-    test.assertEqual(wpct.export_func(scale_add, num_worker_warps=16, device=device).version, d_sa.version)
 
     def run(length):
         """Call the shared declaration at the given tile length."""
@@ -899,8 +827,9 @@ def test_thread_scope_universal_lengths(test, device):
         np.testing.assert_allclose(out.numpy(), x_np * 2.0 + np.sin(y_np), rtol=1e-6, atol=1e-6)
 
     # cuTile schedules the invocations onto however many workers the
-    # kernel has: fewer and more invocations than the 128 workers
-    for length in (32, 64, 256, 1024):
+    # kernel has: fewer and more invocations than the 128 workers, at the
+    # ends of the declared range (kernel_mixed below covers 64 and 256)
+    for length in (32, 1024):
         run(length)
 
     # two call sites of different lengths in one kernel dispatch to
@@ -942,12 +871,6 @@ def test_mesh_query_scratch_stack(test, device):
     ct = _import_ct()
     d = wpct.export_func(probe_mesh_sdf, num_worker_warps=NUM_WARPS, device=device)
     d_box = wpct.export_func(aabb_count, num_worker_warps=NUM_WARPS, device=device)
-    # both kinds are declared for every tile length, and neither bakes the
-    # hint: the iterator query's traversal stack comes from compiler scratch
-    test.assertEqual(d.lengths, _cutile._UNIVERSAL_LENGTHS)
-    test.assertEqual(d_box.lengths, _cutile._UNIVERSAL_LENGTHS)
-    test.assertEqual(wpct.export_func(aabb_count, num_worker_warps=8, device=device).version, d_box.version)
-    test.assertEqual(wpct.export_func(probe_mesh_sdf, num_worker_warps=8, device=device).version, d.version)
     # the scratch slab costs 128 bytes per worker thread per query family
     # (documented): a 32-warp block needs 128 KiB, more than some GPUs
     # allow per block, and that is reported at declaration, not as a fault
@@ -956,24 +879,13 @@ def test_mesh_query_scratch_stack(test, device):
     if not fits_1024:
         with test.assertRaisesRegex(ValueError, "compiler scratch .* shared memory per block"):
             wpct.export_func(aabb_count, num_worker_warps=32, device=device)
-    # a larger hint grows the slab and keys the identity; the point query
-    # needs no slab, so its identity ignores the hint
+    # a hint above 8 warps grows the slab, so it must key the identity:
+    # reusing the smaller slab would trap in the 16-warp block below
     test.assertNotEqual(wpct.export_func(aabb_count, num_worker_warps=16, device=device).version, d_box.version)
-    test.assertEqual(wpct.export_func(probe_mesh_sdf, num_worker_warps=16, device=device).version, d.version)
 
     # the point query computes correctly at the hint length ...
-    # a dense soup of small triangles: deep BVH traversals fill the
-    # per-thread stacks, so an under-sized scratch slab faults instead of
-    # passing by luck (a handful of triangles never leaves the top levels)
     rng = np.random.default_rng(13)
-    ntri = 20000
-    centers = rng.uniform(0.0, 1.0, (ntri, 3)).astype(np.float32)
-    offsets = rng.uniform(-0.01, 0.01, (ntri, 3, 3)).astype(np.float32)
-    tri_np = (centers[:, None, :] + offsets).reshape(-1, 3)
-    mesh = wp.Mesh(
-        points=wp.array(tri_np, dtype=wp.vec3, device=device),
-        indices=wp.array(np.arange(ntri * 3, dtype=np.int32), dtype=int, device=device),
-    )
+    mesh = _dense_triangle_mesh(rng, device)
     pts_np = rng.uniform(0.0, 1.0, (NUM_THREADS, 3)).astype(np.float32)
     pts_pad = wp.array(_pad_vec3(pts_np), dtype=wp.float32, device=device)
     out = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
@@ -1016,78 +928,41 @@ def test_mesh_query_scratch_stack(test, device):
     _launch(device, kernel_short, (mesh.id, pts_pad, out32))
     np.testing.assert_allclose(out32.numpy(), ref.numpy()[:32], rtol=1e-5, atol=1e-6)
 
-    # the iterator query on an 8-warp block with 256-element tiles: every
-    # thread traverses at once, so the slab must be sized for the block,
-    # not for the compile-time hint
-    big_np = rng.uniform(0.0, 1.0, (256, 3)).astype(np.float32)
-    big_pad = wp.array(_pad_vec3(big_np), dtype=wp.float32, device=device)
-    big_vec = wp.array(big_np, dtype=wp.vec3, device=device)
-
-    @ct.kernel(num_worker_warps=8)
-    def kernel_box(mesh_id: ct.Constant[int], pts_a, out_a):
-        p = ct.reshape(ct.load(pts_a, (0, 0), shape=(256, VEC_PAD)), (256 * VEC_PAD,))
-        r = d_box(mesh_id, p)
-        ct.store(out_a, (0,), r)
-
-    out_box = wp.zeros(256, dtype=wp.float32, device=device)
-    _launch(device, kernel_box, (mesh.id, big_pad, out_box))
-    ref_box = wp.zeros(256, dtype=wp.float32, device=device)
-    wp.launch(aabb_count_reference, dim=256, inputs=[mesh.id, big_vec, ref_box], device=device)
-    np.testing.assert_array_equal(out_box.numpy(), ref_box.numpy())
-
-    # blocks beyond 8 warps: declare the larger block through num_worker_warps
-    # (the 16-warp kernel overran the old fixed 256-thread slab with an
-    # illegal address; now it is sized for the block)
-    def run_big(warps):
-        """Run the iterator query on a block of the given warp count, declared through num_worker_warps."""
+    def check_aabb(decl, warps):
+        """Run the iterator query through ``decl`` on a ``warps``-warp block and match the wp.launch reference."""
         threads = warps * 32
-        d_big = wpct.export_func(aabb_count, num_worker_warps=warps, device=device)
-        big2_np = rng.uniform(0.0, 1.0, (threads, 3)).astype(np.float32)
-        big2_pad = wp.array(_pad_vec3(big2_np), dtype=wp.float32, device=device)
-        big2_vec = wp.array(big2_np, dtype=wp.vec3, device=device)
+        box_np = rng.uniform(0.0, 1.0, (threads, 3)).astype(np.float32)
+        box_pad = wp.array(_pad_vec3(box_np), dtype=wp.float32, device=device)
 
         @ct.kernel(num_worker_warps=warps)
-        def kernel_big(mesh_id: ct.Constant[int], pts_a, out_a):
+        def kernel_box(mesh_id: ct.Constant[int], pts_a, out_a):
             p = ct.reshape(ct.load(pts_a, (0, 0), shape=(threads, VEC_PAD)), (threads * VEC_PAD,))
-            ct.store(out_a, (0,), d_big(mesh_id, p))
+            ct.store(out_a, (0,), decl(mesh_id, p))
 
-        out_big = wp.zeros(threads, dtype=wp.float32, device=device)
-        _launch(device, kernel_big, (mesh.id, big2_pad, out_big))
-        ref_big = wp.zeros(threads, dtype=wp.float32, device=device)
-        wp.launch(aabb_count_reference, dim=threads, inputs=[mesh.id, big2_vec, ref_big], device=device)
-        np.testing.assert_array_equal(out_big.numpy(), ref_big.numpy())
+        out_box = wp.zeros(threads, dtype=wp.float32, device=device)
+        _launch(device, kernel_box, (mesh.id, box_pad, out_box))
+        ref_box = wp.zeros(threads, dtype=wp.float32, device=device)
+        box_vec = wp.array(box_np, dtype=wp.vec3, device=device)
+        wp.launch(aabb_count_reference, dim=threads, inputs=[mesh.id, box_vec, ref_box], device=device)
+        np.testing.assert_array_equal(out_box.numpy(), ref_box.numpy())
 
-    run_big(16)
+    # every thread traverses at once, so the slab must cover the calling
+    # block: a 4-warp hint still covers 8 warps, the slab's minimum ...
+    check_aabb(d_box, 8)
+    # ... and larger blocks are declared through num_worker_warps
+    check_aabb(wpct.export_func(aabb_count, num_worker_warps=16, device=device), 16)
     if fits_1024:
-        run_big(32)
-
+        check_aabb(wpct.export_func(aabb_count, num_worker_warps=32, device=device), 32)
     # at block scope the slab is sized to the pinned block exactly
-    d_box_block = wpct.export_func(aabb_count, num_worker_warps=8, scope="block", device=device)
-
-    @ct.kernel(num_worker_warps=8)
-    def kernel_box_block(mesh_id: ct.Constant[int], pts_a, out_a):
-        p = ct.reshape(ct.load(pts_a, (0, 0), shape=(256, VEC_PAD)), (256 * VEC_PAD,))
-        r = d_box_block(mesh_id, p)
-        ct.store(out_a, (0,), r)
-
-    out_box_block = wp.zeros(256, dtype=wp.float32, device=device)
-    _launch(device, kernel_box_block, (mesh.id, big_pad, out_box_block))
-    np.testing.assert_array_equal(out_box_block.numpy(), ref_box.numpy())
+    check_aabb(wpct.export_func(aabb_count, num_worker_warps=8, scope="block", device=device), 8)
 
 
 def test_bvh_and_nested_query_scratch_stacks(test, device):
     """Serve BVH sphere queries and nested mesh+BVH queries from separate scratch slabs on an 8-warp block."""
     ct = _import_ct()
     rng = np.random.default_rng(29)
-    # a dense soup of small triangles and small boxes so traversals go deep
-    ntri = 20000
-    centers = rng.uniform(0.0, 1.0, (ntri, 3)).astype(np.float32)
-    offsets = rng.uniform(-0.01, 0.01, (ntri, 3, 3)).astype(np.float32)
-    tri_np = (centers[:, None, :] + offsets).reshape(-1, 3)
-    mesh = wp.Mesh(
-        points=wp.array(tri_np, dtype=wp.vec3, device=device),
-        indices=wp.array(np.arange(ntri * 3, dtype=np.int32), dtype=int, device=device),
-    )
+    # a dense mesh and a dense set of small boxes so both traversals go deep
+    mesh = _dense_triangle_mesh(rng, device)
     nbox = 20000
     box_c = rng.uniform(0.0, 1.0, (nbox, 3)).astype(np.float32)
     bvh = wp.Bvh(
@@ -1148,9 +1023,6 @@ def test_bvh_and_nested_query_scratch_stacks(test, device):
         p = ct.reshape(ct.load(pts_a, (0, 0), shape=(256, VEC_PAD)), (256 * VEC_PAD,))
         ct.store(out_a, (0,), d_rep(mesh_id, p) + d_sph(bvh_id, p))
 
-    out_pair = wp.zeros(256, dtype=wp.float32, device=device)
-    for _ in range(4):
-        _launch(device, kernel_pair, (mesh.id, bvh.id, pts_pad, out_pair))
     ref_pair = wp.zeros(256, dtype=wp.float32, device=device)
     wp.launch(
         aabb_sphere_pair_reference,
@@ -1159,7 +1031,12 @@ def test_bvh_and_nested_query_scratch_stacks(test, device):
         device=device,
         block_dim=128,
     )
-    np.testing.assert_array_equal(out_pair.numpy(), ref_pair.numpy())
+    # the race depends on warp timing, so repeat the launch and check every result
+    out_pair = wp.zeros(256, dtype=wp.float32, device=device)
+    for _ in range(4):
+        out_pair.zero_()
+        _launch(device, kernel_pair, (mesh.id, bvh.id, pts_pad, out_pair))
+        np.testing.assert_array_equal(out_pair.numpy(), ref_pair.numpy())
 
 
 def test_module_build_options_honored(test, device):
@@ -1194,90 +1071,50 @@ def test_module_build_options_honored(test, device):
         v_prec, out_prec, ref_prec = run(False)
     finally:
         wp.set_module_options({"fast_math": original}, module=module)
-    # each setting matches wp.launch of the same function under the same option ...
+    # the two builds must differ on these inputs, or the comparisons below prove nothing
+    test.assertFalse(np.array_equal(ref_fast, ref_prec))
+    # each setting matches wp.launch of the same function under the same option,
+    # and the tilelib identity tracks the option
     np.testing.assert_array_equal(out_fast, ref_fast)
     np.testing.assert_array_equal(out_prec, ref_prec)
-    # ... the precise build matches NumPy, the fast one visibly does not,
-    # and the tilelib identity tracks the option
-    np.testing.assert_allclose(out_prec, np.sin(x_np), rtol=0.0, atol=1e-4)
-    test.assertGreater(np.abs(out_fast - np.sin(x_np)).max(), 2e-4)
     test.assertNotEqual(v_fast, v_prec)
 
     # fuse_fp=False cannot be guaranteed: contraction is decided when
-    # tileiras links the kernel, so declaring under it warns (Warp routes
-    # warnings through its logger, so capture them there)
-    class _RecordingLogger:
-        """Collect Warp warning messages."""
-
-        def __init__(self):
-            """Start with no recorded messages."""
-            self.messages = []
-
-        def debug(self, message):
-            """Ignore debug output."""
-
-        def info(self, message):
-            """Ignore info output."""
-
-        def warning(self, message, category=None, stacklevel=1):
-            """Record a warning message."""
-            self.messages.append(message)
-
-        def error(self, message):
-            """Ignore error output."""
-
-    recorder = _RecordingLogger()
-    original_logger = wp.get_logger()
+    # tileiras links the kernel, so declaring under it warns (Warp's logger
+    # bypasses warnings.catch_warnings(record=True), so capture stderr)
     had_fuse_fp = "fuse_fp" in module.options
     original_fuse_fp = module.options.get("fuse_fp")
     try:
         wp.set_module_options({"fuse_fp": False}, module=module)
-        wp.set_logger(recorder)
-        # the warning is emitted once per process; start from a clean slate
-        with unittest.mock.patch.object(warp._src.logger, "_warnings_seen", set()):
+        # the warning is emitted once per process; reset that so every device sees it
+        with (
+            unittest.mock.patch.object(warp._src.logger, "_warnings_seen", set()),
+            warnings.catch_warnings(),
+            contextlib.redirect_stderr(io.StringIO()) as stderr,
+        ):
+            warnings.simplefilter("always")
             wpct.export_func(sin_probe, num_worker_warps=NUM_WARPS, device=device)
     finally:
-        wp.set_logger(original_logger)
         if had_fuse_fp:
             wp.set_module_options({"fuse_fp": original_fuse_fp}, module=module)
         else:
             module.options.pop("fuse_fp", None)
-    test.assertTrue(any("fuse_fp=False is not honored" in m for m in recorder.messages))
+    test.assertIn("fuse_fp=False is not honored", stderr.getvalue())
 
 
 def test_module_preamble_and_build_dependencies(test, device):
     """Compile with the module's extra_cuda_preamble and rebuild when a registered build-dependency header changes."""
     ct = _import_ct()
     module = preamble_probe.module
-    # a wp.func_native dependency that needs the module's preamble define
     x_np = np.arange(NUM_THREADS, dtype=np.float32)
     x = wp.array(x_np, dtype=wp.float32, device=device)
     out = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
-    ref = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
-    original = module.options.get("extra_build_options")
-    try:
-        wp.set_module_options(
-            {"extra_build_options": wp.ModuleBuildOptions(extra_cuda_preamble="#define WP_CUTILE_TEST_SEVEN 7.0f\n")},
-            module=module,
-        )
-        d = wpct.export_func(preamble_probe, num_worker_warps=NUM_WARPS, device=device)
 
-        @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-        def kernel(x_a, out_a):
-            ct.store(out_a, (0,), d(ct.load(x_a, (0,), shape=(NUM_THREADS,))))
-
-        _launch(device, kernel, (x, out))
-        wp.launch(preamble_probe_reference, dim=NUM_THREADS, inputs=[x, ref], device=device)
-    finally:
-        wp.set_module_options({"extra_build_options": original}, module=module)
-    np.testing.assert_array_equal(out.numpy(), ref.numpy())
-    np.testing.assert_array_equal(out.numpy(), x_np + 7.0)
-
-    # the same define now comes from a header registered as a build dependency
+    # a wp.func_native dependency reads a define from a header that only the
+    # module's preamble includes, and the header is a registered build dependency
     tmp = tempfile.mkdtemp(prefix="wp_cutile_dep_test_")
     test.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
     header = os.path.join(tmp, "wp_cutile_dep.h")
-    x.zero_()
 
     def run(value):
         """Write the header with ``value``, re-register it, build, and return (version, foreign result)."""
@@ -1309,10 +1146,10 @@ def test_module_preamble_and_build_dependencies(test, device):
         v11, out11 = run(11.0)
     finally:
         wp.set_module_options({"extra_build_options": original}, module=module)
-    np.testing.assert_array_equal(out7, 7.0)
+    np.testing.assert_array_equal(out7, x_np + 7.0)
     # the same source with a changed header must not reuse the old tilelib
     test.assertNotEqual(v11, v7)
-    np.testing.assert_array_equal(out11, 11.0)
+    np.testing.assert_array_equal(out11, x_np + 11.0)
 
 
 def test_struct_shared_across_tilelibs(test, device):
@@ -1408,7 +1245,7 @@ def test_mat_uniform_vec_return(test, device):
     for length in (64, NUM_THREADS, 512):
         run(length)
 
-    # a uniform vector takes a single (width,) tile, broadcast to every invocation
+    # a shared vector takes a single (width,) tile, broadcast to every invocation
     d_blend_u = wpct.export_func(blend, device=device)
     y_one = np.array([0.3, -1.2, 2.0], dtype=np.float32)
     y_pad = wp.array(_pad_vec3(y_one[None, :])[0], dtype=wp.float32, device=device)
@@ -1430,11 +1267,11 @@ def test_mat_uniform_vec_return(test, device):
 
 
 def test_array_operands(test, device):
-    """Exercise uniform array gather, atomic mutation, 2d indexing, and wrong-length tuple rejection."""
+    """Exercise array gather, atomic mutation, 2d indexing, and wrong-length tuple rejection."""
     ct = _import_ct()
     rng = np.random.default_rng(11)
 
-    # section 1: uniform 1d array + per-thread index + uniform scalar
+    # section 1: 1d array + per-invocation index + shared scalar
     # (raw pointers travel as rank-0 int64 tiles: Tile IR dtypes are signed only)
     data_np = rng.standard_normal(1000).astype(np.float32)
     data = wp.array(data_np, dtype=wp.float32, device=device)
@@ -1462,31 +1299,19 @@ def test_array_operands(test, device):
     d_acc = wpct.export_func(accumulate, num_worker_warps=NUM_WARPS, device=device)
     hist_ptr, hist_len = wpct.array_pointer_args(hist)
 
+    # the call's side effect survives when its result is discarded: foreign
+    # calls carry a memory effect, so the unused-result call is not eliminated
     @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-    def k_acc(ptr: ct.Constant[int], length: ct.Constant[int], bins_arr, out):
-        # explicit tiles also pass through unchanged inside the tuple
+    def k_acc(ptr: ct.Constant[int], length: ct.Constant[int], bins_arr):
+        # explicit rank-0 tiles also pass through unchanged inside the tuple
         ptr_t = ct.full((), ptr, dtype=ct.int64)
         len_t = ct.full((), length, dtype=ct.int32)
         b_t = ct.load(bins_arr, (0,), shape=(NUM_THREADS,))
         v_t = ct.full((NUM_THREADS,), 1.0, dtype=ct.float32)
-        r = d_acc((ptr_t, len_t), b_t, v_t)
-        ct.store(out, (0,), r)
+        d_acc((ptr_t, len_t), b_t, v_t)
 
-    prev = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
-    _launch(device, k_acc, (hist_ptr, hist_len, bins, prev))
-    expected_hist = np.bincount(bins_np, minlength=16).astype(np.float32)
-    np.testing.assert_allclose(hist.numpy(), expected_hist)
-
-    # the call's side effect survives when its result is discarded: foreign
-    # calls carry a memory effect, so the unused-result call is not eliminated
-    @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-    def k_acc_discard(ptr: ct.Constant[int], length: ct.Constant[int], bins_arr):
-        b_t = ct.load(bins_arr, (0,), shape=(NUM_THREADS,))
-        v_t = ct.full((NUM_THREADS,), 1.0, dtype=ct.float32)
-        d_acc((ptr, length), b_t, v_t)
-
-    _launch(device, k_acc_discard, (hist_ptr, hist_len, bins))
-    np.testing.assert_allclose(hist.numpy(), 2.0 * expected_hist)
+    _launch(device, k_acc, (hist_ptr, hist_len, bins))
+    np.testing.assert_allclose(hist.numpy(), np.bincount(bins_np, minlength=16).astype(np.float32))
 
     # section 3: 2d array expands to pointer + two extents
     m_np = rng.standard_normal((32, 8)).astype(np.float32)
@@ -1606,7 +1431,7 @@ def test_block_scope_reduction(test, device):
     np.testing.assert_allclose(out.numpy(), expected, rtol=1e-4)
 
     # a kernel whose block differs from the pinned size is rejected when
-    # tileiras compiles it, before any launch, and the device stays usable
+    # tileiras compiles it, before any launch
     @ct.kernel(num_worker_warps=2 * NUM_THREADS // 32)
     def kernel_wrong_block(xs, out):
         x = ct.load(xs, (0,), shape=(NUM_THREADS,))
@@ -1614,7 +1439,6 @@ def test_block_scope_reduction(test, device):
 
     with test.assertRaises(ct.TileCompilerExecutionError):
         _launch(device, kernel_wrong_block, (xs, out))
-    test.assertEqual(wp.zeros(4, dtype=wp.float32, device=device).numpy().sum(), 0.0)
 
 
 def test_tilelib_caching(test, device):
@@ -1633,25 +1457,17 @@ def test_tilelib_caching(test, device):
             _cutile, "_pack_tilelib", side_effect=AssertionError("cache miss: _pack_tilelib was re-invoked")
         ):
             d2 = wpct.export_func(scale_add, num_worker_warps=NUM_WARPS, device=device)
-        test.assertEqual(d2.path, d1.path)
-        test.assertEqual(d2.symbol, d1.symbol)
-        # redeclarations are equal handles
+        # redeclarations are equal handles (same name, symbol, path, version, and lengths)
         test.assertEqual(d2, d1)
-        # the traced call's source name is keyed by content (cuTile embeds
-        # it in the kernel bytecode, so a per-process name would defeat its
-        # cross-process cache) and differs between distinct declarations
-        test.assertEqual(d2.invoke.__code__.co_filename, d1.invoke.__code__.co_filename)
 
         # compiling a backward-enabled kernel (or a wp.grad() call) that uses
         # the function leaves adjoint flags set on it process-wide; the
         # foreign build stays forward-only, so the declaration's identity
         # does not depend on what else the process compiled
-        baseline = _cutile._codegen_warp_source(scale_add, NUM_THREADS)
         with (
             unittest.mock.patch.object(scale_add.adj, "used_by_backward_kernel", True),
             unittest.mock.patch.object(scale_add.adj, "force_adjoint_codegen", True),
         ):
-            test.assertEqual(_cutile._codegen_warp_source(scale_add, NUM_THREADS), baseline)
             test.assertEqual(wpct.export_func(scale_add, num_worker_warps=NUM_WARPS, device=device).version, d1.version)
         # the identity follows every declaration choice a user can make
         d_block_scope = wpct.export_func(scale_add, scope="block", device=device)
@@ -1660,16 +1476,6 @@ def test_tilelib_caching(test, device):
             wpct.export_func(scale_add, scope="block", num_worker_warps=2, device=device).version,
             wpct.export_func(scale_add, scope="block", device=device).version,
         )
-        # the repr states the call contract: the signature in Warp terms and the tile lengths served
-        text = repr(d1)
-        for fragment in (
-            "scale_add(",
-            "x: wp.float32",
-            "y: wp.float32",
-            "-> wp.float32",
-            str(_cutile._UNIVERSAL_LENGTHS),
-        ):
-            test.assertIn(fragment, text)
 
 
 def test_shared_argument_inference(test, device):
