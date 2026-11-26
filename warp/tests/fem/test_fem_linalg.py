@@ -8,7 +8,7 @@ import numpy as np
 
 import warp as wp
 import warp.fem as fem
-from warp.fem.linalg import inverse_qr, symmetric_eigenvalues_qr
+from warp.fem.linalg import householder_qr_decomposition, inverse_qr, symmetric_eigenvalues_qr
 from warp.tests.fem.utils import vec6f
 from warp.tests.unittest_utils import *
 
@@ -199,6 +199,71 @@ def test_qr_bfloat16_small_scales(test, device):
     wp.launch(check, dim=1, device=device)
 
 
+@wp.kernel(module="unique", enable_backward=False)
+def compute_qr_large_scales(
+    matrices: wp.array[Any],
+    q: wp.array[Any],
+    r: wp.array[Any],
+    inverses: wp.array[Any],
+    eigenvalues: wp.array[Any],
+    eigenvectors: wp.array[Any],
+):
+    i = wp.tid()
+    matrix = matrices[i]
+    matrix_q, matrix_r = householder_qr_decomposition(matrix)
+    q[i] = matrix_q
+    r[i] = matrix_r
+    inverses[i] = inverse_qr(matrix)
+    d, p = symmetric_eigenvalues_qr(matrix, matrix.dtype(0.0))
+    eigenvalues[i] = d
+    eigenvectors[i] = p
+
+
+def test_qr_large_scales(test, device):
+    cases = [
+        (wp.float16, (32.0, 64.0, 128.0, 1.0e3), 2.0e-2),
+        (wp.float32, (1.0e18, 4.0e18, 8.0e18, 1.0e19, 1.0e30), 2.0e-6),
+        (wp.float64, (1.0e153, 4.0e153, 8.0e153, 1.0e154, 1.0e200), 2.0e-14),
+    ]
+    if device.is_cpu or device.arch >= 80:
+        cases.append((wp.bfloat16, (1.0e18, 4.0e18, 8.0e18, 1.0e19, 1.0e30), 8.0e-2))
+
+    for dtype, scales, tolerance in cases:
+        for n in (2, 3):
+            matrix_type = wp.types.matrix(shape=(n, n), dtype=dtype)
+            vector_type = wp.types.vector(length=n, dtype=dtype)
+            # The 2x2 matrix matches GH-2008; the 3x3 matrix also exercises Hessenberg reduction.
+            base = np.ones((n, n)) + np.eye(n)
+            for scale in scales:
+                with test.subTest(dtype=dtype, n=n, scale=scale):
+                    matrices = wp.array([scale * base], dtype=matrix_type, device=device)
+                    q = wp.empty_like(matrices)
+                    r = wp.empty_like(matrices)
+                    inverses = wp.empty_like(matrices)
+                    eigenvalues = wp.empty(1, dtype=vector_type, device=device)
+                    eigenvectors = wp.empty_like(matrices)
+                    wp.launch(
+                        compute_qr_large_scales,
+                        dim=1,
+                        inputs=[matrices, q, r, inverses, eigenvalues, eigenvectors],
+                        device=device,
+                    )
+                    q, r, inverse, d, p = [
+                        output.numpy().astype(np.float64)[0] for output in (q, r, inverses, eigenvalues, eigenvectors)
+                    ]
+                    for output in (q, r, inverse, d, p):
+                        test.assertTrue(np.isfinite(output).all())
+                    # Normalize before multiplying so the reference checks cannot overflow either.
+                    a = matrices.numpy().astype(np.float64)[0] / scale
+                    np.testing.assert_allclose(q @ (r / scale), a, rtol=tolerance, atol=tolerance)
+                    np.testing.assert_allclose(q.T @ q, np.eye(n), rtol=tolerance, atol=tolerance)
+                    np.testing.assert_allclose(np.tril(r / scale, -1), 0.0, atol=tolerance)
+                    np.testing.assert_allclose(a @ (inverse * scale), np.eye(n), atol=tolerance)
+                    np.testing.assert_allclose(np.sort(d / scale), np.linalg.eigvalsh(a), rtol=tolerance)
+                    np.testing.assert_allclose(p.T @ np.diag(d / scale) @ p, a, rtol=tolerance, atol=tolerance)
+                    np.testing.assert_allclose(p.T @ p, np.eye(n), rtol=tolerance, atol=tolerance)
+
+
 @wp.kernel(enable_backward=False)
 def reconstruct_qr_eigenvalues_zero_tolerance(matrices: wp.array[Any], reconstructions: wp.array[Any]):
     i = wp.tid()
@@ -313,6 +378,7 @@ class TestFemLinalg(unittest.TestCase):
 add_kernel_test(TestFemLinalg, test_qr_eigenvalues, dim=1, devices=devices)
 add_kernel_test(TestFemLinalg, test_qr_inverse, dim=100, devices=devices)
 add_kernel_test(TestFemLinalg, test_qr_small_scales, dim=1, devices=devices)
+add_function_test(TestFemLinalg, "test_qr_large_scales", test_qr_large_scales, devices=devices)
 add_kernel_test(TestFemLinalg, test_qr_eigenvalues_small_coupled_to_large, dim=1, devices=devices)
 add_function_test(
     TestFemLinalg, "test_qr_bfloat16_small_scales", test_qr_bfloat16_small_scales, devices=bfloat16_devices
