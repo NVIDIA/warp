@@ -260,6 +260,7 @@ and an Ampere or newer GPU.
     user_guide/basics
     user_guide/runtime
     user_guide/differentiability
+    user_guide/poisson_reconstruction
     user_guide/programming_model
     user_guide/interoperability
     user_guide/execution_and_performance

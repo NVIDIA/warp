@@ -145,6 +145,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
     from warp.tests.geometry.test_mesh_query_aabb import TestMeshQueryAABBMethods
     from warp.tests.geometry.test_mesh_query_point import TestMeshQueryPoint
     from warp.tests.geometry.test_mesh_query_ray import TestMeshQueryRay
+    from warp.tests.geometry.test_poisson_reconstruction import TestPoissonReconstruction
     from warp.tests.geometry.test_self_intersect_tri_tri import TestSelfIntersectTriTri
     from warp.tests.geometry.test_sparse_marching_cubes import TestSparseMarchingCubes
     from warp.tests.geometry.test_surface_nets import TestSurfaceNets
@@ -460,6 +461,7 @@ def default_suite(test_loader: unittest.TestLoader = unittest.defaultTestLoader)
         TestGeometryOBB,
         TestMarchingCubes,
         TestSparseMarchingCubes,
+        TestPoissonReconstruction,
         TestSurfaceNets,
         TestMat,
         TestMatConstructors,
