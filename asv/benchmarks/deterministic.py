@@ -4,20 +4,24 @@
 """Benchmarks for deterministic-mode overhead on atomic accumulation and counter kernels.
 
 Compares the normal atomic path against the deterministic scatter-sort-reduce
-(accumulation) and two-pass counter (allocator) paths using CUDA graph replay.
-Each timed call replays the graph enough times to process ``ELEMENTS_PER_SAMPLE``
-elements, and the timer reads the duration from the GPU timeline, so launch and
-synchronization latency stay small next to the device work at every size.
+(accumulation) and two-pass counter (allocator) paths using CUDA graphs.
+Each timed call launches one graph that holds enough iterations to process
+``ELEMENTS_PER_SAMPLE`` elements, and the timer reads the duration from the GPU
+timeline, so launch and synchronization latency stay small next to the device
+work at every size. A loop of launches of a one-iteration graph would not do:
+on some GPUs, back-to-back launches of a short graph complete on a fixed time
+grid, so such a loop measures whole grid steps, and work that sits near a step
+boundary moves by a whole step with where its arrays land in memory.
 """
 
 import numpy as np
 
 import warp as wp
 
-from .benchmarks_utils import CudaEventTimer, setup_once
+from .benchmarks_utils import CudaEventTimer, capture_launches, setup_once
 
 DETERMINISTIC_BENCHMARK_SIZES = [64 * 1024, 256 * 1024, 1024 * 1024]
-# Elements processed per timed call; smaller sizes replay the graph more often.
+# Elements processed per timed call; smaller sizes put more iterations in the graph.
 ELEMENTS_PER_SAMPLE = 1 << 24
 DETERMINISM_SUPPORTED = hasattr(wp.config, "deterministic")
 DETERMINISTIC_BENCHMARK_MODES = ("normal", "deterministic")
@@ -91,7 +95,7 @@ class AtomicAddDeterminismOverhead:
     """Benchmark the overhead of deterministic accumulation atomics.
 
     The benchmark compares the normal atomic-add path against deterministic
-    scatter-sort-reduce for the same kernel using CUDA graph replay. A small
+    scatter-sort-reduce for the same kernel using a CUDA graph. A small
     size sweep exposes where deterministic execution crosses over. Two
     destination counts are used:
 
@@ -131,52 +135,41 @@ class AtomicAddDeterminismOverhead:
         self.out = wp.zeros(shape=(num_outputs,), dtype=wp.float32, device=self.device)
 
         self.kernel = scatter_add_kernel_deterministic if mode == "deterministic" else scatter_add_kernel
+        self.num_outputs = num_outputs
+        self.num_elements = num_elements
+
+        # Load the modules before capture.
+        self.launch_iteration()
+        wp.synchronize_device(self.device)
+
+        iterations = max(1, ELEMENTS_PER_SAMPLE // num_elements)
+        self.graph = capture_launches(self.launch_iteration, iterations, self.device)
+        wp.capture_launch(self.graph)
+        wp.synchronize_device(self.device)
+
+    def launch_iteration(self):
         wp.launch(
             zero_float_array_kernel,
-            dim=num_outputs,
+            dim=self.num_outputs,
             inputs=[self.out],
             device=self.device,
         )
         wp.launch(
             self.kernel,
-            (num_elements,),
+            (self.num_elements,),
             inputs=[self.vals, self.indices],
             outputs=[self.out],
             device=self.device,
         )
-        wp.synchronize_device(self.device)
-
-        with wp.ScopedCapture(device=self.device, force_module_load=False) as capture:
-            wp.launch(
-                zero_float_array_kernel,
-                dim=num_outputs,
-                inputs=[self.out],
-                device=self.device,
-            )
-            wp.launch(
-                self.kernel,
-                (num_elements,),
-                inputs=[self.vals, self.indices],
-                outputs=[self.out],
-                device=self.device,
-            )
-
-        self.graph = capture.graph
-
-        self.replays = max(1, ELEMENTS_PER_SAMPLE // num_elements)
-        for _ in range(5):
-            wp.capture_launch(self.graph)
-        wp.synchronize_device(self.device)
 
     def time_cuda(self, cache, mode, num_outputs, num_elements):
-        for _ in range(self.replays):
-            wp.capture_launch(self.graph)
+        wp.capture_launch(self.graph)
 
 
 class AtomicCounterDeterminismOverhead:
     """Benchmark the overhead of deterministic counter/allocator atomics.
 
-    The timed path uses CUDA graph replay and includes resetting the output
+    The timed path launches a CUDA graph and includes resetting the output
     state inside the captured graph so the benchmark isolates device work.
     """
 
@@ -204,6 +197,18 @@ class AtomicCounterDeterminismOverhead:
         self.out = wp.zeros(shape=(num_elements,), dtype=wp.float32, device=self.device)
 
         self.kernel = counter_kernel_deterministic if mode == "deterministic" else counter_kernel
+        self.num_elements = num_elements
+
+        # Load the modules before capture.
+        self.launch_iteration()
+        wp.synchronize_device(self.device)
+
+        iterations = max(1, ELEMENTS_PER_SAMPLE // num_elements)
+        self.graph = capture_launches(self.launch_iteration, iterations, self.device)
+        wp.capture_launch(self.graph)
+        wp.synchronize_device(self.device)
+
+    def launch_iteration(self):
         wp.launch(
             zero_int_array_kernel,
             dim=1,
@@ -212,47 +217,17 @@ class AtomicCounterDeterminismOverhead:
         )
         wp.launch(
             zero_float_array_kernel,
-            dim=num_elements,
+            dim=self.num_elements,
             inputs=[self.out],
             device=self.device,
         )
         wp.launch(
             self.kernel,
-            (num_elements,),
+            (self.num_elements,),
             inputs=[self.vals, self.counter],
             outputs=[self.out],
             device=self.device,
         )
-        wp.synchronize_device(self.device)
-
-        with wp.ScopedCapture(device=self.device, force_module_load=False) as capture:
-            wp.launch(
-                zero_int_array_kernel,
-                dim=1,
-                inputs=[self.counter],
-                device=self.device,
-            )
-            wp.launch(
-                zero_float_array_kernel,
-                dim=num_elements,
-                inputs=[self.out],
-                device=self.device,
-            )
-            wp.launch(
-                self.kernel,
-                (num_elements,),
-                inputs=[self.vals, self.counter],
-                outputs=[self.out],
-                device=self.device,
-            )
-
-        self.graph = capture.graph
-
-        self.replays = max(1, ELEMENTS_PER_SAMPLE // num_elements)
-        for _ in range(5):
-            wp.capture_launch(self.graph)
-        wp.synchronize_device(self.device)
 
     def time_cuda(self, vals_np, mode, num_elements):
-        for _ in range(self.replays):
-            wp.capture_launch(self.graph)
+        wp.capture_launch(self.graph)
