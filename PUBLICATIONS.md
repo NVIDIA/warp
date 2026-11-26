@@ -7,10 +7,12 @@ pull request on GitHub or email a link to your arXiv preprint (preferred) or DOI
 
 ## 2026
 
+- **LiDAR Signals for Robot Locomotion: Spherical Range Images Enable Robust Sim-to-Real Transfer**. *N. Liu, X. Tong, M. Ren, L. Ye, Z. He*. November 2026. [arXiv:2611.27223](https://arxiv.org/abs/2611.27223)
 - **Agile Monoped Hopping on Complex and Discrete Terrain via Kinodynamic Planning with Distilled MPPI Steering**. *Y. Qin, D. Cheng, J. Liu, Y. Ding*. November 2026. [arXiv:2611.21905](https://arxiv.org/abs/2611.21905)
 - **Alloy: A Multi-Material Physics Engine for Robot Learning**. *P. Gupta, D. Rohilla*. November 2026. [arXiv:2611.16312](https://arxiv.org/abs/2611.16312)
 - **MechFoundry: An agentic loop that poses and performs engineering analyses and optimization of real-world objects**. *X.-L. Luo, M. Conte, P. Y. Chen, N. Bouklas*. November 2026. [arXiv:2611.14571](https://arxiv.org/abs/2611.14571)
 - **Implicit velocity projection method for incompressible SPH fluids**. *M. H. Kee, J. Ahn, S. Park, K. Um, J. Han*. November 2026. [DOI:10.1145/3829340.3842220](https://doi.org/10.1145/3829340.3842220)
+- **A Finite-Element Method for Elastic Stress Inversion from Wellbore Deformation**. *D. Wang, Y. Li, K. Zhang, X. Hu, J. Sun*. November 2026. [DOI:10.3390/app162211395](https://doi.org/10.3390/app162211395)
 - **CuPIQP: A Batched and Differentiable QP Solver on GPUs for Robot Learning and Control**. *F. Song, R. Schwan, Y. Chen, Y. Jiang, C. N. Jones*. October 2026. [arXiv:2610.41021](https://arxiv.org/abs/2610.41021)
 - **Multimodal MPC via Bayesian Set Optimization for Dynamic Manipulation of Deformable Linear Objects**. *Y. Long, G. Solak, A. Ajoudani*. October 2026. [arXiv:2610.31852](https://arxiv.org/abs/2610.31852)
 - **RLMuscle: Muscle-Driven Character Animation via Reinforcement Learning**. *C. Li, S. Yu, Y. Gao, S. Li, P. Yu, A. Hao, H. Wang*. October 2026. [arXiv:2610.30033](https://arxiv.org/abs/2610.30033)
