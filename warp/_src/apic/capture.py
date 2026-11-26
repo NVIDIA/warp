@@ -435,7 +435,7 @@ class APICapture:
         if value_size > 0:
             src_addr = ctypes.addressof(packed_value)
             blob = (ctypes.c_uint8 * value_size).from_address(src_addr)
-            value_data_buf.extend(bytes(blob))
+            value_data_buf.extend(blob)
 
         walk_type = self._adjoint_blob_type(arg.type) if adjoint else arg.type
         start = len(relocs_buf)
@@ -518,31 +518,8 @@ class APICapture:
                     rec, arg, original_value, packed_value, value_data_buf, relocs_buf, adjoint=True
                 )
 
-        # Materialise the value_data buffer for the C++ side.
-        if value_data_buf:
-            value_buf = (ctypes.c_uint8 * len(value_data_buf)).from_buffer(value_data_buf)
-        else:
-            value_buf = None
-
-        # Materialise the reloc table for the C++ side. APICLaunchPtrLocation is a
-        # packed ctypes struct; copy each entry's bytes into a contiguous
-        # array.
-        if relocs_buf:
-            reloc_array = (APICLaunchPtrLocation * len(relocs_buf))()
-            reloc_size = ctypes.sizeof(APICLaunchPtrLocation)
-            for i, r in enumerate(relocs_buf):
-                ctypes.memmove(ctypes.addressof(reloc_array[i]), ctypes.addressof(r), reloc_size)
-        else:
-            reloc_array = None
-
-        # Keep references so the buffers outlive the launch info struct
-        # (which holds raw pointers into them).
-        self._last_value_data = value_buf
-        self._last_param_array = param_array
-        self._last_adj_param_array = adj_param_array
-        self._last_relocs = reloc_array
-
-        # Build APICLaunchInfo
+        # Assign the ctypes arrays directly. The pointer fields keep their backing
+        # storage alive until the native recorder copies it into the byte stream.
         info = APICLaunchInfo()
         key_str = kernel.key if isinstance(kernel.key, str) else kernel.key.decode("utf-8")
         hash_str = self._hash_to_str(module_exec.module_hash)
@@ -553,18 +530,12 @@ class APICapture:
         info.num_params = num_params
         info.kernel_dim = kernel.adj.kernel_dim
         info.value_data_size = len(value_data_buf)
-        info.value_data = (
-            ctypes.cast(value_buf, ctypes.POINTER(ctypes.c_uint8))
-            if value_buf is not None
-            else ctypes.cast(None, ctypes.POINTER(ctypes.c_uint8))
-        )
-        info.adj_params = (
-            adj_param_array if adj_param_array is not None else ctypes.cast(None, ctypes.POINTER(APICLaunchParamRecord))
-        )
+        if value_data_buf:
+            info.value_data = (ctypes.c_uint8 * len(value_data_buf)).from_buffer(value_data_buf)
+        info.adj_params = adj_param_array
         info.num_relocs = len(relocs_buf)
-        info.relocs = (
-            reloc_array if reloc_array is not None else ctypes.cast(None, ctypes.POINTER(APICLaunchPtrLocation))
-        )
+        if relocs_buf:
+            info.relocs = (APICLaunchPtrLocation * len(relocs_buf))(*relocs_buf)
 
         return info
 

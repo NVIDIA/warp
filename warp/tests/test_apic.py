@@ -1955,6 +1955,28 @@ def test_save_load_round_trip(test, device):
         np.testing.assert_allclose(result.numpy(), expected)
 
 
+def test_capture_repeated_launch_values(test, device):
+    """Each recorded launch must own its scalar bytes and view relocations."""
+    a = wp.ones(2, dtype=float, device=device)
+    out = wp.zeros(4, dtype=float, device=device)
+    even, odd = out[::2], out[1::2]
+    cmd = wp.launch(scale_kernel, dim=2, inputs=[a, even, 2.0], device=device, record_cmd=True)
+
+    with wp.ScopedCapture(device=device, apic=True, force_module_load=False) as capture:
+        cmd.launch()
+        cmd.set_param_at_index(1, odd)
+        cmd.set_param_at_index(2, 3.0)
+        cmd.launch()
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = os.path.join(tmpdir, "repeated_launch")
+        wp.capture_save(capture.graph, path, outputs={"out": out})
+        loaded = wp.capture_load(path, device=device)
+        wp.capture_launch(loaded)
+        loaded.get_param("out", out)
+        np.testing.assert_array_equal(out.numpy(), [2.0, 3.0, 2.0, 3.0])
+
+
 def test_load_same_capture_twice(test, device):
     """Release the first of two loads of one capture and launch the second."""
     n = 16
@@ -6637,6 +6659,12 @@ add_function_test(
     TestApic,
     "test_save_load_round_trip",
     test_save_load_round_trip,
+    devices=devices_with_cuda_graph_module_load,
+)
+add_function_test(
+    TestApic,
+    "test_capture_repeated_launch_values",
+    test_capture_repeated_launch_values,
     devices=devices_with_cuda_graph_module_load,
 )
 add_function_test(
