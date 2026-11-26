@@ -4881,6 +4881,10 @@ def _bsr_mm_forward(
 
         copied_z_nnz = work_arrays._copied_z_nnz
         mm_nnz = work_arrays._mm_nnz
+
+        if mm_nnz == copied_z_nnz:
+            # The product recorded in work_arrays was structurally zero
+            return bsr_scale(z, beta)
     else:
         if work_arrays is None:
             work_arrays = bsr_mm_work_arrays()
@@ -4936,6 +4940,9 @@ def _bsr_mm_forward(
 
             if mm_nnz == copied_z_nnz:
                 # x@y = 0
+                # Record the empty product so that a later call with reuse_topology=True
+                # does not read missing or stale topology from work_arrays
+                work_arrays._mm_nnz = mm_nnz
                 return bsr_scale(z, beta)
 
         work_arrays._allocate_stage_2(mm_nnz)
