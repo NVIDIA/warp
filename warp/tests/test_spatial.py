@@ -1118,6 +1118,92 @@ def test_transform_inverse(test, device, dtype, register_kernels=False):
         assert_np_equal(qgrads, qgrads_manual, tol=tol)
 
 
+def test_transform_normalize(test, device, dtype, register_kernels=False):
+    tol = {
+        np.float16: 1.0e-2,
+        np.float32: 1.0e-6,
+        np.float64: 1.0e-8,
+    }.get(dtype, 0)
+
+    wptype = wp.dtype_from_numpy(np.dtype(dtype))
+    transform = wp.types.transformation(dtype=wptype)
+
+    def check_transform_normalize(
+        a: wp.array[transform],
+        outputs: wp.array[wptype],
+        outputs_manual: wp.array[wptype],
+    ):
+        result = wp.transform_normalize(a[0])
+
+        # normalize the quaternion manually and compare value/gradients:
+        atrans = wp.transform_get_translation(a[0])
+        arot = wp.transform_get_rotation(a[0])
+        result_manual = transform(atrans, wp.normalize(arot))
+
+        for i in range(7):
+            outputs[i] = wptype(2) * result[i]
+            outputs_manual[i] = wptype(2) * result_manual[i]
+
+    kernel = getkernel(check_transform_normalize, suffix=dtype.__name__)
+    output_select_kernel = get_select_kernel(wptype)
+
+    if register_kernels:
+        return
+
+    rng = np.random.default_rng(123)
+
+    # deliberately use an unnormalized quaternion for the input:
+    q = rng.standard_normal(size=7)
+
+    q = wp.array(q.astype(dtype), dtype=transform, requires_grad=True, device=device)
+    outputs = wp.zeros(7, dtype=wptype, requires_grad=True, device=device)
+    outputs_manual = wp.zeros(7, dtype=wptype, requires_grad=True, device=device)
+
+    wp.launch(
+        kernel,
+        dim=1,
+        inputs=[
+            q,
+        ],
+        outputs=[outputs, outputs_manual],
+        device=device,
+    )
+
+    # translation is unchanged and the rotation is normalized to unit length:
+    out = outputs.numpy() / 2
+    assert_np_equal(out[:3], q.numpy()[0][:3], tol=tol)
+    assert_np_equal(np.array([np.linalg.norm(out[3:])]), np.array([1.0]), tol=tol)
+
+    # same as manual result:
+    assert_np_equal(outputs.numpy(), outputs_manual.numpy(), tol=tol)
+
+    for i in range(7):
+        cmp = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
+        cmp_manual = wp.zeros(1, dtype=wptype, requires_grad=True, device=device)
+        tape = wp.Tape()
+        with tape:
+            wp.launch(
+                kernel,
+                dim=1,
+                inputs=[
+                    q,
+                ],
+                outputs=[outputs, outputs_manual],
+                device=device,
+            )
+            wp.launch(output_select_kernel, dim=1, inputs=[outputs, i], outputs=[cmp], device=device)
+            wp.launch(output_select_kernel, dim=1, inputs=[outputs_manual, i], outputs=[cmp_manual], device=device)
+        tape.backward(loss=cmp)
+        qgrads = 1.0 * tape.gradients[q].numpy()
+        tape.zero()
+        tape.backward(loss=cmp_manual)
+        qgrads_manual = 1.0 * tape.gradients[q].numpy()
+        tape.zero()
+
+        # check gradients against manual result:
+        assert_np_equal(qgrads, qgrads_manual, tol=tol)
+
+
 def test_transform_point_vector(test, device, dtype, register_kernels=False):
     tol = {
         np.float16: 1.0e-2,
@@ -3065,6 +3151,13 @@ for dtype in np_float_types:
         TestSpatial,
         f"test_transform_inverse_{dtype.__name__}",
         test_transform_inverse,
+        devices=devices,
+        dtype=dtype,
+    )
+    add_function_test_register_kernel(
+        TestSpatial,
+        f"test_transform_normalize_{dtype.__name__}",
+        test_transform_normalize,
         devices=devices,
         dtype=dtype,
     )
