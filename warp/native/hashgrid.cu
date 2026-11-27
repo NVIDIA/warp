@@ -67,6 +67,14 @@ __global__ void compute_cell_offsets(int* cell_starts, int* cell_ends, const int
     }
 }
 
+template <typename Type> __global__ void store_hash_grid_descriptor(HashGrid_t<Type>* dest, HashGrid_t<Type> grid)
+{
+    const int tid = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (tid == 0)
+        *dest = grid;
+}
+
 template <typename Type>
 void hash_grid_rebuild_device(
     const wp::HashGrid_t<Type>& grid, const wp::array_t<vec_t<3, Type>>& points, const wp::array_t<int>* groups
@@ -101,6 +109,17 @@ void hash_grid_rebuild_device(
     );
 }
 
+// Write the device-side grid descriptor at `id` in stream order. Pass the descriptor as a kernel
+// argument instead of copying it from host memory: CUDA graph capture records kernel arguments by
+// value, but a captured host-to-device copy reads its pageable source again on every replay, so a
+// later build could overwrite the descriptor a captured build publishes.
+template <typename Type> void hash_grid_store_descriptor_device(uint64_t id, const HashGrid_t<Type>& grid)
+{
+    ContextGuard guard(grid.context);
+
+    wp_launch_device(WP_CURRENT_CONTEXT, (wp::store_hash_grid_descriptor<Type>), 1, ((HashGrid_t<Type>*)id, grid));
+}
+
 // Explicit template instantiations
 template void
 hash_grid_rebuild_device<half>(const HashGrid_t<half>&, const array_t<vec_t<3, half>>&, const array_t<int>*);
@@ -108,6 +127,10 @@ template void
 hash_grid_rebuild_device<float>(const HashGrid_t<float>&, const array_t<vec_t<3, float>>&, const array_t<int>*);
 template void
 hash_grid_rebuild_device<double>(const HashGrid_t<double>&, const array_t<vec_t<3, double>>&, const array_t<int>*);
+
+template void hash_grid_store_descriptor_device<half>(uint64_t, const HashGrid_t<half>&);
+template void hash_grid_store_descriptor_device<float>(uint64_t, const HashGrid_t<float>&);
+template void hash_grid_store_descriptor_device<double>(uint64_t, const HashGrid_t<double>&);
 
 
 }  // namespace wp

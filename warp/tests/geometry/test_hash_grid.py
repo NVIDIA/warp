@@ -46,6 +46,12 @@ count_neighbors_f16 = wp.overload(count_neighbors, [wp.uint64, wp.float16, wp.ar
 count_neighbors_f32 = wp.overload(count_neighbors, [wp.uint64, wp.float32, wp.array[wp.vec3f], wp.array[int]])
 count_neighbors_f64 = wp.overload(count_neighbors, [wp.uint64, wp.float64, wp.array[wp.vec3d], wp.array[int]])
 
+_PRECISION_TYPES = (
+    (wp.float16, wp.vec3h, count_neighbors_f16),
+    (wp.float32, wp.vec3f, count_neighbors_f32),
+    (wp.float64, wp.vec3d, count_neighbors_f64),
+)
+
 
 @wp.kernel
 def count_neighbors_grouped(
@@ -385,13 +391,7 @@ def test_hashgrid_multiprecision(test, device):
     )
     expected_counts = np.array([4, 4, 4, 4, 1])
 
-    precision_types = [
-        (wp.float16, wp.vec3h, count_neighbors_f16),
-        (wp.float32, wp.vec3, count_neighbors_f32),
-        (wp.float64, wp.vec3d, count_neighbors_f64),
-    ]
-
-    for scalar_dtype, vec3_dtype, kernel in precision_types:
+    for scalar_dtype, vec3_dtype, kernel in _PRECISION_TYPES:
         with test.subTest(dtype=scalar_dtype.__name__):
             points_arr = wp.array(points, dtype=vec3_dtype, device=device)
             counts_arr = wp.zeros(len(points), dtype=int, device=device)
@@ -624,8 +624,11 @@ def test_hashgrid_grouped_graph_capture_changing_group_ids(test, device):
     assert_np_equal(counts_all.numpy(), np.full(len(points), 4, dtype=np.int32))
 
 
-def test_hashgrid_grouped_graph_capture_after_reserve(test, device):
+def test_hashgrid_grouped_graph_capture_after_reserve(test, device, *, conditional=False):
     """Verify that reserve(with_groups=True) makes a captured grouped build work without a prior warm-up build."""
+    if conditional and device.is_cuda and not wp.is_conditional_graph_supported():
+        test.skipTest("Conditional graph nodes not supported")
+
     points = np.array(
         [
             [0.0, 0.0, 0.0],
@@ -643,10 +646,11 @@ def test_hashgrid_grouped_graph_capture_after_reserve(test, device):
 
     grid = wp.HashGrid(16, 16, 16, device)
     grid.reserve(len(points), with_groups=True)
+    condition = wp.empty(1, dtype=int, device=device) if conditional else None
 
     wp.load_module(device=device)
 
-    with wp.ScopedCapture(device, force_module_load=False) as capture:
+    def build_and_query():
         grid.build(points_arr, radius, groups=groups_arr)
         wp.launch(
             kernel=count_neighbors_grouped,
@@ -654,6 +658,15 @@ def test_hashgrid_grouped_graph_capture_after_reserve(test, device):
             inputs=[wp.uint64(grid.id), radius, points_arr, groups_arr, counts],
             device=device,
         )
+        if condition is not None:
+            condition.zero_()
+
+    with wp.ScopedCapture(device, force_module_load=False) as capture:
+        if condition is None:
+            build_and_query()
+        else:
+            condition.fill_(1)
+            wp.capture_while(condition, while_body=build_and_query)
 
     wp.capture_launch(capture.graph)
     assert_np_equal(counts.numpy(), np.array([2, 2, 2, 2], dtype=np.int32))
@@ -662,6 +675,100 @@ def test_hashgrid_grouped_graph_capture_after_reserve(test, device):
     groups_arr.assign([3, 3, 3, 3])
     wp.capture_launch(capture.graph)
     assert_np_equal(counts.numpy(), np.full(len(points), 4, dtype=np.int32))
+
+
+def test_hashgrid_graph_two_grids(test, device):
+    """Find each grid's neighbors across replays even when one grid is rebuilt eagerly."""
+    radius = 0.5
+    wp.load_module(device=device)
+
+    for scalar_dtype, vec3_dtype, kernel in _PRECISION_TYPES:
+        with test.subTest(dtype=scalar_dtype.__name__):
+            points_a = wp.array([[0.0, 0.0, 0.0], [0.1, 0.0, 0.0]], dtype=vec3_dtype, device=device)
+            points_b = wp.array([[10.0, 0.0, 0.0], [20.0, 0.0, 0.0]], dtype=vec3_dtype, device=device)
+            counts_a = wp.zeros(len(points_a), dtype=int, device=device)
+            counts_b = wp.zeros(len(points_b), dtype=int, device=device)
+            grid_a = wp.HashGrid(16, 16, 16, device=device, dtype=scalar_dtype)
+            grid_b = wp.HashGrid(16, 16, 16, device=device, dtype=scalar_dtype)
+            grid_a.reserve(len(points_a))
+            grid_b.reserve(len(points_b))
+
+            with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+                grid_a.build(points_a, radius)
+                grid_b.build(points_b, radius)
+                for grid, points, counts in ((grid_a, points_a, counts_a), (grid_b, points_b, counts_b)):
+                    wp.launch(
+                        kernel,
+                        dim=len(points),
+                        inputs=[wp.uint64(grid.id), scalar_dtype(radius), points, counts],
+                        device=device,
+                    )
+
+            for eager_build in (False, True):
+                with test.subTest(eager_build=eager_build):
+                    if eager_build:
+                        grid_b.build(points_b, 2.0)
+                        counts_a.zero_()
+                        counts_b.zero_()
+                    wp.capture_launch(capture.graph)
+                    np.testing.assert_array_equal(counts_a.numpy(), [2, 2])
+                    np.testing.assert_array_equal(counts_b.numpy(), [1, 1])
+
+
+def test_hashgrid_graph_rebuild_different_widths(test, device):
+    """Use each build's cell width when one graph builds the same grid twice."""
+    points = wp.array([[0.0, 0.0, 0.0], [0.4, 0.0, 0.0], [0.8, 0.0, 0.0]], dtype=wp.vec3, device=device)
+    counts_fine = wp.zeros(len(points), dtype=int, device=device)
+    counts_coarse = wp.zeros(len(points), dtype=int, device=device)
+    grid = wp.HashGrid(16, 16, 16, device=device)
+    grid.reserve(len(points))
+
+    wp.load_module(device=device)
+
+    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+        # fine cells put each point in its own cell, so the query relies on the fine width
+        grid.build(points, 0.1)
+        wp.launch(
+            count_neighbors_f32,
+            dim=len(points),
+            inputs=[wp.uint64(grid.id), 1.0, points, counts_fine],
+            device=device,
+        )
+        grid.build(points, 10.0)
+        wp.launch(
+            count_neighbors_f32,
+            dim=len(points),
+            inputs=[wp.uint64(grid.id), 0.1, points, counts_coarse],
+            device=device,
+        )
+
+    wp.capture_launch(capture.graph)
+    assert_np_equal(counts_fine.numpy(), np.array([3, 3, 3], dtype=np.int32))
+    assert_np_equal(counts_coarse.numpy(), np.array([1, 1, 1], dtype=np.int32))
+
+
+def test_hashgrid_graph_first_build_all_precisions(test, device):
+    """Replay the first build of a grid for every supported precision."""
+    wp.load_module(device=device)
+    for scalar_dtype, vec3_dtype, kernel in _PRECISION_TYPES:
+        with test.subTest(dtype=scalar_dtype.__name__):
+            points = wp.zeros(2, dtype=vec3_dtype, device=device)
+            source = wp.array([[3.0, 0.0, 0.0], [3.1, 0.0, 0.0]], dtype=vec3_dtype, device=device)
+            counts = wp.zeros(2, dtype=int, device=device)
+            grid = wp.HashGrid(16, 16, 16, device=device, dtype=scalar_dtype)
+
+            with wp.ScopedCapture(device=device, apic=False, force_module_load=False) as capture:
+                wp.copy(points, source)
+                grid.build(points, 0.25)
+                wp.launch(
+                    kernel,
+                    dim=2,
+                    inputs=[wp.uint64(grid.id), scalar_dtype(0.25), points, counts],
+                    device=device,
+                )
+
+            wp.capture_launch(capture.graph)
+            assert_np_equal(counts.numpy(), np.array([2, 2], dtype=np.int32))
 
 
 def test_hashgrid_device_validation(test, device):
@@ -1153,36 +1260,6 @@ class TestHashGrid(unittest.TestCase):
         wp.capture_launch(capture.graph)
         assert_np_equal(counts.numpy(), np.array([2, 2], dtype=np.int32))
 
-    def test_hashgrid_graph_first_build_all_precisions(self):
-        """Allocate and rebuild every supported CPU HashGrid precision on first replay."""
-        device = "cpu"
-        precision_types = (
-            (wp.float16, wp.vec3h, count_neighbors_f16),
-            (wp.float32, wp.vec3f, count_neighbors_f32),
-            (wp.float64, wp.vec3d, count_neighbors_f64),
-        )
-
-        for scalar_dtype, vector_dtype, kernel in precision_types:
-            with self.subTest(dtype=scalar_dtype.__name__):
-                points = wp.zeros(2, dtype=vector_dtype, device=device)
-                source = wp.array([[3.0, 0.0, 0.0], [3.1, 0.0, 0.0]], dtype=vector_dtype, device=device)
-                counts = wp.zeros(2, dtype=int, device=device)
-                grid = wp.HashGrid(16, 16, 16, device=device, dtype=scalar_dtype)
-
-                wp.load_module(device=device)
-                with wp.ScopedCapture(device=device, apic=False, force_module_load=False) as capture:
-                    wp.copy(points, source)
-                    grid.build(points, 0.25)
-                    wp.launch(
-                        kernel,
-                        dim=2,
-                        inputs=[wp.uint64(grid.id), scalar_dtype(0.25), points, counts],
-                        device=device,
-                    )
-
-                wp.capture_launch(capture.graph)
-                assert_np_equal(counts.numpy(), np.array([2, 2], dtype=np.int32))
-
     def test_hashgrid_grouped_graph_first_build(self):
         """Allocate a grouped CPU HashGrid on first replay and rebuild from current groups."""
         device = "cpu"
@@ -1325,6 +1402,26 @@ add_function_test(
     "test_hashgrid_grouped_graph_capture_after_reserve",
     test_hashgrid_grouped_graph_capture_after_reserve,
     devices=devices,
+)
+add_function_test(TestHashGrid, "test_hashgrid_graph_two_grids", test_hashgrid_graph_two_grids, devices=devices)
+add_function_test(
+    TestHashGrid,
+    "test_hashgrid_graph_rebuild_different_widths",
+    test_hashgrid_graph_rebuild_different_widths,
+    devices=devices,
+)
+add_function_test(
+    TestHashGrid,
+    "test_hashgrid_graph_first_build_all_precisions",
+    test_hashgrid_graph_first_build_all_precisions,
+    devices=get_test_devices_with_graph_capture_allocation(),
+)
+add_function_test(
+    TestHashGrid,
+    "test_hashgrid_graph_build_in_capture_while",
+    test_hashgrid_grouped_graph_capture_after_reserve,
+    devices=devices,
+    conditional=True,
 )
 add_function_test(TestHashGrid, "test_hashgrid_device_validation", test_hashgrid_device_validation, devices=devices)
 add_function_test(
