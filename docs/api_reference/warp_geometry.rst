@@ -17,11 +17,16 @@ Python API
    IsoSurfaceMarchingCubes
    IsoSurfaceNets
    OBBMeasureType
+   PoissonField
+   PoissonField64
+   PoissonReconstruction
    SweptVolumeSignMode
    delaunay_edge_flip
    lipschitz_octree
    oriented_bounding_box
    oriented_bounding_boxes
+   poisson_extract_mesh
+   poisson_reconstruct
    sparse_marching_cubes
    sparse_marching_cubes_from_cells
    swept_volume_bounds
@@ -42,6 +47,7 @@ Kernel API
    intersect_seg_tri
    intersect_tri_aabb
    intersect_tri_tri
+   poisson_evaluate
    self_intersect_tri_tri
    super_fibonacci
    swept_volume_sdf

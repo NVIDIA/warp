@@ -7931,6 +7931,26 @@ cuda_reverse_function_template = """
 # by builtin.h, so a hinted @wp.func stays valid for CPU and CUDA alike.
 _INLINE_ATTRS = {"noinline": "WP_NOINLINE ", "forceinline": "WP_FORCEINLINE "}
 
+
+def get_func_inline_hint(inline_hint, arg_types, device):
+    """Resolve inlining while preserving explicit caller hints.
+
+    CUDA can miscompile heuristic inlining of functions taking structs by value:
+    an address in kernel parameter space becomes a local-memory load. Force early
+    inlining for these functions. Explicit noinline keeps the call boundary intact
+    and does not exhibit the invalid parameter-space conversion.
+    """
+    # Any can specialize to a Struct, so its unresolved function hash must carry
+    # the policy too. Code generation receives the concrete argument types.
+    if (
+        device == "cuda"
+        and inline_hint is None
+        and any(isinstance(arg_type, Struct) or arg_type is Any for arg_type in arg_types)
+    ):
+        return "forceinline"
+    return inline_hint
+
+
 # Lean (grid_stride=False) templates: 3D grid with a per-thread early return, no grid-stride loop.
 # The index flattens blockIdx.{z,y,x}; the grid shape (and its uint32 cap) is built in wp_cuda_launch_kernel.
 cuda_kernel_template_forward = """
@@ -8705,6 +8725,7 @@ def codegen_func(
 
     # The hint covers the adjoint too: keeping a large @wp.func out of line is pointless if the
     # adjoint generated from it is still inlined everywhere.
+    inline_hint = get_func_inline_hint(inline_hint, (arg.type for arg in adj.args), device)
     inline_attr = _INLINE_ATTRS.get(inline_hint, "")
 
     # Build line directive for function definition (subtract 1 to account for 1-indexing of AST line numbers)

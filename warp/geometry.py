@@ -22,6 +22,10 @@ that launch kernels over a whole mesh or grid. The kernel API includes Warp
 functions, such as :func:`swept_volume_sdf`, that evaluate a single point and may
 be called from your own :func:`warp.kernel` definitions and other Warp functions.
 
+Adaptive Poisson reconstruction turns oriented CUDA point clouds into implicit
+fields and meshes. See :doc:`/user_guide/poisson_reconstruction` for batched and
+device queries, optional differentiation, and numerical limits.
+
 Usage:
     This module must be explicitly imported::
 
@@ -31,6 +35,16 @@ Usage:
 # isort: skip_file
 
 # category: Python API
+
+from warp._src.geometry.poisson._api import (
+    PoissonReconstruction as PoissonReconstruction,
+    poisson_extract_mesh as poisson_extract_mesh,
+    poisson_reconstruct as poisson_reconstruct,
+)
+from warp._src.geometry.poisson.device_field import (
+    PoissonField as PoissonField,
+    PoissonField64 as PoissonField64,
+)
 
 from warp._src.geometry.iso_surface import IsoSurfaceBase as IsoSurfaceBase
 from warp._src.geometry.marching_cubes import IsoSurfaceMarchingCubes as IsoSurfaceMarchingCubes
@@ -55,6 +69,8 @@ from warp._src.geometry import swept_volume_mesh as swept_volume_mesh
 from warp._src.geometry import tri_tri_adjacency as tri_tri_adjacency
 
 # category: Kernel API
+
+from warp._src.geometry.poisson.device_field import poisson_evaluate as poisson_evaluate
 
 from warp._src.geometry import find_triangle_neighbor_edge_index as find_triangle_neighbor_edge_index
 from warp._src.geometry.intersect import intersect_aabb_aabb as intersect_aabb_aabb
