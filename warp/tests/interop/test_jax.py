@@ -3,6 +3,7 @@
 
 import concurrent.futures
 import contextlib
+import ctypes
 import io
 import os
 import socket
@@ -1364,6 +1365,161 @@ def test_ffi_jax_callable_graph_cache(test, device):
 
     finally:
         wp.config.enable_graph_capture_module_load_by_default = old_force_module_load
+
+
+@unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
+def test_ffi_jax_callable_selective_staged_inputs(test, device):
+    jax = _import_jax()
+    jnp = _import_jax_numpy()
+    jax_device = wp.device_to_jax(device)
+    for mode in (wp.JaxCallableGraphMode.WARP_STAGED, wp.JaxCallableGraphMode.WARP_STAGED_EX):
+        with test.subTest(graph_mode=mode):
+            callback = wp.jax_callable(cache_key_staging_func, num_outputs=2, stage_in_argnames=["a"], graph_mode=mode)
+            run = jax.jit(callback)
+            values = np.arange(8, dtype=np.float32)
+            for offset in (0, 10):
+                a = jax.device_put(values + offset, jax_device)
+                b = jax.device_put(values + 100 + offset, jax_device)
+                dynamic, initial = run(a, b)
+                np.testing.assert_array_equal(dynamic, values + offset)
+                np.testing.assert_array_equal(initial, values + 100)
+
+    # An un-staged in_out argument must only enqueue one initial copy (avoiding overlapping
+    # destinations in cuMemcpyBatchAsync).
+    in_out_cb = wp.jax_callable(
+        in_out_func,
+        num_outputs=2,
+        in_out_argnames=["b"],
+        stage_in_argnames=["a"],
+        stage_out_argnames=["c"],
+        graph_mode=wp.JaxCallableGraphMode.WARP_STAGED_EX,
+    )
+    run_in_out = jax.jit(in_out_cb)
+    core = wp._src.context.runtime.core
+    batch_counts = []
+    orig_memcpy_batch = core.wp_memcpy_batch
+
+    def _record_memcpy_batch(context, dsts, srcs, sizes, count, stream):
+        batch_counts.append(count)
+        return orig_memcpy_batch(context, dsts, srcs, sizes, count, stream)
+
+    values = np.arange(8, dtype=np.float32)
+    with mock.patch.object(core, "wp_memcpy_batch", side_effect=_record_memcpy_batch):
+        a = jax.device_put(values + 1.0, jax_device)
+        b = jax.device_put(values + 10.0, jax_device)
+        _, out_c = run_in_out(a, b)
+        np.testing.assert_array_equal(out_c, (values + 1.0) * 2.0)
+    # Initial copy (1 for un-staged b), input copy (1 for a), output copy (1 for c).
+    test.assertEqual(batch_counts, [1, 1, 1])
+
+    # A failed first capture in WARP_STAGED_EX must not leave desc.stream unregistered on retry.
+    fail_once = True
+
+    def flaky_double(a: wp.array[float], b: wp.array[float]):
+        nonlocal fail_once
+        if fail_once:
+            fail_once = False
+            raise RuntimeError("injected capture failure")
+        double_func(a, b)
+
+    flaky_cb = wp.jax_callable(flaky_double, graph_mode=wp.JaxCallableGraphMode.WARP_STAGED_EX)
+    run_flaky = jax.jit(lambda x, flaky_cb=flaky_cb: flaky_cb(x)[0])
+    sample = jax.device_put(values + 2.0, jax_device)
+    with contextlib.redirect_stdout(io.StringIO()), test.assertRaisesRegex(Exception, "injected capture failure"):
+        run_flaky(sample).block_until_ready()
+    np.testing.assert_array_equal(np.asarray(run_flaky(sample)), (values + 2.0) * 2.0)
+    sample2 = jax.device_put(values + 5.0, jax_device)
+    np.testing.assert_array_equal(np.asarray(run_flaky(sample2)), (values + 5.0) * 2.0)
+
+    # An intervening external CUDA capture must run under ScopedCapture(external=True) and
+    # preserve the cached WARP_STAGED_EX capture for subsequent replays.
+    try:
+        cuda_driver = ctypes.WinDLL("nvcuda.dll") if sys.platform == "win32" else ctypes.CDLL("libcuda.so.1")
+    except OSError:
+        cuda_driver = None
+    if cuda_driver is not None:
+        cuda_driver.cuStreamBeginCapture_v2.argtypes = [ctypes.c_void_p, ctypes.c_int]
+        cuda_driver.cuStreamEndCapture.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_void_p)]
+        cuda_driver.cuGraphInstantiateWithFlags.argtypes = [
+            ctypes.POINTER(ctypes.c_void_p),
+            ctypes.c_void_p,
+            ctypes.c_ulonglong,
+        ]
+        cuda_driver.cuGraphLaunch.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        cuda_driver.cuGraphExecDestroy.argtypes = [ctypes.c_void_p]
+        cuda_driver.cuGraphDestroy.argtypes = [ctypes.c_void_p]
+
+        ext_active = False
+        ext_stream = None
+        ext_graph = ctypes.c_void_p()
+        ext_graph_exec = ctypes.c_void_p()
+        capture_count = 0
+
+        def counted_double(a: wp.array[float], b: wp.array[float]):
+            nonlocal capture_count
+            capture_count += 1
+            double_func(a, b)
+
+        def _begin_ext(_inputs, _outputs, _attrs, ctx):
+            nonlocal ext_stream
+            if ext_active:
+                with wp.ScopedDevice(device):
+                    ext_stream = ctypes.c_void_p(ctx.stream)
+                    # CU_STREAM_CAPTURE_MODE_RELAXED = 2 so cleanup can end an aborted capture from the test thread
+                    test.assertEqual(cuda_driver.cuStreamBeginCapture_v2(ext_stream, 2), 0)
+
+        def _end_ext(_inputs, _outputs, _attrs, ctx):
+            if ext_active:
+                with wp.ScopedDevice(device):
+                    stream_ptr = ctypes.c_void_p(ctx.stream)
+                    test.assertEqual(cuda_driver.cuStreamEndCapture(stream_ptr, ctypes.byref(ext_graph)), 0)
+                    test.assertEqual(
+                        cuda_driver.cuGraphInstantiateWithFlags(ctypes.byref(ext_graph_exec), ext_graph, 0), 0
+                    )
+                    test.assertEqual(cuda_driver.cuGraphLaunch(ext_graph_exec, stream_ptr), 0)
+
+        begin_name = f"test_staged_ex_ext_begin_{device.ordinal}_{id(test)}"
+        end_name = f"test_staged_ex_ext_end_{device.ordinal}_{id(test)}"
+        register_ffi_callback(begin_name, _begin_ext, graph_compatible=False)
+        register_ffi_callback(end_name, _end_ext, graph_compatible=False)
+
+        shape_spec = jax.ShapeDtypeStruct((8,), jnp.float32)
+        begin_call = jax.ffi.ffi_call(begin_name, shape_spec, input_output_aliases={0: 0}, has_side_effect=True)
+        end_call = jax.ffi.ffi_call(end_name, shape_spec, input_output_aliases={0: 0}, has_side_effect=True)
+        ext_cb = wp.jax_callable(counted_double, graph_mode=wp.JaxCallableGraphMode.WARP_STAGED_EX)
+        run_ext = jax.jit(lambda x: end_call(ext_cb(begin_call(x))[0]))
+
+        try:
+            with jax.default_device(jax_device):
+                out0 = run_ext(jax.device_put(values + 1.0, jax_device))
+                np.testing.assert_array_equal(np.asarray(out0), (values + 1.0) * 2.0)
+                test.assertEqual(capture_count, 1)
+
+                ext_active = True
+                out1 = run_ext(jax.device_put(values + 20.0, jax_device))
+                np.testing.assert_array_equal(np.asarray(out1), (values + 20.0) * 2.0)
+                test.assertEqual(capture_count, 2)
+
+                ext_active = False
+                out2 = run_ext(jax.device_put(values + 40.0, jax_device))
+                np.testing.assert_array_equal(np.asarray(out2), (values + 40.0) * 2.0)
+                test.assertEqual(capture_count, 2)
+        finally:
+            with wp.ScopedDevice(device):
+                try:
+                    if ext_stream is not None and wp._src.context.runtime.core.wp_cuda_stream_is_capturing(
+                        ext_stream.value
+                    ):
+                        aborted_graph = ctypes.c_void_p()
+                        cuda_driver.cuStreamEndCapture(ext_stream, ctypes.byref(aborted_graph))
+                        if aborted_graph:
+                            cuda_driver.cuGraphDestroy(aborted_graph)
+                    wp.synchronize_device(device)
+                finally:
+                    if ext_graph_exec:
+                        cuda_driver.cuGraphExecDestroy(ext_graph_exec)
+                    if ext_graph:
+                        cuda_driver.cuGraphDestroy(ext_graph)
 
 
 @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
@@ -3111,6 +3267,25 @@ class TestJax(unittest.TestCase):
         _run_jax_distributed_device_lookup(self, [env, env])
 
     @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
+    def test_staged_external_collective(self):
+        if len(pmap_warp_devices) < 2 or not all(
+            device.is_cuda and device in jax_candidate_devices for device in pmap_warp_devices[:2]
+        ):
+            self.skipTest("Requires two selected JAX CUDA devices")
+        for device in pmap_warp_devices[:2]:
+            _check_jax_device(self, device)
+        # CUDA reads its queue size before the first launch in the process.
+        result = subprocess.run(
+            [sys.executable, "-m", "warp.tests.interop.aux_test_jax_staged_collective"],
+            env={**os.environ, "CUDA_SCALE_LAUNCH_QUEUES": "0.25x"},
+            capture_output=True,
+            text=True,
+            timeout=240,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    @unittest.skipUnless(_jax_version() >= (0, 5, 0), "JAX version too old")
     def test_device_lookup_jax_distributed_cuda(self):
         """Look up JAX GPUs in a two-process ``jax.distributed`` program with one GPU per process."""
         if wp.get_cuda_device_count() < 2:
@@ -3342,6 +3517,7 @@ else:
         cuda_only_jax_tests = (
             test_ffi_jax_callable_graph_cache,
             test_ffi_jax_callable_graph_replay_skips_module_load,
+            test_ffi_jax_callable_selective_staged_inputs,
             test_ffi_jax_cuda_requires_cuda_support,
         )
         for test_func in cuda_only_jax_tests:

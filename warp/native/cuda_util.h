@@ -7,6 +7,7 @@
 
 #if WP_ENABLE_CUDA
 
+#include <atomic>
 #include <vector>
 
 #include <cudaTypedefs.h>
@@ -337,12 +338,14 @@ struct timing_result_t {
 };
 
 struct CudaTimingState {
+    uint64_t id;
     int flags;
     std::vector<CudaTimingRange> ranges;
     CudaTimingState* parent;
 
-    CudaTimingState(int flags, CudaTimingState* parent)
-        : flags(flags)
+    CudaTimingState(uint64_t id, int flags, CudaTimingState* parent)
+        : id(id)
+        , flags(flags)
         , parent(parent)
     {
     }
@@ -357,10 +360,9 @@ constexpr int WP_TIMING_GRAPH = 16;  // graph launch
 
 #define begin_cuda_range(_flag, _stream, _context, _name) \
     CudaTimingRange _timing_range; \
-    bool _timing_enabled; \
-    if ((g_cuda_timing_state->flags & _flag) && !wp_cuda_stream_is_capturing(_stream)) { \
+    uint64_t _timing_scope = (g_cuda_timing_flags.load(std::memory_order_relaxed) & _flag) ? get_cuda_timing_scope(_flag) : 0; \
+    if (_timing_scope && !wp_cuda_stream_is_capturing(_stream)) { \
         ContextGuard guard(_context, true); \
-        _timing_enabled = true; \
         _timing_range.context = _context ? _context : get_current_context(); \
         _timing_range.name = _name; \
         _timing_range.flag = _flag; \
@@ -368,16 +370,18 @@ constexpr int WP_TIMING_GRAPH = 16;  // graph launch
         check_cu(cuEventCreate_f(&_timing_range.end, CU_EVENT_DEFAULT)); \
         check_cu(cuEventRecord_f(_timing_range.start, static_cast<CUstream>(_stream))); \
     } else { \
-        _timing_enabled = false; \
+        _timing_scope = 0; \
     }
 
 #define end_cuda_range(_flag, _stream) \
-    if (_timing_enabled) { \
+    if (_timing_scope) { \
         check_cu(cuEventRecord_f(_timing_range.end, static_cast<CUstream>(_stream))); \
-        g_cuda_timing_state->ranges.push_back(_timing_range); \
+        record_cuda_timing_range(_timing_scope, _timing_range); \
     }
 
-extern CudaTimingState* g_cuda_timing_state;
+extern std::atomic<int> g_cuda_timing_flags;
+uint64_t get_cuda_timing_scope(int flag);
+void record_cuda_timing_range(uint64_t scope, const CudaTimingRange& range);
 
 // Information used for freeing allocations.
 struct FreeInfo {
