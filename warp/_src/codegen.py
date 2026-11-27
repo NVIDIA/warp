@@ -8483,23 +8483,26 @@ def codegen_struct(struct, device="cpu", indent_size=4, include_tile_helpers=Fal
     # only if its scalar type supports value accumulation; other fields (arrays, bool,
     # narrow ints) ride along unchanged, keeping +, -, reductions, and atomic add
     # consistent rather than silently producing meaningless integer/bool arithmetic.
+    # Qualify members with this-> so that a field named like the rhs parameter
+    # is not shadowed by it (GH-2428).
     for label, var in struct.vars.items():
         if field_type_accumulates(var.type):
-            prefix_add_body.append(f"{indent_block}{label} += rhs.{label};\n")
-            prefix_sub_body.append(f"{indent_block}{label} -= rhs.{label};\n")
+            prefix_add_body.append(f"{indent_block}this->{label} += rhs.{label};\n")
+            prefix_sub_body.append(f"{indent_block}this->{label} -= rhs.{label};\n")
             prefix_neg_body.append(f"{indent_block}ret.{label} = -ret.{label};\n")
 
-    # reverse args
+    # reverse args; the trailing adjoint is not named adj_<something> so that it
+    # cannot collide with the per-field adj_<field> parameters (GH-2428)
     for label, var in struct.vars.items():
         reverse_args.append(var.ctype() + " & adj_" + label)
         if warp._src.types.is_native_type(var.type):
             continue
         elif is_array(var.type):
-            reverse_body.append(f"{indent_block}adj_{label} = adj_ret.{label};\n")
+            reverse_body.append(f"{indent_block}adj_{label} = wp_adj_ret.{label};\n")
         else:
-            reverse_body.append(f"{indent_block}adj_{label} += adj_ret.{label};\n")
+            reverse_body.append(f"{indent_block}adj_{label} += wp_adj_ret.{label};\n")
 
-    reverse_args.append(name + " & adj_ret")
+    reverse_args.append(name + " & wp_adj_ret")
 
     # explicitly defaulted default constructor if no default constructor has been defined
     defaulted_constructor_def = f"{name}() = default;" if forward_args else ""

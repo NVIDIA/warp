@@ -881,6 +881,48 @@ def test_struct_returned_from_func_grad(test, device):
             assert_np_equal(x.grad.numpy()[0], expected, tol=1e-5)
 
 
+# These field names reproduce collisions with generated C++ helper identifiers (GH-2428).
+@wp.struct
+class HelperNameCollision:
+    rhs: float
+    ret: float
+
+
+@wp.kernel(module="unique")
+def helper_name_ctor_kernel(x: wp.array[float], loss: wp.array[float]):
+    s = HelperNameCollision(2.0 * x[0], 3.0 * x[0])
+    loss[0] = s.rhs + 2.0 * s.ret
+
+
+@wp.kernel(module="unique", enable_backward=False)
+def helper_name_tile_sub_kernel(values: wp.array[HelperNameCollision], out: wp.array[HelperNameCollision]):
+    result = wp.tile_zeros(shape=1, dtype=HelperNameCollision)
+    result -= wp.tile_load(values, shape=1)
+    wp.tile_store(out, result)
+
+
+def test_struct_helper_name_constructor(test, device):
+    x = wp.array([2.0], dtype=float, device=device, requires_grad=True)
+    loss = wp.zeros(1, dtype=float, device=device, requires_grad=True)
+    with wp.Tape() as tape:
+        wp.launch(helper_name_ctor_kernel, dim=1, inputs=[x], outputs=[loss], device=device)
+    tape.backward(loss=loss)
+    np.testing.assert_array_equal(loss.numpy(), [16.0])
+    np.testing.assert_array_equal(x.grad.numpy(), [8.0])
+
+
+def test_struct_helper_name_tile_sub(test, device):
+    value = HelperNameCollision()
+    value.rhs = 2.0
+    value.ret = 3.0
+    values = wp.array([value], dtype=HelperNameCollision, device=device)
+    out = wp.empty_like(values)
+    wp.launch_tiled(helper_name_tile_sub_kernel, dim=[1], inputs=[values], outputs=[out], block_dim=32, device=device)
+    result = out.numpy()[0]
+    test.assertEqual(result["rhs"], -2.0)
+    test.assertEqual(result["ret"], -3.0)
+
+
 class TestStruct(unittest.TestCase):
     # check structs default initialized in Python correctly
     def test_struct_default_attributes_python(self):
@@ -1169,6 +1211,10 @@ add_function_test(
 add_function_test(
     TestStruct, "test_struct_returned_from_func_grad", test_struct_returned_from_func_grad, devices=devices
 )
+add_function_test(
+    TestStruct, "test_struct_helper_name_constructor", test_struct_helper_name_constructor, devices=devices
+)
+add_function_test(TestStruct, "test_struct_helper_name_tile_sub", test_struct_helper_name_tile_sub, devices=devices)
 
 
 if __name__ == "__main__":
