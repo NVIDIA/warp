@@ -29,6 +29,9 @@ namespace volume {
 // Need to kept in sync with constants in python-side Volume class
 static constexpr int CLOSEST = 0;
 static constexpr int LINEAR = 1;
+// Per-voxel data is a 1-D Warp array, whose int32 shape caps it at INT_MAX entries. NanoVDB voxel indices are one-based
+// (0 is the background), so this is both the largest usable voxel count and the largest index that maps to a valid
+// array slot (index - 1).
 static constexpr uint64_t MAX_INDEXABLE_VOXEL_COUNT = 2147483647ull;
 
 // pnanovdb helper function
@@ -271,8 +274,9 @@ template <typename T> struct index_value_accessor : value_accessor_base {
         if (level == 0) {
             pnanovdb_uint64_t voxel_index = get_grid_voxel_index(grid_type, buf, address, ijk);
 
-            if (voxel_index > 0) {
-                return *wp::address(data, voxel_index - 1);
+            // Indices past the limit cannot be represented as an array index; treat them as background.
+            if (voxel_index > 0 && voxel_index <= MAX_INDEXABLE_VOXEL_COUNT) {
+                return *wp::address(data, static_cast<int>(voxel_index - 1));
             }
         }
 
@@ -303,8 +307,8 @@ template <typename T> struct index_value_accessor : value_accessor_base {
         if (level == 0) {
             pnanovdb_uint64_t voxel_index = get_grid_voxel_index(grid_type, buf, address, ijk);
 
-            if (voxel_index > 0) {
-                adj_atomic_add(&index_grad(data, voxel_index - 1), adj_ret);
+            if (voxel_index > 0 && voxel_index <= MAX_INDEXABLE_VOXEL_COUNT) {
+                adj_atomic_add(&index_grad(data, static_cast<int>(voxel_index - 1)), adj_ret);
                 return;
             }
         }
@@ -804,7 +808,8 @@ CUDA_CALLABLE inline int32_t volume_lookup_index(uint64_t id, int32_t i, int32_t
     if (level == 0) {
         pnanovdb_uint64_t voxel_index = volume::get_grid_voxel_index(grid_type, buf, address, ijk);
 
-        return static_cast<int32_t>(voxel_index) - 1;
+        // Indices past the limit cannot be addressed by a per-voxel array; report them like inactive voxels.
+        return voxel_index > volume::MAX_INDEXABLE_VOXEL_COUNT ? -1 : static_cast<int32_t>(voxel_index) - 1;
     }
     return -1;
 }

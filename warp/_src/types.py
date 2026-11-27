@@ -7099,6 +7099,7 @@ class Mesh:
 # Must match wp_volume_validation_result in warp/native/warp.h.
 _VOLUME_VALIDATION_SUCCESS = 1
 _VOLUME_VALIDATION_UNSUPPORTED_LAYOUT = 2
+_VOLUME_VALIDATION_INDEX_LIMIT_EXCEEDED = 3
 
 
 class Volume:
@@ -7253,7 +7254,15 @@ class Volume:
         return out
 
     def get_voxel_count(self) -> int:
-        """Return the total number of allocated voxels for this volume"""
+        """Return the number of allocated voxel slots.
+
+        For rebuildable volumes, this returns the reserved voxel capacity.
+        Use :meth:`get_active_stats` to query the current topology.
+
+        The allocation count can exceed the ``2**31 - 1`` indexable voxels
+        supported by :func:`warp.volume_voxel_count` and
+        :func:`warp.volume_lookup_index`.
+        """
 
         voxel_count, tile_count = (
             ctypes.c_uint64(0),
@@ -7602,6 +7611,8 @@ class Volume:
         )
         if validation_result == _VOLUME_VALIDATION_UNSUPPORTED_LAYOUT:
             raise RuntimeError("Unsupported NanoVDB tree layout")
+        if validation_result == _VOLUME_VALIDATION_INDEX_LIMIT_EXCEEDED:
+            raise RuntimeError("NanoVDB index grid exceeds Warp's limit of 2**31 - 1 indexable voxels")
         if validation_result != _VOLUME_VALIDATION_SUCCESS:
             raise RuntimeError("Invalid NanoVDB grid structure")
 

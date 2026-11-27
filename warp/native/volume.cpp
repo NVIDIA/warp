@@ -323,9 +323,103 @@ bool volume_validate_internal_children(
     return true;
 }
 
-bool volume_validate_tree(
-    const uint8_t* grid_buffer, const pnanovdb_grid_t& grid_data, const pnanovdb_tree_t& tree_data
+int volume_validate_index_leaves(
+    const uint8_t* grid_buffer, uint32_t grid_type, const pnanovdb_tree_t& tree_data, const VolumeNodeRange& leaf_range
 )
+{
+    // Index grids map voxels to entries in a separate value array. Check the largest index each leaf can produce
+    // before any kernel uses it to access that array.
+
+    // Each leaf covers an 8x8x8 block. Index assigns a slot to every voxel in the block, including inactive ones.
+    // OnIndex assigns slots only to voxels marked active in the leaf's value mask. The Mask variants add a separate
+    // per-voxel mask and keep their base type's index mapping.
+    bool active_only;
+    switch (grid_type) {
+    case PNANOVDB_GRID_TYPE_INDEX:
+    case PNANOVDB_GRID_TYPE_INDEXMASK:
+        active_only = false;
+        break;
+    case PNANOVDB_GRID_TYPE_ONINDEX:
+    case PNANOVDB_GRID_TYPE_ONINDEXMASK:
+        active_only = true;
+        break;
+    default:
+        // Other grid types have no serialized leaf indices to check.
+        return WP_VOLUME_VALIDATION_SUCCESS;
+    }
+
+    // Callers can size the value array with Volume.get_voxel_count(), so match wp_volume_get_tile_and_voxel_count().
+    const uint64_t voxel_count
+        = active_only ? tree_data.voxel_count : uint64_t(tree_data.node_count_leaf) * PNANOVDB_LEAF_TABLE_COUNT;
+    // A well-formed grid can still have more voxels than a per-voxel array can hold. Keep checking the remaining
+    // leaves after finding one, so a malformed leaf is still reported as invalid rather than too large.
+    bool exceeds_index_limit = false;
+
+    // All four index leaf types keep what this check reads in their first 96 bytes: the value mask at [16, 80),
+    // then the base index and on-index prefix sums at leaf_off_table = 80.
+    constexpr uint32_t index_leaf_header_size = 96;
+    static_assert(
+        PNANOVDB_LEAF_OFF_VALUE_MASK + PNANOVDB_LEAF_TABLE_COUNT / 8 <= index_leaf_header_size,
+        "Index leaf value mask must fit in the copied header"
+    );
+
+    // Copy each leaf header so the PNanoVDB accessors never read the caller's buffer directly.
+    // pnanovdb_buf_t reads 64-bit values through uint64_t pointers, so store the copy as uint64_t.
+    // Only make 64-bit reads below: a 32-bit read would access this storage through the wrong type.
+    uint64_t leaf_words[index_leaf_header_size / sizeof(uint64_t)];
+    const pnanovdb_buf_t buf
+        = pnanovdb_make_buf(reinterpret_cast<uint32_t*>(leaf_words), index_leaf_header_size / sizeof(uint32_t));
+    const pnanovdb_leaf_handle_t leaf = { pnanovdb_address_null() };
+    // Each leaf stores a base index. Lookups add the voxel's offset within the leaf.
+    const pnanovdb_address_t first_index_address = pnanovdb_leaf_get_table_address(grid_type, buf, leaf, 0);
+
+    for (uint32_t leaf_index = 0; leaf_index < leaf_range.count; ++leaf_index) {
+        std::memcpy(
+            leaf_words, grid_buffer + leaf_range.begin + uint64_t(leaf_index) * leaf_range.stride,
+            index_leaf_header_size
+        );
+        const uint64_t first_index = pnanovdb_read_uint64(buf, first_index_address);
+
+        uint64_t last_index;
+        if (active_only) {
+            // OnIndex lookups add the number of active voxels before the target voxel. The leaf stores the running
+            // count through each of the first seven 64-bit mask words as a packed 9-bit field, leaving bit 63 zero.
+            // Lookups trust these counts, so require them to match the mask.
+            uint64_t expected_prefix_sum = 0;
+            uint64_t active_count = 0;
+            for (uint32_t word_index = 0; word_index < PNANOVDB_LEAF_TABLE_COUNT / 64 - 1; ++word_index) {
+                active_count += pnanovdb_uint64_countbits(pnanovdb_read_uint64(
+                    buf, pnanovdb_address_offset(leaf.address, PNANOVDB_LEAF_OFF_VALUE_MASK + 8u * word_index)
+                ));
+                expected_prefix_sum |= active_count << (9u * word_index);
+            }
+            if (pnanovdb_read_uint64(buf, pnanovdb_address_offset(first_index_address, 8u)) != expected_prefix_sum)
+                return WP_VOLUME_VALIDATION_INVALID;
+
+            // A leaf with no active voxels only yields the background index. Skip it before checking the base index:
+            // NanoVDB gives empty leaves after the last active voxel a base index one past the voxel count.
+            if (pnanovdb_leaf_onindex_get_value_count(buf, leaf) == 0)
+                continue;
+            // With consistent counts, the last active voxel has the largest index. The onindex accessors also cover
+            // OnIndexMask, which shares the leaf layout.
+            last_index = pnanovdb_leaf_onindex_get_last_offset(buf, leaf);
+        } else {
+            // Index leaves assign a slot to every voxel, so the last slot has the largest index.
+            last_index = pnanovdb_uint64_offset(first_index, PNANOVDB_LEAF_TABLE_COUNT - 1u);
+        }
+
+        // Check the base index too: adding to a malformed one can wrap last_index back into range.
+        if (first_index > voxel_count || last_index > voxel_count)
+            return WP_VOLUME_VALIDATION_INVALID;
+        // NanoVDB index N addresses array slot N - 1, with zero reserved for background.
+        if (first_index > volume::MAX_INDEXABLE_VOXEL_COUNT || last_index > volume::MAX_INDEXABLE_VOXEL_COUNT)
+            exceeds_index_limit = true;
+    }
+
+    return exceeds_index_limit ? WP_VOLUME_VALIDATION_INDEX_LIMIT_EXCEEDED : WP_VOLUME_VALIDATION_SUCCESS;
+}
+
+int volume_validate_tree(const uint8_t* grid_buffer, const pnanovdb_grid_t& grid_data, const pnanovdb_tree_t& tree_data)
 {
     // The caller validates the grid type and breadth-first flag before this helper uses the type-layout table and
     // assumes the serialized order root, root tiles, upper nodes, lower nodes, leaves, then optional blind metadata.
@@ -334,7 +428,7 @@ bool volume_validate_tree(
     const uint32_t root_tile_size = PNANOVDB_GRID_TYPE_GET(grid_type, root_tile_size);
     // Reject incomplete type layouts before reading the root's tile count or a tile's child field.
     if (root_size < PNANOVDB_ROOT_BASE_SIZE || root_tile_size < PNANOVDB_ROOT_TILE_BASE_SIZE)
-        return false;
+        return WP_VOLUME_VALIDATION_INVALID;
 
     VolumeNodeRange root_range;
     VolumeNodeRange upper_range;
@@ -360,14 +454,14 @@ bool volume_validate_tree(
                       tree_data.node_offset_leaf, tree_data.node_count_leaf,
                       PNANOVDB_GRID_TYPE_GET(grid_type, leaf_size), grid_data.grid_size, leaf_range
                   ))) {
-        return false;
+        return WP_VOLUME_VALIDATION_INVALID;
     }
 
     uint32_t root_tile_count;
     std::memcpy(&root_tile_count, grid_buffer + root_range.begin + PNANOVDB_ROOT_OFF_TABLE_SIZE, sizeof(uint32_t));
     // Root tiles immediately follow the fixed root data, and their serialized count is not covered by the tree header.
     if (root_tile_count > (grid_data.grid_size - root_range.end) / root_tile_size)
-        return false;
+        return WP_VOLUME_VALIDATION_INVALID;
 
     const uint64_t root_tiles_begin = root_range.end;
     uint64_t occupied_end = root_tiles_begin + uint64_t(root_tile_count) * root_tile_size;
@@ -388,7 +482,7 @@ bool volume_validate_tree(
     };
     if (!validate_range_order(upper_range) || !validate_range_order(lower_range) || !validate_range_order(leaf_range)
         || occupied_end > tree_boundary) {
-        return false;
+        return WP_VOLUME_VALIDATION_INVALID;
     }
 
     for (uint32_t tile_index = 0; tile_index < root_tile_count; ++tile_index) {
@@ -400,21 +494,23 @@ bool volume_validate_tree(
         // A zero offset denotes a value tile; nonzero offsets must target an upper node and are relative to the root.
         if (relative_offset != 0
             && !volume_validate_child_reference(root_range.begin, relative_offset, upper_range, grid_data.grid_size)) {
-            return false;
+            return WP_VOLUME_VALIDATION_INVALID;
         }
     }
 
     const uint32_t table_stride = PNANOVDB_GRID_TYPE_GET(grid_type, table_stride);
-    return volume_validate_internal_children(
-               grid_buffer, upper_range, PNANOVDB_UPPER_OFF_CHILD_MASK,
-               PNANOVDB_GRID_TYPE_GET(grid_type, upper_off_table), PNANOVDB_UPPER_TABLE_COUNT, table_stride,
-               lower_range, grid_data.grid_size
-           )
-        && volume_validate_internal_children(
-               grid_buffer, lower_range, PNANOVDB_LOWER_OFF_CHILD_MASK,
-               PNANOVDB_GRID_TYPE_GET(grid_type, lower_off_table), PNANOVDB_LOWER_TABLE_COUNT, table_stride, leaf_range,
-               grid_data.grid_size
-        );
+    if (!volume_validate_internal_children(
+            grid_buffer, upper_range, PNANOVDB_UPPER_OFF_CHILD_MASK, PNANOVDB_GRID_TYPE_GET(grid_type, upper_off_table),
+            PNANOVDB_UPPER_TABLE_COUNT, table_stride, lower_range, grid_data.grid_size
+        )
+        || !volume_validate_internal_children(
+            grid_buffer, lower_range, PNANOVDB_LOWER_OFF_CHILD_MASK, PNANOVDB_GRID_TYPE_GET(grid_type, lower_off_table),
+            PNANOVDB_LOWER_TABLE_COUNT, table_stride, leaf_range, grid_data.grid_size
+        )) {
+        return WP_VOLUME_VALIDATION_INVALID;
+    }
+
+    return volume_validate_index_leaves(grid_buffer, grid_type, tree_data, leaf_range);
 }
 
 void volume_add_descriptor(uint64_t id, VolumeDesc&& volumeDesc) { g_volume_descriptors[id] = std::move(volumeDesc); }
@@ -527,8 +623,7 @@ static int volume_validate_grid(const uint8_t* grid_buffer, uint64_t available_s
         return WP_VOLUME_VALIDATION_INVALID;
     if ((grid_data.flags & PNANOVDB_GRID_FLAGS_IS_BREADTH_FIRST) == 0)
         return WP_VOLUME_VALIDATION_UNSUPPORTED_LAYOUT;
-    return volume_validate_tree(grid_buffer, grid_data, tree_data) ? WP_VOLUME_VALIDATION_SUCCESS
-                                                                   : WP_VOLUME_VALIDATION_INVALID;
+    return volume_validate_tree(grid_buffer, grid_data, tree_data);
 }
 
 int wp_volume_validate_host(const void* buf, uint64_t size)
@@ -546,8 +641,8 @@ int wp_volume_validate_host(const void* buf, uint64_t size)
         const int result = volume_validate_grid(buffer + grid_offset, size - grid_offset, grid_size);
         if (result == WP_VOLUME_VALIDATION_INVALID)
             return WP_VOLUME_VALIDATION_INVALID;
-        if (result == WP_VOLUME_VALIDATION_UNSUPPORTED_LAYOUT)
-            validation_result = WP_VOLUME_VALIDATION_UNSUPPORTED_LAYOUT;
+        if (result == WP_VOLUME_VALIDATION_UNSUPPORTED_LAYOUT || result == WP_VOLUME_VALIDATION_INDEX_LIMIT_EXCEEDED)
+            validation_result = result;
         else if (result != WP_VOLUME_VALIDATION_SUCCESS)
             return WP_VOLUME_VALIDATION_INVALID;
 

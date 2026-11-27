@@ -33,6 +33,7 @@ enum wp_volume_validation_result {
     WP_VOLUME_VALIDATION_INVALID = 0,
     WP_VOLUME_VALIDATION_SUCCESS = 1,
     WP_VOLUME_VALIDATION_UNSUPPORTED_LAYOUT = 2,
+    WP_VOLUME_VALIDATION_INDEX_LIMIT_EXCEEDED = 3,
 };
 
 struct timing_result_t;

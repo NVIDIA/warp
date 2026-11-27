@@ -29,6 +29,7 @@ _PNANOVDB_TREE_OFF_NODE_OFFSET_ROOT = 24
 _PNANOVDB_TREE_OFF_NODE_COUNT_LEAF = 32
 _PNANOVDB_TREE_OFF_NODE_COUNT_LOWER = 36
 _PNANOVDB_TREE_OFF_NODE_COUNT_UPPER = 40
+_PNANOVDB_TREE_OFF_VOXEL_COUNT = 56
 _PNANOVDB_ROOT_OFF_TABLE_SIZE = 24
 # FpN is NanoVDB's variable-bit quantized floating-point grid type.
 _PNANOVDB_ROOT_SIZE_FPN = 64
@@ -43,7 +44,13 @@ _PNANOVDB_LOWER_OFF_CHILD_MASK = 544
 _PNANOVDB_LOWER_OFF_TABLE_INDEX = 1088
 _PNANOVDB_LOWER_SIZE_INDEX = 33856
 _PNANOVDB_LOWER_TABLE_COUNT = 4096
+_PNANOVDB_LEAF_OFF_VALUE_MASK = 16
+# Index and on-index leaves store the first value index here, followed by the on-index prefix sums.
+_PNANOVDB_LEAF_OFF_TABLE_INDEX = 80
+_PNANOVDB_LEAF_SIZE_INDEX = 96
+_PNANOVDB_LEAF_TABLE_COUNT = 512
 _PNANOVDB_GRID_TYPE_FPN = 16
+_PNANOVDB_GRID_TYPE_INDEX = 19
 _PNANOVDB_NAME_SIZE = 256
 
 _ASSET_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "assets"))
@@ -141,6 +148,19 @@ def _find_index_grid_child_offsets(grid_data):
     return root_child_offset, upper_child_offset, lower_child_offset
 
 
+def _find_index_leaves(grid_data):
+    """Return the byte offset of each leaf in a serialized index or on-index grid."""
+    tree_offset = _PNANOVDB_GRID_SIZE
+    leaf_offset = struct.unpack_from("<Q", grid_data, tree_offset + _PNANOVDB_TREE_OFF_NODE_OFFSET_LEAF)[0]
+    leaf_count = struct.unpack_from("<I", grid_data, tree_offset + _PNANOVDB_TREE_OFF_NODE_COUNT_LEAF)[0]
+    return [tree_offset + leaf_offset + index * _PNANOVDB_LEAF_SIZE_INDEX for index in range(leaf_count)]
+
+
+def _count_active_leaf_voxels(grid_data, leaf):
+    mask_words = struct.unpack_from("<8Q", grid_data, leaf + _PNANOVDB_LEAF_OFF_VALUE_MASK)
+    return sum(bin(word).count("1") for word in mask_words)
+
+
 def _make_fpn_grid(leaf_bit_widths):
     """Build an FpN grid with leaves encoded at ``leaf_bit_widths``."""
     root_offset = 64
@@ -227,51 +247,6 @@ def test_volume_accepts_unaligned_grid_size(test, device):
     wp.Volume(data)
 
 
-def test_volume_load_rejects_invalid_root_offset(test, device):
-    """Reject serialized volumes whose tree root resolves outside the grid."""
-    grid_data = _get_index_grid_data()
-    grid_size = struct.unpack_from("<Q", grid_data, _PNANOVDB_GRID_OFF_GRID_SIZE)[0]
-    grid_data = grid_data[:grid_size].copy()
-    struct.pack_into("<Q", grid_data, _PNANOVDB_GRID_SIZE + _PNANOVDB_TREE_OFF_NODE_OFFSET_ROOT, grid_size)
-
-    with test.assertRaisesRegex(RuntimeError, "Invalid NanoVDB grid structure"):
-        wp.Volume.load_from_nvdb(_serialize_nvdb_grid(grid_data), device=device)
-
-
-def test_volume_load_rejects_invalid_node_spans(test, device):
-    """Reject serialized volumes whose declared node arrays exceed the grid."""
-    source = _get_index_grid_data()
-    grid_size = struct.unpack_from("<Q", source, _PNANOVDB_GRID_OFF_GRID_SIZE)[0]
-    source = source[:grid_size]
-    cases = (
-        ("leaf_offset", _PNANOVDB_TREE_OFF_NODE_OFFSET_LEAF, "<Q", grid_size),
-        ("lower_offset", _PNANOVDB_TREE_OFF_NODE_OFFSET_LOWER, "<Q", grid_size),
-        ("upper_offset", _PNANOVDB_TREE_OFF_NODE_OFFSET_UPPER, "<Q", grid_size),
-        ("leaf_count", _PNANOVDB_TREE_OFF_NODE_COUNT_LEAF, "<I", 0xFFFFFFFF),
-        ("lower_count", _PNANOVDB_TREE_OFF_NODE_COUNT_LOWER, "<I", 0xFFFFFFFF),
-        ("upper_count", _PNANOVDB_TREE_OFF_NODE_COUNT_UPPER, "<I", 0xFFFFFFFF),
-    )
-
-    for case, field_offset, field_format, value in cases:
-        with test.subTest(case=case):
-            grid_data = source.copy()
-            struct.pack_into(field_format, grid_data, _PNANOVDB_GRID_SIZE + field_offset, value)
-            with test.assertRaisesRegex(RuntimeError, "Invalid NanoVDB grid structure"):
-                wp.Volume.load_from_nvdb(_serialize_nvdb_grid(grid_data), device=device)
-
-
-def test_volume_load_rejects_invalid_root_tile_span(test, device):
-    """Reject serialized volumes whose root tile table exceeds the grid."""
-    grid_data = _get_index_grid_data()
-    grid_size = struct.unpack_from("<Q", grid_data, _PNANOVDB_GRID_OFF_GRID_SIZE)[0]
-    grid_data = grid_data[:grid_size].copy()
-    root_offset = struct.unpack_from("<Q", grid_data, _PNANOVDB_GRID_SIZE + _PNANOVDB_TREE_OFF_NODE_OFFSET_ROOT)[0]
-    struct.pack_into("<I", grid_data, _PNANOVDB_GRID_SIZE + root_offset + _PNANOVDB_ROOT_OFF_TABLE_SIZE, 0xFFFFFFFF)
-
-    with test.assertRaisesRegex(RuntimeError, "Invalid NanoVDB grid structure"):
-        wp.Volume.load_from_nvdb(_serialize_nvdb_grid(grid_data), device=device)
-
-
 def test_volume_load_accepts_empty_tree(test, device):
     """Accept a serialized volume with unusable offsets for empty node levels."""
     root_offset = 64
@@ -290,160 +265,21 @@ def test_volume_load_accepts_empty_tree(test, device):
     test.assertIsNotNone(volume)
 
 
-def test_volume_load_rejects_overlapping_tree_regions(test, device):
-    """Reject serialized volumes whose breadth-first tree regions overlap."""
-    source = _make_fpn_grid((1,))
-    tree_offset = _PNANOVDB_GRID_SIZE
-    leaf_offset, lower_offset, upper_offset, root_offset = struct.unpack_from("<QQQQ", source, tree_offset)
-    metadata_offset = struct.unpack_from("<q", source, _PNANOVDB_GRID_OFF_BLIND_METADATA_OFFSET)[0]
-
-    root_upper = source.copy()
-    root = tree_offset + root_offset
-    struct.pack_into("<I", root_upper, root + _PNANOVDB_ROOT_OFF_TABLE_SIZE, 2)
-    struct.pack_into("<q", root_upper, tree_offset + upper_offset + _PNANOVDB_ROOT_TILE_OFF_CHILD, 0)
-
-    upper_lower = source.copy()
-    overlapping_lower_offset = lower_offset - 32
-    struct.pack_into("<Q", upper_lower, tree_offset + _PNANOVDB_TREE_OFF_NODE_OFFSET_LOWER, overlapping_lower_offset)
-    struct.pack_into(
-        "<q",
-        upper_lower,
-        tree_offset + upper_offset + _PNANOVDB_UPPER_OFF_TABLE_INDEX,
-        overlapping_lower_offset - upper_offset,
-    )
-    lower = tree_offset + overlapping_lower_offset
-    upper_lower[lower + _PNANOVDB_LOWER_OFF_CHILD_MASK : lower + _PNANOVDB_LOWER_OFF_TABLE_INDEX] = b"\0" * (
-        _PNANOVDB_LOWER_OFF_TABLE_INDEX - _PNANOVDB_LOWER_OFF_CHILD_MASK
-    )
-
-    lower_leaf = source.copy()
-    overlapping_leaf_offset = leaf_offset - 32
-    struct.pack_into("<Q", lower_leaf, tree_offset + _PNANOVDB_TREE_OFF_NODE_OFFSET_LEAF, overlapping_leaf_offset)
-    struct.pack_into(
-        "<q",
-        lower_leaf,
-        tree_offset + lower_offset + _PNANOVDB_LOWER_OFF_TABLE_INDEX,
-        overlapping_leaf_offset - lower_offset,
-    )
-    struct.pack_into("<I", lower_leaf, tree_offset + overlapping_leaf_offset + 12, 0)
-
-    leaf_metadata = source.copy()
-    struct.pack_into("<q", leaf_metadata, _PNANOVDB_GRID_OFF_BLIND_METADATA_OFFSET, metadata_offset - 32)
-
-    for case, grid_data in (
-        ("root_upper", root_upper),
-        ("upper_lower", upper_lower),
-        ("lower_leaf", lower_leaf),
-        ("leaf_metadata", leaf_metadata),
-    ):
-        with test.subTest(case=case):
-            with test.assertRaisesRegex(RuntimeError, "Invalid NanoVDB grid structure"):
-                wp.Volume.load_from_nvdb(_serialize_nvdb_grid(grid_data), device=device)
-
-
-def test_volume_load_rejects_invalid_child_references(test, device):
-    """Reject serialized volumes whose child references escape the declared node arrays."""
-    source = _get_index_grid_data()
-    grid_size = struct.unpack_from("<Q", source, _PNANOVDB_GRID_OFF_GRID_SIZE)[0]
-    source = source[:grid_size]
-    child_offsets = _find_index_grid_child_offsets(source)
-
-    for level, child_offset in zip(("root", "upper", "lower"), child_offsets, strict=True):
-        valid_reference = struct.unpack_from("<q", source, child_offset)[0]
-        for case, reference in (("out_of_bounds", grid_size), ("inside_node", valid_reference + 32)):
-            with test.subTest(level=level, case=case):
-                grid_data = source.copy()
-                struct.pack_into("<q", grid_data, child_offset, reference)
-                with test.assertRaisesRegex(RuntimeError, "Invalid NanoVDB grid structure"):
-                    wp.Volume.load_from_nvdb(_serialize_nvdb_grid(grid_data), device=device)
-
-
-def test_volume_load_rejects_child_references_to_empty_levels(test, device):
-    """Reject child references to node levels whose declared count is zero."""
-    source = _make_fpn_grid((1,))
-    tree_offset = _PNANOVDB_GRID_SIZE
-    cases = (
-        ("root_to_upper", _PNANOVDB_TREE_OFF_NODE_COUNT_UPPER),
-        ("upper_to_lower", _PNANOVDB_TREE_OFF_NODE_COUNT_LOWER),
-        ("lower_to_leaf", _PNANOVDB_TREE_OFF_NODE_COUNT_LEAF),
-    )
-
-    for case, count_offset in cases:
-        with test.subTest(case=case):
-            grid_data = source.copy()
-            struct.pack_into("<I", grid_data, tree_offset + count_offset, 0)
-            with test.assertRaisesRegex(RuntimeError, "Invalid NanoVDB grid structure"):
-                wp.Volume.load_from_nvdb(_serialize_nvdb_grid(grid_data), device=device)
-
-
-def test_volume_load_validates_every_grid(test, device):
-    """Reject serialized multi-grid volumes when a later grid is invalid."""
-    source = _get_index_grid_data()
-    first_grid_size = struct.unpack_from("<Q", source, _PNANOVDB_GRID_OFF_GRID_SIZE)[0]
-    second_grid_size = struct.unpack_from("<Q", source, first_grid_size + _PNANOVDB_GRID_OFF_GRID_SIZE)[0]
-    first_grid = source[:first_grid_size].copy()
-    second_grid = source[first_grid_size : first_grid_size + second_grid_size].copy()
-    struct.pack_into("<Q", second_grid, _PNANOVDB_GRID_SIZE + _PNANOVDB_TREE_OFF_NODE_OFFSET_ROOT, second_grid_size)
-
-    with test.subTest(case="invalid_later_grid"):
-        with test.assertRaisesRegex(RuntimeError, "Invalid NanoVDB grid structure"):
-            wp.Volume.load_from_nvdb(_serialize_nvdb_grids(first_grid, second_grid), device=device)
-
-    flags = struct.unpack_from("<I", first_grid, _PNANOVDB_GRID_OFF_FLAGS)[0]
-    struct.pack_into("<I", first_grid, _PNANOVDB_GRID_OFF_FLAGS, flags & ~_PNANOVDB_GRID_FLAGS_IS_BREADTH_FIRST)
-    with test.subTest(case="unsupported_then_invalid"):
-        with test.assertRaisesRegex(RuntimeError, "Invalid NanoVDB grid structure"):
-            wp.Volume.load_from_nvdb(_serialize_nvdb_grids(first_grid, second_grid), device=device)
-
-
-def test_volume_load_rejects_unsupported_tree_layout(test, device):
-    """Report non-breadth-first NanoVDB trees as unsupported."""
-    grid_data = _get_index_grid_data()
-    grid_size = struct.unpack_from("<Q", grid_data, _PNANOVDB_GRID_OFF_GRID_SIZE)[0]
-    grid_data = grid_data[:grid_size].copy()
-    flags = struct.unpack_from("<I", grid_data, _PNANOVDB_GRID_OFF_FLAGS)[0]
-    struct.pack_into("<I", grid_data, _PNANOVDB_GRID_OFF_FLAGS, flags & ~_PNANOVDB_GRID_FLAGS_IS_BREADTH_FIRST)
-
-    with test.assertRaisesRegex(RuntimeError, "Unsupported NanoVDB tree layout"):
-        wp.Volume.load_from_nvdb(_serialize_nvdb_grid(grid_data), device=device)
-
-
-def test_volume_load_rejects_invalid_tree_layout(test, device):
-    """Reject serialized volumes with unsupported types or misaligned grid sizes."""
-    source = _get_index_grid_data()
-    grid_size = struct.unpack_from("<Q", source, _PNANOVDB_GRID_OFF_GRID_SIZE)[0]
-    source = source[:grid_size]
-
-    with test.subTest(case="unsupported_grid_type"):
-        grid_data = source.copy()
-        struct.pack_into("<I", grid_data, _PNANOVDB_GRID_OFF_GRID_TYPE, 0)
-        with test.assertRaisesRegex(RuntimeError, "Invalid NanoVDB grid structure"):
-            wp.Volume.load_from_nvdb(_serialize_nvdb_grid(grid_data), device=device)
-
-    with test.subTest(case="misaligned_grid_size"):
-        grid_data = bytearray(source)
-        grid_data.append(0)
-        struct.pack_into("<Q", grid_data, _PNANOVDB_GRID_OFF_GRID_SIZE, len(grid_data))
-        with test.assertRaisesRegex(RuntimeError, "Invalid NanoVDB grid structure"):
-            wp.Volume.load_from_nvdb(_serialize_nvdb_grid(grid_data), device=device)
-
-
 def test_volume_load_accepts_fpn_leaf_spans(test, device):
     """Accept valid variable-size FpN leaf payloads."""
     valid_grid = _make_fpn_grid((1, 2))
     wp.Volume.load_from_nvdb(_serialize_nvdb_grid(valid_grid), device=device)
 
 
-def test_volume_load_rejects_truncated_fpn_leaf(test, device):
-    """Reject an FpN leaf whose value payload is truncated."""
-    truncated_grid = _make_fpn_grid((16,))
-    leaf_offset = struct.unpack_from("<Q", truncated_grid, _PNANOVDB_GRID_SIZE + _PNANOVDB_TREE_OFF_NODE_OFFSET_LEAF)[0]
-    truncated_size = _PNANOVDB_GRID_SIZE + leaf_offset + 96
-    struct.pack_into("<Q", truncated_grid, _PNANOVDB_GRID_OFF_GRID_SIZE, truncated_size)
-    struct.pack_into("<q", truncated_grid, _PNANOVDB_GRID_OFF_BLIND_METADATA_OFFSET, truncated_size)
-    truncated_grid = truncated_grid[:truncated_size]
-    with test.assertRaisesRegex(RuntimeError, "Invalid NanoVDB grid structure"):
-        wp.Volume.load_from_nvdb(_serialize_nvdb_grid(truncated_grid), device=device)
+def _get_grid_data(volume):
+    grid_data = volume.array().numpy().copy()
+    grid_size = struct.unpack_from("<Q", grid_data, _PNANOVDB_GRID_OFF_GRID_SIZE)[0]
+    return grid_data[:grid_size]
+
+
+def _make_dense_index_volume():
+    tile_points = wp.array([[0, 0, 0], [8, 0, 0]], dtype=wp.vec3i, device="cpu")
+    return wp.Volume.allocate_by_tiles(tile_points, voxel_size=1.0, bg_value=None, device="cpu")
 
 
 def test_volume_load_accepts_metadata_free_grids(test, device):
@@ -532,39 +368,353 @@ def test_volume_snapshots_feature_metadata(test, device):
     test.assertEqual(volume.get_feature_array_info(0), expected)
 
 
+@wp.kernel
+def sample_index_at_origin_kernel(volume: wp.uint64, voxel_data: wp.array[float], sampled: wp.array[float]):
+    sampled[0] = wp.volume_sample_index(volume, wp.vec3(0.0), wp.Volume.CLOSEST, voxel_data, -1.0)
+
+
+@wp.kernel
+def lookup_index_at_origin_kernel(volume: wp.uint64, indices: wp.array[wp.int32]):
+    indices[0] = wp.volume_lookup_index(volume, 0, 0, 0)
+
+
+def test_volume_ignores_indices_past_kernel_limit(test, device):
+    """Treat voxel indices past ``2**31 - 1`` as background instead of truncating them to an array index."""
+    points = wp.array([[0, 0, 0]], dtype=wp.vec3i, device="cpu")
+    grid_data = _get_grid_data(wp.Volume.allocate_by_voxels(points, voxel_size=1.0, device="cpu"))
+    (leaf,) = _find_index_leaves(grid_data)
+    # The leaf's only active voxel takes its base index. Truncated to 32 bits, this index would address slot 0.
+    struct.pack_into("<Q", grid_data, leaf + _PNANOVDB_LEAF_OFF_TABLE_INDEX, (1 << 32) + 1)
+    # Direct construction skips the load-time index check, like a regular grid too large to reject at load time.
+    volume = wp.Volume(wp.array(grid_data, dtype=wp.uint8, device=device))
+
+    voxel_data = wp.array([2.0], dtype=float, device=device, requires_grad=True)
+    sampled = wp.zeros(1, dtype=float, device=device, requires_grad=True)
+    tape = wp.Tape()
+    with tape:
+        wp.launch(
+            sample_index_at_origin_kernel, dim=1, inputs=[volume.id, voxel_data], outputs=[sampled], device=device
+        )
+    tape.backward(grads={sampled: wp.ones(1, dtype=float, device=device)})
+    test.assertEqual(sampled.numpy()[0], -1.0)
+    test.assertEqual(voxel_data.grad.numpy()[0], 0.0)
+
+    indices = wp.zeros(1, dtype=wp.int32, device=device)
+    wp.launch(lookup_index_at_origin_kernel, dim=1, inputs=[volume.id], outputs=[indices], device=device)
+    test.assertEqual(indices.numpy()[0], -1)
+
+
 devices = get_test_devices()
 
 
 class TestVolumeValidation(unittest.TestCase):
     def test_volume_load_rejects_invalid_root_offset_cpu(self):
-        test_volume_load_rejects_invalid_root_offset(self, "cpu")
+        """Reject serialized volumes whose tree root resolves outside the grid."""
+        grid_data = _get_index_grid_data()
+        grid_size = struct.unpack_from("<Q", grid_data, _PNANOVDB_GRID_OFF_GRID_SIZE)[0]
+        grid_data = grid_data[:grid_size].copy()
+        struct.pack_into("<Q", grid_data, _PNANOVDB_GRID_SIZE + _PNANOVDB_TREE_OFF_NODE_OFFSET_ROOT, grid_size)
+
+        with self.assertRaisesRegex(RuntimeError, "Invalid NanoVDB grid structure"):
+            wp.Volume.load_from_nvdb(_serialize_nvdb_grid(grid_data), device="cpu")
 
     def test_volume_load_rejects_invalid_node_spans_cpu(self):
-        test_volume_load_rejects_invalid_node_spans(self, "cpu")
+        """Reject serialized volumes whose declared node arrays exceed the grid."""
+        source = _get_index_grid_data()
+        grid_size = struct.unpack_from("<Q", source, _PNANOVDB_GRID_OFF_GRID_SIZE)[0]
+        source = source[:grid_size]
+        cases = (
+            ("leaf_offset", _PNANOVDB_TREE_OFF_NODE_OFFSET_LEAF, "<Q", grid_size),
+            ("lower_offset", _PNANOVDB_TREE_OFF_NODE_OFFSET_LOWER, "<Q", grid_size),
+            ("upper_offset", _PNANOVDB_TREE_OFF_NODE_OFFSET_UPPER, "<Q", grid_size),
+            ("leaf_count", _PNANOVDB_TREE_OFF_NODE_COUNT_LEAF, "<I", 0xFFFFFFFF),
+            ("lower_count", _PNANOVDB_TREE_OFF_NODE_COUNT_LOWER, "<I", 0xFFFFFFFF),
+            ("upper_count", _PNANOVDB_TREE_OFF_NODE_COUNT_UPPER, "<I", 0xFFFFFFFF),
+        )
+
+        for case, field_offset, field_format, value in cases:
+            with self.subTest(case=case):
+                grid_data = source.copy()
+                struct.pack_into(field_format, grid_data, _PNANOVDB_GRID_SIZE + field_offset, value)
+                with self.assertRaisesRegex(RuntimeError, "Invalid NanoVDB grid structure"):
+                    wp.Volume.load_from_nvdb(_serialize_nvdb_grid(grid_data), device="cpu")
 
     def test_volume_load_rejects_invalid_root_tile_span_cpu(self):
-        test_volume_load_rejects_invalid_root_tile_span(self, "cpu")
+        """Reject serialized volumes whose root tile table exceeds the grid."""
+        grid_data = _get_index_grid_data()
+        grid_size = struct.unpack_from("<Q", grid_data, _PNANOVDB_GRID_OFF_GRID_SIZE)[0]
+        grid_data = grid_data[:grid_size].copy()
+        root_offset = struct.unpack_from("<Q", grid_data, _PNANOVDB_GRID_SIZE + _PNANOVDB_TREE_OFF_NODE_OFFSET_ROOT)[0]
+        struct.pack_into("<I", grid_data, _PNANOVDB_GRID_SIZE + root_offset + _PNANOVDB_ROOT_OFF_TABLE_SIZE, 0xFFFFFFFF)
+
+        with self.assertRaisesRegex(RuntimeError, "Invalid NanoVDB grid structure"):
+            wp.Volume.load_from_nvdb(_serialize_nvdb_grid(grid_data), device="cpu")
 
     def test_volume_load_rejects_overlapping_tree_regions_cpu(self):
-        test_volume_load_rejects_overlapping_tree_regions(self, "cpu")
+        """Reject serialized volumes whose breadth-first tree regions overlap."""
+        source = _make_fpn_grid((1,))
+        tree_offset = _PNANOVDB_GRID_SIZE
+        leaf_offset, lower_offset, upper_offset, root_offset = struct.unpack_from("<QQQQ", source, tree_offset)
+        metadata_offset = struct.unpack_from("<q", source, _PNANOVDB_GRID_OFF_BLIND_METADATA_OFFSET)[0]
+
+        root_upper = source.copy()
+        root = tree_offset + root_offset
+        struct.pack_into("<I", root_upper, root + _PNANOVDB_ROOT_OFF_TABLE_SIZE, 2)
+        struct.pack_into("<q", root_upper, tree_offset + upper_offset + _PNANOVDB_ROOT_TILE_OFF_CHILD, 0)
+
+        upper_lower = source.copy()
+        overlapping_lower_offset = lower_offset - 32
+        struct.pack_into(
+            "<Q", upper_lower, tree_offset + _PNANOVDB_TREE_OFF_NODE_OFFSET_LOWER, overlapping_lower_offset
+        )
+        struct.pack_into(
+            "<q",
+            upper_lower,
+            tree_offset + upper_offset + _PNANOVDB_UPPER_OFF_TABLE_INDEX,
+            overlapping_lower_offset - upper_offset,
+        )
+        lower = tree_offset + overlapping_lower_offset
+        upper_lower[lower + _PNANOVDB_LOWER_OFF_CHILD_MASK : lower + _PNANOVDB_LOWER_OFF_TABLE_INDEX] = b"\0" * (
+            _PNANOVDB_LOWER_OFF_TABLE_INDEX - _PNANOVDB_LOWER_OFF_CHILD_MASK
+        )
+
+        lower_leaf = source.copy()
+        overlapping_leaf_offset = leaf_offset - 32
+        struct.pack_into("<Q", lower_leaf, tree_offset + _PNANOVDB_TREE_OFF_NODE_OFFSET_LEAF, overlapping_leaf_offset)
+        struct.pack_into(
+            "<q",
+            lower_leaf,
+            tree_offset + lower_offset + _PNANOVDB_LOWER_OFF_TABLE_INDEX,
+            overlapping_leaf_offset - lower_offset,
+        )
+        struct.pack_into("<I", lower_leaf, tree_offset + overlapping_leaf_offset + 12, 0)
+
+        leaf_metadata = source.copy()
+        struct.pack_into("<q", leaf_metadata, _PNANOVDB_GRID_OFF_BLIND_METADATA_OFFSET, metadata_offset - 32)
+
+        for case, grid_data in (
+            ("root_upper", root_upper),
+            ("upper_lower", upper_lower),
+            ("lower_leaf", lower_leaf),
+            ("leaf_metadata", leaf_metadata),
+        ):
+            with self.subTest(case=case):
+                with self.assertRaisesRegex(RuntimeError, "Invalid NanoVDB grid structure"):
+                    wp.Volume.load_from_nvdb(_serialize_nvdb_grid(grid_data), device="cpu")
 
     def test_volume_load_rejects_invalid_child_references_cpu(self):
-        test_volume_load_rejects_invalid_child_references(self, "cpu")
+        """Reject serialized volumes whose child references escape the declared node arrays."""
+        source = _get_index_grid_data()
+        grid_size = struct.unpack_from("<Q", source, _PNANOVDB_GRID_OFF_GRID_SIZE)[0]
+        source = source[:grid_size]
+        child_offsets = _find_index_grid_child_offsets(source)
+
+        for level, child_offset in zip(("root", "upper", "lower"), child_offsets, strict=True):
+            valid_reference = struct.unpack_from("<q", source, child_offset)[0]
+            for case, reference in (("out_of_bounds", grid_size), ("inside_node", valid_reference + 32)):
+                with self.subTest(level=level, case=case):
+                    grid_data = source.copy()
+                    struct.pack_into("<q", grid_data, child_offset, reference)
+                    with self.assertRaisesRegex(RuntimeError, "Invalid NanoVDB grid structure"):
+                        wp.Volume.load_from_nvdb(_serialize_nvdb_grid(grid_data), device="cpu")
 
     def test_volume_load_rejects_child_references_to_empty_levels_cpu(self):
-        test_volume_load_rejects_child_references_to_empty_levels(self, "cpu")
+        """Reject child references to node levels whose declared count is zero."""
+        source = _make_fpn_grid((1,))
+        tree_offset = _PNANOVDB_GRID_SIZE
+        cases = (
+            ("root_to_upper", _PNANOVDB_TREE_OFF_NODE_COUNT_UPPER),
+            ("upper_to_lower", _PNANOVDB_TREE_OFF_NODE_COUNT_LOWER),
+            ("lower_to_leaf", _PNANOVDB_TREE_OFF_NODE_COUNT_LEAF),
+        )
+
+        for case, count_offset in cases:
+            with self.subTest(case=case):
+                grid_data = source.copy()
+                struct.pack_into("<I", grid_data, tree_offset + count_offset, 0)
+                with self.assertRaisesRegex(RuntimeError, "Invalid NanoVDB grid structure"):
+                    wp.Volume.load_from_nvdb(_serialize_nvdb_grid(grid_data), device="cpu")
 
     def test_volume_load_validates_every_grid_cpu(self):
-        test_volume_load_validates_every_grid(self, "cpu")
+        """Reject serialized multi-grid volumes when a later grid is invalid."""
+        source = _get_index_grid_data()
+        first_grid_size = struct.unpack_from("<Q", source, _PNANOVDB_GRID_OFF_GRID_SIZE)[0]
+        second_grid_size = struct.unpack_from("<Q", source, first_grid_size + _PNANOVDB_GRID_OFF_GRID_SIZE)[0]
+        first_grid = source[:first_grid_size].copy()
+        second_grid = source[first_grid_size : first_grid_size + second_grid_size].copy()
+        struct.pack_into("<Q", second_grid, _PNANOVDB_GRID_SIZE + _PNANOVDB_TREE_OFF_NODE_OFFSET_ROOT, second_grid_size)
+
+        with self.subTest(case="invalid_later_grid"):
+            with self.assertRaisesRegex(RuntimeError, "Invalid NanoVDB grid structure"):
+                wp.Volume.load_from_nvdb(_serialize_nvdb_grids(first_grid, second_grid), device="cpu")
+
+        flags = struct.unpack_from("<I", first_grid, _PNANOVDB_GRID_OFF_FLAGS)[0]
+        struct.pack_into("<I", first_grid, _PNANOVDB_GRID_OFF_FLAGS, flags & ~_PNANOVDB_GRID_FLAGS_IS_BREADTH_FIRST)
+        with self.subTest(case="unsupported_then_invalid"):
+            with self.assertRaisesRegex(RuntimeError, "Invalid NanoVDB grid structure"):
+                wp.Volume.load_from_nvdb(_serialize_nvdb_grids(first_grid, second_grid), device="cpu")
 
     def test_volume_load_rejects_unsupported_tree_layout_cpu(self):
-        test_volume_load_rejects_unsupported_tree_layout(self, "cpu")
+        """Report non-breadth-first NanoVDB trees as unsupported."""
+        grid_data = _get_index_grid_data()
+        grid_size = struct.unpack_from("<Q", grid_data, _PNANOVDB_GRID_OFF_GRID_SIZE)[0]
+        grid_data = grid_data[:grid_size].copy()
+        flags = struct.unpack_from("<I", grid_data, _PNANOVDB_GRID_OFF_FLAGS)[0]
+        struct.pack_into("<I", grid_data, _PNANOVDB_GRID_OFF_FLAGS, flags & ~_PNANOVDB_GRID_FLAGS_IS_BREADTH_FIRST)
+
+        with self.assertRaisesRegex(RuntimeError, "Unsupported NanoVDB tree layout"):
+            wp.Volume.load_from_nvdb(_serialize_nvdb_grid(grid_data), device="cpu")
 
     def test_volume_load_rejects_invalid_tree_layout_cpu(self):
-        test_volume_load_rejects_invalid_tree_layout(self, "cpu")
+        """Reject serialized volumes with unsupported types or misaligned grid sizes."""
+        source = _get_index_grid_data()
+        grid_size = struct.unpack_from("<Q", source, _PNANOVDB_GRID_OFF_GRID_SIZE)[0]
+        source = source[:grid_size]
+
+        with self.subTest(case="unsupported_grid_type"):
+            grid_data = source.copy()
+            struct.pack_into("<I", grid_data, _PNANOVDB_GRID_OFF_GRID_TYPE, 0)
+            with self.assertRaisesRegex(RuntimeError, "Invalid NanoVDB grid structure"):
+                wp.Volume.load_from_nvdb(_serialize_nvdb_grid(grid_data), device="cpu")
+
+        with self.subTest(case="misaligned_grid_size"):
+            grid_data = bytearray(source)
+            grid_data.append(0)
+            struct.pack_into("<Q", grid_data, _PNANOVDB_GRID_OFF_GRID_SIZE, len(grid_data))
+            with self.assertRaisesRegex(RuntimeError, "Invalid NanoVDB grid structure"):
+                wp.Volume.load_from_nvdb(_serialize_nvdb_grid(grid_data), device="cpu")
 
     def test_volume_load_rejects_truncated_fpn_leaf_cpu(self):
-        test_volume_load_rejects_truncated_fpn_leaf(self, "cpu")
+        """Reject an FpN leaf whose value payload is truncated."""
+        truncated_grid = _make_fpn_grid((16,))
+        leaf_offset = struct.unpack_from(
+            "<Q", truncated_grid, _PNANOVDB_GRID_SIZE + _PNANOVDB_TREE_OFF_NODE_OFFSET_LEAF
+        )[0]
+        truncated_size = _PNANOVDB_GRID_SIZE + leaf_offset + 96
+        struct.pack_into("<Q", truncated_grid, _PNANOVDB_GRID_OFF_GRID_SIZE, truncated_size)
+        struct.pack_into("<q", truncated_grid, _PNANOVDB_GRID_OFF_BLIND_METADATA_OFFSET, truncated_size)
+        truncated_grid = truncated_grid[:truncated_size]
+        with self.assertRaisesRegex(RuntimeError, "Invalid NanoVDB grid structure"):
+            wp.Volume.load_from_nvdb(_serialize_nvdb_grid(truncated_grid), device="cpu")
+
+    def test_volume_load_rejects_out_of_range_onindex_leaves_cpu(self):
+        """Reject on-index leaves whose value indices exceed the voxel count."""
+        source = _get_index_grid_data()
+        grid_size = struct.unpack_from("<Q", source, _PNANOVDB_GRID_OFF_GRID_SIZE)[0]
+        source = source[:grid_size]
+        leaves = _find_index_leaves(source)
+        voxel_count_field = _PNANOVDB_GRID_SIZE + _PNANOVDB_TREE_OFF_VOXEL_COUNT
+        voxel_count = struct.unpack_from("<Q", source, voxel_count_field)[0]
+
+        last_leaf = leaves[-1]
+        past_count_offset = voxel_count - _count_active_leaf_voxels(source, last_leaf) + 2
+        offset_cases = (
+            ("past_voxel_count", last_leaf, past_count_offset),
+            ("large_offset", leaves[0], 1 << 40),
+            ("wrapping_offset", leaves[0], (1 << 64) - 1),
+        )
+        for case, leaf, first_index in offset_cases:
+            with self.subTest(case=case):
+                grid_data = source.copy()
+                struct.pack_into("<Q", grid_data, leaf + _PNANOVDB_LEAF_OFF_TABLE_INDEX, first_index)
+                with self.assertRaisesRegex(RuntimeError, "Invalid NanoVDB grid structure"):
+                    wp.Volume.load_from_nvdb(_serialize_nvdb_grid(grid_data), device="cpu")
+
+        with self.subTest(case="prefix_sum"):
+            # Keep the offset and actual active count in range so the packed prefix alone causes rejection.
+            grid_data = source.copy()
+            leaf = leaves[0]
+            mask_word_field = leaf + _PNANOVDB_LEAF_OFF_VALUE_MASK + 7 * 8
+            prefix_sum_field = leaf + _PNANOVDB_LEAF_OFF_TABLE_INDEX + 8
+            mask_word = struct.unpack_from("<Q", grid_data, mask_word_field)[0]
+            prefix_sum = struct.unpack_from("<Q", grid_data, prefix_sum_field)[0]
+            struct.pack_into("<Q", grid_data, mask_word_field, mask_word | 1)
+            struct.pack_into("<Q", grid_data, prefix_sum_field, prefix_sum | (511 << 54))
+            with self.assertRaisesRegex(RuntimeError, "Invalid NanoVDB grid structure"):
+                wp.Volume.load_from_nvdb(_serialize_nvdb_grid(grid_data), device="cpu")
+
+        with self.subTest(case="voxel_count"):
+            # The fixture's largest one-based index equals its voxel count.
+            grid_data = source.copy()
+            struct.pack_into("<Q", grid_data, voxel_count_field, voxel_count - 1)
+            with self.assertRaisesRegex(RuntimeError, "Invalid NanoVDB grid structure"):
+                wp.Volume.load_from_nvdb(_serialize_nvdb_grid(grid_data), device="cpu")
+
+    def test_volume_load_rejects_inconsistent_onindex_prefix_sums_cpu(self):
+        """Reject on-index prefix sums that disagree with the value mask, even when every index is in range."""
+        grid_data = _get_index_grid_data()
+        grid_size = struct.unpack_from("<Q", grid_data, _PNANOVDB_GRID_OFF_GRID_SIZE)[0]
+        grid_data = grid_data[:grid_size]
+        leaf = _find_index_leaves(grid_data)[0]
+
+        # The fixture's first leaf has one active voxel in each of mask words 1 and 2.
+        # Zeroing its prefix sums makes both voxels look up the leaf's base index.
+        struct.pack_into("<Q", grid_data, leaf + _PNANOVDB_LEAF_OFF_TABLE_INDEX + 8, 0)
+        with self.assertRaisesRegex(RuntimeError, "Invalid NanoVDB grid structure"):
+            wp.Volume.load_from_nvdb(_serialize_nvdb_grid(grid_data), device="cpu")
+
+    def test_volume_load_accepts_trailing_empty_onindex_leaf_cpu(self):
+        """Accept an empty last on-index leaf whose base index is one past the voxel count."""
+        grid_data = _get_index_grid_data()
+        grid_size = struct.unpack_from("<Q", grid_data, _PNANOVDB_GRID_OFF_GRID_SIZE)[0]
+        grid_data = grid_data[:grid_size]
+        last_leaf = _find_index_leaves(grid_data)[-1]
+        voxel_count_field = _PNANOVDB_GRID_SIZE + _PNANOVDB_TREE_OFF_VOXEL_COUNT
+        voxel_count = struct.unpack_from("<Q", grid_data, voxel_count_field)[0]
+        voxel_count -= _count_active_leaf_voxels(grid_data, last_leaf)
+
+        # NanoVDB's converter keeps leaves without active voxels and starts each leaf's indices after
+        # the preceding leaves' voxels, so an empty last leaf gets a base index one past the voxel count.
+        struct.pack_into("<8Q", grid_data, last_leaf + _PNANOVDB_LEAF_OFF_VALUE_MASK, *([0] * 8))
+        struct.pack_into("<QQ", grid_data, last_leaf + _PNANOVDB_LEAF_OFF_TABLE_INDEX, voxel_count + 1, 0)
+        struct.pack_into("<Q", grid_data, voxel_count_field, voxel_count)
+        volume = wp.Volume.load_from_nvdb(_serialize_nvdb_grid(grid_data), device="cpu")
+        self.assertEqual(volume.get_voxel_count(), voxel_count)
+
+    def test_volume_load_enforces_kernel_index_limit_cpu(self):
+        """Reject indices past the kernel limit as too large, even when the declared voxel count covers them."""
+        points = wp.array([[0, 0, 0]], dtype=wp.vec3i, device="cpu")
+        volume = wp.Volume.allocate_by_voxels(points, voxel_size=1.0, device="cpu")
+        grid_data = _get_grid_data(volume)
+        (leaf,) = _find_index_leaves(grid_data)
+        first_index_field = leaf + _PNANOVDB_LEAF_OFF_TABLE_INDEX
+        voxel_count_field = _PNANOVDB_GRID_SIZE + _PNANOVDB_TREE_OFF_VOXEL_COUNT
+        max_one_based_index = (1 << 31) - 1
+
+        struct.pack_into("<Q", grid_data, voxel_count_field, max_one_based_index + 1)
+        struct.pack_into("<Q", grid_data, first_index_field, max_one_based_index)
+        loaded = wp.Volume.load_from_nvdb(_serialize_nvdb_grid(grid_data), device="cpu")
+        self.assertEqual(loaded.get_voxel_count(), max_one_based_index + 1)
+
+        struct.pack_into("<Q", grid_data, first_index_field, max_one_based_index + 1)
+        with self.assertRaisesRegex(RuntimeError, "exceeds Warp's limit"):
+            wp.Volume.load_from_nvdb(_serialize_nvdb_grid(grid_data), device="cpu")
+
+    def test_volume_load_rejects_out_of_range_index_leaf_cpu(self):
+        """Reject dense index leaves whose value indices exceed the voxel count."""
+        grid_data = _get_grid_data(_make_dense_index_volume())
+        self.assertEqual(
+            struct.unpack_from("<I", grid_data, _PNANOVDB_GRID_OFF_GRID_TYPE)[0], _PNANOVDB_GRID_TYPE_INDEX
+        )
+        leaves = _find_index_leaves(grid_data)
+        voxel_count = len(leaves) * _PNANOVDB_LEAF_TABLE_COUNT
+
+        # Move the last voxel's index one past the count.
+        struct.pack_into(
+            "<Q", grid_data, leaves[-1] + _PNANOVDB_LEAF_OFF_TABLE_INDEX, voxel_count - _PNANOVDB_LEAF_TABLE_COUNT + 2
+        )
+        with self.assertRaisesRegex(RuntimeError, "Invalid NanoVDB grid structure"):
+            wp.Volume.load_from_nvdb(_serialize_nvdb_grid(grid_data), device="cpu")
+
+    def test_volume_load_accepts_warp_index_grids_cpu(self):
+        """Accept index and on-index grids built by Warp."""
+        points = wp.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [9.0, 3.0, 4.0]], dtype=wp.vec3, device="cpu")
+        onindex_volume = wp.Volume.allocate_by_voxels(points, voxel_size=1.0, device="cpu")
+
+        for case, source in (("index", _make_dense_index_volume()), ("onindex", onindex_volume)):
+            with self.subTest(case=case):
+                volume = wp.Volume.load_from_nvdb(_serialize_nvdb_grid(_get_grid_data(source)), device="cpu")
+                self.assertEqual(volume.get_voxel_count(), source.get_voxel_count())
 
     def test_volume_rejects_missing_feature_name(self):
         """Reject feature metadata without a name pointer."""
@@ -648,6 +798,12 @@ add_function_test(
     TestVolumeValidation,
     "test_volume_snapshots_feature_metadata",
     test_volume_snapshots_feature_metadata,
+    devices=devices,
+)
+add_function_test(
+    TestVolumeValidation,
+    "test_volume_ignores_indices_past_kernel_limit",
+    test_volume_ignores_indices_past_kernel_limit,
     devices=devices,
 )
 
