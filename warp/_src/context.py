@@ -12181,6 +12181,11 @@ def launch(
 
     dim, total_dim_size = _normalize_launch_dim(dim)
 
+    # a strict tape rejects kernels without an adjoint before they run; creating a
+    # command records nothing, so the command can still be launched outside the tape
+    if runtime.tape and record_tape and not record_cmd and not adjoint and runtime.tape.strict:
+        runtime.tape._check_kernel_has_adjoint(kernel, inputs, outputs)
+
     if total_dim_size > 0:
         fwd_args = []
         fwd_args.extend(inputs)
@@ -12506,8 +12511,8 @@ def launch(
                 log_error(f"Error launching kernel: {kernel.key} on device {device}: {e}")
                 raise
 
-    # record on tape if one is active
-    if runtime.tape and record_tape:
+    # record on tape if one is active; creating a command records nothing, also when its size is zero
+    if runtime.tape and record_tape and not record_cmd:
         # record file, lineno, func as metadata
         callsite = get_warp_function_callsite()
         if callsite is None:
