@@ -29,7 +29,7 @@ namespace volume {
 // Need to kept in sync with constants in python-side Volume class
 static constexpr int CLOSEST = 0;
 static constexpr int LINEAR = 1;
-static constexpr uint64_t MAX_INDEXABLE_VOXEL_COUNT = 2147483647ull;
+static constexpr int64_t MAX_INT32_VOXEL_INDEX = 2147483647;
 
 // pnanovdb helper function
 
@@ -55,6 +55,19 @@ CUDA_CALLABLE inline pnanovdb_tree_handle_t get_tree(pnanovdb_buf_t buf)
 CUDA_CALLABLE inline pnanovdb_root_handle_t get_root(pnanovdb_buf_t buf)
 {
     return pnanovdb_tree_get_root(buf, get_tree(buf));
+}
+
+inline CUDA_CALLABLE uint64_t effective_voxel_count(const pnanovdb_buf_t buf)
+{
+    const pnanovdb_tree_handle_t tree = get_tree(buf);
+
+    switch (get_grid_type(buf)) {
+    case PNANOVDB_GRID_TYPE_ONINDEX:
+    case PNANOVDB_GRID_TYPE_ONINDEXMASK:
+        return pnanovdb_tree_get_voxel_count(buf, tree);
+    default:
+        return uint64_t(pnanovdb_tree_get_node_count_leaf(buf, tree)) * PNANOVDB_LEAF_TABLE_COUNT;
+    }
 }
 
 template <typename T> struct pnano_traits { };
@@ -197,7 +210,9 @@ leaf_regular_get_voxel_index(pnanovdb_buf_t buf, pnanovdb_address_t value_addres
         + ((PNANOVDB_GRID_TYPE_GET(grid_type, value_stride_bits) * n) >> 3u);
     const pnanovdb_address_t leaf_address = pnanovdb_address_offset_neg(value_address, byte_offset);
 
-    const pnanovdb_uint64_t first_leaf_offset = pnanovdb_tree_get_node_offset_leaf(buf, get_tree(buf));
+    const pnanovdb_tree_handle_t tree = get_tree(buf);
+    const pnanovdb_uint64_t first_leaf_offset
+        = tree.address.byte_offset + pnanovdb_tree_get_node_offset_leaf(buf, tree);
     const pnanovdb_uint32_t leaf_size = PNANOVDB_GRID_TYPE_GET(grid_type, leaf_size);
     const pnanovdb_uint64_t leaf_index = (leaf_address.byte_offset - first_leaf_offset) / leaf_size;
 
@@ -222,24 +237,46 @@ CUDA_CALLABLE inline pnanovdb_uint64_t get_grid_voxel_index(
     }
 };
 
+// Unravel a row-major index. Specializing the rank eliminates the loop entirely for 1-D data.
+template <int NDim, typename T> CUDA_CALLABLE inline T* voxel_address(const array_t<T>& data, uint64_t index)
+{
+    char* ptr = reinterpret_cast<char*>(data.data);
+    for (int dim = (NDim ? NDim : data.ndim) - 1; dim > 0; --dim) {
+        const int extent = data.shape[dim];
+        assert(extent > 0);
+        ptr += int64_t(index % extent) * data.strides[dim];
+        index /= extent;
+    }
+    assert(index < uint64_t(data.shape[0]));
+    return reinterpret_cast<T*>(ptr + int64_t(index) * data.strides[0]);
+}
+
 /// index grid accessor
-template <typename T> struct index_value_accessor : value_accessor_base {
+template <typename T, int NDim> struct index_value_accessor : value_accessor_base {
     using ValueType = T;
 
     pnanovdb_grid_type_t grid_type;
-    array_t<T> data;
+    const array_t<T>& data;
+    array_t<T> adj_data;
     const T& background;
     T* adj_background;
 
     explicit inline CUDA_CALLABLE index_value_accessor(
-        const pnanovdb_buf_t buf, const array_t<T>& data, const T& background, T* adj_background = nullptr
+        const pnanovdb_buf_t buf,
+        const array_t<T>& data,
+        const T& background,
+        const array_t<T>& adj_data = {},
+        T* adj_background = nullptr
     )
         : value_accessor_base(buf)
         , grid_type(get_grid_type(buf))
         , data(data)
+        , adj_data(adj_data.data ? adj_data : data)
         , background(background)
         , adj_background(adj_background)
     {
+        if (!adj_data.data)
+            this->adj_data.data = data.grad;
     }
 
     CUDA_CALLABLE inline bool is_valid() const
@@ -272,7 +309,7 @@ template <typename T> struct index_value_accessor : value_accessor_base {
             pnanovdb_uint64_t voxel_index = get_grid_voxel_index(grid_type, buf, address, ijk);
 
             if (voxel_index > 0) {
-                return *wp::address(data, voxel_index - 1);
+                return wp::load(voxel_address<NDim>(data, voxel_index - 1));
             }
         }
 
@@ -304,7 +341,8 @@ template <typename T> struct index_value_accessor : value_accessor_base {
             pnanovdb_uint64_t voxel_index = get_grid_voxel_index(grid_type, buf, address, ijk);
 
             if (voxel_index > 0) {
-                adj_atomic_add(&index_grad(data, voxel_index - 1), adj_ret);
+                if (adj_data.data)
+                    adj_atomic_add(voxel_address<NDim>(adj_data, voxel_index - 1), adj_ret);
                 return;
             }
         }
@@ -691,15 +729,15 @@ CUDA_CALLABLE inline void adj_volume_sample_grad_f(
 
 // volume_sample_index
 
-template <typename T>
+template <typename T, int NDim = 0>
 CUDA_CALLABLE inline T
 volume_sample_index(uint64_t id, vec3 uvw, int sampling_mode, const array_t<T>& voxel_data, const T& background)
 {
-    volume::index_value_accessor<T> accessor(volume::id_to_buffer(id), voxel_data, background);
+    volume::index_value_accessor<T, NDim> accessor(volume::id_to_buffer(id), voxel_data, background);
     return volume::volume_sample(accessor, uvw, sampling_mode);
 }
 
-template <typename T>
+template <typename T, int NDim = 0>
 CUDA_CALLABLE inline void adj_volume_sample_index(
     uint64_t id,
     vec3 uvw,
@@ -714,11 +752,13 @@ CUDA_CALLABLE inline void adj_volume_sample_index(
     const T& adj_ret
 )
 {
-    volume::index_value_accessor<T> accessor(volume::id_to_buffer(id), voxel_data, background, &adj_background);
+    volume::index_value_accessor<T, NDim> accessor(
+        volume::id_to_buffer(id), voxel_data, background, adj_voxel_data, &adj_background
+    );
     volume::adj_volume_sample(accessor, uvw, sampling_mode, adj_uvw, adj_ret);
 }
 
-template <typename T>
+template <typename T, int NDim = 0>
 CUDA_CALLABLE inline T volume_sample_grad_index(
     uint64_t id,
     vec3 uvw,
@@ -728,11 +768,11 @@ CUDA_CALLABLE inline T volume_sample_grad_index(
     typename volume::val_traits<T>::grad_t& grad
 )
 {
-    volume::index_value_accessor<T> accessor(volume::id_to_buffer(id), voxel_data, background);
+    volume::index_value_accessor<T, NDim> accessor(volume::id_to_buffer(id), voxel_data, background);
     return volume::volume_sample_grad(accessor, uvw, sampling_mode, grad);
 }
 
-template <typename T>
+template <typename T, int NDim = 0>
 CUDA_CALLABLE inline void adj_volume_sample_grad_index(
     uint64_t id,
     vec3 uvw,
@@ -749,7 +789,9 @@ CUDA_CALLABLE inline void adj_volume_sample_grad_index(
     const T& adj_ret
 )
 {
-    volume::index_value_accessor<T> accessor(volume::id_to_buffer(id), voxel_data, background, &adj_background);
+    volume::index_value_accessor<T, NDim> accessor(
+        volume::id_to_buffer(id), voxel_data, background, adj_voxel_data, &adj_background
+    );
     volume::adj_volume_sample_grad(accessor, uvw, sampling_mode, grad, adj_uvw, adj_grad, adj_ret);
 }
 
@@ -789,7 +831,7 @@ CUDA_CALLABLE inline vec3 volume_lookup_v(uint64_t id, int32_t i, int32_t j, int
     return volume_lookup<vec3>(id, i, j, k);
 }
 
-CUDA_CALLABLE inline int32_t volume_lookup_index(uint64_t id, int32_t i, int32_t j, int32_t k)
+CUDA_CALLABLE inline int64_t volume_lookup_index64(uint64_t id, int32_t i, int32_t j, int32_t k)
 {
     const pnanovdb_buf_t buf = volume::id_to_buffer(id);
     const pnanovdb_root_handle_t root = volume::get_root(buf);
@@ -804,29 +846,27 @@ CUDA_CALLABLE inline int32_t volume_lookup_index(uint64_t id, int32_t i, int32_t
     if (level == 0) {
         pnanovdb_uint64_t voxel_index = volume::get_grid_voxel_index(grid_type, buf, address, ijk);
 
-        return static_cast<int32_t>(voxel_index) - 1;
+        if (voxel_index > 0)
+            return int64_t(voxel_index - 1);
     }
     return -1;
 }
 
+CUDA_CALLABLE inline int32_t volume_lookup_index(uint64_t id, int32_t i, int32_t j, int32_t k)
+{
+    const int64_t index = volume_lookup_index64(id, i, j, k);
+    return index > volume::MAX_INT32_VOXEL_INDEX ? -1 : int32_t(index);
+}
+
+CUDA_CALLABLE inline int64_t volume_voxel_count64(uint64_t id)
+{
+    return int64_t(volume::effective_voxel_count(volume::id_to_buffer(id)));
+}
+
 CUDA_CALLABLE inline int32_t volume_voxel_count(uint64_t id)
 {
-    const pnanovdb_buf_t buf = volume::id_to_buffer(id);
-    const pnanovdb_tree_handle_t tree = volume::get_tree(buf);
-    const pnanovdb_grid_type_t grid_type = volume::get_grid_type(buf);
-
-    uint64_t count;
-    switch (grid_type) {
-    case PNANOVDB_GRID_TYPE_ONINDEX:
-    case PNANOVDB_GRID_TYPE_ONINDEXMASK:
-        count = pnanovdb_tree_get_voxel_count(buf, tree);
-        break;
-    default:
-        count = uint64_t(pnanovdb_tree_get_node_count_leaf(buf, tree)) * PNANOVDB_LEAF_TABLE_COUNT;
-        break;
-    }
-
-    return count > volume::MAX_INDEXABLE_VOXEL_COUNT ? int32_t(volume::MAX_INDEXABLE_VOXEL_COUNT) : int32_t(count);
+    const int64_t count = volume_voxel_count64(id);
+    return int32_t(count > volume::MAX_INT32_VOXEL_INDEX ? volume::MAX_INT32_VOXEL_INDEX : count);
 }
 
 // volume_store

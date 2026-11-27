@@ -2999,7 +2999,22 @@ to values in arbitrarily shaped arrays::
         background_value = voxel_values.dtype(0.0)
         f = wp.volume_sample_index(volume, q, wp.Volume.LINEAR, voxel_values, background_value)
 
-The coordinates of all indexable voxels can be recovered using :func:`get_voxels() <warp.Volume.get_voxels>`.
+Both :func:`warp.volume_sample_index` and :func:`warp.volume_sample_grad_index` accept voxel data
+with one to four dimensions. For an array of shape ``(rows, cols)``, a zero-based voxel index
+``i`` selects ``[i // cols, i % cols]``. Each coordinate uses the array's byte stride, including
+for transposed views and views with aliased rows. Each dimension is limited to ``2**31 - 1``
+elements and each byte stride must fit in a signed 32-bit integer. For example, a contiguous
+``float32`` array of shape ``(65536, 65536)`` can hold values for ``2**32`` voxels.
+
+In kernels, :func:`warp.volume_lookup_index64` returns the full index or ``-1`` for a missing voxel.
+:func:`warp.volume_voxel_count64` returns the full count. The original lookup and count functions
+return 32-bit integers. From Python, use :meth:`warp.Volume.get_voxel_count` when allocating data.
+
+The file loader :meth:`warp.Volume.load_from_nvdb` stages the decompressed grid in a 1-D byte
+array. For a larger grid already in memory, pass its NanoVDB buffer pointer to
+:meth:`warp.Volume.load_from_address` with the default buffer size and keep the buffer alive.
+For volumes whose voxel count fits in one array dimension, :meth:`warp.Volume.get_voxels`
+returns the coordinates of all indexable voxels.
 NanoVDB grids may also contain embedded *blind* data arrays; those can be accessed with the 
 :func:`feature_array() <warp.Volume.feature_array>` function.
 

@@ -1511,7 +1511,7 @@ void launch_get_leaf_coords(
 void launch_get_voxel_coords(
     void* context,
     const uint32_t leaf_count,
-    const uint32_t voxel_count,
+    const uint64_t voxel_count,
     pnanovdb_coord_t* voxel_coords,
     pnanovdb_buf_t buf
 );

@@ -13137,6 +13137,10 @@ add_builtin(
 )
 
 
+def volume_sample_index_dispatch_func(input_types: Mapping[str, type], return_type: Any, args: Mapping[str, Var]):
+    return tuple(args.values()), (return_type, strip_reference(args["voxel_data"].type).ndim)
+
+
 def volume_sample_index_value_func(arg_types: Mapping[str, type], arg_values: Mapping[str, Any]):
     if arg_types is None:
         return Any
@@ -13155,6 +13159,8 @@ add_builtin(
     "volume_sample_index",
     input_types={"id": uint64, "uvw": vec3, "sampling_mode": int, "voxel_data": array(dtype=Any), "background": Any},
     value_func=volume_sample_index_value_func,
+    dispatch_func=volume_sample_index_dispatch_func,
+    adjoint_uses_template_args=True,
     export=False,
     group="Volumes",
     doc="""Sample the volume given by ``id`` at the index-space point ``uvw``, reading voxel values from
@@ -13175,10 +13181,11 @@ add_builtin(
         uvw: Sampling location in index space (voxel coordinates); may be fractional.
         sampling_mode: :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`; use ``CLOSEST`` for
             integer data.
-        voxel_data: Per-voxel values indexed by each voxel's linear index. The array must provide at
-            least :func:`~warp.volume_voxel_count` entries; use
-            :meth:`warp.Volume.get_voxel_count` when allocating it from Python. Its dtype must match
-            ``background``.
+        voxel_data: Array of one to four dimensions with the same dtype as ``background`` and
+            at least :func:`~warp.volume_voxel_count64` elements. Voxel indices follow row-major
+            logical order, with the last dimension varying fastest. The array's byte strides
+            determine the storage location, including for transposed and zero-stride views.
+            Use :meth:`warp.Volume.get_voxel_count` to size the array from Python.
         background: Value used when a sampled location has no indexable voxel; its dtype must match
             ``voxel_data``.
 
@@ -13241,6 +13248,8 @@ add_builtin(
         "grad": Any,
     },
     value_func=volume_sample_grad_index_value_func,
+    dispatch_func=volume_sample_index_dispatch_func,
+    adjoint_uses_template_args=True,
     export=False,
     group="Volumes",
     doc="""Sample the volume given by ``id`` and its spatial gradient at the index-space point ``uvw``,
@@ -13263,8 +13272,9 @@ add_builtin(
         uvw: Sampling location in index space (voxel coordinates); may be fractional.
         sampling_mode: :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`; use ``CLOSEST`` for
             integer data.
-        voxel_data: Per-voxel values indexed by each voxel's linear index; shares the dtype of
-            ``background``. See :func:`~warp.volume_sample_index` for sizing requirements.
+        voxel_data: Array of one to four dimensions indexed in row-major logical order, with
+            the same dtype as ``background``. See :func:`~warp.volume_sample_index` for sizing
+            and stride requirements.
         background: Value used when a sampled location has no indexable voxel; its dtype must match
             ``voxel_data``.
         grad: Output gradient of the sampled value with respect to ``uvw``.
@@ -13309,6 +13319,7 @@ add_builtin(
     group="Volumes",
     doc="""Return the linear index associated with integer index-space coordinates ``i``, ``j``, ``k``.
 
+    For volumes with more than ``2**31 - 1`` voxels, use :func:`~warp.volume_lookup_index64`.
     This function is not differentiable.
 
     Args:
@@ -13318,8 +13329,7 @@ add_builtin(
         k: Voxel coordinate along the third index-space axis.
 
     Returns:
-        The voxel's linear index in ``[0, volume_voxel_count(id))``, or ``-1`` when the coordinate
-        is not indexable. Guard against ``-1`` before gathering from a per-voxel array.
+        The zero-based voxel index, or ``-1`` for a missing voxel or an index above ``2**31 - 1``.
 
     Example:
 
@@ -13342,22 +13352,32 @@ add_builtin(
 )
 
 add_builtin(
+    "volume_lookup_index64",
+    input_types={"id": uint64, "i": int, "j": int, "k": int},
+    value_type=int64,
+    group="Volumes",
+    doc="""Return the zero-based 64-bit voxel index at integer index-space coordinates ``(i, j, k)``.
+
+    Returns ``-1`` when the coordinate has no indexable voxel. The index follows the same
+    row-major ordering as :func:`~warp.volume_sample_index`. This function is not differentiable.""",
+    is_differentiable=False,
+)
+
+add_builtin(
     "volume_voxel_count",
     input_types={"id": uint64},
     value_type=int32,
     group="Volumes",
     doc="""Return the number of indexable voxels in the volume given by ``id``.
 
-    :func:`~warp.volume_voxel_count` and :func:`~warp.volume_lookup_index` support volumes with at
-    most ``2**31 - 1`` indexable voxels. This function is not differentiable.
+    The count saturates at ``2**31 - 1``. Use :func:`~warp.volume_voxel_count64` to get the
+    full count for larger volumes. This function is not differentiable.
 
     Args:
         id: The ``id`` of a :class:`warp.Volume`.
 
     Returns:
-        The number of indexable voxels. This is the required size of a per-voxel ``voxel_data``
-        array (as used by :func:`~warp.volume_sample_index`) and the exclusive upper bound of
-        indices returned by :func:`~warp.volume_lookup_index`.
+        The number of indexable voxels, capped at ``2**31 - 1``.
 
     Example:
 
@@ -13376,6 +13396,19 @@ add_builtin(
         .. testoutput::
 
             2""",
+    is_differentiable=False,
+)
+
+add_builtin(
+    "volume_voxel_count64",
+    input_types={"id": uint64},
+    value_type=int64,
+    group="Volumes",
+    doc="""Return the full 64-bit number of indexable voxels in the volume given by ``id``.
+
+    This is the minimum logical element count for :func:`~warp.volume_sample_index`.
+    On-index grids count active voxels. Regular and dense index grids count all 512 voxels
+    in each leaf. This function is not differentiable.""",
     is_differentiable=False,
 )
 

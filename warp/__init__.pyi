@@ -9123,10 +9123,11 @@ def volume_sample_index(
         uvw: Sampling location in index space (voxel coordinates); may be fractional.
         sampling_mode: :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`; use ``CLOSEST`` for
             integer data.
-        voxel_data: Per-voxel values indexed by each voxel's linear index. The array must provide at
-            least :func:`~warp.volume_voxel_count` entries; use
-            :meth:`warp.Volume.get_voxel_count` when allocating it from Python. Its dtype must match
-            ``background``.
+        voxel_data: Array of one to four dimensions with the same dtype as ``background`` and
+            at least :func:`~warp.volume_voxel_count64` elements. Voxel indices follow row-major
+            logical order, with the last dimension varying fastest. The array's byte strides
+            determine the storage location, including for transposed and zero-stride views.
+            Use :meth:`warp.Volume.get_voxel_count` to size the array from Python.
         background: Value used when a sampled location has no indexable voxel; its dtype must match
             ``voxel_data``.
 
@@ -9189,8 +9190,9 @@ def volume_sample_grad_index(
         uvw: Sampling location in index space (voxel coordinates); may be fractional.
         sampling_mode: :attr:`warp.Volume.CLOSEST` or :attr:`warp.Volume.LINEAR`; use ``CLOSEST`` for
             integer data.
-        voxel_data: Per-voxel values indexed by each voxel's linear index; shares the dtype of
-            ``background``. See :func:`~warp.volume_sample_index` for sizing requirements.
+        voxel_data: Array of one to four dimensions indexed in row-major logical order, with
+            the same dtype as ``background``. See :func:`~warp.volume_sample_index` for sizing
+            and stride requirements.
         background: Value used when a sampled location has no indexable voxel; its dtype must match
             ``voxel_data``.
         grad: Output gradient of the sampled value with respect to ``uvw``.
@@ -9231,6 +9233,7 @@ def volume_sample_grad_index(
 def volume_lookup_index(id: uint64, i: int32 | int, j: int32 | int, k: int32 | int) -> int32:
     """Return the linear index associated with integer index-space coordinates ``i``, ``j``, ``k``.
 
+    For volumes with more than ``2**31 - 1`` voxels, use :func:`~warp.volume_lookup_index64`.
     This function is not differentiable.
 
     Args:
@@ -9240,8 +9243,7 @@ def volume_lookup_index(id: uint64, i: int32 | int, j: int32 | int, k: int32 | i
         k: Voxel coordinate along the third index-space axis.
 
     Returns:
-        The voxel's linear index in ``[0, volume_voxel_count(id))``, or ``-1`` when the coordinate
-        is not indexable. Guard against ``-1`` before gathering from a per-voxel array.
+        The zero-based voxel index, or ``-1`` for a missing voxel or an index above ``2**31 - 1``.
 
     Example:
 
@@ -9262,19 +9264,24 @@ def volume_lookup_index(id: uint64, i: int32 | int, j: int32 | int, k: int32 | i
             1"""
     ...
 
+def volume_lookup_index64(id: uint64, i: int32 | int, j: int32 | int, k: int32 | int) -> int64:
+    """Return the zero-based 64-bit voxel index at integer index-space coordinates ``(i, j, k)``.
+
+    Returns ``-1`` when the coordinate has no indexable voxel. The index follows the same
+    row-major ordering as :func:`~warp.volume_sample_index`. This function is not differentiable."""
+    ...
+
 def volume_voxel_count(id: uint64) -> int32:
     """Return the number of indexable voxels in the volume given by ``id``.
 
-    :func:`~warp.volume_voxel_count` and :func:`~warp.volume_lookup_index` support volumes with at
-    most ``2**31 - 1`` indexable voxels. This function is not differentiable.
+    The count saturates at ``2**31 - 1``. Use :func:`~warp.volume_voxel_count64` to get the
+    full count for larger volumes. This function is not differentiable.
 
     Args:
         id: The ``id`` of a :class:`warp.Volume`.
 
     Returns:
-        The number of indexable voxels. This is the required size of a per-voxel ``voxel_data``
-        array (as used by :func:`~warp.volume_sample_index`) and the exclusive upper bound of
-        indices returned by :func:`~warp.volume_lookup_index`.
+        The number of indexable voxels, capped at ``2**31 - 1``.
 
     Example:
 
@@ -9293,6 +9300,14 @@ def volume_voxel_count(id: uint64) -> int32:
         .. testoutput::
 
             2"""
+    ...
+
+def volume_voxel_count64(id: uint64) -> int64:
+    """Return the full 64-bit number of indexable voxels in the volume given by ``id``.
+
+    This is the minimum logical element count for :func:`~warp.volume_sample_index`.
+    On-index grids count active voxels. Regular and dense index grids count all 512 voxels
+    in each leaf. This function is not differentiable."""
     ...
 
 @over
