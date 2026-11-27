@@ -87,6 +87,25 @@ def test_dlpack_warp_to_warp(test, device):
     assert_np_equal(a1.numpy(), a2.numpy())
 
 
+def test_dlpack_byte_offset(test, device):
+    """Verify that imported tensors start at the DLPack data pointer plus byte offset."""
+    from warp._src.dlpack import PyCapsule_GetPointer  # noqa: PLC0415
+    from warp._src.thirdparty.dlpack import DLManagedTensor, _c_str_dltensor  # noqa: PLC0415
+
+    a1 = wp.array(data=np.arange(N, dtype=np.float32), device=device)
+
+    # describe a1[2:] as the allocation base plus a byte offset
+    capsule = wp.to_dlpack(a1[2:])
+    dlt = DLManagedTensor.from_address(PyCapsule_GetPointer(capsule, _c_str_dltensor)).dl_tensor
+    dlt.data = a1.ptr
+    dlt.byte_offset = 2 * 4
+
+    a2 = wp.from_dlpack(capsule)
+
+    test.assertEqual(a2.ptr, a1.ptr + 2 * 4)
+    assert_np_equal(a2.numpy(), np.arange(2, N, dtype=np.float32))
+
+
 def test_dlpack_bool_round_trip(test, device):
     values = np.array([True, False, True, True, False], dtype=np.bool_)
     source = wp.array(values, dtype=wp.bool, device=device)
@@ -727,6 +746,7 @@ class TestDLPack(unittest.TestCase):
 devices = get_test_devices()
 
 add_function_test(TestDLPack, "test_dlpack_warp_to_warp", test_dlpack_warp_to_warp, devices=devices)
+add_function_test(TestDLPack, "test_dlpack_byte_offset", test_dlpack_byte_offset, devices=devices)
 add_function_test(TestDLPack, "test_dlpack_bool_round_trip", test_dlpack_bool_round_trip, devices=devices)
 add_function_test(TestDLPack, "test_dlpack_bool_aliases", test_dlpack_bool_aliases, devices=devices)
 add_function_test(

@@ -466,8 +466,13 @@ def _unpack_array(dlt: DLTensor, dtype=None):
             f"Incompatible data types: DLPack {_dtype_name(dlt.dtype)} and Warp {warp._src.types.type_repr(dtype)}"
         )
 
+    # DLPack places element (0, ..., 0) at data + byte_offset
+    ptr = dlt.data
+    if dlt.byte_offset:
+        ptr += dlt.byte_offset
+
     a = warp._src.types.array(
-        ptr=dlt.data, dtype=dtype, shape=shape, strides=strides, copy=False, device=device, pinned=pinned
+        ptr=ptr, dtype=dtype, shape=shape, strides=strides, copy=False, device=device, pinned=pinned
     )
 
     return a
