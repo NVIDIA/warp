@@ -25,6 +25,21 @@ namespace wp {
 namespace partitioned_gemm {
 
 
+// Called by the thread that owns this row-major element in a register tile.
+template <typename Tile, typename Coord>
+inline CUDA_CALLABLE void cholesky_grad_add(Tile& tile, const Coord& coord, typename Tile::Type value)
+{
+    tile.grad(coord) += value;
+}
+
+template <typename T, typename Layout, typename Coord>
+inline CUDA_CALLABLE void cholesky_grad_add(tile_register_t<T, Layout>& tile, const Coord& coord, T value)
+{
+    const int linear = Layout::linear_from_coord(coord);
+    tile.data[Layout::register_from_linear(linear)] += value;
+}
+
+
 // Scalar Cholesky factorization, cooperative across WP_TILE_BLOCK_DIM threads.
 //
 // Upper=false: A = L L^T, L is lower triangular
@@ -226,7 +241,7 @@ inline CUDA_CALLABLE void cooperative_scalar_cholesky_adj(TileA& adj_A, TileOut&
         bool in_triangle = Upper ? (row <= col) : (row >= col);
         if (in_triangle) {
             T scale = (row == col) ? T(0.5) : T(1);
-            adj_A.grad(tile_coord(row, col)) += scale * W1[row * n + col];
+            cholesky_grad_add(adj_A, tile_coord(row, col), scale * W1[row * n + col]);
         }
     }
     WP_TILE_SYNC();
@@ -263,13 +278,14 @@ CUDA_CALLABLE TileOut& tile_cholesky_impl(Fwd fun_forward, TileA& A, TileOut& Ou
         "Expected A and Out to have the same number of columns"
     );
 
+    // Factor the shared output copy so register inputs remain unchanged.
     Out = A;
 
 #if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
-    partitioned_gemm::scalar_cholesky_impl<Upper>(A, Out);
+    partitioned_gemm::scalar_cholesky_impl<Upper>(Out, Out);
 #else
     if constexpr (wp_is_null_func<Fwd>::value) {
-        partitioned_gemm::scalar_cholesky_impl<Upper>(A, Out);
+        partitioned_gemm::scalar_cholesky_impl<Upper>(Out, Out);
     } else {
         // TODO: for batched Cholesky, need one info per batch
         __shared__ int info[1];
@@ -385,7 +401,7 @@ adj_tile_cholesky_impl(BkwdGemm fun_bkwd_gemm, BkwdTrsm fun_bkwd_trsm, TileOut& 
             bool in_triangle = Upper ? (row <= col) : (row >= col);
             if (in_triangle) {
                 T scale = (row == col) ? T(0.5) : T(1);
-                adj_A.grad(tile_coord(row, col)) += scale * W1[row * n + col];
+                partitioned_gemm::cholesky_grad_add(adj_A, tile_coord(row, col), scale * W1[row * n + col]);
             }
         }
     }
