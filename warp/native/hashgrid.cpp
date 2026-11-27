@@ -542,7 +542,7 @@ namespace wp {
 
 template <typename Type>
 void hash_grid_rebuild_device(
-    const HashGrid_t<Type>& grid, const wp::array_t<vec_t<3, Type>>& points, const wp::array_t<int>* groups
+    const HashGrid_t<Type>& /*grid*/, const wp::array_t<vec_t<3, Type>>& /*points*/, const wp::array_t<int>* /*groups*/
 )
 {
 }

@@ -32,7 +32,7 @@ struct Mesh {
     void* context;
     float average_edge_length;
 
-    inline CUDA_CALLABLE Mesh(int id = 0)
+    inline CUDA_CALLABLE Mesh(int /*id*/ = 0)
     {
         // for backward a = 0 initialization syntax
         lowers = nullptr;
@@ -81,7 +81,7 @@ CUDA_CALLABLE inline int mesh_get_group_root(uint64_t id, int group_id)
 }
 
 
-CUDA_CALLABLE inline Mesh& operator+=(Mesh& a, const Mesh& b)
+CUDA_CALLABLE inline Mesh& operator+=(Mesh& a, const Mesh& /*b*/)
 {
     // dummy operator needed for adj_select involving meshes
     return a;
@@ -994,17 +994,17 @@ CUDA_CALLABLE inline bool mesh_query_point_sign_winding_number(
 CUDA_CALLABLE inline void adj_mesh_query_point_no_sign(
     uint64_t id,
     const vec3& point,
-    float max_dist,
+    float /*max_dist*/,
     const int& face,
-    const float& u,
-    const float& v,
-    uint64_t adj_id,
+    const float& /*u*/,
+    const float& /*v*/,
+    uint64_t /*adj_id*/,
     vec3& adj_point,
-    float& adj_max_dist,
-    int& adj_face,
+    float& /*adj_max_dist*/,
+    int& /*adj_face*/,
     float& adj_u,
     float& adj_v,
-    bool& adj_ret
+    bool& /*adj_ret*/
 )
 {
     Mesh mesh = mesh_get(id);
@@ -1028,17 +1028,17 @@ CUDA_CALLABLE inline void adj_mesh_query_point_no_sign(
 CUDA_CALLABLE inline void adj_mesh_query_furthest_point_no_sign(
     uint64_t id,
     const vec3& point,
-    float min_dist,
+    float /*min_dist*/,
     const int& face,
-    const float& u,
-    const float& v,
-    uint64_t adj_id,
+    const float& /*u*/,
+    const float& /*v*/,
+    uint64_t /*adj_id*/,
     vec3& adj_point,
-    float& adj_min_dist,
-    int& adj_face,
+    float& /*adj_min_dist*/,
+    int& /*adj_face*/,
     float& adj_u,
     float& adj_v,
-    bool& adj_ret
+    bool& /*adj_ret*/
 )
 {
     Mesh mesh = mesh_get(id);
@@ -1063,21 +1063,21 @@ CUDA_CALLABLE inline void adj_mesh_query_point_sign_parity(
     uint64_t id,
     const vec3& point,
     float max_dist,
-    const float& inside,
+    const float& /*inside*/,
     const int& face,
     const float& u,
     const float& v,
-    int n_sample,
-    float perturbation_scale,
+    int /*n_sample*/,
+    float /*perturbation_scale*/,
     uint64_t adj_id,
     vec3& adj_point,
     float& adj_max_dist,
-    float& adj_inside,
+    float& /*adj_inside*/,
     int& adj_face,
     float& adj_u,
     float& adj_v,
-    int& adj_n_sample,
-    float& adj_perturbation_scale,
+    int& /*adj_n_sample*/,
+    float& /*adj_perturbation_scale*/,
     bool& adj_ret
 )
 {
@@ -1090,19 +1090,19 @@ CUDA_CALLABLE inline void adj_mesh_query_point_sign_normal(
     uint64_t id,
     const vec3& point,
     float max_dist,
-    const float& inside,
+    const float& /*inside*/,
     const int& face,
     const float& u,
     const float& v,
-    const float epsilon,
+    const float /*epsilon*/,
     uint64_t adj_id,
     vec3& adj_point,
     float& adj_max_dist,
-    float& adj_inside,
+    float& /*adj_inside*/,
     int& adj_face,
     float& adj_u,
     float& adj_v,
-    float& adj_epsilon,
+    float& /*adj_epsilon*/,
     bool& adj_ret
 )
 {
@@ -1115,21 +1115,21 @@ CUDA_CALLABLE inline void adj_mesh_query_point_sign_winding_number(
     uint64_t id,
     const vec3& point,
     float max_dist,
-    const float& inside,
+    const float& /*inside*/,
     const int& face,
     const float& u,
     const float& v,
-    const float accuracy,
-    const float winding_number_threshold,
+    const float /*accuracy*/,
+    const float /*winding_number_threshold*/,
     uint64_t adj_id,
     vec3& adj_point,
     float& adj_max_dist,
-    float& adj_inside,
+    float& /*adj_inside*/,
     int& adj_face,
     float& adj_u,
     float& adj_v,
-    float& adj_accuracy,
-    float& adj_winding_number_threshold,
+    float& /*adj_accuracy*/,
+    float& /*adj_winding_number_threshold*/,
     bool& adj_ret
 )
 {
@@ -1173,14 +1173,14 @@ CUDA_CALLABLE inline void adj_mesh_query_point(
     uint64_t id,
     const vec3& point,
     float max_dist,
-    const float& inside,
+    const float& /*inside*/,
     const int& face,
     const float& u,
     const float& v,
     uint64_t adj_id,
     vec3& adj_point,
     float& adj_max_dist,
-    float& adj_inside,
+    float& /*adj_inside*/,
     int& adj_face,
     float& adj_u,
     float& adj_v,
@@ -1806,25 +1806,25 @@ CUDA_CALLABLE inline void adj_mesh_query_ray(
     uint64_t id,
     const vec3& start,
     const vec3& dir,
-    float max_t,
+    float /*max_t*/,
     float t,
     float u,
     float v,
     float sign,
     const vec3& n,
     int face,
-    int root,
-    uint64_t adj_id,
+    int /*root*/,
+    uint64_t /*adj_id*/,
     vec3& adj_start,
     vec3& adj_dir,
-    float& adj_max_t,
+    float& /*adj_max_t*/,
     float& adj_t,
     float& adj_u,
     float& adj_v,
     float& adj_sign,
     vec3& adj_n,
-    int& adj_face,
-    int& adj_root,
+    int& /*adj_face*/,
+    int& /*adj_root*/,
     bool& adj_ret
 )
 {
@@ -2052,7 +2052,7 @@ struct mesh_query_aabb_t {
     }
 
     // Required for adjoint computations.
-    CUDA_CALLABLE inline mesh_query_aabb_t& operator+=(const mesh_query_aabb_t& other) { return *this; }
+    CUDA_CALLABLE inline mesh_query_aabb_t& operator+=(const mesh_query_aabb_t& /*other*/) { return *this; }
 
     // Mesh Id
     Mesh mesh;
@@ -2212,8 +2212,9 @@ CUDA_CALLABLE inline bool mesh_query_prim_test(const mesh_query_aabb_t& query, c
 }
 
 // Stub
-CUDA_CALLABLE inline void
-adj_mesh_query_aabb(uint64_t id, const vec3& lower, const vec3& upper, uint64_t, vec3&, vec3&, mesh_query_aabb_t&)
+CUDA_CALLABLE inline void adj_mesh_query_aabb(
+    uint64_t /*id*/, const vec3& /*lower*/, const vec3& /*upper*/, uint64_t, vec3&, vec3&, mesh_query_aabb_t&
+)
 {
 }
 
@@ -2422,10 +2423,10 @@ CUDA_CALLABLE inline vec3 mesh_eval_velocity(uint64_t id, int tri, float u, floa
 CUDA_CALLABLE inline void adj_mesh_eval_position(
     uint64_t id,
     int tri,
-    float u,
-    float v,
-    uint64_t& adj_id,
-    int& adj_tri,
+    float /*u*/,
+    float /*v*/,
+    uint64_t& /*adj_id*/,
+    int& /*adj_tri*/,
     float& adj_u,
     float& adj_v,
     const vec3& adj_ret
@@ -2453,10 +2454,10 @@ CUDA_CALLABLE inline void adj_mesh_eval_position(
 CUDA_CALLABLE inline void adj_mesh_eval_velocity(
     uint64_t id,
     int tri,
-    float u,
-    float v,
-    uint64_t& adj_id,
-    int& adj_tri,
+    float /*u*/,
+    float /*v*/,
+    uint64_t& /*adj_id*/,
+    int& /*adj_tri*/,
     float& adj_u,
     float& adj_v,
     const vec3& adj_ret
@@ -2502,7 +2503,7 @@ CUDA_CALLABLE inline vec3 mesh_eval_face_normal(uint64_t id, int tri)
 }
 
 CUDA_CALLABLE inline void
-adj_mesh_eval_face_normal(uint64_t id, int tri, uint64_t& adj_id, int& adj_tri, const vec3& adj_ret)
+adj_mesh_eval_face_normal(uint64_t /*id*/, int /*tri*/, uint64_t& /*adj_id*/, int& /*adj_tri*/, const vec3& /*adj_ret*/)
 {
     // MISSINGADJOINT: backprop through normalize(cross(q-p, r-p)) to
     // mesh.points.grad slots for the three face vertex indices
@@ -2530,7 +2531,7 @@ CUDA_CALLABLE inline vec3 mesh_get_point(uint64_t id, int index)
 }
 
 CUDA_CALLABLE inline void
-adj_mesh_get_point(uint64_t id, int index, uint64_t& adj_id, int& adj_index, const vec3& adj_ret)
+adj_mesh_get_point(uint64_t /*id*/, int /*index*/, uint64_t& /*adj_id*/, int& /*adj_index*/, const vec3& /*adj_ret*/)
 {
     // MISSINGADJOINT: atomic-add adj_ret into mesh.points.grad[index] when the gradient
     // buffer is allocated
@@ -2558,7 +2559,7 @@ CUDA_CALLABLE inline vec3 mesh_get_velocity(uint64_t id, int index)
 }
 
 CUDA_CALLABLE inline void
-adj_mesh_get_velocity(uint64_t id, int index, uint64_t& adj_id, int& adj_index, const vec3& adj_ret)
+adj_mesh_get_velocity(uint64_t /*id*/, int /*index*/, uint64_t& /*adj_id*/, int& /*adj_index*/, const vec3& /*adj_ret*/)
 {
     // MISSINGADJOINT: atomic-add adj_ret into mesh.velocities.grad[index] when the
     // gradient buffer is allocated

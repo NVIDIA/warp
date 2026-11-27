@@ -1082,43 +1082,57 @@ void* wp_alloc_pinned(size_t s, const char* tag) { return wp_alloc_host(s, tag);
 
 void wp_free_pinned(void* ptr) { wp_free_host(ptr); }
 
-void* wp_alloc_device(void* context, size_t s, const char* tag) { return NULL; }
+void* wp_alloc_device(void* /*context*/, size_t /*s*/, const char* /*tag*/) { return NULL; }
 
-void* wp_alloc_device_default(void* context, size_t s, const char* tag) { return NULL; }
+void* wp_alloc_device_default(void* /*context*/, size_t /*s*/, const char* /*tag*/) { return NULL; }
 
-void* wp_alloc_device_async(void* context, size_t s, void* stream, const char* tag) { return NULL; }
+void* wp_alloc_device_async(void* /*context*/, size_t /*s*/, void* /*stream*/, const char* /*tag*/) { return NULL; }
 
-void* wp_alloc_device_managed(void* context, size_t s, const char* tag) { return NULL; }
+void* wp_alloc_device_managed(void* /*context*/, size_t /*s*/, const char* /*tag*/) { return NULL; }
 
-void wp_free_device(void* context, void* ptr) { }
+void wp_free_device(void* /*context*/, void* /*ptr*/) { }
 
-void wp_free_device_default(void* context, void* ptr) { }
+void wp_free_device_default(void* /*context*/, void* /*ptr*/) { }
 
-void wp_free_device_async(void* context, void* ptr, void** dbg_node_ret) { }
+void wp_free_device_async(void* /*context*/, void* /*ptr*/, void** /*dbg_node_ret*/) { }
 
-bool wp_memcpy_h2d(void* context, void* dest, void* src, size_t n, void* stream) { return false; }
+bool wp_memcpy_h2d(void* /*context*/, void* /*dest*/, void* /*src*/, size_t /*n*/, void* /*stream*/) { return false; }
 
-bool wp_memcpy_d2h(void* context, void* dest, void* src, size_t n, void* stream) { return false; }
+bool wp_memcpy_d2h(void* /*context*/, void* /*dest*/, void* /*src*/, size_t /*n*/, void* /*stream*/) { return false; }
 
-bool wp_memcpy_d2d(void* context, void* dest, void* src, size_t n, void* stream) { return false; }
+bool wp_memcpy_d2d(void* /*context*/, void* /*dest*/, void* /*src*/, size_t /*n*/, void* /*stream*/) { return false; }
 
-bool wp_memcpy_p2p(void* dst_context, void* dst, void* src_context, void* src, size_t n, void* stream) { return false; }
-
-bool wp_memcpy_batch(void* context, void** dsts, void** srcs, size_t* sizes, size_t count, void* stream)
+bool wp_memcpy_p2p(
+    void* /*dst_context*/, void* /*dst*/, void* /*src_context*/, void* /*src*/, size_t /*n*/, void* /*stream*/
+)
 {
     return false;
 }
 
-bool wp_memset_device(void* context, void* dest, int value, size_t n, void* stream) { return false; }
-
-void wp_memtile_device(void* context, void* dest, const void* src, size_t srcsize, size_t n) { }
-
-bool wp_array_copy_device(void* context, void* dst, void* src, int dst_type, int src_type, int elem_size)
+bool wp_memcpy_batch(
+    void* /*context*/, void** /*dsts*/, void** /*srcs*/, size_t* /*sizes*/, size_t /*count*/, void* /*stream*/
+)
 {
     return false;
 }
 
-void wp_array_fill_device(void* context, void* arr, int arr_type, const void* value, int value_size) { }
+bool wp_memset_device(void* /*context*/, void* /*dest*/, int /*value*/, size_t /*n*/, void* /*stream*/)
+{
+    return false;
+}
+
+void wp_memtile_device(void* /*context*/, void* /*dest*/, const void* /*src*/, size_t /*srcsize*/, size_t /*n*/) { }
+
+bool wp_array_copy_device(
+    void* /*context*/, void* /*dst*/, void* /*src*/, int /*dst_type*/, int /*src_type*/, int /*elem_size*/
+)
+{
+    return false;
+}
+
+void wp_array_fill_device(void* /*context*/, void* /*arr*/, int /*arr_type*/, const void* /*value*/, int /*value_size*/)
+{
+}
 
 WP_API int wp_cuda_driver_version() { return 0; }
 WP_API int wp_cuda_toolkit_version() { return 0; }
@@ -1126,300 +1140,362 @@ WP_API int wp_cuda_toolkit_version() { return 0; }
 WP_API bool wp_cuda_driver_is_initialized() { return false; }
 
 WP_API int wp_nvrtc_supported_arch_count() { return 0; }
-WP_API void wp_nvrtc_supported_archs(int* archs) { }
+WP_API void wp_nvrtc_supported_archs(int* /*archs*/) { }
 
 WP_API int wp_cuda_device_get_count() { return 0; }
-WP_API void* wp_cuda_device_get_primary_context(int ordinal) { return NULL; }
-WP_API const char* wp_cuda_device_get_name(int ordinal) { return NULL; }
-WP_API int wp_cuda_device_get_arch(int ordinal) { return 0; }
-WP_API int wp_cuda_device_get_sm_count(int ordinal) { return 0; }
-WP_API int wp_cuda_device_get_max_shared_memory(int ordinal) { return 0; }
-WP_API void wp_cuda_device_get_uuid(int ordinal, char uuid[16]) { }
-WP_API int wp_cuda_device_get_pci_domain_id(int ordinal) { return -1; }
-WP_API int wp_cuda_device_get_pci_bus_id(int ordinal) { return -1; }
-WP_API int wp_cuda_device_get_pci_device_id(int ordinal) { return -1; }
-WP_API int wp_cuda_device_is_uva(int ordinal) { return 0; }
-WP_API int wp_cuda_device_get_pageable_memory_access(int ordinal) { return 0; }
-WP_API int wp_cuda_device_get_direct_managed_mem_access_from_host(int ordinal) { return 0; }
-WP_API int wp_cuda_device_get_host_native_atomic_supported(int ordinal) { return 0; }
-WP_API int wp_cuda_device_get_managed_memory_supported(int ordinal) { return 0; }
-WP_API int wp_cuda_device_get_concurrent_managed_access_supported(int ordinal) { return 0; }
-WP_API int wp_cuda_pointer_get_memory_kind(void* context, void* ptr) { return WP_MEMORY_KIND_UNKNOWN; }
-WP_API int wp_cuda_device_is_mempool_supported(int ordinal) { return 0; }
-WP_API int wp_cuda_device_is_ipc_supported(int ordinal) { return 0; }
-WP_API int wp_cuda_device_set_mempool_release_threshold(int ordinal, uint64_t threshold) { return 0; }
-WP_API uint64_t wp_cuda_device_get_mempool_release_threshold(int ordinal) { return 0; }
-WP_API uint64_t wp_cuda_device_get_mempool_used_mem_current(int ordinal) { return 0; }
-WP_API uint64_t wp_cuda_device_get_mempool_used_mem_high(int ordinal) { return 0; }
-WP_API uint64_t wp_cuda_device_get_graph_mem_current(int ordinal) { return 0; }
-WP_API void wp_cuda_device_graph_mem_trim(int ordinal) { }
-WP_API void wp_cuda_device_get_memory_info(int ordinal, size_t* free_mem, size_t* total_mem) { }
+WP_API void* wp_cuda_device_get_primary_context(int /*ordinal*/) { return NULL; }
+WP_API const char* wp_cuda_device_get_name(int /*ordinal*/) { return NULL; }
+WP_API int wp_cuda_device_get_arch(int /*ordinal*/) { return 0; }
+WP_API int wp_cuda_device_get_sm_count(int /*ordinal*/) { return 0; }
+WP_API int wp_cuda_device_get_max_shared_memory(int /*ordinal*/) { return 0; }
+WP_API void wp_cuda_device_get_uuid(int /*ordinal*/, char /*uuid*/[16]) { }
+WP_API int wp_cuda_device_get_pci_domain_id(int /*ordinal*/) { return -1; }
+WP_API int wp_cuda_device_get_pci_bus_id(int /*ordinal*/) { return -1; }
+WP_API int wp_cuda_device_get_pci_device_id(int /*ordinal*/) { return -1; }
+WP_API int wp_cuda_device_is_uva(int /*ordinal*/) { return 0; }
+WP_API int wp_cuda_device_get_pageable_memory_access(int /*ordinal*/) { return 0; }
+WP_API int wp_cuda_device_get_direct_managed_mem_access_from_host(int /*ordinal*/) { return 0; }
+WP_API int wp_cuda_device_get_host_native_atomic_supported(int /*ordinal*/) { return 0; }
+WP_API int wp_cuda_device_get_managed_memory_supported(int /*ordinal*/) { return 0; }
+WP_API int wp_cuda_device_get_concurrent_managed_access_supported(int /*ordinal*/) { return 0; }
+WP_API int wp_cuda_pointer_get_memory_kind(void* /*context*/, void* /*ptr*/) { return WP_MEMORY_KIND_UNKNOWN; }
+WP_API int wp_cuda_device_is_mempool_supported(int /*ordinal*/) { return 0; }
+WP_API int wp_cuda_device_is_ipc_supported(int /*ordinal*/) { return 0; }
+WP_API int wp_cuda_device_set_mempool_release_threshold(int /*ordinal*/, uint64_t /*threshold*/) { return 0; }
+WP_API uint64_t wp_cuda_device_get_mempool_release_threshold(int /*ordinal*/) { return 0; }
+WP_API uint64_t wp_cuda_device_get_mempool_used_mem_current(int /*ordinal*/) { return 0; }
+WP_API uint64_t wp_cuda_device_get_mempool_used_mem_high(int /*ordinal*/) { return 0; }
+WP_API uint64_t wp_cuda_device_get_graph_mem_current(int /*ordinal*/) { return 0; }
+WP_API void wp_cuda_device_graph_mem_trim(int /*ordinal*/) { }
+WP_API void wp_cuda_device_get_memory_info(int /*ordinal*/, size_t* /*free_mem*/, size_t* /*total_mem*/) { }
 
 WP_API void* wp_cuda_context_get_current() { return NULL; }
-WP_API void wp_cuda_context_set_current(void* ctx) { }
-WP_API void wp_cuda_context_push_current(void* context) { }
+WP_API void wp_cuda_context_set_current(void* /*ctx*/) { }
+WP_API void wp_cuda_context_push_current(void* /*context*/) { }
 WP_API void wp_cuda_context_pop_current() { }
-WP_API void* wp_cuda_context_create(int device_ordinal) { return NULL; }
-WP_API void wp_cuda_context_destroy(void* context) { }
-WP_API bool wp_cuda_context_synchronize(void* context) { return true; }
-WP_API bool wp_cuda_profiler_start(void* context) { return true; }
-WP_API bool wp_cuda_profiler_stop(void* context) { return true; }
-WP_API uint64_t wp_cuda_context_check(void* context) { return 0; }
-WP_API int wp_cuda_context_get_device_ordinal(void* context) { return -1; }
-WP_API int wp_cuda_context_is_primary(void* context) { return 0; }
-WP_API void* wp_cuda_context_get_stream(void* context) { return NULL; }
-WP_API void wp_cuda_context_set_stream(void* context, void* stream, int sync) { }
+WP_API void* wp_cuda_context_create(int /*device_ordinal*/) { return NULL; }
+WP_API void wp_cuda_context_destroy(void* /*context*/) { }
+WP_API bool wp_cuda_context_synchronize(void* /*context*/) { return true; }
+WP_API bool wp_cuda_profiler_start(void* /*context*/) { return true; }
+WP_API bool wp_cuda_profiler_stop(void* /*context*/) { return true; }
+WP_API uint64_t wp_cuda_context_check(void* /*context*/) { return 0; }
+WP_API int wp_cuda_context_get_device_ordinal(void* /*context*/) { return -1; }
+WP_API int wp_cuda_context_is_primary(void* /*context*/) { return 0; }
+WP_API void* wp_cuda_context_get_stream(void* /*context*/) { return NULL; }
+WP_API void wp_cuda_context_set_stream(void* /*context*/, void* /*stream*/, int /*sync*/) { }
 
-WP_API int wp_cuda_is_peer_access_supported(int target_ordinal, int peer_ordinal) { return 0; }
-WP_API int wp_cuda_is_peer_access_enabled(void* target_context, void* peer_context) { return 0; }
-WP_API int wp_cuda_set_peer_access_enabled(void* target_context, void* peer_context, int enable) { return 0; }
-WP_API int wp_cuda_is_mempool_access_enabled(int target_ordinal, int peer_ordinal) { return 0; }
-WP_API int wp_cuda_set_mempool_access_enabled(int target_ordinal, int peer_ordinal, int enable) { return 0; }
+WP_API int wp_cuda_is_peer_access_supported(int /*target_ordinal*/, int /*peer_ordinal*/) { return 0; }
+WP_API int wp_cuda_is_peer_access_enabled(void* /*target_context*/, void* /*peer_context*/) { return 0; }
+WP_API int wp_cuda_set_peer_access_enabled(void* /*target_context*/, void* /*peer_context*/, int /*enable*/)
+{
+    return 0;
+}
+WP_API int wp_cuda_is_mempool_access_enabled(int /*target_ordinal*/, int /*peer_ordinal*/) { return 0; }
+WP_API int wp_cuda_set_mempool_access_enabled(int /*target_ordinal*/, int /*peer_ordinal*/, int /*enable*/)
+{
+    return 0;
+}
 
-WP_API void wp_cuda_ipc_get_mem_handle(void* ptr, char* out_buffer) { }
-WP_API void* wp_cuda_ipc_open_mem_handle(void* context, char* handle) { return NULL; }
-WP_API void wp_cuda_ipc_close_mem_handle(void* ptr) { }
-WP_API void wp_cuda_ipc_get_event_handle(void* context, void* event, char* out_buffer) { }
-WP_API void* wp_cuda_ipc_open_event_handle(void* context, char* handle) { return NULL; }
+WP_API void wp_cuda_ipc_get_mem_handle(void* /*ptr*/, char* /*out_buffer*/) { }
+WP_API void* wp_cuda_ipc_open_mem_handle(void* /*context*/, char* /*handle*/) { return NULL; }
+WP_API void wp_cuda_ipc_close_mem_handle(void* /*ptr*/) { }
+WP_API void wp_cuda_ipc_get_event_handle(void* /*context*/, void* /*event*/, char* /*out_buffer*/) { }
+WP_API void* wp_cuda_ipc_open_event_handle(void* /*context*/, char* /*handle*/) { return NULL; }
 
-WP_API void* wp_cuda_stream_create(void* context, int priority) { return NULL; }
-WP_API void wp_cuda_stream_destroy(void* context, void* stream) { }
-WP_API int wp_cuda_stream_query(void* stream) { return 0; }
-WP_API void wp_cuda_stream_register(void* context, void* stream) { }
-WP_API void wp_cuda_stream_unregister(void* context, void* stream) { }
+WP_API void* wp_cuda_stream_create(void* /*context*/, int /*priority*/) { return NULL; }
+WP_API void wp_cuda_stream_destroy(void* /*context*/, void* /*stream*/) { }
+WP_API int wp_cuda_stream_query(void* /*stream*/) { return 0; }
+WP_API void wp_cuda_stream_register(void* /*context*/, void* /*stream*/) { }
+WP_API void wp_cuda_stream_unregister(void* /*context*/, void* /*stream*/) { }
 WP_API void* wp_cuda_stream_get_current() { return NULL; }
-WP_API bool wp_cuda_stream_synchronize(void* stream) { return true; }
-WP_API void wp_cuda_stream_wait_event(void* stream, void* event, bool external) { }
-WP_API void wp_cuda_stream_wait_stream(void* stream, void* other_stream, void* event, bool external) { }
-WP_API int wp_cuda_stream_is_capturing(void* stream) { return 0; }
-WP_API int wp_cuda_stream_is_blocking(void* stream) { return 0; }
+WP_API bool wp_cuda_stream_synchronize(void* /*stream*/) { return true; }
+WP_API void wp_cuda_stream_wait_event(void* /*stream*/, void* /*event*/, bool /*external*/) { }
+WP_API void wp_cuda_stream_wait_stream(void* /*stream*/, void* /*other_stream*/, void* /*event*/, bool /*external*/) { }
+WP_API int wp_cuda_stream_is_capturing(void* /*stream*/) { return 0; }
+WP_API int wp_cuda_stream_is_blocking(void* /*stream*/) { return 0; }
 WP_API int wp_cuda_thread_exchange_capture_mode(int mode) { return mode; }
-WP_API uint64_t wp_cuda_stream_get_capture_id(void* stream) { return 0; }
-WP_API int wp_cuda_stream_get_priority(void* stream) { return 0; }
+WP_API uint64_t wp_cuda_stream_get_capture_id(void* /*stream*/) { return 0; }
+WP_API int wp_cuda_stream_get_priority(void* /*stream*/) { return 0; }
 
-WP_API void* wp_cuda_event_create(void* context, unsigned flags) { return NULL; }
-WP_API void wp_cuda_event_destroy(void* event) { }
-WP_API int wp_cuda_event_query(void* event) { return 0; }
-WP_API void wp_cuda_event_record(void* event, void* stream, bool external) { }
-WP_API bool wp_cuda_event_synchronize(void* event) { return true; }
-WP_API float wp_cuda_event_elapsed_time(void* start_event, void* end_event) { return 0.0f; }
+WP_API void* wp_cuda_event_create(void* /*context*/, unsigned /*flags*/) { return NULL; }
+WP_API void wp_cuda_event_destroy(void* /*event*/) { }
+WP_API int wp_cuda_event_query(void* /*event*/) { return 0; }
+WP_API void wp_cuda_event_record(void* /*event*/, void* /*stream*/, bool /*external*/) { }
+WP_API bool wp_cuda_event_synchronize(void* /*event*/) { return true; }
+WP_API float wp_cuda_event_elapsed_time(void* /*start_event*/, void* /*end_event*/) { return 0.0f; }
 
-WP_API bool wp_cuda_graph_begin_capture(void* context, void* stream, int external, int mode) { return false; }
-WP_API bool wp_cuda_graph_end_capture(void* context, void* stream, void** graph_ret) { return false; }
-WP_API bool wp_cuda_graph_create_exec(void* context, void* stream, void* graph, void** graph_exec_ret) { return false; }
-WP_API bool wp_cuda_graph_launch(void* graph, void* stream) { return false; }
-WP_API bool wp_cuda_graph_destroy(void* context, void* graph) { return false; }
-WP_API bool wp_cuda_graph_exec_destroy(void* context, void* graph_exec) { return false; }
-WP_API bool wp_capture_debug_dot_print(void* graph, const char* path, uint32_t flags) { return false; }
+WP_API bool wp_cuda_graph_begin_capture(void* /*context*/, void* /*stream*/, int /*external*/, int /*mode*/)
+{
+    return false;
+}
+WP_API bool wp_cuda_graph_end_capture(void* /*context*/, void* /*stream*/, void** /*graph_ret*/) { return false; }
+WP_API bool wp_cuda_graph_create_exec(void* /*context*/, void* /*stream*/, void* /*graph*/, void** /*graph_exec_ret*/)
+{
+    return false;
+}
+WP_API bool wp_cuda_graph_launch(void* /*graph*/, void* /*stream*/) { return false; }
+WP_API bool wp_cuda_graph_destroy(void* /*context*/, void* /*graph*/) { return false; }
+WP_API bool wp_cuda_graph_exec_destroy(void* /*context*/, void* /*graph_exec*/) { return false; }
+WP_API bool wp_capture_debug_dot_print(void* /*graph*/, const char* /*path*/, uint32_t /*flags*/) { return false; }
 
 WP_API bool wp_cuda_graph_insert_if_else(
-    void* context, void* stream, int arch, bool use_ptx, int* condition, void** if_graph_ret, void** else_graph_ret
+    void* /*context*/,
+    void* /*stream*/,
+    int /*arch*/,
+    bool /*use_ptx*/,
+    int* /*condition*/,
+    void** /*if_graph_ret*/,
+    void** /*else_graph_ret*/
 )
 {
     return false;
 }
 WP_API bool wp_cuda_graph_insert_while(
-    void* context, void* stream, int arch, bool use_ptx, int* condition, void** body_graph_ret, uint64_t* handle_ret
+    void* /*context*/,
+    void* /*stream*/,
+    int /*arch*/,
+    bool /*use_ptx*/,
+    int* /*condition*/,
+    void** /*body_graph_ret*/,
+    uint64_t* /*handle_ret*/
 )
 {
     return false;
 }
-WP_API bool
-wp_cuda_graph_set_condition(void* context, void* stream, int arch, bool use_ptx, int* condition, uint64_t handle)
+WP_API bool wp_cuda_graph_set_condition(
+    void* /*context*/, void* /*stream*/, int /*arch*/, bool /*use_ptx*/, int* /*condition*/, uint64_t /*handle*/
+)
 {
     return false;
 }
-WP_API bool wp_cuda_graph_pause_capture(void* context, void* stream, void** graph_ret) { return false; }
-WP_API bool wp_cuda_graph_resume_capture(void* context, void* stream, void* graph) { return false; }
-WP_API bool wp_cuda_graph_insert_child_graph(void* context, void* stream, void* child_graph) { return false; }
-WP_API bool wp_cuda_graph_check_conditional_body(void* body_graph) { return false; }
+WP_API bool wp_cuda_graph_pause_capture(void* /*context*/, void* /*stream*/, void** /*graph_ret*/) { return false; }
+WP_API bool wp_cuda_graph_resume_capture(void* /*context*/, void* /*stream*/, void* /*graph*/) { return false; }
+WP_API bool wp_cuda_graph_insert_child_graph(void* /*context*/, void* /*stream*/, void* /*child_graph*/)
+{
+    return false;
+}
+WP_API bool wp_cuda_graph_check_conditional_body(void* /*body_graph*/) { return false; }
 
-WP_API void* wp_cuda_graph_insert_memcpy(void* context, void* stream, void* dst, void* src, size_t size, int kind)
+WP_API void* wp_cuda_graph_insert_memcpy(
+    void* /*context*/, void* /*stream*/, void* /*dst*/, void* /*src*/, size_t /*size*/, int /*kind*/
+)
 {
     return NULL;
 }
 WP_API bool wp_cuda_graph_insert_memcpy_batch(
-    void* context, void* stream, void** dsts, void** srcs, size_t* sizes, int* kinds, int count, void** nodes_ret
+    void* /*context*/,
+    void* /*stream*/,
+    void** /*dsts*/,
+    void** /*srcs*/,
+    size_t* /*sizes*/,
+    int* /*kinds*/,
+    int /*count*/,
+    void** /*nodes_ret*/
 )
 {
     return false;
 }
-WP_API bool wp_cuda_graph_update_memcpy(void* graph_exec, void* node, void* dst, void* src, size_t size, int kind)
+WP_API bool wp_cuda_graph_update_memcpy(
+    void* /*graph_exec*/, void* /*node*/, void* /*dst*/, void* /*src*/, size_t /*size*/, int /*kind*/
+)
 {
     return false;
 }
 WP_API bool wp_cuda_graph_update_memcpy_batch(
-    void* graph_exec, void** nodes, void** dsts, void** srcs, size_t* sizes, int* kinds, int count
+    void* /*graph_exec*/,
+    void** /*nodes*/,
+    void** /*dsts*/,
+    void** /*srcs*/,
+    size_t* /*sizes*/,
+    int* /*kinds*/,
+    int /*count*/
 )
 {
     return false;
 }
 
-WP_API void* wp_cuda_graph_insert_alloc_node(void* context, size_t size) { return NULL; }
-WP_API void* wp_cuda_graph_insert_free_node(void* context, void* alloc_node) { return NULL; }
-WP_API void* wp_cuda_graph_insert_empty_node(void* context) { return NULL; }
-WP_API int wp_cuda_graph_node_depends_on(void* argument, void* referent) { return -1; }
-WP_API int wp_cuda_graph_alloc_query(void* alloc, void* arg) { return -1; }
+WP_API void* wp_cuda_graph_insert_alloc_node(void* /*context*/, size_t /*size*/) { return NULL; }
+WP_API void* wp_cuda_graph_insert_free_node(void* /*context*/, void* /*alloc_node*/) { return NULL; }
+WP_API void* wp_cuda_graph_insert_empty_node(void* /*context*/) { return NULL; }
+WP_API int wp_cuda_graph_node_depends_on(void* /*argument*/, void* /*referent*/) { return -1; }
+WP_API int wp_cuda_graph_alloc_query(void* /*alloc*/, void* /*arg*/) { return -1; }
 
 WP_API size_t wp_cuda_compile_program(
-    const char* cuda_src,
-    const char* program_name,
-    int arch,
-    const char* arch_suffix,
-    const char* include_dir,
-    int num_cuda_include_dirs,
-    const char** cuda_include_dirs,
-    bool debug,
-    int optimization_level,
-    bool verbose,
-    bool verify_fp,
-    bool fast_math,
-    bool fuse_fp,
-    bool lineinfo,
-    bool compile_time_trace,
-    bool precompiled_headers,
-    const char* output_path,
-    const char* pch_dir,
-    size_t num_ltoirs,
-    char** ltoirs,
-    size_t* ltoir_sizes,
-    int* ltoir_input_types
+    const char* /*cuda_src*/,
+    const char* /*program_name*/,
+    int /*arch*/,
+    const char* /*arch_suffix*/,
+    const char* /*include_dir*/,
+    int /*num_cuda_include_dirs*/,
+    const char** /*cuda_include_dirs*/,
+    bool /*debug*/,
+    int /*optimization_level*/,
+    bool /*verbose*/,
+    bool /*verify_fp*/,
+    bool /*fast_math*/,
+    bool /*fuse_fp*/,
+    bool /*lineinfo*/,
+    bool /*compile_time_trace*/,
+    bool /*precompiled_headers*/,
+    const char* /*output_path*/,
+    const char* /*pch_dir*/,
+    size_t /*num_ltoirs*/,
+    char** /*ltoirs*/,
+    size_t* /*ltoir_sizes*/,
+    int* /*ltoir_input_types*/
 )
 {
     return 0;
 }
 
-WP_API void* wp_cuda_load_module(void* context, const char* ptx) { return NULL; }
-WP_API void wp_cuda_unload_module(void* context, void* module) { }
-WP_API void* wp_cuda_get_kernel(void* context, void* module, const char* name) { return NULL; }
+WP_API void* wp_cuda_load_module(void* /*context*/, const char* /*ptx*/) { return NULL; }
+WP_API void wp_cuda_unload_module(void* /*context*/, void* /*module*/) { }
+WP_API void* wp_cuda_get_kernel(void* /*context*/, void* /*module*/, const char* /*name*/) { return NULL; }
 WP_API size_t wp_cuda_launch_kernel(
-    void* context,
-    void* kernel,
-    size_t dim,
-    int max_blocks,
-    int block_dim,
-    int grid_stride,
-    int cluster_dim,
-    int shared_memory_bytes,
-    void** args,
-    void* stream,
-    const APICLaunchInfo* apic_info
+    void* /*context*/,
+    void* /*kernel*/,
+    size_t /*dim*/,
+    int /*max_blocks*/,
+    int /*block_dim*/,
+    int /*grid_stride*/,
+    int /*cluster_dim*/,
+    int /*shared_memory_bytes*/,
+    void** /*args*/,
+    void* /*stream*/,
+    const APICLaunchInfo* /*apic_info*/
 )
 {
     return 0;
 }
 
 WP_API bool wp_cuda_get_suggested_block_size(
-    void* context, void* kernel, int shared_memory_bytes, int* block_size_out, int* min_grid_size_out
+    void* /*context*/,
+    void* /*kernel*/,
+    int /*shared_memory_bytes*/,
+    int* /*block_size_out*/,
+    int* /*min_grid_size_out*/
 )
 {
     return false;
 }
-WP_API int wp_cuda_get_max_shared_memory(void* context) { return 0; }
-WP_API bool wp_cuda_configure_kernel_shared_memory(void* kernel, int size) { return false; }
-WP_API int wp_cuda_get_kernel_static_shared_memory(void* context, void* kernel) { return -1; }
-WP_API bool wp_cuda_get_kernel_properties(void* context, void* kernel, int* properties, int property_count)
+WP_API int wp_cuda_get_max_shared_memory(void* /*context*/) { return 0; }
+WP_API bool wp_cuda_configure_kernel_shared_memory(void* /*kernel*/, int /*size*/) { return false; }
+WP_API int wp_cuda_get_kernel_static_shared_memory(void* /*context*/, void* /*kernel*/) { return -1; }
+WP_API bool
+wp_cuda_get_kernel_properties(void* /*context*/, void* /*kernel*/, int* /*properties*/, int /*property_count*/)
 {
     return false;
 }
-WP_API bool wp_cuda_set_kernel_cluster_attrs(void* kernel, int cx, int cy, int cz) { return false; }
-WP_API int wp_cuda_get_max_cluster_dim(void* context, void* kernel, int block_dim, int dynamic_smem_bytes) { return 1; }
+WP_API bool wp_cuda_set_kernel_cluster_attrs(void* /*kernel*/, int /*cx*/, int /*cy*/, int /*cz*/) { return false; }
+WP_API int
+wp_cuda_get_max_cluster_dim(void* /*context*/, void* /*kernel*/, int /*block_dim*/, int /*dynamic_smem_bytes*/)
+{
+    return 1;
+}
 
-WP_API void wp_cuda_set_context_restore_policy(bool always_restore) { }
+WP_API void wp_cuda_set_context_restore_policy(bool /*always_restore*/) { }
 WP_API int wp_cuda_get_context_restore_policy() { return false; }
 
 WP_API bool wp_array_scan_int_device(
-    uint64_t in,
-    uint64_t out,
-    int len,
-    int in_stride,
-    int out_stride,
-    int type_len,
-    bool inclusive,
-    uint64_t temp_storage,
-    size_t temp_storage_bytes
+    uint64_t /*in*/,
+    uint64_t /*out*/,
+    int /*len*/,
+    int /*in_stride*/,
+    int /*out_stride*/,
+    int /*type_len*/,
+    bool /*inclusive*/,
+    uint64_t /*temp_storage*/,
+    size_t /*temp_storage_bytes*/
 )
 {
     return false;
 }
-WP_API bool wp_array_scan_int_device_temp_storage_size(void* context, int len, size_t* temp_storage_bytes)
+WP_API bool wp_array_scan_int_device_temp_storage_size(void* /*context*/, int /*len*/, size_t* /*temp_storage_bytes*/)
 {
     return false;
 }
 WP_API bool wp_array_scan_int64_device(
-    uint64_t in,
-    uint64_t out,
-    int len,
-    int in_stride,
-    int out_stride,
-    int type_len,
-    bool inclusive,
-    uint64_t temp_storage,
-    size_t temp_storage_bytes
+    uint64_t /*in*/,
+    uint64_t /*out*/,
+    int /*len*/,
+    int /*in_stride*/,
+    int /*out_stride*/,
+    int /*type_len*/,
+    bool /*inclusive*/,
+    uint64_t /*temp_storage*/,
+    size_t /*temp_storage_bytes*/
 )
 {
     return false;
 }
-WP_API bool wp_array_scan_int64_device_temp_storage_size(void* context, int len, size_t* temp_storage_bytes)
+WP_API bool wp_array_scan_int64_device_temp_storage_size(void* /*context*/, int /*len*/, size_t* /*temp_storage_bytes*/)
 {
     return false;
 }
 WP_API bool wp_array_scan_float_device(
-    uint64_t in,
-    uint64_t out,
-    int len,
-    int in_stride,
-    int out_stride,
-    int type_len,
-    bool inclusive,
-    uint64_t temp_storage,
-    size_t temp_storage_bytes
+    uint64_t /*in*/,
+    uint64_t /*out*/,
+    int /*len*/,
+    int /*in_stride*/,
+    int /*out_stride*/,
+    int /*type_len*/,
+    bool /*inclusive*/,
+    uint64_t /*temp_storage*/,
+    size_t /*temp_storage_bytes*/
 )
 {
     return false;
 }
-WP_API bool wp_array_scan_float_device_temp_storage_size(void* context, int len, size_t* temp_storage_bytes)
+WP_API bool wp_array_scan_float_device_temp_storage_size(void* /*context*/, int /*len*/, size_t* /*temp_storage_bytes*/)
 {
     return false;
 }
 WP_API bool wp_array_scan_double_device(
-    uint64_t in,
-    uint64_t out,
-    int len,
-    int in_stride,
-    int out_stride,
-    int type_len,
-    bool inclusive,
-    uint64_t temp_storage,
-    size_t temp_storage_bytes
+    uint64_t /*in*/,
+    uint64_t /*out*/,
+    int /*len*/,
+    int /*in_stride*/,
+    int /*out_stride*/,
+    int /*type_len*/,
+    bool /*inclusive*/,
+    uint64_t /*temp_storage*/,
+    size_t /*temp_storage_bytes*/
 )
 {
     return false;
 }
-WP_API bool wp_array_scan_double_device_temp_storage_size(void* context, int len, size_t* temp_storage_bytes)
+WP_API bool
+wp_array_scan_double_device_temp_storage_size(void* /*context*/, int /*len*/, size_t* /*temp_storage_bytes*/)
 {
     return false;
 }
 
-WP_API bool wp_cuda_graphics_map(void* context, void* resource) { return false; }
-WP_API void wp_cuda_graphics_unmap(void* context, void* resource) { }
-WP_API void wp_cuda_graphics_device_ptr_and_size(void* context, void* resource, uint64_t* ptr, size_t* size) { }
-WP_API void* wp_cuda_graphics_register_gl_buffer(void* context, uint32_t gl_buffer, unsigned int flags) { return NULL; }
-WP_API void* wp_cuda_graphics_register_gl_image(void* context, uint32_t image, uint32_t target, unsigned int flags)
+WP_API bool wp_cuda_graphics_map(void* /*context*/, void* /*resource*/) { return false; }
+WP_API void wp_cuda_graphics_unmap(void* /*context*/, void* /*resource*/) { }
+WP_API void
+wp_cuda_graphics_device_ptr_and_size(void* /*context*/, void* /*resource*/, uint64_t* /*ptr*/, size_t* /*size*/)
+{
+}
+WP_API void* wp_cuda_graphics_register_gl_buffer(void* /*context*/, uint32_t /*gl_buffer*/, unsigned int /*flags*/)
+{
+    return NULL;
+}
+WP_API void*
+wp_cuda_graphics_register_gl_image(void* /*context*/, uint32_t /*image*/, uint32_t /*target*/, unsigned int /*flags*/)
 {
     return NULL;
 }
 WP_API uint64_t wp_cuda_graphics_sub_resource_get_mapped_array(
-    void* context, void* resource, unsigned int array_index, unsigned int mip_level
+    void* /*context*/, void* /*resource*/, unsigned int /*array_index*/, unsigned int /*mip_level*/
 )
 {
     return 0;
 }
-WP_API void wp_cuda_graphics_unregister_resource(void* context, void* resource) { }
+WP_API void wp_cuda_graphics_unregister_resource(void* /*context*/, void* /*resource*/) { }
 
-WP_API void wp_cuda_timing_begin(int flags) { }
+WP_API void wp_cuda_timing_begin(int /*flags*/) { }
 WP_API int wp_cuda_timing_get_result_count() { return 0; }
-WP_API void wp_cuda_timing_end(timing_result_t* results, int size) { }
+WP_API void wp_cuda_timing_end(timing_result_t* /*results*/, int /*size*/) { }
 
 WP_API const char* wp_libmathdx_version() { return ""; }
 WP_API int wp_nvrtc_version() { return 0; }

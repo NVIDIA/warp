@@ -69,9 +69,9 @@ template <
     typename TilePivots,
     typename TileInfo>
 CUDA_CALLABLE void tile_lu(
-    Fwd fun_forward,
-    BkwdL fun_backward_l,
-    BkwdU fun_backward_u,
+    [[maybe_unused]] Fwd fun_forward,
+    BkwdL /*fun_backward_l*/,
+    BkwdU /*fun_backward_u*/,
     TileA& A,
     TileLU& LU,
     TilePivots& pivots,
@@ -110,20 +110,20 @@ template <
     typename TilePivots,
     typename TileInfo>
 CUDA_CALLABLE void adj_tile_lu(
-    Fwd fun_forward,
-    BkwdL fun_backward_l,
-    BkwdU fun_backward_u,
-    TileA& A,
+    Fwd /*fun_forward*/,
+    [[maybe_unused]] BkwdL fun_backward_l,
+    [[maybe_unused]] BkwdU fun_backward_u,
+    TileA& /*A*/,
     TileLU& LU,
     TilePivots& pivots,
-    TileInfo& info,
-    Fwd adj_fun_forward,
-    BkwdL adj_fun_backward_l,
-    BkwdU adj_fun_backward_u,
+    TileInfo& /*info*/,
+    Fwd /*adj_fun_forward*/,
+    BkwdL /*adj_fun_backward_l*/,
+    BkwdU /*adj_fun_backward_u*/,
     TileA& adj_A,
     TileLU& adj_LU,
-    TilePivots& adj_pivots,
-    TileInfo& adj_info
+    TilePivots& /*adj_pivots*/,
+    TileInfo& /*adj_info*/
 )
 {
     using T = typename TileA::Type;

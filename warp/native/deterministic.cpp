@@ -9,52 +9,53 @@
 
 #if !WP_ENABLE_CUDA
 
-size_t
-wp_deterministic_sort_reduce_workspace_size(int count, int op, int scalar_type, int components, int determinism_level)
+size_t wp_deterministic_sort_reduce_workspace_size(
+    int /*count*/, int /*op*/, int /*scalar_type*/, int /*components*/, int /*determinism_level*/
+)
 {
     return 0;
 }
 
 void wp_deterministic_sort_reduce_device(
-    uint64_t keys,
-    uint64_t values,
-    int count,
-    uint64_t dest_array,
-    int dest_size,
-    int op,
-    int scalar_type,
-    int components,
-    int determinism_level,
-    uint64_t workspace,
-    size_t workspace_size
+    uint64_t /*keys*/,
+    uint64_t /*values*/,
+    int /*count*/,
+    uint64_t /*dest_array*/,
+    int /*dest_size*/,
+    int /*op*/,
+    int /*scalar_type*/,
+    int /*components*/,
+    int /*determinism_level*/,
+    uint64_t /*workspace*/,
+    size_t /*workspace_size*/
 )
 {
 }
 
-size_t wp_deterministic_counter_scan_workspace_size(int count) { return 0; }
+size_t wp_deterministic_counter_scan_workspace_size(int /*count*/) { return 0; }
 
 void wp_deterministic_counter_scan_device(
-    uint64_t keys,
-    uint64_t values,
-    int count,
-    uint64_t prefixes,
-    uint64_t counter_bases,
-    uint64_t counter_totals,
-    int counter_size,
-    uint64_t workspace,
-    size_t workspace_size
+    uint64_t /*keys*/,
+    uint64_t /*values*/,
+    int /*count*/,
+    uint64_t /*prefixes*/,
+    uint64_t /*counter_bases*/,
+    uint64_t /*counter_totals*/,
+    int /*counter_size*/,
+    uint64_t /*workspace*/,
+    size_t /*workspace_size*/
 )
 {
 }
 
 void wp_deterministic_counter_writeback_device(
-    uint64_t keys, int count, uint64_t counter_totals, uint64_t counters, int counter_size
+    uint64_t /*keys*/, int /*count*/, uint64_t /*counter_totals*/, uint64_t /*counters*/, int /*counter_size*/
 )
 {
 }
 
 void wp_deterministic_counter_validate_replay_device(
-    uint64_t expected_counts, uint64_t replay_counts, int count, uint64_t error, int debug
+    uint64_t /*expected_counts*/, uint64_t /*replay_counts*/, int /*count*/, uint64_t /*error*/, int /*debug*/
 )
 {
 }

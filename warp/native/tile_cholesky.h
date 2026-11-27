@@ -247,7 +247,7 @@ inline CUDA_CALLABLE void cooperative_scalar_cholesky_adj(TileA& adj_A, TileOut&
 // Upper=false: produces lower-triangular L s.t. A = L L^T, zeros upper triangle.
 // Upper=true:  produces upper-triangular U s.t. A = U^T U, zeros lower triangle.
 template <bool Upper, typename Fwd, typename TileA, typename TileOut>
-CUDA_CALLABLE TileOut& tile_cholesky_impl(Fwd fun_forward, TileA& A, TileOut& Out)
+CUDA_CALLABLE TileOut& tile_cholesky_impl([[maybe_unused]] Fwd fun_forward, TileA& A, TileOut& Out)
 {
     static_assert(TileA::Layout::Shape::N == 2, "Expected TileA::Layout::Shape::N == 2");
     static_assert(TileOut::Layout::Shape::N == 2, "Expected TileOut::Layout::Shape::N == 2");
@@ -309,8 +309,13 @@ CUDA_CALLABLE TileOut& tile_cholesky_impl(Fwd fun_forward, TileA& A, TileOut& Ou
 
 
 template <bool Upper, typename BkwdGemm, typename BkwdTrsm, typename TileA, typename TileOut>
-CUDA_CALLABLE void
-adj_tile_cholesky_impl(BkwdGemm fun_bkwd_gemm, BkwdTrsm fun_bkwd_trsm, TileOut& Out, TileA& adj_A, TileOut& adj_Out)
+CUDA_CALLABLE void adj_tile_cholesky_impl(
+    [[maybe_unused]] BkwdGemm fun_bkwd_gemm,
+    [[maybe_unused]] BkwdTrsm fun_bkwd_trsm,
+    TileOut& Out,
+    TileA& adj_A,
+    TileOut& adj_Out
+)
 {
 #if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
 
@@ -396,7 +401,7 @@ adj_tile_cholesky_impl(BkwdGemm fun_bkwd_gemm, BkwdTrsm fun_bkwd_trsm, TileOut& 
 
 // Cholesky factorization (inplace) implementation.
 template <bool Upper, bool ZeroOpposite, typename Fwd, typename TileA>
-CUDA_CALLABLE void tile_cholesky_inplace_impl(Fwd fun_forward, TileA& A)
+CUDA_CALLABLE void tile_cholesky_inplace_impl([[maybe_unused]] Fwd fun_forward, TileA& A)
 {
     static_assert(TileA::Layout::Shape::N == 2, "Expected TileA::Layout::Shape::N == 2");
     static_assert(TileA::Layout::Shape::dim(0) == TileA::Layout::Shape::dim(1), "Expected TileA to be square");
@@ -446,7 +451,7 @@ CUDA_CALLABLE void tile_cholesky_inplace_impl(Fwd fun_forward, TileA& A)
 // Cholesky (out-of-place): tile_cholesky<false>(...) for lower, tile_cholesky<true>(...) for upper
 template <bool Upper, typename Fwd, typename BkwdGemm, typename BkwdTrsm, typename TileA, typename TileOut>
 CUDA_CALLABLE TileOut&
-tile_cholesky(Fwd fun_forward, BkwdGemm fun_bkwd_gemm, BkwdTrsm fun_bkwd_trsm, TileA& A, TileOut& Out)
+tile_cholesky(Fwd fun_forward, BkwdGemm /*fun_bkwd_gemm*/, BkwdTrsm /*fun_bkwd_trsm*/, TileA& A, TileOut& Out)
 {
     return tile_cholesky_impl<Upper>(fun_forward, A, Out);
 }
@@ -455,17 +460,17 @@ tile_cholesky(Fwd fun_forward, BkwdGemm fun_bkwd_gemm, BkwdTrsm fun_bkwd_trsm, T
 // adj_tile_cholesky<false>(...) for lower, adj_tile_cholesky<true>(...) for upper
 template <bool Upper, typename Fwd, typename BkwdGemm, typename BkwdTrsm, typename TileA, typename TileOut>
 CUDA_CALLABLE void adj_tile_cholesky(
-    Fwd fun_forward,
+    Fwd /*fun_forward*/,
     BkwdGemm fun_bkwd_gemm,
     BkwdTrsm fun_bkwd_trsm,
-    TileA& A,
+    TileA& /*A*/,
     TileOut& Out,
-    Fwd adj_fun_forward,
-    BkwdGemm adj_fun_bkwd_gemm,
-    BkwdTrsm adj_fun_bkwd_trsm,
+    Fwd /*adj_fun_forward*/,
+    BkwdGemm /*adj_fun_bkwd_gemm*/,
+    BkwdTrsm /*adj_fun_bkwd_trsm*/,
     TileA& adj_A,
     TileOut& adj_Out,
-    TileOut& adj_ret
+    TileOut& /*adj_ret*/
 )
 {
     adj_tile_cholesky_impl<Upper>(fun_bkwd_gemm, fun_bkwd_trsm, Out, adj_A, adj_Out);
@@ -479,7 +484,8 @@ CUDA_CALLABLE void tile_cholesky_inplace(Fwd fun_forward, TileA& A)
 }
 
 template <bool Upper, bool ZeroOpposite, typename Fwd, typename TileA, typename AdjFwd, typename AdjTileA>
-CUDA_CALLABLE void adj_tile_cholesky_inplace(Fwd fun_forward, TileA& A, AdjFwd adj_fun_forward, AdjTileA& adj_A)
+CUDA_CALLABLE void
+adj_tile_cholesky_inplace(Fwd /*fun_forward*/, TileA& /*A*/, AdjFwd /*adj_fun_forward*/, AdjTileA& /*adj_A*/)
 {
     // MISSINGADJOINT: apply Murray 2016 derivative in place; on entry A holds L
     // (lower) or U (upper), adj_A holds adj_L/adj_U; on exit adj_A holds adj of the original symmetric input

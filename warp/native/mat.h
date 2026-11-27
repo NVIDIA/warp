@@ -435,7 +435,7 @@ CUDA_CALLABLE inline mat_t<Rows, Cols, Type> pos(const mat_t<Rows, Cols, Type>& 
 
 template <unsigned Rows, unsigned Cols, typename Type>
 CUDA_CALLABLE inline void
-adj_pos(const mat_t<Rows, Cols, Type>& x, mat_t<Rows, Cols, Type>& adj_x, const mat_t<Rows, Cols, Type>& adj_ret)
+adj_pos(const mat_t<Rows, Cols, Type>& /*x*/, mat_t<Rows, Cols, Type>& adj_x, const mat_t<Rows, Cols, Type>& adj_ret)
 {
     adj_x += adj_ret;
 }
@@ -448,7 +448,7 @@ CUDA_CALLABLE inline mat_t<Rows, Cols, Type> neg(const mat_t<Rows, Cols, Type>& 
 
 template <unsigned Rows, unsigned Cols, typename Type>
 CUDA_CALLABLE inline void
-adj_neg(const mat_t<Rows, Cols, Type>& x, mat_t<Rows, Cols, Type>& adj_x, const mat_t<Rows, Cols, Type>& adj_ret)
+adj_neg(const mat_t<Rows, Cols, Type>& /*x*/, mat_t<Rows, Cols, Type>& adj_x, const mat_t<Rows, Cols, Type>& adj_ret)
 {
     adj_x -= adj_ret;
 }
@@ -776,11 +776,11 @@ inline CUDA_CALLABLE Type* index(mat_t<Rows, Cols, Type>& m, int row, int col)
 
 template <unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_index(
-    const mat_t<Rows, Cols, Type>& m,
-    int row,
-    const mat_t<Rows, Cols, Type>& adj_m,
-    int adj_row,
-    const vec_t<Cols, Type>& adj_value
+    const mat_t<Rows, Cols, Type>& /*m*/,
+    int /*row*/,
+    const mat_t<Rows, Cols, Type>& /*adj_m*/,
+    int /*adj_row*/,
+    const vec_t<Cols, Type>& /*adj_value*/
 )
 {
     // nop
@@ -788,13 +788,13 @@ inline CUDA_CALLABLE void adj_index(
 
 template <unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_index(
-    const mat_t<Rows, Cols, Type>& m,
-    int row,
-    int col,
-    const mat_t<Rows, Cols, Type>& adj_m,
-    int adj_row,
-    int adj_col,
-    Type adj_value
+    const mat_t<Rows, Cols, Type>& /*m*/,
+    int /*row*/,
+    int /*col*/,
+    const mat_t<Rows, Cols, Type>& /*adj_m*/,
+    int /*adj_row*/,
+    int /*adj_col*/,
+    Type /*adj_value*/
 )
 {
     // nop
@@ -810,7 +810,11 @@ inline CUDA_CALLABLE vec_t<Cols, Type>* indexref(mat_t<Rows, Cols, Type>* m, int
 
 template <unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_indexref(
-    mat_t<Rows, Cols, Type>* m, int row, mat_t<Rows, Cols, Type>& adj_m, int adj_row, const vec_t<Cols, Type>& adj_value
+    mat_t<Rows, Cols, Type>* /*m*/,
+    int /*row*/,
+    mat_t<Rows, Cols, Type>& /*adj_m*/,
+    int /*adj_row*/,
+    const vec_t<Cols, Type>& /*adj_value*/
 )
 {
     // nop
@@ -824,13 +828,13 @@ inline CUDA_CALLABLE Type* indexref(mat_t<Rows, Cols, Type>* m, int row, int col
 
 template <unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_indexref(
-    mat_t<Rows, Cols, Type>* m,
-    int row,
-    int col,
-    mat_t<Rows, Cols, Type>& adj_m,
-    int adj_row,
-    int adj_col,
-    const Type& adj_value
+    mat_t<Rows, Cols, Type>* /*m*/,
+    int /*row*/,
+    int /*col*/,
+    mat_t<Rows, Cols, Type>& /*adj_m*/,
+    int /*adj_row*/,
+    int /*adj_col*/,
+    const Type& /*adj_value*/
 )
 {
     // nop
@@ -1027,13 +1031,13 @@ inline CUDA_CALLABLE void add_inplace(
 
 template <unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_add_inplace(
-    mat_t<Rows, Cols, Type>& m,
+    mat_t<Rows, Cols, Type>& /*m*/,
     int row,
     int col,
-    Type value,
+    Type /*value*/,
     mat_t<Rows, Cols, Type>& adj_m,
-    int adj_row,
-    int adj_col,
+    int /*adj_row*/,
+    int /*adj_col*/,
     Type& adj_value
 )
 {
@@ -1061,11 +1065,11 @@ inline CUDA_CALLABLE void adj_add_inplace(
 
 template <unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_add_inplace(
-    mat_t<Rows, Cols, Type>& m,
+    mat_t<Rows, Cols, Type>& /*m*/,
     int row,
-    vec_t<Cols, Type>& value,
+    vec_t<Cols, Type>& /*value*/,
     mat_t<Rows, Cols, Type>& adj_m,
-    int adj_row,
+    int /*adj_row*/,
     vec_t<Cols, Type>& adj_value
 )
 {
@@ -1088,11 +1092,11 @@ inline CUDA_CALLABLE void adj_add_inplace(
 
 template <unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_add_inplace(
-    mat_t<Rows, Cols, Type>& m,
+    mat_t<Rows, Cols, Type>& /*m*/,
     slice_t row_slice,
-    mat_t<RowSliceLength, ColSliceLength, Type>& value,
+    mat_t<RowSliceLength, ColSliceLength, Type>& /*value*/,
     mat_t<Rows, Cols, Type>& adj_m,
-    slice_t& adj_row_slice,
+    slice_t& /*adj_row_slice*/,
     mat_t<RowSliceLength, ColSliceLength, Type>& adj_value
 )
 {
@@ -1126,13 +1130,13 @@ inline CUDA_CALLABLE void adj_add_inplace(
 
 template <unsigned RowSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_add_inplace(
-    mat_t<Rows, Cols, Type>& m,
+    mat_t<Rows, Cols, Type>& /*m*/,
     slice_t row_slice,
     int col,
-    vec_t<RowSliceLength, Type>& value,
+    vec_t<RowSliceLength, Type>& /*value*/,
     mat_t<Rows, Cols, Type>& adj_m,
-    slice_t& adj_row_slice,
-    int& adj_col,
+    slice_t& /*adj_row_slice*/,
+    int& /*adj_col*/,
     vec_t<RowSliceLength, Type>& adj_value
 )
 {
@@ -1169,13 +1173,13 @@ inline CUDA_CALLABLE void adj_add_inplace(
 
 template <unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_add_inplace(
-    mat_t<Rows, Cols, Type>& m,
+    mat_t<Rows, Cols, Type>& /*m*/,
     int row,
     slice_t col_slice,
-    vec_t<ColSliceLength, Type>& value,
+    vec_t<ColSliceLength, Type>& /*value*/,
     mat_t<Rows, Cols, Type>& adj_m,
-    int& adj_row,
-    slice_t& adj_col_slice,
+    int& /*adj_row*/,
+    slice_t& /*adj_col_slice*/,
     vec_t<ColSliceLength, Type>& adj_value
 )
 {
@@ -1212,13 +1216,13 @@ inline CUDA_CALLABLE void adj_add_inplace(
 
 template <unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_add_inplace(
-    mat_t<Rows, Cols, Type>& m,
+    mat_t<Rows, Cols, Type>& /*m*/,
     slice_t row_slice,
     slice_t col_slice,
-    mat_t<RowSliceLength, ColSliceLength, Type>& value,
+    mat_t<RowSliceLength, ColSliceLength, Type>& /*value*/,
     mat_t<Rows, Cols, Type>& adj_m,
-    slice_t& adj_row_slice,
-    slice_t& adj_col_slice,
+    slice_t& /*adj_row_slice*/,
+    slice_t& /*adj_col_slice*/,
     mat_t<RowSliceLength, ColSliceLength, Type>& adj_value
 )
 {
@@ -1448,13 +1452,13 @@ inline CUDA_CALLABLE void sub_inplace(
 
 template <unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_sub_inplace(
-    mat_t<Rows, Cols, Type>& m,
+    mat_t<Rows, Cols, Type>& /*m*/,
     int row,
     int col,
-    Type value,
+    Type /*value*/,
     mat_t<Rows, Cols, Type>& adj_m,
-    int adj_row,
-    int adj_col,
+    int /*adj_row*/,
+    int /*adj_col*/,
     Type& adj_value
 )
 {
@@ -1482,11 +1486,11 @@ inline CUDA_CALLABLE void adj_sub_inplace(
 
 template <unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_sub_inplace(
-    mat_t<Rows, Cols, Type>& m,
+    mat_t<Rows, Cols, Type>& /*m*/,
     int row,
-    vec_t<Cols, Type>& value,
+    vec_t<Cols, Type>& /*value*/,
     mat_t<Rows, Cols, Type>& adj_m,
-    int adj_row,
+    int /*adj_row*/,
     vec_t<Cols, Type>& adj_value
 )
 {
@@ -1509,11 +1513,11 @@ inline CUDA_CALLABLE void adj_sub_inplace(
 
 template <unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_sub_inplace(
-    mat_t<Rows, Cols, Type>& m,
+    mat_t<Rows, Cols, Type>& /*m*/,
     slice_t row_slice,
-    mat_t<RowSliceLength, ColSliceLength, Type>& value,
+    mat_t<RowSliceLength, ColSliceLength, Type>& /*value*/,
     mat_t<Rows, Cols, Type>& adj_m,
-    slice_t& adj_row_slice,
+    slice_t& /*adj_row_slice*/,
     mat_t<RowSliceLength, ColSliceLength, Type>& adj_value
 )
 {
@@ -1547,13 +1551,13 @@ inline CUDA_CALLABLE void adj_sub_inplace(
 
 template <unsigned RowSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_sub_inplace(
-    mat_t<Rows, Cols, Type>& m,
+    mat_t<Rows, Cols, Type>& /*m*/,
     slice_t row_slice,
     int col,
-    vec_t<RowSliceLength, Type>& value,
+    vec_t<RowSliceLength, Type>& /*value*/,
     mat_t<Rows, Cols, Type>& adj_m,
-    slice_t& adj_row_slice,
-    int& adj_col,
+    slice_t& /*adj_row_slice*/,
+    int& /*adj_col*/,
     vec_t<RowSliceLength, Type>& adj_value
 )
 {
@@ -1590,13 +1594,13 @@ inline CUDA_CALLABLE void adj_sub_inplace(
 
 template <unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_sub_inplace(
-    mat_t<Rows, Cols, Type>& m,
+    mat_t<Rows, Cols, Type>& /*m*/,
     int row,
     slice_t col_slice,
-    vec_t<ColSliceLength, Type>& value,
+    vec_t<ColSliceLength, Type>& /*value*/,
     mat_t<Rows, Cols, Type>& adj_m,
-    int& adj_row,
-    slice_t& adj_col_slice,
+    int& /*adj_row*/,
+    slice_t& /*adj_col_slice*/,
     vec_t<ColSliceLength, Type>& adj_value
 )
 {
@@ -1633,13 +1637,13 @@ inline CUDA_CALLABLE void adj_sub_inplace(
 
 template <unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_sub_inplace(
-    mat_t<Rows, Cols, Type>& m,
+    mat_t<Rows, Cols, Type>& /*m*/,
     slice_t row_slice,
     slice_t col_slice,
-    mat_t<RowSliceLength, ColSliceLength, Type>& value,
+    mat_t<RowSliceLength, ColSliceLength, Type>& /*value*/,
     mat_t<Rows, Cols, Type>& adj_m,
-    slice_t& adj_row_slice,
-    slice_t& adj_col_slice,
+    slice_t& /*adj_row_slice*/,
+    slice_t& /*adj_col_slice*/,
     mat_t<RowSliceLength, ColSliceLength, Type>& adj_value
 )
 {
@@ -2433,13 +2437,13 @@ inline CUDA_CALLABLE void assign_inplace(
 
 template <unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_assign_inplace(
-    mat_t<Rows, Cols, Type>& m,
+    mat_t<Rows, Cols, Type>& /*m*/,
     int row,
     int col,
-    Type value,
+    Type /*value*/,
     mat_t<Rows, Cols, Type>& adj_m,
-    int& adj_row,
-    int& adj_col,
+    int& /*adj_row*/,
+    int& /*adj_col*/,
     Type& adj_value
 )
 {
@@ -2467,11 +2471,11 @@ inline CUDA_CALLABLE void adj_assign_inplace(
 
 template <unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_assign_inplace(
-    mat_t<Rows, Cols, Type>& m,
+    mat_t<Rows, Cols, Type>& /*m*/,
     int row,
-    vec_t<Cols, Type>& value,
+    vec_t<Cols, Type>& /*value*/,
     mat_t<Rows, Cols, Type>& adj_m,
-    int& adj_row,
+    int& /*adj_row*/,
     vec_t<Cols, Type>& adj_value
 )
 {
@@ -2494,11 +2498,11 @@ inline CUDA_CALLABLE void adj_assign_inplace(
 
 template <unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_assign_inplace(
-    mat_t<Rows, Cols, Type>& m,
+    mat_t<Rows, Cols, Type>& /*m*/,
     slice_t row_slice,
-    mat_t<RowSliceLength, ColSliceLength, Type>& value,
+    mat_t<RowSliceLength, ColSliceLength, Type>& /*value*/,
     mat_t<Rows, Cols, Type>& adj_m,
-    slice_t& adj_row_slice,
+    slice_t& /*adj_row_slice*/,
     mat_t<RowSliceLength, ColSliceLength, Type>& adj_value
 )
 {
@@ -2532,13 +2536,13 @@ inline CUDA_CALLABLE void adj_assign_inplace(
 
 template <unsigned RowSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_assign_inplace(
-    mat_t<Rows, Cols, Type>& m,
+    mat_t<Rows, Cols, Type>& /*m*/,
     slice_t row_slice,
     int col,
-    vec_t<RowSliceLength, Type>& value,
+    vec_t<RowSliceLength, Type>& /*value*/,
     mat_t<Rows, Cols, Type>& adj_m,
-    slice_t& adj_row_slice,
-    int& adj_col,
+    slice_t& /*adj_row_slice*/,
+    int& /*adj_col*/,
     vec_t<RowSliceLength, Type>& adj_value
 )
 {
@@ -2575,13 +2579,13 @@ inline CUDA_CALLABLE void adj_assign_inplace(
 
 template <unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_assign_inplace(
-    mat_t<Rows, Cols, Type>& m,
+    mat_t<Rows, Cols, Type>& /*m*/,
     int row,
     slice_t col_slice,
-    vec_t<ColSliceLength, Type>& value,
+    vec_t<ColSliceLength, Type>& /*value*/,
     mat_t<Rows, Cols, Type>& adj_m,
-    int& adj_row,
-    slice_t& adj_col_slice,
+    int& /*adj_row*/,
+    slice_t& /*adj_col_slice*/,
     vec_t<ColSliceLength, Type>& adj_value
 )
 {
@@ -2618,13 +2622,13 @@ inline CUDA_CALLABLE void adj_assign_inplace(
 
 template <unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_assign_inplace(
-    mat_t<Rows, Cols, Type>& m,
+    mat_t<Rows, Cols, Type>& /*m*/,
     slice_t row_slice,
     slice_t col_slice,
-    mat_t<RowSliceLength, ColSliceLength, Type>& value,
+    mat_t<RowSliceLength, ColSliceLength, Type>& /*value*/,
     mat_t<Rows, Cols, Type>& adj_m,
-    slice_t& adj_row_slice,
-    slice_t& adj_col_slice,
+    slice_t& /*adj_row_slice*/,
+    slice_t& /*adj_col_slice*/,
     mat_t<RowSliceLength, ColSliceLength, Type>& adj_value
 )
 {
@@ -2756,13 +2760,13 @@ inline CUDA_CALLABLE mat_t<Rows, Cols, Type> assign_copy(
 
 template <unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_assign_copy(
-    mat_t<Rows, Cols, Type>& m,
+    mat_t<Rows, Cols, Type>& /*m*/,
     int row,
     int col,
-    Type value,
+    Type /*value*/,
     mat_t<Rows, Cols, Type>& adj_m,
-    int& adj_row,
-    int& adj_col,
+    int& /*adj_row*/,
+    int& /*adj_col*/,
     Type& adj_value,
     const mat_t<Rows, Cols, Type>& adj_ret
 )
@@ -2797,11 +2801,11 @@ inline CUDA_CALLABLE void adj_assign_copy(
 
 template <unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_assign_copy(
-    mat_t<Rows, Cols, Type>& m,
+    mat_t<Rows, Cols, Type>& /*m*/,
     int row,
-    vec_t<Cols, Type>& value,
+    vec_t<Cols, Type>& /*value*/,
     mat_t<Rows, Cols, Type>& adj_m,
-    int& adj_row,
+    int& /*adj_row*/,
     vec_t<Cols, Type>& adj_value,
     const mat_t<Rows, Cols, Type>& adj_ret
 )
@@ -2830,11 +2834,11 @@ inline CUDA_CALLABLE void adj_assign_copy(
 
 template <unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_assign_copy(
-    mat_t<Rows, Cols, Type>& m,
+    mat_t<Rows, Cols, Type>& /*m*/,
     slice_t row_slice,
-    mat_t<RowSliceLength, ColSliceLength, Type>& value,
+    mat_t<RowSliceLength, ColSliceLength, Type>& /*value*/,
     mat_t<Rows, Cols, Type>& adj_m,
-    slice_t& adj_row_slice,
+    slice_t& /*adj_row_slice*/,
     mat_t<RowSliceLength, ColSliceLength, Type>& adj_value,
     mat_t<Rows, Cols, Type>& adj_ret
 )
@@ -2879,13 +2883,13 @@ inline CUDA_CALLABLE void adj_assign_copy(
 
 template <unsigned RowSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_assign_copy(
-    mat_t<Rows, Cols, Type>& m,
+    mat_t<Rows, Cols, Type>& /*m*/,
     slice_t row_slice,
     int col,
-    vec_t<RowSliceLength, Type>& value,
+    vec_t<RowSliceLength, Type>& /*value*/,
     mat_t<Rows, Cols, Type>& adj_m,
-    slice_t& adj_row_slice,
-    int& adj_col,
+    slice_t& /*adj_row_slice*/,
+    int& /*adj_col*/,
     vec_t<RowSliceLength, Type>& adj_value,
     mat_t<Rows, Cols, Type>& adj_ret
 )
@@ -2940,13 +2944,13 @@ inline CUDA_CALLABLE void adj_assign_copy(
 
 template <unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_assign_copy(
-    mat_t<Rows, Cols, Type>& m,
+    mat_t<Rows, Cols, Type>& /*m*/,
     int row,
     slice_t col_slice,
-    vec_t<ColSliceLength, Type>& value,
+    vec_t<ColSliceLength, Type>& /*value*/,
     mat_t<Rows, Cols, Type>& adj_m,
-    int& adj_row,
-    slice_t& adj_col_slice,
+    int& /*adj_row*/,
+    slice_t& /*adj_col_slice*/,
     vec_t<ColSliceLength, Type>& adj_value,
     mat_t<Rows, Cols, Type>& adj_ret
 )
@@ -3000,13 +3004,13 @@ inline CUDA_CALLABLE void adj_assign_copy(
 
 template <unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_assign_copy(
-    mat_t<Rows, Cols, Type>& m,
+    mat_t<Rows, Cols, Type>& /*m*/,
     slice_t row_slice,
     slice_t col_slice,
-    mat_t<RowSliceLength, ColSliceLength, Type>& value,
+    mat_t<RowSliceLength, ColSliceLength, Type>& /*value*/,
     mat_t<Rows, Cols, Type>& adj_m,
-    slice_t& adj_row_slice,
-    slice_t& adj_col_slice,
+    slice_t& /*adj_row_slice*/,
+    slice_t& /*adj_col_slice*/,
     mat_t<RowSliceLength, ColSliceLength, Type>& adj_value,
     mat_t<Rows, Cols, Type>& adj_ret
 )
@@ -3872,10 +3876,10 @@ inline CUDA_CALLABLE vec_t<3, Type> transform_vector(const mat_t<4, 4, Type>& m,
 
 template <unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_extract(
-    const mat_t<Rows, Cols, Type>& m,
+    const mat_t<Rows, Cols, Type>& /*m*/,
     int row,
     mat_t<Rows, Cols, Type>& adj_m,
-    int adj_row,
+    int /*adj_row*/,
     const vec_t<Cols, Type>& adj_ret
 )
 {
@@ -3896,12 +3900,12 @@ inline CUDA_CALLABLE void adj_extract(
 
 template <unsigned Rows, unsigned Cols, typename Type>
 inline void CUDA_CALLABLE adj_extract(
-    const mat_t<Rows, Cols, Type>& m,
+    const mat_t<Rows, Cols, Type>& /*m*/,
     int row,
     int col,
     mat_t<Rows, Cols, Type>& adj_m,
-    int adj_row,
-    int adj_col,
+    int /*adj_row*/,
+    int /*adj_col*/,
     Type adj_ret
 )
 {
@@ -3928,10 +3932,10 @@ inline void CUDA_CALLABLE adj_extract(
 
 template <unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_extract(
-    const mat_t<Rows, Cols, Type>& m,
+    const mat_t<Rows, Cols, Type>& /*m*/,
     slice_t row_slice,
     mat_t<Rows, Cols, Type>& adj_m,
-    slice_t& adj_row_slice,
+    slice_t& /*adj_row_slice*/,
     const mat_t<RowSliceLength, ColSliceLength, Type>& adj_ret
 )
 {
@@ -3964,12 +3968,12 @@ inline CUDA_CALLABLE void adj_extract(
 
 template <unsigned RowSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_extract(
-    const mat_t<Rows, Cols, Type>& m,
+    const mat_t<Rows, Cols, Type>& /*m*/,
     slice_t row_slice,
     int col,
     mat_t<Rows, Cols, Type>& adj_m,
-    slice_t& adj_row_slice,
-    int adj_col,
+    slice_t& /*adj_row_slice*/,
+    int /*adj_col*/,
     const vec_t<RowSliceLength, Type>& adj_ret
 )
 {
@@ -4005,12 +4009,12 @@ inline CUDA_CALLABLE void adj_extract(
 
 template <unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_extract(
-    const mat_t<Rows, Cols, Type>& m,
+    const mat_t<Rows, Cols, Type>& /*m*/,
     int row,
     slice_t col_slice,
     mat_t<Rows, Cols, Type>& adj_m,
-    int adj_row,
-    slice_t& adj_col_slice,
+    int /*adj_row*/,
+    slice_t& /*adj_col_slice*/,
     const vec_t<ColSliceLength, Type>& adj_ret
 )
 {
@@ -4046,12 +4050,12 @@ inline CUDA_CALLABLE void adj_extract(
 
 template <unsigned RowSliceLength, unsigned ColSliceLength, unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_extract(
-    const mat_t<Rows, Cols, Type>& m,
+    const mat_t<Rows, Cols, Type>& /*m*/,
     slice_t row_slice,
     slice_t col_slice,
     mat_t<Rows, Cols, Type>& adj_m,
-    slice_t& adj_row_slice,
-    slice_t& adj_col_slice,
+    slice_t& /*adj_row_slice*/,
+    slice_t& /*adj_col_slice*/,
     const mat_t<RowSliceLength, ColSliceLength, Type>& adj_ret
 )
 {
@@ -4105,8 +4109,8 @@ inline CUDA_CALLABLE void adj_outer(
 
 template <unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_add(
-    const mat_t<Rows, Cols, Type>& a,
-    const mat_t<Rows, Cols, Type>& b,
+    const mat_t<Rows, Cols, Type>& /*a*/,
+    const mat_t<Rows, Cols, Type>& /*b*/,
     mat_t<Rows, Cols, Type>& adj_a,
     mat_t<Rows, Cols, Type>& adj_b,
     const mat_t<Rows, Cols, Type>& adj_ret
@@ -4122,8 +4126,8 @@ inline CUDA_CALLABLE void adj_add(
 
 template <unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_add(
-    Type a,
-    const mat_t<Rows, Cols, Type>& b,
+    Type /*a*/,
+    const mat_t<Rows, Cols, Type>& /*b*/,
     Type& adj_a,
     mat_t<Rows, Cols, Type>& adj_b,
     const mat_t<Rows, Cols, Type>& adj_ret
@@ -4139,8 +4143,8 @@ inline CUDA_CALLABLE void adj_add(
 
 template <unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_sub(
-    const mat_t<Rows, Cols, Type>& a,
-    const mat_t<Rows, Cols, Type>& b,
+    const mat_t<Rows, Cols, Type>& /*a*/,
+    const mat_t<Rows, Cols, Type>& /*b*/,
     mat_t<Rows, Cols, Type>& adj_a,
     mat_t<Rows, Cols, Type>& adj_b,
     const mat_t<Rows, Cols, Type>& adj_ret
@@ -4156,8 +4160,8 @@ inline CUDA_CALLABLE void adj_sub(
 
 template <unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_sub(
-    Type a,
-    const mat_t<Rows, Cols, Type>& b,
+    Type /*a*/,
+    const mat_t<Rows, Cols, Type>& /*b*/,
     Type& adj_a,
     mat_t<Rows, Cols, Type>& adj_b,
     const mat_t<Rows, Cols, Type>& adj_ret
@@ -4325,14 +4329,15 @@ inline CUDA_CALLABLE void adj_mul(
 }
 
 template <unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void
-adj_transpose(const mat_t<Rows, Cols, Type>& a, mat_t<Rows, Cols, Type>& adj_a, const mat_t<Cols, Rows, Type>& adj_ret)
+inline CUDA_CALLABLE void adj_transpose(
+    const mat_t<Rows, Cols, Type>& /*a*/, mat_t<Rows, Cols, Type>& adj_a, const mat_t<Cols, Rows, Type>& adj_ret
+)
 {
     adj_a += transpose(adj_ret);
 }
 
 template <unsigned Rows, typename Type>
-inline CUDA_CALLABLE void adj_trace(const mat_t<Rows, Rows, Type>& m, mat_t<Rows, Rows, Type>& adj_m, Type adj_ret)
+inline CUDA_CALLABLE void adj_trace(const mat_t<Rows, Rows, Type>& /*m*/, mat_t<Rows, Rows, Type>& adj_m, Type adj_ret)
 {
     for (unsigned i = 0; i < Rows; ++i)
         adj_m.data[i][i] += adj_ret;
@@ -4340,7 +4345,7 @@ inline CUDA_CALLABLE void adj_trace(const mat_t<Rows, Rows, Type>& m, mat_t<Rows
 
 template <unsigned Rows, typename Type>
 inline CUDA_CALLABLE void
-adj_diag(const vec_t<Rows, Type>& d, vec_t<Rows, Type>& adj_d, const mat_t<Rows, Rows, Type>& adj_ret)
+adj_diag(const vec_t<Rows, Type>& /*d*/, vec_t<Rows, Type>& adj_d, const mat_t<Rows, Rows, Type>& adj_ret)
 {
     for (unsigned i = 0; i < Rows; ++i)
         adj_d[i] += adj_ret.data[i][i];
@@ -4348,7 +4353,7 @@ adj_diag(const vec_t<Rows, Type>& d, vec_t<Rows, Type>& adj_d, const mat_t<Rows,
 
 template <unsigned Rows, typename Type>
 inline CUDA_CALLABLE void
-adj_get_diag(const mat_t<Rows, Rows, Type>& m, mat_t<Rows, Rows, Type>& adj_m, const vec_t<Rows, Type>& adj_ret)
+adj_get_diag(const mat_t<Rows, Rows, Type>& /*m*/, mat_t<Rows, Rows, Type>& adj_m, const vec_t<Rows, Type>& adj_ret)
 {
     for (unsigned i = 0; i < Rows; ++i)
         adj_m.data[i][i] += adj_ret[i];
@@ -4462,7 +4467,7 @@ inline CUDA_CALLABLE void adj_determinant(const mat_t<4, 4, Type>& m, mat_t<4, 4
 
 template <unsigned Rows, typename Type>
 inline CUDA_CALLABLE void adj_inverse(
-    const mat_t<Rows, Rows, Type>& m,
+    const mat_t<Rows, Rows, Type>& /*m*/,
     mat_t<Rows, Rows, Type>& ret,
     mat_t<Rows, Rows, Type>& adj_m,
     const mat_t<Rows, Rows, Type>& adj_ret
@@ -4524,7 +4529,7 @@ inline CUDA_CALLABLE void adj_transform_vector(
 }
 
 template <typename Type>
-inline CUDA_CALLABLE void adj_skew(const vec_t<3, Type>& a, vec_t<3, Type>& adj_a, const mat_t<3, 3, Type>& adj_ret)
+inline CUDA_CALLABLE void adj_skew(const vec_t<3, Type>& /*a*/, vec_t<3, Type>& adj_a, const mat_t<3, 3, Type>& adj_ret)
 {
     adj_a[0] += adj_ret.data[2][1] - adj_ret.data[1][2];
     adj_a[1] += adj_ret.data[0][2] - adj_ret.data[2][0];
@@ -4546,7 +4551,7 @@ inline CUDA_CALLABLE void adj_cw_mul(
 
 template <unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_cw_div(
-    const mat_t<Rows, Cols, Type>& a,
+    const mat_t<Rows, Cols, Type>& /*a*/,
     const mat_t<Rows, Cols, Type>& b,
     mat_t<Rows, Cols, Type>& ret,
     mat_t<Rows, Cols, Type>& adj_a,
@@ -4587,7 +4592,7 @@ inline CUDA_CALLABLE void adj_cw_div(
 
 // adjoint for the constant constructor:
 template <unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_mat_t(Type s, Type& adj_s, const mat_t<Rows, Cols, Type>& adj_ret)
+inline CUDA_CALLABLE void adj_mat_t(Type /*s*/, Type& adj_s, const mat_t<Rows, Cols, Type>& adj_ret)
 {
     for (unsigned i = 0; i < Rows; ++i) {
         for (unsigned j = 0; j < Cols; ++j) {
@@ -4599,7 +4604,7 @@ inline CUDA_CALLABLE void adj_mat_t(Type s, Type& adj_s, const mat_t<Rows, Cols,
 // adjoint for the casting constructor:
 template <unsigned Rows, unsigned Cols, typename Type, typename OtherType>
 inline CUDA_CALLABLE void adj_mat_t(
-    const mat_t<Rows, Cols, OtherType>& other,
+    const mat_t<Rows, Cols, OtherType>& /*other*/,
     mat_t<Rows, Cols, OtherType>& adj_other,
     const mat_t<Rows, Cols, Type>& adj_ret
 )
@@ -4614,7 +4619,7 @@ inline CUDA_CALLABLE void adj_mat_t(
 // adjoint for the initializer_array scalar constructor:
 template <unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_mat_t(
-    const initializer_array<Rows * Cols, Type>& cmps,
+    const initializer_array<Rows * Cols, Type>& /*cmps*/,
     const initializer_array<Rows * Cols, Type*>& adj_cmps,
     const mat_t<Rows, Cols, Type>& adj_ret
 )
@@ -4628,10 +4633,10 @@ inline CUDA_CALLABLE void adj_mat_t(
 
 template <typename Type>
 inline CUDA_CALLABLE void adj_mat_t(
-    Type m00,
-    Type m01,
-    Type m10,
-    Type m11,
+    Type /*m00*/,
+    Type /*m01*/,
+    Type /*m10*/,
+    Type /*m11*/,
     Type& adj_m00,
     Type& adj_m01,
     Type& adj_m10,
@@ -4647,15 +4652,15 @@ inline CUDA_CALLABLE void adj_mat_t(
 
 template <typename Type>
 inline CUDA_CALLABLE void adj_mat_t(
-    Type m00,
-    Type m01,
-    Type m02,
-    Type m10,
-    Type m11,
-    Type m12,
-    Type m20,
-    Type m21,
-    Type m22,
+    Type /*m00*/,
+    Type /*m01*/,
+    Type /*m02*/,
+    Type /*m10*/,
+    Type /*m11*/,
+    Type /*m12*/,
+    Type /*m20*/,
+    Type /*m21*/,
+    Type /*m22*/,
     Type& a00,
     Type& a01,
     Type& a02,
@@ -4682,22 +4687,22 @@ inline CUDA_CALLABLE void adj_mat_t(
 
 template <typename Type>
 inline CUDA_CALLABLE void adj_mat_t(
-    Type m00,
-    Type m01,
-    Type m02,
-    Type m03,
-    Type m10,
-    Type m11,
-    Type m12,
-    Type m13,
-    Type m20,
-    Type m21,
-    Type m22,
-    Type m23,
-    Type m30,
-    Type m31,
-    Type m32,
-    Type m33,
+    Type /*m00*/,
+    Type /*m01*/,
+    Type /*m02*/,
+    Type /*m03*/,
+    Type /*m10*/,
+    Type /*m11*/,
+    Type /*m12*/,
+    Type /*m13*/,
+    Type /*m20*/,
+    Type /*m21*/,
+    Type /*m22*/,
+    Type /*m23*/,
+    Type /*m30*/,
+    Type /*m31*/,
+    Type /*m32*/,
+    Type /*m33*/,
     Type& a00,
     Type& a01,
     Type& a02,
@@ -4742,7 +4747,7 @@ inline CUDA_CALLABLE void adj_mat_t(
 // adjoint for the initializer_array vector constructor:
 template <unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_mat_t(
-    const initializer_array<Cols, vec_t<Rows, Type>>& cmps,
+    const initializer_array<Cols, vec_t<Rows, Type>>& /*cmps*/,
     const initializer_array<Cols, vec_t<Rows, Type>*>& adj_cmps,
     const mat_t<Rows, Cols, Type>& adj_ret
 )
@@ -4756,8 +4761,8 @@ inline CUDA_CALLABLE void adj_mat_t(
 
 template <typename Type>
 inline CUDA_CALLABLE void adj_mat_t(
-    const vec_t<2, Type>& cmps0,
-    const vec_t<2, Type>& cmps1,
+    const vec_t<2, Type>& /*cmps0*/,
+    const vec_t<2, Type>& /*cmps1*/,
     vec_t<2, Type>& adj_cmps0,
     vec_t<2, Type>& adj_cmps1,
     const mat_t<2, 2, Type>& adj_ret
@@ -4771,9 +4776,9 @@ inline CUDA_CALLABLE void adj_mat_t(
 
 template <typename Type>
 inline CUDA_CALLABLE void adj_mat_t(
-    const vec_t<3, Type>& cmps0,
-    const vec_t<3, Type>& cmps1,
-    const vec_t<3, Type>& cmps2,
+    const vec_t<3, Type>& /*cmps0*/,
+    const vec_t<3, Type>& /*cmps1*/,
+    const vec_t<3, Type>& /*cmps2*/,
     vec_t<3, Type>& adj_cmps0,
     vec_t<3, Type>& adj_cmps1,
     vec_t<3, Type>& adj_cmps2,
@@ -4789,10 +4794,10 @@ inline CUDA_CALLABLE void adj_mat_t(
 
 template <typename Type>
 inline CUDA_CALLABLE void adj_mat_t(
-    const vec_t<4, Type>& cmps0,
-    const vec_t<4, Type>& cmps1,
-    const vec_t<4, Type>& cmps2,
-    const vec_t<4, Type>& cmps3,
+    const vec_t<4, Type>& /*cmps0*/,
+    const vec_t<4, Type>& /*cmps1*/,
+    const vec_t<4, Type>& /*cmps2*/,
+    const vec_t<4, Type>& /*cmps3*/,
     vec_t<4, Type>& adj_cmps0,
     vec_t<4, Type>& adj_cmps1,
     vec_t<4, Type>& adj_cmps2,
@@ -4810,8 +4815,8 @@ inline CUDA_CALLABLE void adj_mat_t(
 
 template <typename Type>
 inline CUDA_CALLABLE void adj_matrix_from_cols(
-    const vec_t<2, Type>& c0,
-    const vec_t<2, Type>& c1,
+    const vec_t<2, Type>& /*c0*/,
+    const vec_t<2, Type>& /*c1*/,
     vec_t<2, Type>& adj_c0,
     vec_t<2, Type>& adj_c1,
     const mat_t<2, 2, Type>& adj_ret
@@ -4825,9 +4830,9 @@ inline CUDA_CALLABLE void adj_matrix_from_cols(
 
 template <typename Type>
 inline CUDA_CALLABLE void adj_matrix_from_cols(
-    const vec_t<3, Type>& c0,
-    const vec_t<3, Type>& c1,
-    const vec_t<3, Type>& c2,
+    const vec_t<3, Type>& /*c0*/,
+    const vec_t<3, Type>& /*c1*/,
+    const vec_t<3, Type>& /*c2*/,
     vec_t<3, Type>& adj_c0,
     vec_t<3, Type>& adj_c1,
     vec_t<3, Type>& adj_c2,
@@ -4843,10 +4848,10 @@ inline CUDA_CALLABLE void adj_matrix_from_cols(
 
 template <typename Type>
 inline CUDA_CALLABLE void adj_matrix_from_cols(
-    const vec_t<4, Type>& c0,
-    const vec_t<4, Type>& c1,
-    const vec_t<4, Type>& c2,
-    const vec_t<4, Type>& c3,
+    const vec_t<4, Type>& /*c0*/,
+    const vec_t<4, Type>& /*c1*/,
+    const vec_t<4, Type>& /*c2*/,
+    const vec_t<4, Type>& /*c3*/,
     vec_t<4, Type>& adj_c0,
     vec_t<4, Type>& adj_c1,
     vec_t<4, Type>& adj_c2,
@@ -4864,7 +4869,7 @@ inline CUDA_CALLABLE void adj_matrix_from_cols(
 
 template <unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_matrix_from_cols(
-    const initializer_array<Cols, vec_t<Rows, Type>>& l,
+    const initializer_array<Cols, vec_t<Rows, Type>>& /*l*/,
     const initializer_array<Cols, vec_t<Rows, Type>*>& adj_l,
     const mat_t<Rows, Cols, Type>& adj_ret
 )
@@ -4878,8 +4883,8 @@ inline CUDA_CALLABLE void adj_matrix_from_cols(
 
 template <typename Type>
 inline CUDA_CALLABLE void adj_matrix_from_rows(
-    const vec_t<2, Type>& r0,
-    const vec_t<2, Type>& r1,
+    const vec_t<2, Type>& /*r0*/,
+    const vec_t<2, Type>& /*r1*/,
     vec_t<2, Type>& adj_r0,
     vec_t<2, Type>& adj_r1,
     const mat_t<2, 2, Type>& adj_ret
@@ -4893,9 +4898,9 @@ inline CUDA_CALLABLE void adj_matrix_from_rows(
 
 template <typename Type>
 inline CUDA_CALLABLE void adj_matrix_from_rows(
-    const vec_t<3, Type>& c0,
-    const vec_t<3, Type>& c1,
-    const vec_t<3, Type>& c2,
+    const vec_t<3, Type>& /*c0*/,
+    const vec_t<3, Type>& /*c1*/,
+    const vec_t<3, Type>& /*c2*/,
     vec_t<3, Type>& adj_c0,
     vec_t<3, Type>& adj_c1,
     vec_t<3, Type>& adj_c2,
@@ -4911,10 +4916,10 @@ inline CUDA_CALLABLE void adj_matrix_from_rows(
 
 template <typename Type>
 inline CUDA_CALLABLE void adj_matrix_from_rows(
-    const vec_t<4, Type>& c0,
-    const vec_t<4, Type>& c1,
-    const vec_t<4, Type>& c2,
-    const vec_t<4, Type>& c3,
+    const vec_t<4, Type>& /*c0*/,
+    const vec_t<4, Type>& /*c1*/,
+    const vec_t<4, Type>& /*c2*/,
+    const vec_t<4, Type>& /*c3*/,
     vec_t<4, Type>& adj_c0,
     vec_t<4, Type>& adj_c1,
     vec_t<4, Type>& adj_c2,
@@ -4932,7 +4937,7 @@ inline CUDA_CALLABLE void adj_matrix_from_rows(
 
 template <unsigned Rows, unsigned Cols, typename Type>
 inline CUDA_CALLABLE void adj_matrix_from_rows(
-    const initializer_array<Rows, vec_t<Cols, Type>>& l,
+    const initializer_array<Rows, vec_t<Cols, Type>>& /*l*/,
     const initializer_array<Rows, vec_t<Cols, Type>*>& adj_l,
     const mat_t<Rows, Cols, Type>& adj_ret
 )
@@ -4969,135 +4974,135 @@ CUDA_CALLABLE inline void adj_lerp(
 
 // for integral types we do not accumulate gradients
 template <unsigned Rows, unsigned Cols>
-CUDA_CALLABLE inline void adj_atomic_add(mat_t<Rows, Cols, int8>* buf, const mat_t<Rows, Cols, int8>& value)
+CUDA_CALLABLE inline void adj_atomic_add(mat_t<Rows, Cols, int8>* /*buf*/, const mat_t<Rows, Cols, int8>& /*value*/)
 {
 }
 template <unsigned Rows, unsigned Cols>
-CUDA_CALLABLE inline void adj_atomic_add(mat_t<Rows, Cols, uint8>* buf, const mat_t<Rows, Cols, uint8>& value)
+CUDA_CALLABLE inline void adj_atomic_add(mat_t<Rows, Cols, uint8>* /*buf*/, const mat_t<Rows, Cols, uint8>& /*value*/)
 {
 }
 template <unsigned Rows, unsigned Cols>
-CUDA_CALLABLE inline void adj_atomic_add(mat_t<Rows, Cols, int16>* buf, const mat_t<Rows, Cols, int16>& value)
+CUDA_CALLABLE inline void adj_atomic_add(mat_t<Rows, Cols, int16>* /*buf*/, const mat_t<Rows, Cols, int16>& /*value*/)
 {
 }
 template <unsigned Rows, unsigned Cols>
-CUDA_CALLABLE inline void adj_atomic_add(mat_t<Rows, Cols, uint16>* buf, const mat_t<Rows, Cols, uint16>& value)
+CUDA_CALLABLE inline void adj_atomic_add(mat_t<Rows, Cols, uint16>* /*buf*/, const mat_t<Rows, Cols, uint16>& /*value*/)
 {
 }
 template <unsigned Rows, unsigned Cols>
-CUDA_CALLABLE inline void adj_atomic_add(mat_t<Rows, Cols, int32>* buf, const mat_t<Rows, Cols, int32>& value)
+CUDA_CALLABLE inline void adj_atomic_add(mat_t<Rows, Cols, int32>* /*buf*/, const mat_t<Rows, Cols, int32>& /*value*/)
 {
 }
 template <unsigned Rows, unsigned Cols>
-CUDA_CALLABLE inline void adj_atomic_add(mat_t<Rows, Cols, uint32>* buf, const mat_t<Rows, Cols, uint32>& value)
+CUDA_CALLABLE inline void adj_atomic_add(mat_t<Rows, Cols, uint32>* /*buf*/, const mat_t<Rows, Cols, uint32>& /*value*/)
 {
 }
 template <unsigned Rows, unsigned Cols>
-CUDA_CALLABLE inline void adj_atomic_add(mat_t<Rows, Cols, int64>* buf, const mat_t<Rows, Cols, int64>& value)
+CUDA_CALLABLE inline void adj_atomic_add(mat_t<Rows, Cols, int64>* /*buf*/, const mat_t<Rows, Cols, int64>& /*value*/)
 {
 }
 template <unsigned Rows, unsigned Cols>
-CUDA_CALLABLE inline void adj_atomic_add(mat_t<Rows, Cols, uint64>* buf, const mat_t<Rows, Cols, uint64>& value)
+CUDA_CALLABLE inline void adj_atomic_add(mat_t<Rows, Cols, uint64>* /*buf*/, const mat_t<Rows, Cols, uint64>& /*value*/)
 {
 }
 
 // for bitwise operations we do not accumulate gradients
 template <unsigned Rows, unsigned Cols>
-CUDA_CALLABLE inline void adj_atomic_and(mat_t<Rows, Cols, int8>* buf, const mat_t<Rows, Cols, int8>& value)
+CUDA_CALLABLE inline void adj_atomic_and(mat_t<Rows, Cols, int8>* /*buf*/, const mat_t<Rows, Cols, int8>& /*value*/)
 {
 }
 template <unsigned Rows, unsigned Cols>
-CUDA_CALLABLE inline void adj_atomic_and(mat_t<Rows, Cols, uint8>* buf, const mat_t<Rows, Cols, uint8>& value)
+CUDA_CALLABLE inline void adj_atomic_and(mat_t<Rows, Cols, uint8>* /*buf*/, const mat_t<Rows, Cols, uint8>& /*value*/)
 {
 }
 template <unsigned Rows, unsigned Cols>
-CUDA_CALLABLE inline void adj_atomic_and(mat_t<Rows, Cols, int16>* buf, const mat_t<Rows, Cols, int16>& value)
+CUDA_CALLABLE inline void adj_atomic_and(mat_t<Rows, Cols, int16>* /*buf*/, const mat_t<Rows, Cols, int16>& /*value*/)
 {
 }
 template <unsigned Rows, unsigned Cols>
-CUDA_CALLABLE inline void adj_atomic_and(mat_t<Rows, Cols, uint16>* buf, const mat_t<Rows, Cols, uint16>& value)
+CUDA_CALLABLE inline void adj_atomic_and(mat_t<Rows, Cols, uint16>* /*buf*/, const mat_t<Rows, Cols, uint16>& /*value*/)
 {
 }
 template <unsigned Rows, unsigned Cols>
-CUDA_CALLABLE inline void adj_atomic_and(mat_t<Rows, Cols, int32>* buf, const mat_t<Rows, Cols, int32>& value)
+CUDA_CALLABLE inline void adj_atomic_and(mat_t<Rows, Cols, int32>* /*buf*/, const mat_t<Rows, Cols, int32>& /*value*/)
 {
 }
 template <unsigned Rows, unsigned Cols>
-CUDA_CALLABLE inline void adj_atomic_and(mat_t<Rows, Cols, uint32>* buf, const mat_t<Rows, Cols, uint32>& value)
+CUDA_CALLABLE inline void adj_atomic_and(mat_t<Rows, Cols, uint32>* /*buf*/, const mat_t<Rows, Cols, uint32>& /*value*/)
 {
 }
 template <unsigned Rows, unsigned Cols>
-CUDA_CALLABLE inline void adj_atomic_and(mat_t<Rows, Cols, int64>* buf, const mat_t<Rows, Cols, int64>& value)
+CUDA_CALLABLE inline void adj_atomic_and(mat_t<Rows, Cols, int64>* /*buf*/, const mat_t<Rows, Cols, int64>& /*value*/)
 {
 }
 template <unsigned Rows, unsigned Cols>
-CUDA_CALLABLE inline void adj_atomic_and(mat_t<Rows, Cols, uint64>* buf, const mat_t<Rows, Cols, uint64>& value)
-{
-}
-
-template <unsigned Rows, unsigned Cols>
-CUDA_CALLABLE inline void adj_atomic_or(mat_t<Rows, Cols, int8>* buf, const mat_t<Rows, Cols, int8>& value)
-{
-}
-template <unsigned Rows, unsigned Cols>
-CUDA_CALLABLE inline void adj_atomic_or(mat_t<Rows, Cols, uint8>* buf, const mat_t<Rows, Cols, uint8>& value)
-{
-}
-template <unsigned Rows, unsigned Cols>
-CUDA_CALLABLE inline void adj_atomic_or(mat_t<Rows, Cols, int16>* buf, const mat_t<Rows, Cols, int16>& value)
-{
-}
-template <unsigned Rows, unsigned Cols>
-CUDA_CALLABLE inline void adj_atomic_or(mat_t<Rows, Cols, uint16>* buf, const mat_t<Rows, Cols, uint16>& value)
-{
-}
-template <unsigned Rows, unsigned Cols>
-CUDA_CALLABLE inline void adj_atomic_or(mat_t<Rows, Cols, int32>* buf, const mat_t<Rows, Cols, int32>& value)
-{
-}
-template <unsigned Rows, unsigned Cols>
-CUDA_CALLABLE inline void adj_atomic_or(mat_t<Rows, Cols, uint32>* buf, const mat_t<Rows, Cols, uint32>& value)
-{
-}
-template <unsigned Rows, unsigned Cols>
-CUDA_CALLABLE inline void adj_atomic_or(mat_t<Rows, Cols, int64>* buf, const mat_t<Rows, Cols, int64>& value)
-{
-}
-template <unsigned Rows, unsigned Cols>
-CUDA_CALLABLE inline void adj_atomic_or(mat_t<Rows, Cols, uint64>* buf, const mat_t<Rows, Cols, uint64>& value)
+CUDA_CALLABLE inline void adj_atomic_and(mat_t<Rows, Cols, uint64>* /*buf*/, const mat_t<Rows, Cols, uint64>& /*value*/)
 {
 }
 
 template <unsigned Rows, unsigned Cols>
-CUDA_CALLABLE inline void adj_atomic_xor(mat_t<Rows, Cols, int8>* buf, const mat_t<Rows, Cols, int8>& value)
+CUDA_CALLABLE inline void adj_atomic_or(mat_t<Rows, Cols, int8>* /*buf*/, const mat_t<Rows, Cols, int8>& /*value*/)
 {
 }
 template <unsigned Rows, unsigned Cols>
-CUDA_CALLABLE inline void adj_atomic_xor(mat_t<Rows, Cols, uint8>* buf, const mat_t<Rows, Cols, uint8>& value)
+CUDA_CALLABLE inline void adj_atomic_or(mat_t<Rows, Cols, uint8>* /*buf*/, const mat_t<Rows, Cols, uint8>& /*value*/)
 {
 }
 template <unsigned Rows, unsigned Cols>
-CUDA_CALLABLE inline void adj_atomic_xor(mat_t<Rows, Cols, int16>* buf, const mat_t<Rows, Cols, int16>& value)
+CUDA_CALLABLE inline void adj_atomic_or(mat_t<Rows, Cols, int16>* /*buf*/, const mat_t<Rows, Cols, int16>& /*value*/)
 {
 }
 template <unsigned Rows, unsigned Cols>
-CUDA_CALLABLE inline void adj_atomic_xor(mat_t<Rows, Cols, uint16>* buf, const mat_t<Rows, Cols, uint16>& value)
+CUDA_CALLABLE inline void adj_atomic_or(mat_t<Rows, Cols, uint16>* /*buf*/, const mat_t<Rows, Cols, uint16>& /*value*/)
 {
 }
 template <unsigned Rows, unsigned Cols>
-CUDA_CALLABLE inline void adj_atomic_xor(mat_t<Rows, Cols, int32>* buf, const mat_t<Rows, Cols, int32>& value)
+CUDA_CALLABLE inline void adj_atomic_or(mat_t<Rows, Cols, int32>* /*buf*/, const mat_t<Rows, Cols, int32>& /*value*/)
 {
 }
 template <unsigned Rows, unsigned Cols>
-CUDA_CALLABLE inline void adj_atomic_xor(mat_t<Rows, Cols, uint32>* buf, const mat_t<Rows, Cols, uint32>& value)
+CUDA_CALLABLE inline void adj_atomic_or(mat_t<Rows, Cols, uint32>* /*buf*/, const mat_t<Rows, Cols, uint32>& /*value*/)
 {
 }
 template <unsigned Rows, unsigned Cols>
-CUDA_CALLABLE inline void adj_atomic_xor(mat_t<Rows, Cols, int64>* buf, const mat_t<Rows, Cols, int64>& value)
+CUDA_CALLABLE inline void adj_atomic_or(mat_t<Rows, Cols, int64>* /*buf*/, const mat_t<Rows, Cols, int64>& /*value*/)
 {
 }
 template <unsigned Rows, unsigned Cols>
-CUDA_CALLABLE inline void adj_atomic_xor(mat_t<Rows, Cols, uint64>* buf, const mat_t<Rows, Cols, uint64>& value)
+CUDA_CALLABLE inline void adj_atomic_or(mat_t<Rows, Cols, uint64>* /*buf*/, const mat_t<Rows, Cols, uint64>& /*value*/)
+{
+}
+
+template <unsigned Rows, unsigned Cols>
+CUDA_CALLABLE inline void adj_atomic_xor(mat_t<Rows, Cols, int8>* /*buf*/, const mat_t<Rows, Cols, int8>& /*value*/)
+{
+}
+template <unsigned Rows, unsigned Cols>
+CUDA_CALLABLE inline void adj_atomic_xor(mat_t<Rows, Cols, uint8>* /*buf*/, const mat_t<Rows, Cols, uint8>& /*value*/)
+{
+}
+template <unsigned Rows, unsigned Cols>
+CUDA_CALLABLE inline void adj_atomic_xor(mat_t<Rows, Cols, int16>* /*buf*/, const mat_t<Rows, Cols, int16>& /*value*/)
+{
+}
+template <unsigned Rows, unsigned Cols>
+CUDA_CALLABLE inline void adj_atomic_xor(mat_t<Rows, Cols, uint16>* /*buf*/, const mat_t<Rows, Cols, uint16>& /*value*/)
+{
+}
+template <unsigned Rows, unsigned Cols>
+CUDA_CALLABLE inline void adj_atomic_xor(mat_t<Rows, Cols, int32>* /*buf*/, const mat_t<Rows, Cols, int32>& /*value*/)
+{
+}
+template <unsigned Rows, unsigned Cols>
+CUDA_CALLABLE inline void adj_atomic_xor(mat_t<Rows, Cols, uint32>* /*buf*/, const mat_t<Rows, Cols, uint32>& /*value*/)
+{
+}
+template <unsigned Rows, unsigned Cols>
+CUDA_CALLABLE inline void adj_atomic_xor(mat_t<Rows, Cols, int64>* /*buf*/, const mat_t<Rows, Cols, int64>& /*value*/)
+{
+}
+template <unsigned Rows, unsigned Cols>
+CUDA_CALLABLE inline void adj_atomic_xor(mat_t<Rows, Cols, uint64>* /*buf*/, const mat_t<Rows, Cols, uint64>& /*value*/)
 {
 }
 
@@ -5117,17 +5122,17 @@ using mat22d = mat_t<2, 2, double>;
 using mat33d = mat_t<3, 3, double>;
 using mat44d = mat_t<4, 4, double>;
 
-inline CUDA_CALLABLE void adj_mat22(vec2 c0, vec2 c1, vec2& a0, vec2& a1, const mat22& adj_ret)
+inline CUDA_CALLABLE void adj_mat22(vec2 /*c0*/, vec2 /*c1*/, vec2& a0, vec2& a1, const mat22& adj_ret)
 {
     a0 += adj_ret.get_col(0);
     a1 += adj_ret.get_col(1);
 }
 
 inline CUDA_CALLABLE void adj_mat22(
-    float m00,
-    float m01,
-    float m10,
-    float m11,
+    float /*m00*/,
+    float /*m01*/,
+    float /*m10*/,
+    float /*m11*/,
     float& adj_m00,
     float& adj_m01,
     float& adj_m10,
@@ -5141,7 +5146,8 @@ inline CUDA_CALLABLE void adj_mat22(
     adj_m11 += adj_ret.data[1][1];
 }
 
-inline CUDA_CALLABLE void adj_mat33(vec3 c0, vec3 c1, vec3 c2, vec3& a0, vec3& a1, vec3& a2, const mat33& adj_ret)
+inline CUDA_CALLABLE void
+adj_mat33(vec3 /*c0*/, vec3 /*c1*/, vec3 /*c2*/, vec3& a0, vec3& a1, vec3& a2, const mat33& adj_ret)
 {
     // column constructor
     a0 += adj_ret.get_col(0);
@@ -5150,15 +5156,15 @@ inline CUDA_CALLABLE void adj_mat33(vec3 c0, vec3 c1, vec3 c2, vec3& a0, vec3& a
 }
 
 inline CUDA_CALLABLE void adj_mat33(
-    float m00,
-    float m01,
-    float m02,
-    float m10,
-    float m11,
-    float m12,
-    float m20,
-    float m21,
-    float m22,
+    float /*m00*/,
+    float /*m01*/,
+    float /*m02*/,
+    float /*m10*/,
+    float /*m11*/,
+    float /*m12*/,
+    float /*m20*/,
+    float /*m21*/,
+    float /*m22*/,
     float& a00,
     float& a01,
     float& a02,
@@ -5182,8 +5188,9 @@ inline CUDA_CALLABLE void adj_mat33(
     a22 += adj_ret.data[2][2];
 }
 
-inline CUDA_CALLABLE void
-adj_mat44(vec4 c0, vec4 c1, vec4 c2, vec4 c3, vec4& a0, vec4& a1, vec4& a2, vec4& a3, const mat44& adj_ret)
+inline CUDA_CALLABLE void adj_mat44(
+    vec4 /*c0*/, vec4 /*c1*/, vec4 /*c2*/, vec4 /*c3*/, vec4& a0, vec4& a1, vec4& a2, vec4& a3, const mat44& adj_ret
+)
 {
     // column constructor
     a0 += adj_ret.get_col(0);
@@ -5193,22 +5200,22 @@ adj_mat44(vec4 c0, vec4 c1, vec4 c2, vec4 c3, vec4& a0, vec4& a1, vec4& a2, vec4
 }
 
 inline CUDA_CALLABLE void adj_mat44(
-    float m00,
-    float m01,
-    float m02,
-    float m03,
-    float m10,
-    float m11,
-    float m12,
-    float m13,
-    float m20,
-    float m21,
-    float m22,
-    float m23,
-    float m30,
-    float m31,
-    float m32,
-    float m33,
+    float /*m00*/,
+    float /*m01*/,
+    float /*m02*/,
+    float /*m03*/,
+    float /*m10*/,
+    float /*m11*/,
+    float /*m12*/,
+    float /*m13*/,
+    float /*m20*/,
+    float /*m21*/,
+    float /*m22*/,
+    float /*m23*/,
+    float /*m30*/,
+    float /*m31*/,
+    float /*m32*/,
+    float /*m33*/,
     float& a00,
     float& a01,
     float& a02,
@@ -5249,7 +5256,8 @@ inline CUDA_CALLABLE void adj_mat44(
     a33 += adj_ret.data[3][3];
 }
 
-template <unsigned Rows, unsigned Cols, typename Type> CUDA_CALLABLE inline int len(const mat_t<Rows, Cols, Type>& x)
+template <unsigned Rows, unsigned Cols, typename Type>
+CUDA_CALLABLE inline int len(const mat_t<Rows, Cols, Type>& /*x*/)
 {
     return Rows;
 }

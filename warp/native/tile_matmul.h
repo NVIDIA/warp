@@ -351,7 +351,14 @@ template <
     typename Alpha,
     typename Beta>
 CUDA_CALLABLE TileC& tile_matmul(
-    Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, TileA& A, TileB& B, TileC& C, Alpha& alpha, Beta& beta
+    [[maybe_unused]] Fwd fun_forward,
+    AdjA /*fun_backward_A*/,
+    AdjB /*fun_backward_B*/,
+    TileA& A,
+    TileB& B,
+    TileC& C,
+    Alpha& alpha,
+    Beta& beta
 )
 {
     using ShapeA = typename TileA::Layout::Shape;
@@ -407,7 +414,14 @@ template <
     typename Alpha,
     typename Beta>
 CUDA_CALLABLE TileC& tile_matmul_acc(
-    Fwd fun_forward, AdjA fun_backward_A, AdjB fun_backward_B, TileA& A, TileB& B, TileC& C, Alpha& alpha, Beta& beta
+    [[maybe_unused]] Fwd fun_forward,
+    AdjA /*fun_backward_A*/,
+    AdjB /*fun_backward_B*/,
+    TileA& A,
+    TileB& B,
+    TileC& C,
+    Alpha& alpha,
+    Beta& beta
 )
 {
     using ShapeA = typename TileA::Layout::Shape;
@@ -466,22 +480,22 @@ template <
     typename AdjAlpha,
     typename AdjBeta>
 CUDA_CALLABLE void adj_tile_matmul_acc(
-    Fwd fun_forward,
-    AdjA fun_backward_A,
-    AdjB fun_backward_B,
+    Fwd /*fun_forward*/,
+    [[maybe_unused]] AdjA fun_backward_A,
+    [[maybe_unused]] AdjB fun_backward_B,
     TileA& A,
     TileB& B,
-    TileC& C,
+    TileC& /*C*/,
     Alpha& alpha,
     Beta& beta,
-    Fwd adj_fun_forward,
-    AdjA adj_fun_backward_A,
-    AdjB adj_fun_backward_B,
+    Fwd /*adj_fun_forward*/,
+    AdjA /*adj_fun_backward_A*/,
+    AdjB /*adj_fun_backward_B*/,
     TileA& adj_A,
     TileB& adj_B,
     TileC& adj_C,
-    AdjAlpha& adj_alpha,
-    AdjBeta& adj_beta
+    AdjAlpha& /*adj_alpha*/,
+    AdjBeta& /*adj_beta*/
 )
 {
     using T_A = typename TileA::Type;
@@ -551,23 +565,23 @@ template <
     typename AdjAlpha,
     typename AdjBeta>
 CUDA_CALLABLE void adj_tile_matmul(
-    Fwd fun_forward,
-    AdjA fun_backward_A,
-    AdjB fun_backward_B,
+    Fwd /*fun_forward*/,
+    [[maybe_unused]] AdjA fun_backward_A,
+    [[maybe_unused]] AdjB fun_backward_B,
     TileA& A,
     TileB& B,
-    TileC& C,
+    TileC& /*C*/,
     Alpha& alpha,
-    Beta& beta,
-    Fwd adj_fun_forward,
-    AdjA adj_fun_backward_A,
-    AdjB adj_fun_backward_B,
+    Beta& /*beta*/,
+    Fwd /*adj_fun_forward*/,
+    AdjA /*adj_fun_backward_A*/,
+    AdjB /*adj_fun_backward_B*/,
     TileA& adj_A,
     TileB& adj_B,
     TileC& adj_C,
-    AdjAlpha& adj_alpha,
-    AdjBeta& adj_beta,
-    TileC& adj_ret
+    AdjAlpha& /*adj_alpha*/,
+    AdjBeta& /*adj_beta*/,
+    TileC& /*adj_ret*/
 )
 {
     using T_A = typename TileA::Type;

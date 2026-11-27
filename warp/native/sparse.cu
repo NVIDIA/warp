@@ -286,7 +286,7 @@ template <typename T> struct BsrBlockIsNotZero {
 };
 
 template <> struct BsrBlockIsNotZero<void> {
-    BsrBlockIsNotZero(int block_size, const void* values, const uint64_t zero_mask) { }
+    BsrBlockIsNotZero(int /*block_size*/, const void* /*values*/, const uint64_t /*zero_mask*/) { }
 
     CUDA_CALLABLE_DEVICE bool operator()(int block) const { return true; }
 };

@@ -4833,7 +4833,7 @@ static bool nvrtc_device_debug(bool debug)
 static void append_common_nvrtc_compile_options(
     std::vector<const char*>& options,
     bool use_ptx,
-    int arch,
+    [[maybe_unused]] int arch,  // only used for some CUDA versions
     bool debug,
     int optimization_level,
     bool verify_fp,
@@ -4946,7 +4946,7 @@ size_t wp_cuda_compile_program(
     bool compile_time_trace,
     bool precompiled_headers,
     const char* output_path,
-    const char* pch_dir,
+    [[maybe_unused]] const char* pch_dir,  // only used for CUDA 12.8-12.x
     size_t num_ltoirs,
     char** ltoirs,
     size_t* ltoir_sizes,

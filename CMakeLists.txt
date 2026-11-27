@@ -122,7 +122,6 @@ function(warp_add_common_cxx_options target)
             "$<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CXX_COMPILER_ID:MSVC>>,$<BOOL:${WARP_WARNINGS_AS_ERRORS}>>:-Werror>"
             "$<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CXX_COMPILER_ID:MSVC>>>:-Wall>"
             "$<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CXX_COMPILER_ID:MSVC>>>:-Wextra>"
-            "$<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CXX_COMPILER_ID:MSVC>>>:-Wno-unused-parameter>"
             "$<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CXX_COMPILER_ID:MSVC>>>:-Wuninitialized>"
             "$<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CXX_COMPILER_ID:MSVC>>>:-fno-rtti>"
             "$<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CXX_COMPILER_ID:MSVC>>>:-fvisibility=hidden>"
@@ -310,7 +309,7 @@ if(WARP_ENABLE_CUDA)
             "$<$<COMPILE_LANGUAGE:CUDA>:--extended-lambda>"
             "$<$<COMPILE_LANGUAGE:CUDA>:-diag-suppress=221>"
             # Host-side warnings for the GCC/Clang host compiler (MSVC is left at its defaults).
-            "$<$<AND:$<COMPILE_LANG_AND_ID:CUDA,NVIDIA>,$<NOT:$<PLATFORM_ID:Windows>>>:-Xcompiler=-Wall,-Wextra,-Wno-unused-parameter>"
+            "$<$<AND:$<COMPILE_LANG_AND_ID:CUDA,NVIDIA>,$<NOT:$<PLATFORM_ID:Windows>>>:-Xcompiler=-Wall,-Wextra>"
             "$<$<AND:$<COMPILE_LANG_AND_ID:CUDA,NVIDIA>,$<NOT:$<PLATFORM_ID:Windows>>,$<BOOL:${WARP_WARNINGS_AS_ERRORS}>>:-Werror=all-warnings>"
             # Intentional: -t0 lets nvcc use all CPUs; use -t1 to constrain threading.
             "$<$<COMPILE_LANGUAGE:CUDA>:-t0>"

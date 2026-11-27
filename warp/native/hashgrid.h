@@ -167,7 +167,7 @@ template <typename Type> struct hash_grid_query_t {
     }
 
     // Required for adjoint computations.
-    CUDA_CALLABLE inline hash_grid_query_t& operator+=(const hash_grid_query_t& other) { return *this; }
+    CUDA_CALLABLE inline hash_grid_query_t& operator+=(const hash_grid_query_t& /*other*/) { return *this; }
 
     int x_start;
     int y_start;

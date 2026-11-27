@@ -111,14 +111,14 @@ CUDA_CALLABLE inline void adj_spatial_cross_dual(
 
 template <typename Type>
 CUDA_CALLABLE inline void
-adj_spatial_top(const spatial_vector_t<Type>& a, spatial_vector_t<Type>& adj_a, const vec_t<3, Type>& adj_ret)
+adj_spatial_top(const spatial_vector_t<Type>& /*a*/, spatial_vector_t<Type>& adj_a, const vec_t<3, Type>& adj_ret)
 {
     w_vec(adj_a) += adj_ret;
 }
 
 template <typename Type>
 CUDA_CALLABLE inline void
-adj_spatial_bottom(const spatial_vector_t<Type>& a, spatial_vector_t<Type>& adj_a, const vec_t<3, Type>& adj_ret)
+adj_spatial_bottom(const spatial_vector_t<Type>& /*a*/, spatial_vector_t<Type>& adj_a, const vec_t<3, Type>& adj_ret)
 {
     v_vec(adj_a) += adj_ret;
 }
@@ -207,7 +207,7 @@ template <typename Type> CUDA_CALLABLE inline transform_t<Type> neg(const transf
 
 template <typename Type>
 CUDA_CALLABLE inline void
-adj_neg(const transform_t<Type>& x, transform_t<Type>& adj_x, const transform_t<Type>& adj_ret)
+adj_neg(const transform_t<Type>& /*x*/, transform_t<Type>& adj_x, const transform_t<Type>& adj_ret)
 {
     adj_x -= adj_ret;
 }
@@ -235,14 +235,14 @@ template <typename Type> CUDA_CALLABLE inline quat_t<Type> transform_get_rotatio
 
 template <typename Type>
 CUDA_CALLABLE inline void
-adj_transform_get_translation(const transform_t<Type>& t, transform_t<Type>& adj_t, const vec_t<3, Type>& adj_ret)
+adj_transform_get_translation(const transform_t<Type>& /*t*/, transform_t<Type>& adj_t, const vec_t<3, Type>& adj_ret)
 {
     adj_t.p += adj_ret;
 }
 
 template <typename Type>
 CUDA_CALLABLE inline void
-adj_transform_get_rotation(const transform_t<Type>& t, transform_t<Type>& adj_t, const quat_t<Type>& adj_ret)
+adj_transform_get_rotation(const transform_t<Type>& /*t*/, transform_t<Type>& adj_t, const quat_t<Type>& adj_ret)
 {
     adj_t.q += adj_ret;
 }
@@ -276,7 +276,7 @@ CUDA_CALLABLE inline transform_t<Type> transform_set_rotation_copy(transform_t<T
 
 template <typename Type>
 CUDA_CALLABLE inline void adj_transform_set_translation(
-    transform_t<Type>& t, const vec_t<3, Type>& p, const transform_t<Type>& adj_t, vec_t<3, Type>& adj_p
+    transform_t<Type>& /*t*/, const vec_t<3, Type>& /*p*/, const transform_t<Type>& adj_t, vec_t<3, Type>& adj_p
 )
 {
     adj_p += adj_t.p;
@@ -284,7 +284,7 @@ CUDA_CALLABLE inline void adj_transform_set_translation(
 
 template <typename Type>
 CUDA_CALLABLE inline void adj_transform_set_rotation(
-    transform_t<Type>& t, const quat_t<Type>& q, const transform_t<Type>& adj_t, quat_t<Type>& adj_q
+    transform_t<Type>& /*t*/, const quat_t<Type>& /*q*/, const transform_t<Type>& adj_t, quat_t<Type>& adj_q
 )
 {
     adj_q += adj_t.q;
@@ -292,8 +292,8 @@ CUDA_CALLABLE inline void adj_transform_set_rotation(
 
 template <typename Type>
 CUDA_CALLABLE inline void adj_transform_set_translation_copy(
-    transform_t<Type>& t,
-    const vec_t<3, Type>& p,
+    transform_t<Type>& /*t*/,
+    const vec_t<3, Type>& /*p*/,
     transform_t<Type>& adj_t,
     vec_t<3, Type>& adj_p,
     const transform_t<Type>& adj_ret
@@ -305,8 +305,8 @@ CUDA_CALLABLE inline void adj_transform_set_translation_copy(
 
 template <typename Type>
 CUDA_CALLABLE inline void adj_transform_set_rotation_copy(
-    transform_t<Type>& t,
-    const quat_t<Type>& q,
+    transform_t<Type>& /*t*/,
+    const quat_t<Type>& /*q*/,
     transform_t<Type>& adj_t,
     quat_t<Type>& adj_q,
     const transform_t<Type>& adj_ret
@@ -328,7 +328,7 @@ template <typename Type> inline CUDA_CALLABLE void transform_sub_inplace(transfo
 
 template <typename Type>
 inline CUDA_CALLABLE void adj_transform_add_inplace(
-    transform_t<Type>& t, const vec_t<3, Type>& p, transform_t<Type>& adj_t, vec_t<3, Type>& adj_p
+    transform_t<Type>& /*t*/, const vec_t<3, Type>& /*p*/, transform_t<Type>& adj_t, vec_t<3, Type>& adj_p
 )
 {
     adj_p += adj_t.p;
@@ -336,7 +336,7 @@ inline CUDA_CALLABLE void adj_transform_add_inplace(
 
 template <typename Type>
 inline CUDA_CALLABLE void adj_transform_sub_inplace(
-    transform_t<Type>& t, const vec_t<3, Type>& p, transform_t<Type>& adj_t, vec_t<3, Type>& adj_p
+    transform_t<Type>& /*t*/, const vec_t<3, Type>& /*p*/, transform_t<Type>& adj_t, vec_t<3, Type>& adj_p
 )
 {
     adj_p -= adj_t.p;
@@ -504,17 +504,17 @@ template <typename Type> inline CUDA_CALLABLE Type* indexref(transform_t<Type>* 
 
 template <typename Type>
 inline void CUDA_CALLABLE
-adj_extract(const transform_t<Type>& t, int idx, transform_t<Type>& adj_t, int& adj_idx, Type adj_ret)
+adj_extract(const transform_t<Type>& /*t*/, int idx, transform_t<Type>& adj_t, int& /*adj_idx*/, Type adj_ret)
 {
     adj_t.component_ref(idx) += adj_ret;
 }
 
 template <unsigned SliceLength, typename Type>
 inline CUDA_CALLABLE void adj_extract(
-    const transform_t<Type>& t,
+    const transform_t<Type>& /*t*/,
     slice_t slice,
     transform_t<Type>& adj_t,
-    slice_t& adj_slice,
+    slice_t& /*adj_slice*/,
     const vec_t<SliceLength, Type>& adj_ret
 )
 {
@@ -535,15 +535,17 @@ inline CUDA_CALLABLE void adj_extract(
 }
 
 template <typename Type>
-inline CUDA_CALLABLE void
-adj_index(transform_t<Type>& t, int idx, transform_t<Type>& adj_t, int adj_idx, const Type& adj_value)
+inline CUDA_CALLABLE void adj_index(
+    transform_t<Type>& /*t*/, int /*idx*/, transform_t<Type>& /*adj_t*/, int /*adj_idx*/, const Type& /*adj_value*/
+)
 {
     // nop
 }
 
 template <typename Type>
-inline CUDA_CALLABLE void
-adj_indexref(transform_t<Type>* t, int idx, transform_t<Type>& adj_t, int adj_idx, const Type& adj_value)
+inline CUDA_CALLABLE void adj_indexref(
+    transform_t<Type>* /*t*/, int /*idx*/, transform_t<Type>& /*adj_t*/, int /*adj_idx*/, const Type& /*adj_value*/
+)
 {
     // nop
 }
@@ -586,8 +588,9 @@ inline CUDA_CALLABLE void add_inplace(transform_t<Type>& t, slice_t slice, const
 
 
 template <typename Type>
-inline CUDA_CALLABLE void
-adj_add_inplace(transform_t<Type>& t, int idx, Type value, transform_t<Type>& adj_t, int adj_idx, Type& adj_value)
+inline CUDA_CALLABLE void adj_add_inplace(
+    transform_t<Type>& /*t*/, int idx, Type /*value*/, transform_t<Type>& adj_t, int /*adj_idx*/, Type& adj_value
+)
 {
 #ifndef NDEBUG
     if (idx < -7 || idx >= 7) {
@@ -606,11 +609,11 @@ adj_add_inplace(transform_t<Type>& t, int idx, Type value, transform_t<Type>& ad
 
 template <unsigned SliceLength, typename Type>
 inline CUDA_CALLABLE void adj_add_inplace(
-    const transform_t<Type>& t,
+    const transform_t<Type>& /*t*/,
     slice_t slice,
-    const vec_t<SliceLength, Type>& a,
+    const vec_t<SliceLength, Type>& /*a*/,
     transform_t<Type>& adj_t,
-    slice_t& adj_slice,
+    slice_t& /*adj_slice*/,
     vec_t<SliceLength, Type>& adj_a
 )
 {
@@ -669,8 +672,9 @@ inline CUDA_CALLABLE void sub_inplace(transform_t<Type>& t, slice_t slice, const
 
 
 template <typename Type>
-inline CUDA_CALLABLE void
-adj_sub_inplace(transform_t<Type>& t, int idx, Type value, transform_t<Type>& adj_t, int adj_idx, Type& adj_value)
+inline CUDA_CALLABLE void adj_sub_inplace(
+    transform_t<Type>& /*t*/, int idx, Type /*value*/, transform_t<Type>& adj_t, int /*adj_idx*/, Type& adj_value
+)
 {
 #ifndef NDEBUG
     if (idx < -7 || idx >= 7) {
@@ -689,11 +693,11 @@ adj_sub_inplace(transform_t<Type>& t, int idx, Type value, transform_t<Type>& ad
 
 template <unsigned SliceLength, typename Type>
 inline CUDA_CALLABLE void adj_sub_inplace(
-    const transform_t<Type>& t,
+    const transform_t<Type>& /*t*/,
     slice_t slice,
-    const vec_t<SliceLength, Type>& a,
+    const vec_t<SliceLength, Type>& /*a*/,
     transform_t<Type>& adj_t,
-    slice_t& adj_slice,
+    slice_t& /*adj_slice*/,
     vec_t<SliceLength, Type>& adj_a
 )
 {
@@ -750,8 +754,9 @@ inline CUDA_CALLABLE void assign_inplace(transform_t<Type>& t, slice_t slice, co
 }
 
 template <typename Type>
-inline CUDA_CALLABLE void
-adj_assign_inplace(transform_t<Type>& t, int idx, Type value, transform_t<Type>& adj_t, int& adj_idx, Type& adj_value)
+inline CUDA_CALLABLE void adj_assign_inplace(
+    transform_t<Type>& /*t*/, int idx, Type /*value*/, transform_t<Type>& adj_t, int& /*adj_idx*/, Type& adj_value
+)
 {
 #ifndef NDEBUG
     if (idx < -7 || idx >= 7) {
@@ -769,11 +774,11 @@ adj_assign_inplace(transform_t<Type>& t, int idx, Type value, transform_t<Type>&
 
 template <unsigned SliceLength, typename Type>
 inline CUDA_CALLABLE void adj_assign_inplace(
-    const transform_t<Type>& t,
+    const transform_t<Type>& /*t*/,
     slice_t slice,
-    const vec_t<SliceLength, Type>& a,
+    const vec_t<SliceLength, Type>& /*a*/,
     transform_t<Type>& adj_t,
-    slice_t& adj_slice,
+    slice_t& /*adj_slice*/,
     vec_t<SliceLength, Type>& adj_a
 )
 {
@@ -823,11 +828,11 @@ assign_copy(transform_t<Type>& t, slice_t slice, const vec_t<SliceLength, Type>&
 
 template <typename Type>
 inline CUDA_CALLABLE void adj_assign_copy(
-    transform_t<Type>& t,
+    transform_t<Type>& /*t*/,
     int idx,
-    Type value,
+    Type /*value*/,
     transform_t<Type>& adj_t,
-    int& adj_idx,
+    int& /*adj_idx*/,
     Type& adj_value,
     const transform_t<Type>& adj_ret
 )
@@ -852,11 +857,11 @@ inline CUDA_CALLABLE void adj_assign_copy(
 
 template <unsigned SliceLength, typename Type>
 inline CUDA_CALLABLE void adj_assign_copy(
-    transform_t<Type>& t,
+    transform_t<Type>& /*t*/,
     slice_t slice,
-    const vec_t<SliceLength, Type>& a,
+    const vec_t<SliceLength, Type>& /*a*/,
     transform_t<Type>& adj_t,
-    slice_t& adj_slice,
+    slice_t& /*adj_slice*/,
     vec_t<SliceLength, Type>& adj_a,
     const transform_t<Type>& adj_ret
 )
@@ -900,8 +905,9 @@ CUDA_CALLABLE inline void adj_add(
 }
 
 template <typename Type>
-CUDA_CALLABLE inline void
-adj_add(const transform_t<Type>& a, Type b, transform_t<Type>& adj_a, Type& adj_b, const transform_t<Type>& adj_ret)
+CUDA_CALLABLE inline void adj_add(
+    const transform_t<Type>& /*a*/, Type /*b*/, transform_t<Type>& adj_a, Type& adj_b, const transform_t<Type>& adj_ret
+)
 {
     adj_a += adj_ret;
 
@@ -929,8 +935,9 @@ CUDA_CALLABLE inline void adj_sub(
 }
 
 template <typename Type>
-CUDA_CALLABLE inline void
-adj_sub(const transform_t<Type>& a, Type b, transform_t<Type>& adj_a, Type& adj_b, const transform_t<Type>& adj_ret)
+CUDA_CALLABLE inline void adj_sub(
+    const transform_t<Type>& /*a*/, Type /*b*/, transform_t<Type>& adj_a, Type& adj_b, const transform_t<Type>& adj_ret
+)
 {
     adj_a -= adj_ret;
 
@@ -983,8 +990,8 @@ inline CUDA_CALLABLE transform_t<Type> atomic_add(transform_t<Type>* addr, const
 
 template <typename Type>
 CUDA_CALLABLE inline void adj_transform_t(
-    const vec_t<3, Type>& p,
-    const quat_t<Type>& q,
+    const vec_t<3, Type>& /*p*/,
+    const quat_t<Type>& /*q*/,
     vec_t<3, Type>& adj_p,
     quat_t<Type>& adj_q,
     const transform_t<Type>& adj_ret
@@ -996,7 +1003,7 @@ CUDA_CALLABLE inline void adj_transform_t(
 
 // adjoint for the fill constructor
 template <typename Type>
-CUDA_CALLABLE inline void adj_transform_t(Type s, Type& adj_s, const transform_t<Type>& adj_ret)
+CUDA_CALLABLE inline void adj_transform_t(Type /*s*/, Type& adj_s, const transform_t<Type>& adj_ret)
 {
     // Sum all transform components into the fill scalar adjoint.
     adj_s += adj_ret.p[0];
@@ -1011,7 +1018,7 @@ CUDA_CALLABLE inline void adj_transform_t(Type s, Type& adj_s, const transform_t
 // adjoint for the copy constructor
 template <typename Type>
 CUDA_CALLABLE inline void
-adj_transform_t(const transform_t<Type>& other, transform_t<Type>& adj_other, const transform_t<Type>& adj_ret)
+adj_transform_t(const transform_t<Type>& /*other*/, transform_t<Type>& adj_other, const transform_t<Type>& adj_ret)
 {
     adj_other.p += adj_ret.p;
     adj_other.q += adj_ret.q;
@@ -1019,7 +1026,7 @@ adj_transform_t(const transform_t<Type>& other, transform_t<Type>& adj_other, co
 
 template <typename Type>
 CUDA_CALLABLE inline void adj_transform_t(
-    const initializer_array<7, Type>& l, const initializer_array<7, Type*>& adj_l, const transform_t<Type>& adj_ret
+    const initializer_array<7, Type>& /*l*/, const initializer_array<7, Type*>& adj_l, const transform_t<Type>& adj_ret
 )
 {
     *adj_l[0] += adj_ret.p[0];
@@ -1104,7 +1111,7 @@ CUDA_CALLABLE inline void adj_lerp(
     adj_t += tensordot(b, adj_ret) - tensordot(a, adj_ret);
 }
 
-template <typename Type> CUDA_CALLABLE inline int len(const transform_t<Type>& t) { return 7; }
+template <typename Type> CUDA_CALLABLE inline int len(const transform_t<Type>& /*t*/) { return 7; }
 
 template <typename Type> using spatial_matrix_t = mat_t<6, 6, Type>;
 
@@ -1136,8 +1143,8 @@ inline CUDA_CALLABLE spatial_matrix_t<Type> spatial_adjoint(const mat_t<3, 3, Ty
 
 template <typename Type>
 inline CUDA_CALLABLE void adj_spatial_adjoint(
-    const mat_t<3, 3, Type>& R,
-    const mat_t<3, 3, Type>& S,
+    const mat_t<3, 3, Type>& /*R*/,
+    const mat_t<3, 3, Type>& /*S*/,
     mat_t<3, 3, Type>& adj_R,
     mat_t<3, 3, Type>& adj_S,
     const spatial_matrix_t<Type>& adj_ret

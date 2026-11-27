@@ -149,7 +149,7 @@ static void apic_set_region_entry(APICState* state, uint32_t region_id, uint64_t
 }
 
 uint32_t
-wp_apic_register_memory_region_by_ptr(APICState* state, uint64_t base_ptr, uint64_t size, uint32_t element_size)
+wp_apic_register_memory_region_by_ptr(APICState* state, uint64_t base_ptr, uint64_t size, uint32_t /*element_size*/)
 {
     if (!state)
         return 0;
@@ -2979,7 +2979,7 @@ apic_check_bsr_rows(const int32_t* offsets, const int32_t* row_counts, int32_t r
 template <typename ResolvePtrFn, typename RemapHandleFn, typename FindKernelFn, typename ReplayChildFn>
 static bool apic_cpu_replay_stream(
     const uint8_t* stream_data,
-    size_t stream_size,
+    size_t /*stream_size*/,
     uint32_t operation_count,
     ResolvePtrFn resolve_ptr,
     RemapHandleFn remap_handle,

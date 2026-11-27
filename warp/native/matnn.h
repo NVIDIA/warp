@@ -108,7 +108,7 @@ CUDA_CALLABLE inline void dense_subs(int n, const array_t<float>& L, const array
 }
 
 CUDA_CALLABLE inline void
-dense_solve(int n, const array_t<float>& A, const array_t<float>& L, const array_t<float>& b, array_t<float>& x)
+dense_solve(int n, const array_t<float>& /*A*/, const array_t<float>& L, const array_t<float>& b, array_t<float>& x)
 {
     dense_subs(n, L, b, x);
 }
@@ -141,12 +141,12 @@ CUDA_CALLABLE inline void adj_dense_gemm(
     int t2,
     const array_t<float>& A,
     const array_t<float>& B,
-    array_t<float>& C,
-    int adj_m,
-    int adj_n,
-    int adj_p,
-    int adj_t1,
-    int adj_t2,
+    array_t<float>& /*C*/,
+    int /*adj_m*/,
+    int /*adj_n*/,
+    int /*adj_p*/,
+    int /*adj_t1*/,
+    int /*adj_t2*/,
     array_t<float>& adj_A,
     array_t<float>& adj_B,
     const array_t<float>& adj_C
@@ -168,28 +168,28 @@ CUDA_CALLABLE inline void adj_dense_gemm(
 
 
 CUDA_CALLABLE inline void adj_dense_chol(
-    int n,
-    const array_t<float>& A,
-    float regularization,
-    array_t<float>& L,
-    int adj_n,
-    const array_t<float>& adj_A,
-    float adj_regularization,
-    array_t<float>& adj_L
+    int /*n*/,
+    const array_t<float>& /*A*/,
+    float /*regularization*/,
+    array_t<float>& /*L*/,
+    int /*adj_n*/,
+    const array_t<float>& /*adj_A*/,
+    float /*adj_regularization*/,
+    array_t<float>& /*adj_L*/
 )
 {
     // nop, use dense_solve to differentiate through (A^-1)b = x
 }
 
 CUDA_CALLABLE inline void adj_dense_subs(
-    int n,
-    const array_t<float>& L,
-    const array_t<float>& b,
-    array_t<float>& x,
-    int adj_n,
-    const array_t<float>& adj_L,
-    const array_t<float>& adj_b,
-    array_t<float>& adj_x
+    int /*n*/,
+    const array_t<float>& /*L*/,
+    const array_t<float>& /*b*/,
+    array_t<float>& /*x*/,
+    int /*adj_n*/,
+    const array_t<float>& /*adj_L*/,
+    const array_t<float>& /*adj_b*/,
+    array_t<float>& /*adj_x*/
 )
 {
     // nop, use dense_solve to differentiate through (A^-1)b = x
@@ -198,13 +198,13 @@ CUDA_CALLABLE inline void adj_dense_subs(
 
 CUDA_CALLABLE inline void adj_dense_solve(
     int n,
-    const array_t<float>& A,
+    const array_t<float>& /*A*/,
     const array_t<float>& L,
-    const array_t<float>& b,
+    const array_t<float>& /*b*/,
     const array_t<float>& x,
-    int adj_n,
+    int /*adj_n*/,
     array_t<float>& adj_A,
-    array_t<float>& adj_L,
+    array_t<float>& /*adj_L*/,
     array_t<float>& adj_b,
     const array_t<float>& adj_x
 )

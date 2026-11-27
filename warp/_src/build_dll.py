@@ -842,10 +842,10 @@ def build_dll_for_arch(
 
         # Warnings used when building Warp's own native libraries. These are not used
         # when Warp compiles user kernels at runtime.
-        warning_flags = "-Wall -Wextra -Wno-unused-parameter -Wuninitialized"
+        warning_flags = "-Wall -Wextra -Wuninitialized"
         # nvcc forwards host-compiler warnings with -Xcompiler; -Werror all-warnings
         # promotes both nvcc's own and the host compiler's warnings to errors.
-        nvcc_warning_flags = "-Xcompiler=-Wall,-Wextra,-Wno-unused-parameter"
+        nvcc_warning_flags = "-Xcompiler=-Wall,-Wextra"
         if args.warnings_as_errors:
             warning_flags = "-Werror " + warning_flags
             nvcc_warning_flags += " -Werror=all-warnings"

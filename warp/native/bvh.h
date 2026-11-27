@@ -495,7 +495,7 @@ struct bvh_query_t {
     }
 
     // Required for adjoint computations.
-    CUDA_CALLABLE inline bvh_query_t& operator+=(const bvh_query_t& other) { return *this; }
+    CUDA_CALLABLE inline bvh_query_t& operator+=(const bvh_query_t& /*other*/) { return *this; }
 
     BVH bvh;
 
