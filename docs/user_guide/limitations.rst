@@ -55,7 +55,9 @@ tuple-valued ``wp.tid()``.
 
 The total number of threads in a multidimensional grid may exceed :math:`2^{31}` when each returned coordinate stays
 within these limits. Use 64-bit arithmetic when flattening such coordinates into a linear index. See
-:ref:`large-array launch indexing <large_launch_indexing>` for an example.
+:ref:`large-array launch indexing <large_launch_indexing>` for an example. Kernels that need a linear
+index beyond :math:`2^{31}-1` can call :func:`wp.linear_tid() <warp._src.lang.linear_tid>` instead, which
+returns a 64-bit index and is not subject to this limit when the kernel does not also call ``wp.tid()``.
 
 By default, Warp will try to process one element from the Warp grid in one CUDA thread.
 This is not always possible for kernels launched with multi-dimensional grid bounds, as there are

@@ -6,6 +6,7 @@
 import numpy as np
 
 import warp as wp
+from warp._src.context import builtin_functions
 
 from .benchmarks_utils import page_aligned_cpu_arrays, setup_once
 
@@ -41,6 +42,18 @@ def vec4_component_kernel(a: wp.array[wp.vec4f], b: wp.array[wp.vec4f], output: 
 @wp.kernel(enable_backward=False)
 def scalar_task_loop_kernel(a: wp.array[float], b: wp.array[float], output: wp.array[float]):
     i = wp.tid()
+    value = a[i]
+    factor = b[i]
+    for _ in range(ARITHMETIC_ITERATIONS):
+        value = value * factor + a[i]
+    output[i] = value
+
+
+# Keep this kernel in its own module so Warp versions without wp.linear_tid()
+# can still compile the other kernels in this file.
+@wp.kernel(module="unique", enable_backward=False)
+def linear_tid_task_loop_kernel(a: wp.array[float], b: wp.array[float], output: wp.array[float]):
+    i = wp.linear_tid()
     value = a[i]
     factor = b[i]
     for _ in range(ARITHMETIC_ITERATIONS):
@@ -147,3 +160,44 @@ class CpuVectorization:
 
     def time_linear_array_loop_arithmetic(self):
         self.loop_command.launch()
+
+
+class CpuThreadIndexing:
+    """Measure CPU task-loop throughput with contiguous scalar arrays."""
+
+    number = 1
+    repeat = 8
+    params = ["tid", "linear_tid"]
+    param_names = ["index"]
+
+    @setup_once
+    def setup(self, index):
+        if index == "linear_tid" and "linear_tid" not in builtin_functions:
+            raise NotImplementedError("Requires wp.linear_tid()")
+        kernel = scalar_task_loop_kernel if index == "tid" else linear_tid_task_loop_kernel
+
+        wp.init()
+        count = VEC4_ELEMENTS * 4
+        values = np.linspace(-1.0, 1.0, count, dtype=np.float32)
+        factors = np.linspace(0.8, 1.2, count, dtype=np.float32)
+        self.storage, (a, b, output) = page_aligned_cpu_arrays(float, count, 3, ARRAY_GAP_BYTES)
+        a.assign(values)
+        b.assign(factors)
+        self.command = wp.launch(
+            kernel,
+            dim=count,
+            inputs=[a, b],
+            outputs=[output],
+            device="cpu",
+            block_dim=1,
+            record_cmd=True,
+        )
+
+        expected = values.copy()
+        for _ in range(ARITHMETIC_ITERATIONS):
+            expected = expected * factors + values
+        self.command.launch()
+        np.testing.assert_allclose(output.numpy(), expected, rtol=1.0e-5, atol=1.0e-5)
+
+    def time_scalar_task_loop(self, index):
+        self.command.launch()
