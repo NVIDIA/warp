@@ -441,6 +441,29 @@ def test_native_func_inplace_modify_tile(test, device):
     test.assertAlmostEqual(result[0, 1], 5.0)  # unchanged
 
 
+def test_native_func_return_shared_tile(test, device):
+    """Return a shared tile by value from a native snippet with an inferred return type."""
+
+    snippet = """
+    auto tile = wp::tile_alloc_empty<wp::float32, wp::tile_shape_t<4>, wp::tile_stride_t<1>, false>();
+    tile = 3.0f;
+    return tile;
+    """
+
+    @wp.func_native(snippet)
+    def make_tile():
+        return wp.tile_full(4, value=3.0, storage="shared")
+
+    @wp.kernel(enable_backward=False, module="unique")
+    def compute(out: wp.array[float]):
+        tile = make_tile()
+        wp.tile_store(out, tile)
+
+    out = wp.zeros(4, dtype=float, device=device)
+    wp.launch_tiled(compute, dim=[1], outputs=[out], block_dim=BLOCK_DIM, device=device)
+    np.testing.assert_array_equal(out.numpy(), np.full(4, 3.0, dtype=np.float32))
+
+
 devices = get_test_devices()
 
 
@@ -475,6 +498,9 @@ add_function_test(
     "test_native_func_inplace_modify_tile",
     test_native_func_inplace_modify_tile,
     devices=get_cuda_test_devices(),
+)
+add_function_test(
+    TestTileFuncArg, "test_native_func_return_shared_tile", test_native_func_return_shared_tile, devices=devices
 )
 
 

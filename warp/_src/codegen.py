@@ -2152,6 +2152,8 @@ class Adjoint:
         adj.func = func
 
         adj.is_user_function = is_user_function
+        adj.allow_in_place_return = False  # Set by Function.build() for ordinary inferred returns.
+        adj.in_place_return = None
 
         # whether the generation of the forward code is skipped for this function
         adj.skip_forward_codegen = skip_forward_codegen
@@ -2305,6 +2307,8 @@ class Adjoint:
     def get_own_required_shared(adj):
         own_shared = 0
         for var in adj.variables:
+            if var is adj.in_place_return:
+                continue  # The caller allocates the returned tile.
             if is_tile(var.type) and var.type.storage == "shared" and var.type.owner:
                 own_shared += var.type.size_in_bytes()
             elif is_tile_stack(var.type):
@@ -2499,6 +2503,7 @@ class Adjoint:
         adj.has_non_unrolled_constant_loop = False
 
         adj.return_var = None  # return type for function or kernel
+        adj.in_place_return = None
         adj.loop_symbols = []  # symbols at the start of each loop
         adj.loop_const_iter_symbols = (
             set()
@@ -3415,8 +3420,9 @@ class Adjoint:
         # Select the same replay target for void, scalar, and multiple outputs.
         # Function-valued arguments follow that selection too, including when
         # the enclosing native implementation invokes them during its adjoint.
-        call_outputs = output_list if len(output_list) > 1 else []
-        assignment = f"var_{output} = " if len(output_list) == 1 else ""
+        in_place_return = not func_is_builtin and func.adj.in_place_return is not None
+        call_outputs = output_list if in_place_return or len(output_list) > 1 else []
+        assignment = f"var_{output} = " if len(output_list) == 1 and not in_place_return else ""
         forward_args = adj.format_forward_call_args(fwd_args + det_args + call_outputs, use_initializer_list)
         forward_call = f"{assignment}{func.namespace}{func_name}({forward_args});"
         if func.skip_replay:
@@ -3443,6 +3449,9 @@ class Adjoint:
             func, forward_call, replay_call, return_value_used=return_value_used
         )
         adj.add_forward(forward_call, replay="// " + replay_call if func.skip_replay else replay_call)
+        if in_place_return:
+            # The old caller-side copy synchronized the block before another call could reuse the callee's scratch.
+            adj.add_forward("WP_TILE_SYNC();", skip_replay=func.skip_replay)
 
         # Skip reverse call generation for functions that use warp.grad() - they don't have
         # meaningful adjoints (the gradient of a gradient call is not supported).
@@ -3771,6 +3780,10 @@ class Adjoint:
         if var is None or len(var) == 0:
             # Rewritten to `continue;` for CUDA grid-stride kernels by codegen_func_forward().
             adj.add_forward("return;", f"goto label{adj.label_count};")
+        elif adj.in_place_return is not None:
+            adj.add_forward("return;", f"goto label{adj.label_count};")
+            # The returned tile already holds the incoming gradient. Keep the barrier from the old accumulation.
+            adj.add_reverse("WP_TILE_SYNC();")
         elif len(var) == 1:
             adj.add_forward(f"return {var[0].emit()};", f"goto label{adj.label_count};")
             if not adj.type_contains_native_value(var[0].type):
@@ -6708,6 +6721,18 @@ class Adjoint:
                         ret_var.type = joined
                 adj.return_var += (ret_var,)
 
+        if adj.allow_in_place_return and adj.return_var and len(adj.return_var) == 1:
+            result = adj.return_var[0]
+            if is_tile(result.type) and result.type.storage == "shared" and result.type.owner:
+                func_node = adj.tree.body[0]
+                # A single trailing return guarantees that no branch needs a fallback copy.
+                if (
+                    not result.is_parameter
+                    and node is func_node.body[-1]
+                    and not any(isinstance(other, ast.Return) and other is not node for other in ast.walk(func_node))
+                ):
+                    adj.in_place_return = result
+
         adj.add_return(adj.return_var)
 
     @contextlib.contextmanager
@@ -8568,7 +8593,9 @@ def codegen_func_forward(adj, func_type="kernel", device="cpu", grid_stride=Fals
     lines += ["// primal vars\n"]
 
     for var in adj.variables:
-        if is_tile(var.type):
+        if var is adj.in_place_return:
+            lines += [f"{var.ctype()}& {var.emit()} = _wp_ret;\n"]
+        elif is_tile(var.type):
             lines += [f"{var.ctype()} {var.emit()} = {var.type.cinit(requires_grad=False)};\n"]
         elif is_tile_stack(var.type):
             lines += [f"{var.ctype()} {var.emit()} = {var.type.cinit()};\n"]
@@ -8629,7 +8656,10 @@ def codegen_func_reverse(adj, func_type="kernel", device="cpu", grid_stride=Fals
     lines += ["// primal vars\n"]
 
     for var in adj.variables:
-        if is_tile(var.type):
+        if var is adj.in_place_return:
+            # A shared tile holds both the primal and the adjoint.
+            lines += [f"{var.ctype()}& {var.emit()} = adj_ret;\n"]
+        elif is_tile(var.type):
             lines += [f"{var.ctype()} {var.emit()} = {var.type.cinit(requires_grad=True)};\n"]
         elif is_tile_stack(var.type):
             lines += [f"{var.ctype()} {var.emit()} = {var.type.cinit()};\n"]
@@ -8768,7 +8798,9 @@ def codegen_func(
     det_args = adj.deterministic.function_args()
     forward_args.extend(det_args)
     reverse_args.extend(det_args)
-    if has_multiple_outputs:
+    if adj.in_place_return is not None:
+        forward_args.append(f"{return_type} & _wp_ret")
+    elif has_multiple_outputs:
         for i, arg in enumerate(adj.return_var):
             forward_args.append(arg.ctype() + " & ret_" + str(i))
             reverse_args.append(arg.ctype() + " & ret_" + str(i))
@@ -8827,7 +8859,7 @@ def codegen_func(
     if not adj.skip_forward_codegen and not reverse_only:
         s += template_prefix + forward_template.format(
             name=c_func_name,
-            return_type=return_type,
+            return_type="void" if adj.in_place_return is not None else return_type,
             inline_attr=inline_attr,
             forward_args=indent(forward_args),
             forward_body=forward_body,
