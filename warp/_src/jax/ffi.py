@@ -979,6 +979,11 @@ class FfiCallable:
                 device_ordinal = get_device_ordinal_from_callframe(call_frame.contents)
                 device = wp.get_cuda_device(device_ordinal)
                 device_desc = call_desc.for_device(device_ordinal)
+                if (
+                    not wp._src.context.runtime.core.wp_cuda_stream_is_capturing(cuda_stream)
+                    and not wp._src.context.runtime.captures
+                ):
+                    wp._src.context.runtime._release_destroyed_external_captures(device.context)
 
                 if self.graph_mode == JaxCallableGraphMode.WARP:
                     # check if we already captured an identical call
@@ -1090,12 +1095,10 @@ class FfiCallable:
                 # call the Python function with reconstructed arguments
                 with wp.ScopedStream(stream, sync_enter=False):
                     if stream.is_capturing:
-                        # capturing with JAX
-                        with wp.ScopedCapture(external=True) as capture:
+                        # Capturing with JAX; ScopedCapture(external=True) retains the Graph's
+                        # module executables and buffers until CUDA destroys the enclosing graph.
+                        with wp.ScopedCapture(external=True):
                             self.func(*arg_list)
-
-                        # keep a reference to the capture object to prevent required modules getting unloaded
-                        device_desc.capture = capture
 
                     elif self.graph_mode == JaxCallableGraphMode.WARP:
                         # capturing with WARP

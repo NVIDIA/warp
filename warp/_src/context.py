@@ -6679,6 +6679,7 @@ class Graph:
     def __init__(self, device: Device, capture_id: int = 0):
         self.device = device
         self.capture_id = capture_id
+        self._is_external: bool = False
         self.module_execs: set[ModuleExec] = set()
         self._deterministic_buffer_refs: list[Any] = []
         self.graph_exec: ctypes.c_void_p | None = None
@@ -6988,6 +6989,12 @@ class Runtime:
 
         # maps capture ids to graphs
         self.captures = {}
+
+        # maps external capture tokens to Graphs retained until CUDA destroys each enclosing graph
+        self._external_captures_lock = threading.Lock()
+        self._external_captures: dict[int, Graph] = {}
+        # CUDA contexts with native releases deferred while draining external captures mid-capture
+        self._deferred_external_release_contexts: set[int] = set()
 
         # APIC capture state (set during capture_begin, cleared at capture_end)
         self._apic_capture = None
@@ -8451,6 +8458,21 @@ class Runtime:
             ]
             self.core.wp_cuda_graph_end_capture.restype = ctypes.c_bool
 
+            self.core.wp_cuda_graph_retain_external_capture.argtypes = [
+                ctypes.c_void_p,
+                ctypes.c_void_p,
+            ]
+            self.core.wp_cuda_graph_retain_external_capture.restype = ctypes.c_uint64
+
+            self.core.wp_cuda_pop_destroyed_external_captures.argtypes = [
+                ctypes.POINTER(ctypes.c_uint64),
+                ctypes.c_size_t,
+            ]
+            self.core.wp_cuda_pop_destroyed_external_captures.restype = ctypes.c_size_t
+
+            self.core.wp_cuda_run_deferred_actions.argtypes = [ctypes.c_void_p]
+            self.core.wp_cuda_run_deferred_actions.restype = ctypes.c_int
+
             self.core.wp_cuda_graph_create_exec.argtypes = [
                 ctypes.c_void_p,
                 ctypes.c_void_p,
@@ -9112,6 +9134,58 @@ class Runtime:
 
     def get_error_string(self):
         return self.core.wp_get_error_string().decode("utf-8")
+
+    def _release_destroyed_external_captures(self, context=None, flush_native: bool = True) -> int:
+        """Drop external capture Graphs whose enclosing CUDA graphs have been destroyed."""
+        if not self.is_cuda_enabled:
+            return 0
+
+        num_released = 0
+        if self._external_captures:
+            batch_size = 64
+            buf = (ctypes.c_uint64 * batch_size)()
+            released = []
+
+            with self._external_captures_lock:
+                while True:
+                    count = self.core.wp_cuda_pop_destroyed_external_captures(buf, batch_size)
+                    if not count:
+                        break
+                    for i in range(count):
+                        graph = self._external_captures.pop(int(buf[i]), None)
+                        if graph is not None:
+                            released.append(graph)
+                    if count < batch_size:
+                        break
+
+            # Drop references outside the lock so Graph/ModuleExec finalizers cannot re-enter it.
+            num_released = len(released)
+            if num_released and not flush_native:
+                deferred_contexts = {graph.device.context for graph in released if graph.device.is_cuda}
+                if deferred_contexts:
+                    with self._external_captures_lock:
+                        self._deferred_external_release_contexts.update(deferred_contexts)
+            released.clear()
+
+        if flush_native and not self.captures and self._deferred_external_release_contexts:
+            saved_contexts = None
+            with self._external_captures_lock:
+                if context is None:
+                    if self._deferred_external_release_contexts:
+                        saved_contexts = set(self._deferred_external_release_contexts)
+                        self._deferred_external_release_contexts.clear()
+                elif context in self._deferred_external_release_contexts:
+                    self._deferred_external_release_contexts.discard(context)
+                    saved_contexts = {context}
+            if saved_contexts is not None and self.core.wp_cuda_run_deferred_actions(context) < 0:
+                with self._external_captures_lock:
+                    self._deferred_external_release_contexts.update(saved_contexts)
+
+        return num_released
+
+    def _retain_external_capture(self, token: int, graph: Graph) -> None:
+        with self._external_captures_lock:
+            self._external_captures[token] = graph
 
     def get_warp_version(self) -> str:
         """Get the version of the Warp core library.
@@ -12872,6 +12946,8 @@ def synchronize():
         if error is not None:
             raise RuntimeError(error)
 
+        runtime._release_destroyed_external_captures()
+
 
 def synchronize_device(device: DeviceLike = None):
     """Synchronize the calling CPU thread with any outstanding CUDA work on the specified device
@@ -12894,6 +12970,8 @@ def synchronize_device(device: DeviceLike = None):
 
         if not runtime.core.wp_cuda_context_synchronize(device.context):
             raise RuntimeError(f"Failed to synchronize device {device}: {runtime.get_error_string()}")
+
+        runtime._release_destroyed_external_captures(device.context)
 
 
 def synchronize_stream(stream_or_device: Stream | DeviceLike | None = None):
@@ -13812,6 +13890,7 @@ def capture_begin(
 
     capture_id = runtime.core.wp_cuda_stream_get_capture_id(stream.cuda_stream)
     graph = Graph(device, capture_id)
+    graph._is_external = bool(external)
 
     # Attach APIC capture state if recording
     if apic_capture is not None:
@@ -13860,6 +13939,12 @@ def capture_end(device: DeviceLike = None, stream: Stream | None = None) -> Grap
     if graph is None:
         raise RuntimeError("Graph capture is not active on this stream")
 
+    if graph._is_external:
+        # Drain retired external captures while this capture is still registered in
+        # native g_captures so release_or_defer() queues any cuModuleUnload/cudaFree
+        # instead of running capture-unsafe calls during the active external capture.
+        runtime._release_destroyed_external_captures(flush_native=False)
+
     _unregister_capture(device, stream, graph)
 
     # get the graph executable
@@ -13879,6 +13964,15 @@ def capture_end(device: DeviceLike = None, stream: Stream | None = None) -> Grap
     # set the graph executable
     graph.graph = g
     graph.graph_exec = None  # Lazy initialization
+
+    if graph._is_external:
+        if graph.module_execs or graph._deterministic_buffer_refs:
+            token = runtime.core.wp_cuda_graph_retain_external_capture(device.context, stream.cuda_stream)
+            if not token:
+                raise RuntimeError(f"Failed to retain external CUDA graph capture. {runtime.get_error_string()}")
+            runtime._retain_external_capture(int(token), graph)
+    elif not runtime.captures:
+        runtime._release_destroyed_external_captures()
 
     return graph
 
