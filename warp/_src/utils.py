@@ -341,13 +341,28 @@ def radix_sort_pairs(
         keys: Array of keys to sort. Must be of type ``int32``, ``uint32``, ``float32``, ``int64``, ``uint64``,
           or ``float64``.
         values: Array of values to sort along with keys. Elements must be 4 or 8 bytes wide.
-        count: Number of elements to sort.
+        count: Number of elements to sort, within the non-negative signed 32-bit integer range.
         begin_bit: The least-significant key bit to start sorting from.
         end_bit: The key bit to stop sorting at. If ``None``, sorts through the full key width.
 
     Raises:
+        TypeError: If the count is not an integer.
+        ValueError: If the count is outside the non-negative signed 32-bit integer range.
         RuntimeError: If array storage devices don't match, if storage size is insufficient, or if data types are unsupported.
     """
+    if isinstance(count, bool):
+        raise TypeError("count must be an integer")
+
+    try:
+        count = operator.index(count)
+    except TypeError as e:
+        raise TypeError("count must be an integer") from e
+
+    if count < 0:
+        raise ValueError(f"count must be non-negative, got {count}")
+    if count > (1 << 31) - 1:
+        raise ValueError(f"count must not exceed {(1 << 31) - 1}, got {count}")
+
     if keys.device != values.device:
         raise RuntimeError(f"Keys and values array storage devices do not match ({keys.device} vs {values.device})")
 
