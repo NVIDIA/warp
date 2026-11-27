@@ -514,17 +514,65 @@
 <h1>warp.to_dlpack<a class="headerlink" href="#warp-to-dlpack" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.to_dlpack">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">to_dlpack</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">wp_array</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/dlpack.py#L223-L316"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.to_dlpack" title="Link to this definition">#</a></dt>
-<dd><p>Convert a Warp array to another type of DLPack-compatible array.</p>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">to_dlpack</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">wp_array</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/dlpack.py#L223-L370"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.to_dlpack" title="Link to this definition">#</a></dt>
+<dd><p>Return a DLPack capsule sharing a Warp array’s storage.</p>
+<p>For arrays on a CUDA device, callers must order dependent accesses to
+the shared storage. Queue those accesses on the same CUDA stream or
+use a stream wait to order them across streams.</p>
+<p>Pass the Warp array directly to a DLPack import function to enable a
+stream handoff. Use <code class="docutils literal notranslate"><span class="pre">torch.from_dlpack(wp_array)</span></code> in PyTorch or
+<code class="docutils literal notranslate"><span class="pre">jax.dlpack.from_dlpack(wp_array)</span></code> in JAX.</p>
+<p>The importing library can pass its CUDA stream to <code class="docutils literal notranslate"><span class="pre">wp_array.__dlpack__()</span></code>.
+Warp uses its current stream on the array’s device for the handoff.
+Use <code class="docutils literal notranslate"><span class="pre">warp.ScopedStream</span></code> around the import call to select the Warp stream
+with the earlier work on the array.</p>
+<p>Work queued on the importing library’s stream after the handoff waits
+for work already queued on the current Warp stream.</p>
+<p>Warp uses a CUDA event when the streams differ. Warp records
+the event on its current stream and queues a wait for that event on the
+importing library’s stream. See <a class="reference internal" href="../../user_guide/interoperability.html#dlpack"><span class="std std-ref">DLPack</span></a> for more examples.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>wp_array</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – The source Warp array that will be converted.</p>
+<dd class="field-odd"><p><strong>wp_array</strong> (<a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a>) – The Warp array to export. Arrays with a dtype defined by
+<code class="docutils literal notranslate"><span class="pre">&#64;warp.struct</span></code> are unsupported.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A capsule containing a DLManagedTensor that can be converted
-to another array type without copying the underlying memory.</p>
+<dd class="field-even"><p>A single-use capsule that keeps the source array alive until the consumer
+releases the managed tensor or the unused capsule is discarded. For vector
+and matrix dtypes, the capsule represents the components as trailing scalar
+dimensions and preserves the outer array strides.</p>
 </dd>
 </dl>
+<p class="rubric">Example</p>
+<p>Generate points with a Warp kernel and compute their centroid on a
+separate PyTorch stream:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">sample_parabola</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">]):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">float32</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+    <span class="n">points</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">x</span> <span class="o">*</span> <span class="n">x</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+
+
+<span class="n">device</span> <span class="o">=</span> <span class="s2">"cuda:0"</span>
+<span class="n">warp_stream</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">get_device</span><span class="p">(</span><span class="n">device</span><span class="p">))</span>
+<span class="n">torch_stream</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">Stream</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedStream</span><span class="p">(</span><span class="n">warp_stream</span><span class="p">),</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="n">torch_stream</span><span class="p">):</span>
+    <span class="n">points</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">sample_parabola</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">points</span><span class="p">),</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">points</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_dlpack</span><span class="p">(</span><span class="n">points</span><span class="p">)</span>
+    <span class="n">centroid</span> <span class="o">=</span> <span class="n">tensor</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If the PyTorch read could still be pending when the last reference to
+the exported buffer is dropped, keep <code class="docutils literal notranslate"><span class="pre">points</span></code> or <code class="docutils literal notranslate"><span class="pre">tensor</span></code> alive
+until the read completes, or queue a wait for <code class="docutils literal notranslate"><span class="pre">torch_stream</span></code> on a
+blocking Warp stream before dropping that reference
+(see <a class="reference internal" href="../../user_guide/execution_and_performance/concurrency.html#nonblocking-streams"><span class="std std-ref">Blocking and Non-Blocking Streams</span></a>).</p>
 </dd></dl>
 
 </section>

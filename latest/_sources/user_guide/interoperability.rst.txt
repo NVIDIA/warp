@@ -338,39 +338,91 @@ Less code is needed when we declare the optimization variables directly in Warp 
 DLPack
 ------
 
-Warp supports the DLPack protocol included in the Python Array API standard v2022.12. See the `Python Specification for DLPack <https://dmlc.github.io/dlpack/latest/python_spec.html>`__ for reference.
+Warp supports the DLPack protocol from the Python Array API standard v2022.12.
+See the `Python Specification for DLPack <https://dmlc.github.io/dlpack/latest/python_spec.html>`__.
 
-The canonical way to import an external array into Warp is using the :func:`warp.from_dlpack()` function::
+Use :func:`wp.from_dlpack <warp.from_dlpack>` to import an array from a library that supports DLPack,
+such as PyTorch or JAX::
 
     warp_array = wp.from_dlpack(external_array)
 
-The external array can be a PyTorch tensor, JAX array, or any other array type compatible with this version of the DLPack protocol. For CUDA arrays, this approach requires the producer to perform stream synchronization which ensures that operations on the array are ordered correctly. The :func:`warp.from_dlpack()` function asks the producer to synchronize the current Warp stream on the device where the array resides. It should therefore be safe to use the array in Warp kernels on that device without any additional synchronization.
+If the exporting library allows external writes to the exported buffer, in-place changes are visible
+through both views once the accesses are ordered. Otherwise, treat the imported array as read-only
+and use :func:`wp.clone() <warp.clone>` if you need a writable copy.
 
-The canonical way to export a Warp array to an external framework is to use the ``from_dlpack()`` function in that framework::
+On CUDA, Warp passes its current stream on the source array's device to the array's
+``__dlpack__()`` method. The exporting library makes later work on that Warp stream wait for its
+earlier work on the array.
+
+Use :class:`wp.ScopedStream <warp.ScopedStream>` to select the Warp stream for the import and the
+work that uses the array. For work on a different Warp stream, add a wait for the stream used
+during import.
+
+Warp represents vector and matrix components as trailing scalar dimensions in DLPack. To import a
+vector or matrix dtype, the trailing dimensions must match the component shape and be contiguous
+in row-major order. The outer dimensions can be strided.
+
+The following example uses a Warp array as the DLPack source. It imports every other row of a CUDA
+array as a ``wp.vec3`` value and scales the points in place.
+
+.. testcode:: dlpack-cuda
+    :skipif: wp.get_cuda_device_count() == 0
+
+    @wp.kernel
+    def scale_points(points: wp.array[wp.vec3]):
+        i = wp.tid()
+        points[i] = 2.0 * points[i]
+
+    device = wp.get_device("cuda:0")
+    warp_stream = wp.Stream(device)
+    with wp.ScopedStream(warp_stream):
+        source = wp.full((8, 3), 1.0, device=device)[::2]
+        points = wp.from_dlpack(source, dtype=wp.vec3)
+        wp.launch(scale_points, dim=points.shape[0], inputs=[points], device=device)
+        print(f"Shape: {points.shape}, strides: {points.strides}")
+        print(source.numpy())
+
+.. testoutput:: dlpack-cuda
+    :skipif: wp.get_cuda_device_count() == 0
+
+    Shape: (4,), strides: (24,)
+    [[2. 2. 2.]
+     [2. 2. 2.]
+     [2. 2. 2.]
+     [2. 2. 2.]]
+
+The ``(4,)`` Warp array keeps the 24-byte row stride of the ``(4, 3)`` source array. The kernel writes
+to the exported buffer, so reading the source array on the same stream returns the updated values.
+
+To export a Warp array, pass it directly to the other library's ``from_dlpack()`` function::
 
     jax_array = jax.dlpack.from_dlpack(warp_array)
     torch_tensor = torch.utils.dlpack.from_dlpack(warp_array)
     paddle_tensor = paddle.utils.dlpack.from_dlpack(warp_array)
 
-For CUDA arrays, this synchronizes the current stream of the consumer framework with the current Warp stream on the array's device. It should therefore be safe to use the wrapped array in the consumer framework, even if the array was previously used in a Warp kernel on the device.
+For an array on a CUDA device, the importing library can pass the CUDA stream it will use for the
+array to Warp's ``__dlpack__()`` method. Use :class:`wp.ScopedStream <warp.ScopedStream>` around the
+other library's ``from_dlpack()`` call to select the Warp stream with the earlier work on the array.
+When the streams differ, Warp records a CUDA event on its current stream for the array's device.
+Warp queues a wait for that event on the importing library's CUDA stream.
+Order later Warp reads after writes queued by the importing library. Order later Warp writes
+after both reads and writes queued by that library.
 
-Alternatively, arrays can be shared by explicitly creating PyCapsules using a ``to_dlpack()`` function provided by the producer framework. This approach may be used for older versions of frameworks that do not support the v2022.12 standard::
+For libraries that use the older capsule API, call the exporting library's ``to_dlpack()`` function
+and pass the capsule to the importer::
 
-    warp_array1 = wp.from_dlpack(jax_array)
-    warp_array2 = wp.from_dlpack(torch.utils.dlpack.to_dlpack(torch_tensor))
-    warp_array3 = wp.from_dlpack(paddle.utils.dlpack.to_dlpack(paddle_tensor))
+    warp_array1 = wp.from_dlpack(torch.utils.dlpack.to_dlpack(torch_tensor))
+    warp_array2 = wp.from_dlpack(paddle.utils.dlpack.to_dlpack(paddle_tensor))
 
-    jax_array = jax.dlpack.from_dlpack(wp.to_dlpack(warp_array))
     torch_tensor = torch.utils.dlpack.from_dlpack(wp.to_dlpack(warp_array))
     paddle_tensor = paddle.utils.dlpack.from_dlpack(wp.to_dlpack(warp_array))
 
-This approach is generally faster because it skips any stream synchronization, but another solution must be used to ensure correct ordering of operations. In situations where no synchronization is required, using this approach can yield better performance. This may be a good choice in situations like these:
+Each capsule can be consumed once. The import keeps the exported allocation alive after the source
+object goes out of scope. Exchanging a capsule on CUDA leaves stream ordering to the caller.
+Queue dependent accesses on the same CUDA stream or order them with a stream wait.
 
-- The external framework is using the synchronous CUDA default stream.
-- Warp and the external framework are using the same CUDA stream.
-- Another synchronization mechanism is already in place.
-
-The framework-specific converters (:func:`warp.to_torch`, :func:`warp.to_paddle`) are usually a better choice than DLPack when one exists, because DLPack does not carry gradient information. If autograd needs to flow between Warp and the other framework, use the direct converters. DLPack is most useful when no framework-specific converter exists, or when both producer and consumer are DLPack-native.
+DLPack exchanges array values. To share gradient buffers, convert them separately or use a framework-specific
+converter such as :func:`warp.to_torch` or :func:`warp.to_paddle`.
 
 .. toctree::
    :hidden:

@@ -882,36 +882,78 @@ for the mesh-only resource serialization currently supported by API Capture.</p>
 </section>
 <section id="dlpack">
 <span id="id1"></span><h2>DLPack<a class="headerlink" href="#dlpack" title="Link to this heading">#</a></h2>
-<p>Warp supports the DLPack protocol included in the Python Array API standard v2022.12. See the <a class="reference external" href="https://dmlc.github.io/dlpack/latest/python_spec.html">Python Specification for DLPack</a> for reference.</p>
-<p>The canonical way to import an external array into Warp is using the <a class="reference internal" href="../api_reference/_generated/warp.from_dlpack.html#warp.from_dlpack" title="warp.from_dlpack"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.from_dlpack()</span></code></a> function:</p>
+<p>Warp supports the DLPack protocol from the Python Array API standard v2022.12.
+See the <a class="reference external" href="https://dmlc.github.io/dlpack/latest/python_spec.html">Python Specification for DLPack</a>.</p>
+<p>Use <a class="reference internal" href="../api_reference/_generated/warp.from_dlpack.html#warp.from_dlpack" title="warp.from_dlpack"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.from_dlpack</span></code></a> to import an array from a library that supports DLPack,
+such as PyTorch or JAX:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">warp_array</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_dlpack</span><span class="p">(</span><span class="n">external_array</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>The external array can be a PyTorch tensor, JAX array, or any other array type compatible with this version of the DLPack protocol. For CUDA arrays, this approach requires the producer to perform stream synchronization which ensures that operations on the array are ordered correctly. The <a class="reference internal" href="../api_reference/_generated/warp.from_dlpack.html#warp.from_dlpack" title="warp.from_dlpack"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.from_dlpack()</span></code></a> function asks the producer to synchronize the current Warp stream on the device where the array resides. It should therefore be safe to use the array in Warp kernels on that device without any additional synchronization.</p>
-<p>The canonical way to export a Warp array to an external framework is to use the <code class="docutils literal notranslate"><span class="pre">from_dlpack()</span></code> function in that framework:</p>
+<p>If the exporting library allows external writes to the exported buffer, in-place changes are visible
+through both views once the accesses are ordered. Otherwise, treat the imported array as read-only
+and use <a class="reference internal" href="../api_reference/_generated/warp.clone.html#warp.clone" title="warp.clone"><code class="xref py py-func docutils literal notranslate"><span class="pre">wp.clone()</span></code></a> if you need a writable copy.</p>
+<p>On CUDA, Warp passes its current stream on the source array’s device to the array’s
+<code class="docutils literal notranslate"><span class="pre">__dlpack__()</span></code> method. The exporting library makes later work on that Warp stream wait for its
+earlier work on the array.</p>
+<p>Use <a class="reference internal" href="../api_reference/_generated/warp.ScopedStream.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a> to select the Warp stream for the import and the
+work that uses the array. For work on a different Warp stream, add a wait for the stream used
+during import.</p>
+<p>Warp represents vector and matrix components as trailing scalar dimensions in DLPack. To import a
+vector or matrix dtype, the trailing dimensions must match the component shape and be contiguous
+in row-major order. The outer dimensions can be strided.</p>
+<p>The following example uses a Warp array as the DLPack source. It imports every other row of a CUDA
+array as a <code class="docutils literal notranslate"><span class="pre">wp.vec3</span></code> value and scales the points in place.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">scale_points</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">]):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">points</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">points</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+<span class="n">device</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">get_device</span><span class="p">(</span><span class="s2">"cuda:0"</span><span class="p">)</span>
+<span class="n">warp_stream</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">(</span><span class="n">device</span><span class="p">)</span>
+<span class="k">with</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedStream</span><span class="p">(</span><span class="n">warp_stream</span><span class="p">):</span>
+    <span class="n">source</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="mi">8</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="mf">1.0</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)[::</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">points</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_dlpack</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">scale_points</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="n">points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">points</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Shape: </span><span class="si">{</span><span class="n">points</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">, strides: </span><span class="si">{</span><span class="n">points</span><span class="o">.</span><span class="n">strides</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+</pre></div>
+</div>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>Shape: (4,), strides: (24,)
+[[2. 2. 2.]
+ [2. 2. 2.]
+ [2. 2. 2.]
+ [2. 2. 2.]]
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">(4,)</span></code> Warp array keeps the 24-byte row stride of the <code class="docutils literal notranslate"><span class="pre">(4,</span> <span class="pre">3)</span></code> source array. The kernel writes
+to the exported buffer, so reading the source array on the same stream returns the updated values.</p>
+<p>To export a Warp array, pass it directly to the other library’s <code class="docutils literal notranslate"><span class="pre">from_dlpack()</span></code> function:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">jax_array</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">dlpack</span><span class="o">.</span><span class="n">from_dlpack</span><span class="p">(</span><span class="n">warp_array</span><span class="p">)</span>
 <span class="n">torch_tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">dlpack</span><span class="o">.</span><span class="n">from_dlpack</span><span class="p">(</span><span class="n">warp_array</span><span class="p">)</span>
 <span class="n">paddle_tensor</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">dlpack</span><span class="o">.</span><span class="n">from_dlpack</span><span class="p">(</span><span class="n">warp_array</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>For CUDA arrays, this synchronizes the current stream of the consumer framework with the current Warp stream on the array’s device. It should therefore be safe to use the wrapped array in the consumer framework, even if the array was previously used in a Warp kernel on the device.</p>
-<p>Alternatively, arrays can be shared by explicitly creating PyCapsules using a <code class="docutils literal notranslate"><span class="pre">to_dlpack()</span></code> function provided by the producer framework. This approach may be used for older versions of frameworks that do not support the v2022.12 standard:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">warp_array1</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_dlpack</span><span class="p">(</span><span class="n">jax_array</span><span class="p">)</span>
-<span class="n">warp_array2</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_dlpack</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">dlpack</span><span class="o">.</span><span class="n">to_dlpack</span><span class="p">(</span><span class="n">torch_tensor</span><span class="p">))</span>
-<span class="n">warp_array3</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_dlpack</span><span class="p">(</span><span class="n">paddle</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">dlpack</span><span class="o">.</span><span class="n">to_dlpack</span><span class="p">(</span><span class="n">paddle_tensor</span><span class="p">))</span>
+<p>For an array on a CUDA device, the importing library can pass the CUDA stream it will use for the
+array to Warp’s <code class="docutils literal notranslate"><span class="pre">__dlpack__()</span></code> method. Use <a class="reference internal" href="../api_reference/_generated/warp.ScopedStream.html#warp.ScopedStream" title="warp.ScopedStream"><code class="xref py py-class docutils literal notranslate"><span class="pre">wp.ScopedStream</span></code></a> around the
+other library’s <code class="docutils literal notranslate"><span class="pre">from_dlpack()</span></code> call to select the Warp stream with the earlier work on the array.
+When the streams differ, Warp records a CUDA event on its current stream for the array’s device.
+Warp queues a wait for that event on the importing library’s CUDA stream.
+Order later Warp reads after writes queued by the importing library. Order later Warp writes
+after both reads and writes queued by that library.</p>
+<p>For libraries that use the older capsule API, call the exporting library’s <code class="docutils literal notranslate"><span class="pre">to_dlpack()</span></code> function
+and pass the capsule to the importer:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">warp_array1</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_dlpack</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">dlpack</span><span class="o">.</span><span class="n">to_dlpack</span><span class="p">(</span><span class="n">torch_tensor</span><span class="p">))</span>
+<span class="n">warp_array2</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_dlpack</span><span class="p">(</span><span class="n">paddle</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">dlpack</span><span class="o">.</span><span class="n">to_dlpack</span><span class="p">(</span><span class="n">paddle_tensor</span><span class="p">))</span>
 
-<span class="n">jax_array</span> <span class="o">=</span> <span class="n">jax</span><span class="o">.</span><span class="n">dlpack</span><span class="o">.</span><span class="n">from_dlpack</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">to_dlpack</span><span class="p">(</span><span class="n">warp_array</span><span class="p">))</span>
 <span class="n">torch_tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">dlpack</span><span class="o">.</span><span class="n">from_dlpack</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">to_dlpack</span><span class="p">(</span><span class="n">warp_array</span><span class="p">))</span>
 <span class="n">paddle_tensor</span> <span class="o">=</span> <span class="n">paddle</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">dlpack</span><span class="o">.</span><span class="n">from_dlpack</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">to_dlpack</span><span class="p">(</span><span class="n">warp_array</span><span class="p">))</span>
 </pre></div>
 </div>
-<p>This approach is generally faster because it skips any stream synchronization, but another solution must be used to ensure correct ordering of operations. In situations where no synchronization is required, using this approach can yield better performance. This may be a good choice in situations like these:</p>
-<ul class="simple">
-<li><p>The external framework is using the synchronous CUDA default stream.</p></li>
-<li><p>Warp and the external framework are using the same CUDA stream.</p></li>
-<li><p>Another synchronization mechanism is already in place.</p></li>
-</ul>
-<p>The framework-specific converters (<a class="reference internal" href="../api_reference/_generated/warp.to_torch.html#warp.to_torch" title="warp.to_torch"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.to_torch()</span></code></a>, <a class="reference internal" href="../api_reference/_generated/warp.to_paddle.html#warp.to_paddle" title="warp.to_paddle"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.to_paddle()</span></code></a>) are usually a better choice than DLPack when one exists, because DLPack does not carry gradient information. If autograd needs to flow between Warp and the other framework, use the direct converters. DLPack is most useful when no framework-specific converter exists, or when both producer and consumer are DLPack-native.</p>
+<p>Each capsule can be consumed once. The import keeps the exported allocation alive after the source
+object goes out of scope. Exchanging a capsule on CUDA leaves stream ordering to the caller.
+Queue dependent accesses on the same CUDA stream or order them with a stream wait.</p>
+<p>DLPack exchanges array values. To share gradient buffers, convert them separately or use a framework-specific
+converter such as <a class="reference internal" href="../api_reference/_generated/warp.to_torch.html#warp.to_torch" title="warp.to_torch"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.to_torch()</span></code></a> or <a class="reference internal" href="../api_reference/_generated/warp.to_paddle.html#warp.to_paddle" title="warp.to_paddle"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.to_paddle()</span></code></a>.</p>
 <div class="toctree-wrapper compound">
 </div>
 </section>

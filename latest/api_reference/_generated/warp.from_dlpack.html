@@ -514,26 +514,81 @@
 <h1>warp.from_dlpack<a class="headerlink" href="#warp-from-dlpack" title="Link to this heading">#</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="warp.from_dlpack">
-<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">from_dlpack</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/dlpack.py#L469-L510"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.from_dlpack" title="Link to this definition">#</a></dt>
-<dd><p>Convert a source array or DLPack capsule into a Warp array without copying.</p>
+<span class="sig-prename descclassname"><span class="pre">warp.</span></span><span class="sig-name descname"><span class="pre">from_dlpack</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">source</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hint</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference external" href="https://github.com/NVIDIA/warp/blob/main/warp/_src/dlpack.py#L523-L624"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#warp.from_dlpack" title="Link to this definition">#</a></dt>
+<dd><p>Return a Warp array or texture sharing storage with a DLPack source.</p>
+<p>For source objects with data on a CUDA device, Warp calls the object’s
+<code class="docutils literal notranslate"><span class="pre">__dlpack__()</span></code> method with the current Warp stream on that device.
+Use <code class="docutils literal notranslate"><span class="pre">warp.ScopedStream</span></code> around the import and the Warp operations that
+access the shared data.</p>
+<p>The source library must ensure its earlier work on the data finishes
+before new work on the Warp stream accesses it. The source library
+can record a CUDA event after its work and queue a wait for that event
+on the Warp stream.</p>
+<p>For a raw capsule you must order dependent CUDA accesses to the exported
+buffer. Queue those accesses on the same stream or use a stream wait.
+Before using a different Warp stream after importing a source
+object, make that stream wait for the Warp stream used for the import.
+See <a class="reference internal" href="../../user_guide/interoperability.html#dlpack"><span class="std std-ref">DLPack</span></a> for more examples.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>source</strong> – A DLPack-compatible array or PyCapsule</p></li>
-<li><p><strong>dtype</strong> – An optional Warp data type to interpret the source data.</p></li>
-<li><p><strong>hint</strong> – A hint that helps to interpret opaque pointers. Currently supported hints are
-<code class="docutils literal notranslate"><span class="pre">warp.Texture1D</span></code>, <code class="docutils literal notranslate"><span class="pre">warp.Texture2D</span></code>, and <code class="docutils literal notranslate"><span class="pre">warp.Texture3D</span></code> when the opaque
-pointer is a <code class="docutils literal notranslate"><span class="pre">cudaArray_t</span></code> handle. Hints are ignored when the data type
-is not <code class="docutils literal notranslate"><span class="pre">kDLOpaquePointer</span></code>.</p></li>
+<li><p><strong>source</strong> – An object implementing <code class="docutils literal notranslate"><span class="pre">__dlpack__()</span></code> and <code class="docutils literal notranslate"><span class="pre">__dlpack_device__()</span></code>
+or an unused DLPack capsule. A successful import consumes the capsule.</p></li>
+<li><p><strong>dtype</strong> – Warp dtype used to interpret the source elements. Warp infers a scalar
+dtype from the source by default. For a vector or matrix dtype the source
+must have a compatible scalar dtype and matching trailing dimensions
+that are contiguous in row-major order.</p></li>
+<li><p><strong>hint</strong> – Texture type to use for a <code class="docutils literal notranslate"><span class="pre">cudaArray_t</span></code> handle exported as
+<code class="docutils literal notranslate"><span class="pre">kDLOpaquePointer</span></code>. Supported hints are <code class="docutils literal notranslate"><span class="pre">warp.Texture1D</span></code>,
+<code class="docutils literal notranslate"><span class="pre">warp.Texture2D</span></code>, and <code class="docutils literal notranslate"><span class="pre">warp.Texture3D</span></code>.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A new Warp array or texture that uses the same underlying memory as the source.</p>
+<dd class="field-even"><p><p>A view that keeps the exported buffer alive after the source object
+goes out of scope.</p>
+<p>If the exporting library allows external writes to the exported buffer,
+in-place changes are visible through both views once the accesses are
+ordered. Otherwise, treat the imported view as read-only and use
+<a class="reference internal" href="warp.clone.html#warp.clone" title="warp.clone"><code class="xref py py-func docutils literal notranslate"><span class="pre">warp.clone()</span></code></a> if you need a writable copy of an imported
+array.</p>
+<p>For vector and matrix dtypes the trailing component dimensions become
+part of each Warp element. Array imports preserve the outer strides.
+Import gradient buffers separately when needed.</p>
+</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p><a class="reference internal" href="warp.array.html#warp.array" title="warp._src.types.array"><em>array</em></a> | <a class="reference internal" href="warp.Texture.html#warp.Texture" title="warp._src.texture.Texture"><em>Texture</em></a></p>
 </dd>
 </dl>
+<p class="rubric">Example</p>
+<p>Import a PyTorch CUDA tensor as a Warp array of 3D points and launch
+a kernel on the Warp stream used for the import:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">warp</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">wp</span>
+
+
+<span class="nd">@wp</span><span class="o">.</span><span class="n">kernel</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">translate_points</span><span class="p">(</span><span class="n">points</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">],</span> <span class="n">translated</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">[</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">]):</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">tid</span><span class="p">()</span>
+    <span class="n">translated</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">points</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+
+
+<span class="n">device</span> <span class="o">=</span> <span class="s2">"cuda:0"</span>
+<span class="n">torch_stream</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">Stream</span><span class="p">(</span><span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+<span class="n">warp_stream</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">Stream</span><span class="p">(</span><span class="n">wp</span><span class="o">.</span><span class="n">get_device</span><span class="p">(</span><span class="n">device</span><span class="p">))</span>
+
+<span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">stream</span><span class="p">(</span><span class="n">torch_stream</span><span class="p">),</span> <span class="n">wp</span><span class="o">.</span><span class="n">ScopedStream</span><span class="p">(</span><span class="n">warp_stream</span><span class="p">):</span>
+    <span class="n">tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+    <span class="n">points</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">from_dlpack</span><span class="p">(</span><span class="n">tensor</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">)</span>
+    <span class="n">translated</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="n">points</span><span class="p">)</span>
+    <span class="n">wp</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span><span class="n">translate_points</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">points</span><span class="p">),</span> <span class="n">inputs</span><span class="o">=</span><span class="p">[</span><span class="n">points</span><span class="p">],</span> <span class="n">outputs</span><span class="o">=</span><span class="p">[</span><span class="n">translated</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If the last reference to the imported buffer could be dropped before
+the Warp kernel completes, keep <code class="docutils literal notranslate"><span class="pre">tensor</span></code> or <code class="docutils literal notranslate"><span class="pre">points</span></code> alive until
+the kernel completes, or call
+<code class="docutils literal notranslate"><span class="pre">tensor.record_stream(warp.stream_to_torch(warp_stream))</span></code> before dropping
+that reference.</p>
 </dd></dl>
 
 </section>
