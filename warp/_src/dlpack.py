@@ -222,23 +222,77 @@ def strides_to_dlpack(strides, dtype):
 
 @warp_function
 def to_dlpack(wp_array: warp.array):
-    """Convert a Warp array to another type of DLPack-compatible array.
+    """Return a DLPack capsule sharing a Warp array's storage.
+
+    For arrays on a CUDA device, callers must order dependent accesses to
+    the shared storage. Queue those accesses on the same CUDA stream or
+    use a stream wait to order them across streams.
+
+    Pass the Warp array directly to a DLPack import function to enable a
+    stream handoff. Use ``torch.from_dlpack(wp_array)`` in PyTorch or
+    ``jax.dlpack.from_dlpack(wp_array)`` in JAX.
+
+    The importing library can pass its CUDA stream to ``wp_array.__dlpack__()``.
+    Warp uses its current stream on the array's device for the handoff.
+    Use ``wp.ScopedStream`` around the import call to select the Warp stream
+    with the earlier work on the array.
+
+    Work queued on the importing library's stream after the handoff waits
+    for work already queued on the current Warp stream.
+
+    Warp uses a CUDA event when the streams differ. Warp records
+    the event on its current stream and queues a wait for that event on the
+    importing library's stream. See :ref:`DLPack` for more examples.
 
     Args:
-        wp_array: The source Warp array that will be converted.
+        wp_array: The Warp array to export. Arrays with a dtype defined by
+            ``@wp.struct`` are unsupported.
 
     Returns:
-        A capsule containing a DLManagedTensor that can be converted
-        to another array type without copying the underlying memory.
+        A single-use capsule that keeps the source array alive until the consumer
+        releases the managed tensor or the unused capsule is discarded. For vector
+        and matrix dtypes, the capsule represents the components as trailing scalar
+        dimensions and preserves the outer array strides.
+
+    Example:
+        Generate points with a Warp kernel and compute their centroid on a
+        separate PyTorch stream::
+
+            import torch
+            import warp as wp
+
+
+            @wp.kernel
+            def sample_parabola(points: wp.array[wp.vec3]):
+                i = wp.tid()
+                x = wp.float32(i)
+                points[i] = wp.vec3(x, x * x, 0.0)
+
+
+            device = "cuda:0"
+            warp_stream = wp.Stream(wp.get_device(device))
+            torch_stream = torch.cuda.Stream(device=device)
+
+            with wp.ScopedStream(warp_stream), torch.cuda.stream(torch_stream):
+                points = wp.empty(4, dtype=wp.vec3, device=device)
+                wp.launch(sample_parabola, dim=len(points), outputs=[points], device=device)
+                tensor = torch.from_dlpack(points)
+                centroid = tensor.mean(dim=0)
+
+        If the PyTorch read could still be pending when the last reference to
+        the exported buffer is dropped, keep ``points`` or ``tensor`` alive
+        until the read completes, or queue a wait for ``torch_stream`` on a
+        blocking Warp stream before dropping that reference
+        (see :ref:`nonblocking_streams`).
     """
 
     # DLPack does not support structured arrays
     if isinstance(wp_array.dtype, warp._src.codegen.Struct):
         raise RuntimeError("Cannot convert structured Warp arrays to DLPack.")
 
-    # handle vector types
+    # Append the component dimensions of vector and matrix dtypes.
+    # An (N,) array of wp.vec3 becomes an (N, 3) scalar tensor.
     if hasattr(wp_array.dtype, "_wp_scalar_type_"):
-        # vector type, flatten the dimensions into one tuple
         target_dtype = wp_array.dtype._wp_scalar_type_
         target_ndim = wp_array.ndim + len(wp_array.dtype._shape_)
         target_shape = (*wp_array.shape, *wp_array.dtype._shape_)
@@ -468,18 +522,78 @@ def _from_dlpack(capsule, dtype=None, hint=None) -> warp.array | warp.Texture:
 
 @warp_function
 def from_dlpack(source, dtype=None, hint=None) -> warp.array | warp.Texture:
-    """Convert a source array or DLPack capsule into a Warp array without copying.
+    """Return a Warp array or texture sharing storage with a DLPack source.
+
+    For source objects with data on a CUDA device, Warp calls the object's
+    ``__dlpack__()`` method with the current Warp stream on that device.
+    Use ``wp.ScopedStream`` around the import and the Warp operations that
+    access the shared data.
+
+    The source library must ensure its earlier work on the data finishes
+    before new work on the Warp stream accesses it. The source library
+    can record a CUDA event after its work and queue a wait for that event
+    on the Warp stream.
+
+    For a raw capsule you must order dependent CUDA accesses to the exported
+    buffer. Queue those accesses on the same stream or use a stream wait.
+    Before using a different Warp stream after importing a source
+    object, make that stream wait for the Warp stream used for the import.
+    See :ref:`DLPack` for more examples.
 
     Args:
-        source: A DLPack-compatible array or PyCapsule
-        dtype: An optional Warp data type to interpret the source data.
-        hint: A hint that helps to interpret opaque pointers. Currently supported hints are
-            ``wp.Texture1D``, ``wp.Texture2D``, and ``wp.Texture3D`` when the opaque
-            pointer is a ``cudaArray_t`` handle. Hints are ignored when the data type
-            is not ``kDLOpaquePointer``.
+        source: An object implementing ``__dlpack__()`` and ``__dlpack_device__()``
+            or an unused DLPack capsule. A successful import consumes the capsule.
+        dtype: Warp dtype used to interpret the source elements. Warp infers a scalar
+            dtype from the source by default. For a vector or matrix dtype the source
+            must have a compatible scalar dtype and matching trailing dimensions
+            that are contiguous in row-major order.
+        hint: Texture type to use for a ``cudaArray_t`` handle exported as
+            ``kDLOpaquePointer``. Supported hints are ``wp.Texture1D``,
+            ``wp.Texture2D``, and ``wp.Texture3D``.
 
     Returns:
-        A new Warp array or texture that uses the same underlying memory as the source.
+        A view that keeps the exported buffer alive after the source object
+        goes out of scope.
+
+        If the exporting library allows external writes to the exported buffer,
+        in-place changes are visible through both views once the accesses are
+        ordered. Otherwise, treat the imported view as read-only and use
+        :func:`wp.clone() <warp.clone>` if you need a writable copy of an imported
+        array.
+
+        For vector and matrix dtypes the trailing component dimensions become
+        part of each Warp element. Array imports preserve the outer strides.
+        Import gradient buffers separately when needed.
+
+    Example:
+        Import a PyTorch CUDA tensor as a Warp array of 3D points and launch
+        a kernel on the Warp stream used for the import::
+
+            import torch
+            import warp as wp
+
+
+            @wp.kernel
+            def translate_points(points: wp.array[wp.vec3], translated: wp.array[wp.vec3]):
+                i = wp.tid()
+                translated[i] = points[i] + wp.vec3(0.0, 0.0, 1.0)
+
+
+            device = "cuda:0"
+            torch_stream = torch.cuda.Stream(device=device)
+            warp_stream = wp.Stream(wp.get_device(device))
+
+            with torch.cuda.stream(torch_stream), wp.ScopedStream(warp_stream):
+                tensor = torch.arange(12, dtype=torch.float32, device=device).reshape(4, 3)
+                points = wp.from_dlpack(tensor, dtype=wp.vec3)
+                translated = wp.empty_like(points)
+                wp.launch(translate_points, dim=len(points), inputs=[points], outputs=[translated], device=device)
+
+        If the last reference to the imported buffer could be dropped before
+        the Warp kernel completes, keep ``tensor`` or ``points`` alive until
+        the kernel completes, or call
+        ``tensor.record_stream(wp.stream_to_torch(warp_stream))`` before dropping
+        that reference.
     """
 
     # See https://data-apis.org/array-api/2022.12/API_specification/generated/array_api.array.__dlpack__.html
