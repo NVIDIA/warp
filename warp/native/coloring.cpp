@@ -433,6 +433,7 @@ int graph_coloring_mcs_vector(Graph& graph)
     ordering.reserve(graph.num_nodes);
 
     NodeWeightBuckets weight_buckets(graph.num_nodes);
+    size_t scan_start = 0;
     // add the first node
     weight_buckets.add_node(0, 0);
 
@@ -440,9 +441,10 @@ int graph_coloring_mcs_vector(Graph& graph)
         // this might look like it's O(N^2) but this only happens once per connected components
         if (weight_buckets.empty()) {
             int non_negative_node = -1;
-            for (size_t i = 0; i < graph.num_nodes; i++) {
+            for (size_t i = scan_start; i < graph.num_nodes; i++) {
                 if (weight_buckets.get_node_weight(i) >= 0) {
                     non_negative_node = i;
+                    scan_start = i;
                     break;
                 }
             }
