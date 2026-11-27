@@ -414,8 +414,6 @@ float TopDownBVHBuilder::partition_sah_indices(
 
     assert(end - start >= 2);
 
-    int n = end - start;
-
     bounds3 centroid_bounds;
     for (int i = start; i < end; ++i) {
         vec3 item_center = 0.5f * (lowers[indices[i]] + uppers[indices[i]]);

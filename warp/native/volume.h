@@ -17,7 +17,16 @@
 #define __CUDACC_RTC__
 #endif
 
+// PNanoVDB is third-party code; keep its warnings out of Warp's native build.
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
+#endif
 #include "nanovdb/PNanoVDB.h"
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 
 #if defined(WP_NO_CRT) && (!defined(__CUDACC__) || (defined(__clang__) && defined(__CUDA__)))
 #undef __CUDACC_RTC__
@@ -514,7 +523,6 @@ CUDA_CALLABLE inline void adj_volume_sample_grad(
     // TODO: accessor data gradients
 
     using T = typename Accessor::ValueType;
-    using grad_T = typename val_traits<T>::grad_t;
     using w_t = typename val_traits<T>::scalar_t;
     using w_grad_t = vec_t<3, w_t>;
     using w_hess_t = mat_t<3, 3, w_t>;

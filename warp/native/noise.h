@@ -61,7 +61,7 @@ inline CUDA_CALLABLE vec2 random_gradient_2d(uint32 state, int ix, int iy)
 {
     const uint32 p1 = 73856093;
     const uint32 p2 = 19349663;
-    uint32 idx = ix * p1 ^ iy * p2 + state;
+    uint32 idx = (ix * p1) ^ (iy * p2 + state);
 
     return normalize(sample_unit_square(idx));
 }
@@ -71,7 +71,7 @@ inline CUDA_CALLABLE vec3 random_gradient_3d(uint32 state, int ix, int iy, int i
     const uint32 p1 = 73856093;
     const uint32 p2 = 19349663;
     const uint32 p3 = 53471161;
-    uint32 idx = ix * p1 ^ iy * p2 ^ iz * p3 + state;
+    uint32 idx = (ix * p1) ^ (iy * p2) ^ (iz * p3 + state);
 
     return normalize(sample_unit_cube(idx));
 }
@@ -82,7 +82,7 @@ inline CUDA_CALLABLE vec4 random_gradient_4d(uint32 state, int ix, int iy, int i
     const uint32 p2 = 19349663;
     const uint32 p3 = 53471161;
     const uint32 p4 = 10000019;
-    uint32 idx = ix * p1 ^ iy * p2 ^ iz * p3 ^ it * p4 + state;
+    uint32 idx = (ix * p1) ^ (iy * p2) ^ (iz * p3) ^ (it * p4 + state);
 
     return normalize(sample_unit_hypercube(idx));
 }
@@ -957,7 +957,7 @@ curlnoise(uint32 state, const vec2& xy, const uint32 octaves, const float lacuna
     float freq = 1.f;
     float amplitude = 1.f;
 
-    for (int i = 0; i < octaves; i++) {
+    for (int i = 0; static_cast<uint32>(i) < octaves; i++) {
         vec2 pt = freq * xy;
         float dx = pt[0] - floor(pt[0]);
         float dy = pt[1] - floor(pt[1]);
@@ -1035,7 +1035,7 @@ curlnoise(uint32 state, const vec3& xyz, const uint32 octaves, const float lacun
     float freq = 1.f;
     float amplitude = 1.f;
 
-    for (int i = 0; i < octaves; i++) {
+    for (int i = 0; static_cast<uint32>(i) < octaves; i++) {
         vec3 pt = freq * xyz;
         float dx = pt[0] - floor(pt[0]);
         float dy = pt[1] - floor(pt[1]);
@@ -1135,7 +1135,7 @@ curlnoise(uint32 state, const vec4& xyzt, const uint32 octaves, const float lacu
     float freq = 1.f;
     float amplitude = 1.f;
 
-    for (int i = 0; i < octaves; i++) {
+    for (int i = 0; static_cast<uint32>(i) < octaves; i++) {
         vec4 pt = freq * xyzt;
         float dx = pt[0] - floor(pt[0]);
         float dy = pt[1] - floor(pt[1]);

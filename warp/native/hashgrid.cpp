@@ -96,7 +96,7 @@ template <typename Type> uint64_t hash_grid_create_host_impl(int dim_x, int dim_
 {
     static const char* tag = "(native:hashgrid)";
     HashGrid_t<Type>* grid = static_cast<HashGrid_t<Type>*>(wp_alloc_host(sizeof(HashGrid_t<Type>), tag));
-    memset(grid, 0, sizeof(HashGrid_t<Type>));
+    memset(static_cast<void*>(grid), 0, sizeof(HashGrid_t<Type>));
 
     grid->dim_x = dim_x;
     grid->dim_y = dim_y;
@@ -224,7 +224,7 @@ template <typename Type> uint64_t hash_grid_create_device_impl(void* context, in
     ContextGuard guard(context);
 
     HashGrid_t<Type> grid;
-    memset(&grid, 0, sizeof(HashGrid_t<Type>));
+    memset(static_cast<void*>(&grid), 0, sizeof(HashGrid_t<Type>));
 
     grid.context = context ? context : wp_cuda_context_get_current();
 

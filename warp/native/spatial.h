@@ -845,7 +845,7 @@ inline CUDA_CALLABLE void adj_assign_copy(
 
     adj_value += adj_ret[idx];
     for (unsigned i = 0; i < 7; ++i) {
-        if (i != idx)
+        if (i != static_cast<unsigned>(idx))
             adj_t[i] += adj_ret[i];
     }
 }

@@ -2788,7 +2788,7 @@ inline CUDA_CALLABLE void adj_assign_copy(
     adj_value += adj_ret.data[row][col];
     for (unsigned i = 0; i < Rows; ++i) {
         for (unsigned j = 0; j < Cols; ++j) {
-            if (i != row || j != col)
+            if (i != static_cast<unsigned>(row) || j != static_cast<unsigned>(col))
                 adj_m.data[i][j] += adj_ret.data[i][j];
         }
     }
@@ -2819,7 +2819,7 @@ inline CUDA_CALLABLE void adj_assign_copy(
 
     for (unsigned i = 0; i < Rows; ++i) {
         for (unsigned j = 0; j < Cols; ++j) {
-            if (i == row)
+            if (i == static_cast<unsigned>(row))
                 adj_value[j] += adj_ret.data[i][j];
             else
                 adj_m.data[i][j] += adj_ret.data[i][j];

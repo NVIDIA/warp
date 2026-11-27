@@ -671,7 +671,8 @@ CUDA_CALLABLE inline bool bvh_query_next_impl(bvh_query_t& query, int& index, co
         BVHPackedNodeHalf node_upper = bvh_load_node(bvh.node_uppers, node_index);
 
         if (!bvh_query_test<QUERY_KIND>(
-                query, reinterpret_cast<vec3&>(node_lower), reinterpret_cast<vec3&>(node_upper), max_dist
+                query, vec3(node_lower.x, node_lower.y, node_lower.z), vec3(node_upper.x, node_upper.y, node_upper.z),
+                max_dist
             )) {
             continue;
         }

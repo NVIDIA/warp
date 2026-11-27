@@ -654,7 +654,7 @@ static std::unique_ptr<llvm::Module> source_to_llvm(
     // Release the unique_ptr to avoid a double-free.
     (void)buffer.release();
 
-    return success ? std::move(emit_llvm_only_action.takeModule()) : nullptr;
+    return success ? emit_llvm_only_action.takeModule() : nullptr;
 }
 
 // Return a stable filename component for the ordered flag tokens passed to
@@ -671,7 +671,7 @@ static std::string hash_compiler_flags(const char** extra_flags)
     constexpr std::uint64_t fnv_prime = 1099511628211ull;
 
     std::uint64_t hash = fnv_offset_basis;
-    const auto hash_byte = [&hash, fnv_prime](unsigned char byte) {
+    const auto hash_byte = [&hash](unsigned char byte) {
         hash ^= byte;
         hash *= fnv_prime;
     };

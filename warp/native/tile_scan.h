@@ -160,7 +160,7 @@ inline CUDA_CALLABLE void thread_block_scan(T* values, int num_elements)
         WP_TILE_SYNC();
 
         // Update offset with the inclusive total of this block
-        if (threadIdx.x == num_threads_in_block - 1) {
+        if (threadIdx.x == static_cast<unsigned>(num_threads_in_block - 1)) {
             if constexpr (exclusive)
                 // For exclusive scan, value is exclusive so add orig_value to get inclusive total
                 offset = op(offset, op(value, orig_value));

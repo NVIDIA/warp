@@ -357,7 +357,7 @@ def format_include_paths(paths: list[str], prefix: str) -> str:
 
     Args:
         paths: List of include directory paths.
-        prefix: Compiler-specific include flag prefix ('/I' for MSVC, '-I' for GCC/Clang).
+        prefix: Compiler-specific include flag prefix ('/I' for MSVC, '-I' or '-isystem ' for GCC/Clang).
 
     Returns:
         String of formatted include flags with spaces, e.g., ' /I"path1" /I"path2"'.
@@ -663,7 +663,7 @@ def build_dll_for_arch(
 
         # CUDA 13+ moved CUB into CCCL directory structure
         if ctk_version >= (13, 0):
-            clang_opts.append(f'-I"{cuda_home}/include/cccl"')
+            clang_opts.append(f'-isystem "{cuda_home}/include/cccl"')
             # CCCL has #pragma unroll directives that Clang can't always satisfy
             # Suppress optimizer warnings to avoid -Werror failures
             clang_opts.append("-Wno-pass-failed")
@@ -684,7 +684,9 @@ def build_dll_for_arch(
     cuda_enabled = "WP_ENABLE_CUDA=1" if (cu_paths is not None) else "WP_ENABLE_CUDA=0"
 
     if args.libmathdx_path:
-        libmathdx_includes = f' -I"{args.libmathdx_path}/include"'
+        # Third-party headers are system includes on Unix so they stay out of Warp's warning set.
+        include_flag = "/I" if os.name == "nt" else "-isystem "
+        libmathdx_includes = f' {include_flag}"{args.libmathdx_path}/include"'
         mathdx_enabled = "WP_ENABLE_MATHDX=1"
     else:
         libmathdx_includes = ""
@@ -831,11 +833,22 @@ def build_dll_for_arch(
         cuda_compiler = "clang++" if args.clang_build_toolchain else "nvcc"
         cpp_compiler = "clang++" if args.clang_build_toolchain else args.host_compiler
 
-        # Build include paths for LLVM and CUDA
+        # Build include paths for LLVM and CUDA. These are third-party headers, so they
+        # are passed as system includes to keep them out of Warp's warning set.
         llvm_include_paths = get_llvm_include_paths(args, warp_home_path, mode, arch)
-        cpp_includes = format_include_paths(llvm_include_paths, "-I")
-        cuda_includes = f' -I"{cuda_home}/include"' if cu_paths else ""
+        cpp_includes = format_include_paths(llvm_include_paths, "-isystem ")
+        cuda_includes = f' -isystem "{cuda_home}/include"' if cu_paths else ""
         includes = cpp_includes + cuda_includes
+
+        # Warnings used when building Warp's own native libraries. These are not used
+        # when Warp compiles user kernels at runtime.
+        warning_flags = "-Wall -Wextra -Wno-unused-parameter -Wuninitialized"
+        # nvcc forwards host-compiler warnings with -Xcompiler; -Werror all-warnings
+        # promotes both nvcc's own and the host compiler's warnings to errors.
+        nvcc_warning_flags = "-Xcompiler=-Wall,-Wextra,-Wno-unused-parameter"
+        if args.warnings_as_errors:
+            warning_flags = "-Werror " + warning_flags
+            nvcc_warning_flags += " -Werror=all-warnings"
 
         if sys.platform == "darwin":
             version = f"--target={arch}-apple-macos11"
@@ -848,7 +861,7 @@ def build_dll_for_arch(
             else:
                 version = ""
 
-        cpp_flags = f'-Werror -Wuninitialized {version} --std=c++17 -fno-rtti -DWP_BUILD_DLL -D{cuda_enabled} -D{mathdx_enabled} -D{cuda_compat_enabled} -fPIC -fvisibility=hidden -fvisibility-inlines-hidden -D_GLIBCXX_USE_CXX11_ABI=0 -I"{native_dir}" {includes} '
+        cpp_flags = f'{warning_flags} {version} --std=c++17 -fno-rtti -DWP_BUILD_DLL -D{cuda_enabled} -D{mathdx_enabled} -D{cuda_compat_enabled} -fPIC -fvisibility=hidden -fvisibility-inlines-hidden -D_GLIBCXX_USE_CXX11_ABI=0 -I"{native_dir}" {includes} '
 
         if mode == "debug":
             cpp_flags += "-Og -g -D_DEBUG -DWP_ENABLE_DEBUG=1"
@@ -896,15 +909,15 @@ def build_dll_for_arch(
 
                     if cuda_compiler == "nvcc":
                         if mode == "debug":
-                            cuda_cmd = f'{nvcc_cmd} --std=c++17 -g -G -O0 --compiler-options -fPIC,-fvisibility=hidden,-fvisibility-inlines-hidden,-D_GLIBCXX_USE_CXX11_ABI=0 -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -line-info {" ".join(_nvcc_opts)} -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
+                            cuda_cmd = f'{nvcc_cmd} --std=c++17 -g -G -O0 --compiler-options -fPIC,-fvisibility=hidden,-fvisibility-inlines-hidden,-D_GLIBCXX_USE_CXX11_ABI=0 {nvcc_warning_flags} -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 {" ".join(_nvcc_opts)} -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
                         elif mode == "release":
-                            cuda_cmd = f'{nvcc_cmd} --std=c++17 -O3 --compiler-options -fPIC,-fvisibility=hidden,-fvisibility-inlines-hidden,-D_GLIBCXX_USE_CXX11_ABI=0 {" ".join(_nvcc_opts)} -DNDEBUG -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
+                            cuda_cmd = f'{nvcc_cmd} --std=c++17 -O3 --compiler-options -fPIC,-fvisibility=hidden,-fvisibility-inlines-hidden,-D_GLIBCXX_USE_CXX11_ABI=0 {nvcc_warning_flags} {" ".join(_nvcc_opts)} -DNDEBUG -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
                     else:
                         # Use Clang compiler
                         if mode == "debug":
-                            cuda_cmd = f'clang++ -Werror -Wuninitialized -Wno-unknown-cuda-version -Wno-openmp-target {" ".join(clang_opts)} -g -O0 -fPIC -fvisibility=hidden -fvisibility-inlines-hidden -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
+                            cuda_cmd = f'clang++ {warning_flags} -Wno-unknown-cuda-version -Wno-openmp-target {" ".join(clang_opts)} -g -O0 -fPIC -fvisibility=hidden -fvisibility-inlines-hidden -D_DEBUG -D_ITERATOR_DEBUG_LEVEL=0 -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
                         elif mode == "release":
-                            cuda_cmd = f'clang++ -Werror -Wuninitialized -Wno-unknown-cuda-version -Wno-openmp-target {" ".join(clang_opts)} -O3 -fPIC -fvisibility=hidden -fvisibility-inlines-hidden -DNDEBUG -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
+                            cuda_cmd = f'clang++ {warning_flags} -Wno-unknown-cuda-version -Wno-openmp-target {" ".join(clang_opts)} -O3 -fPIC -fvisibility=hidden -fvisibility-inlines-hidden -DNDEBUG -DWP_ENABLE_CUDA=1 -I"{native_dir}" -D{mathdx_enabled} {libmathdx_includes} -o "{cu_out}" -c "{cu_path}"'
 
                     cuda_cmds.append(cuda_cmd)
 

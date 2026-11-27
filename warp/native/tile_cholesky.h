@@ -312,9 +312,6 @@ template <bool Upper, typename BkwdGemm, typename BkwdTrsm, typename TileA, type
 CUDA_CALLABLE void
 adj_tile_cholesky_impl(BkwdGemm fun_bkwd_gemm, BkwdTrsm fun_bkwd_trsm, TileOut& Out, TileA& adj_A, TileOut& adj_Out)
 {
-    using T = typename TileA::Type;
-    constexpr int n = TileA::Layout::Shape::dim(1);
-
 #if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
 
     // CPU (block_dim == 1) or GPU-without-mathdx: cooperative scalar adjoint.
@@ -332,6 +329,8 @@ adj_tile_cholesky_impl(BkwdGemm fun_bkwd_gemm, BkwdTrsm fun_bkwd_trsm, TileOut& 
         WP_TILE_SYNC();
         partitioned_gemm::cooperative_scalar_cholesky_adj<Upper>(adj_A, adj_Out, Out);
     } else {
+        using T = typename TileA::Type;
+        constexpr int n = TileA::Layout::Shape::dim(1);
         __shared__ T W1[n * n];
         __shared__ T W2[n * n];
 

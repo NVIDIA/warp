@@ -8,7 +8,18 @@
 #include <climits>
 #include <cstring>
 
+// NanoVDB is third-party code; keep its warnings out of Warp's native build.
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#endif
+#if defined(__clang__)
+#pragma clang diagnostic ignored "-Wunused-private-field"
+#endif
 #include <nanovdb/NanoVDB.h>
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 
 #define WP_VOLUME_BUILDER_INSTANTIATE_TYPES                                                                            \
     EXPAND_BUILDER_TYPE(int32_t)                                                                                       \

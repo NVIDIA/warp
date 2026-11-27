@@ -4313,7 +4313,8 @@ bool wp_cuda_graph_insert_if_else(
 
         // create conditional node
         CUgraphNode condition_node;
-        CUgraphNodeParams condition_params = { CU_GRAPH_NODE_TYPE_CONDITIONAL };
+        CUgraphNodeParams condition_params = {};
+        condition_params.type = CU_GRAPH_NODE_TYPE_CONDITIONAL;
         condition_params.conditional.handle = handle;
         condition_params.conditional.type = CU_GRAPH_COND_TYPE_IF;
         condition_params.conditional.size = num_branches;
@@ -4361,7 +4362,8 @@ bool wp_cuda_graph_insert_if_else(
             return false;
 
         CUgraphNode if_node;
-        CUgraphNodeParams if_params = { CU_GRAPH_NODE_TYPE_CONDITIONAL };
+        CUgraphNodeParams if_params = {};
+        if_params.type = CU_GRAPH_NODE_TYPE_CONDITIONAL;
         if_params.conditional.handle = if_handle;
         if_params.conditional.type = CU_GRAPH_COND_TYPE_IF;
         if_params.conditional.size = 1;
@@ -4370,7 +4372,8 @@ bool wp_cuda_graph_insert_if_else(
             return false;
 
         CUgraphNode else_node;
-        CUgraphNodeParams else_params = { CU_GRAPH_NODE_TYPE_CONDITIONAL };
+        CUgraphNodeParams else_params = {};
+        else_params.type = CU_GRAPH_NODE_TYPE_CONDITIONAL;
         else_params.conditional.handle = else_handle;
         else_params.conditional.type = CU_GRAPH_COND_TYPE_IF;
         else_params.conditional.size = 1;
@@ -4592,7 +4595,8 @@ bool wp_cuda_graph_insert_while(
 
     // insert conditional graph node
     CUgraphNode while_node;
-    CUgraphNodeParams while_params = { CU_GRAPH_NODE_TYPE_CONDITIONAL };
+    CUgraphNodeParams while_params = {};
+    while_params.type = CU_GRAPH_NODE_TYPE_CONDITIONAL;
     while_params.conditional.handle = handle;
     while_params.conditional.type = CU_GRAPH_COND_TYPE_WHILE;
     while_params.conditional.size = 1;

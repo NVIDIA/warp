@@ -214,7 +214,7 @@ size_t radix_sort_temp_size(void* context, int n, int begin_bit, int end_bit)
     CUstream stream = static_cast<CUstream>(wp_cuda_stream_get_current());
 
     // compute temporary memory required
-    size_t sort_temp_size;
+    size_t sort_temp_size = 0;
     if (check_cuda(
             cub::DeviceRadixSort::SortPairs(NULL, sort_temp_size, d_keys, d_values, n, begin_bit, end_bit, stream)
         )) {

@@ -572,7 +572,6 @@ CUDA_CALLABLE void adj_tile_matmul(
 {
     using T_A = typename TileA::Type;
     using T_B = typename TileB::Type;
-    using T_C = typename TileC::Type;
 
     T_A alpha_A = T_A(alpha);
     T_A beta_A = T_A(1.0);

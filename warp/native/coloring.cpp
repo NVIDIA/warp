@@ -54,7 +54,7 @@ struct Graph {
         std::vector<int> node_degrees(num_nodes, 0);
 
         // count degrees
-        for (size_t edge_idx = 0; edge_idx < edges.shape[0]; edge_idx++) {
+        for (size_t edge_idx = 0; edge_idx < static_cast<size_t>(edges.shape[0]); edge_idx++) {
             int e0 = *address(edges, edge_idx, 0);
             int e1 = *address(edges, edge_idx, 1);
 
@@ -72,7 +72,7 @@ struct Graph {
         }
 
         int offset = 0;
-        for (size_t node = 0; node < num_nodes; node++) {
+        for (size_t node = 0; node < static_cast<size_t>(num_nodes); node++) {
             offset += node_degrees[node];
             node_offsets[node + 1] = offset;
         }
@@ -80,7 +80,7 @@ struct Graph {
         // fill adjacency list
         std::vector<int> node_adjacency_fill_count(num_nodes, 0);
         graph_flatten.resize(offset, -1);
-        for (size_t edge_idx = 0; edge_idx < edges.shape[0]; edge_idx++) {
+        for (size_t edge_idx = 0; edge_idx < static_cast<size_t>(edges.shape[0]); edge_idx++) {
             int e0 = *address(edges, edge_idx, 0);
             int e1 = *address(edges, edge_idx, 1);
 
@@ -116,7 +116,7 @@ bool convert_to_color_groups(
 {
     color_groups.resize(num_colors);
 
-    for (int node_idx = 0; node_idx < node_colors.size(); node_idx++) {
+    for (int node_idx = 0; static_cast<size_t>(node_idx) < node_colors.size(); node_idx++) {
         int color = node_colors[node_idx];
 
         if (color < 0 || color >= num_colors) {
@@ -166,7 +166,7 @@ float find_largest_smallest_groups(
 bool color_changeable(const Graph& graph, int node, int target_color)
 {
     // loop through node and see if it has target color
-    for (size_t i = 0; i < graph.get_node_degree(node); i++) {
+    for (size_t i = 0; i < static_cast<size_t>(graph.get_node_degree(node)); i++) {
         int nei_node_idx = graph.get_node_neighbor(node, i);
         if (graph.node_colors[nei_node_idx] == target_color) {
             return false;
@@ -243,7 +243,7 @@ float balance_color_groups(
         int changeable_node_idx = find_changeable_node_in_category(graph, color_groups, biggest_group, smallest_group);
         if (changeable_node_idx == -1) {
             for (size_t color = 0; color < color_groups.size(); color++) {
-                if (color == biggest_group || color == smallest_group) {
+                if (color == static_cast<size_t>(biggest_group) || color == static_cast<size_t>(smallest_group)) {
                     continue;
                 }
 
@@ -283,7 +283,6 @@ int graph_coloring_ordered_greedy(const std::vector<int>& order, Graph& graph)
 {
     // greedy coloring
     int max_color = -1;
-    int num_colored = 0;
     std::vector<bool> color_used;
     color_used.reserve(128);
 
@@ -297,7 +296,7 @@ int graph_coloring_ordered_greedy(const std::vector<int>& order, Graph& graph)
         } else {
             color_used.resize(max_color + 1);
 
-            for (int color_counter = 0; color_counter < color_used.size(); color_counter++) {
+            for (int color_counter = 0; static_cast<size_t>(color_counter) < color_used.size(); color_counter++) {
                 color_used[color_counter] = false;
             }
 
@@ -311,7 +310,7 @@ int graph_coloring_ordered_greedy(const std::vector<int>& order, Graph& graph)
 
             // find the minimal usable color
             int min_usable_color = -1;
-            for (int color_counter = 0; color_counter < color_used.size(); color_counter++) {
+            for (int color_counter = 0; static_cast<size_t>(color_counter) < color_used.size(); color_counter++) {
                 if (!color_used[color_counter]) {
                     min_usable_color = color_counter;
                     break;
@@ -324,8 +323,6 @@ int graph_coloring_ordered_greedy(const std::vector<int>& order, Graph& graph)
                 graph.node_colors[node] = min_usable_color;
             }
         }
-
-        num_colored++;
     }
     return (max_color + 1);
 }
@@ -333,8 +330,8 @@ int graph_coloring_ordered_greedy(const std::vector<int>& order, Graph& graph)
 class NodeWeightBuckets {
 public:
     NodeWeightBuckets(int num_nodes)
-        : node_weights(num_nodes, 0)
-        , node_indices_in_bucket(num_nodes, -1)
+        : node_indices_in_bucket(num_nodes, -1)
+        , node_weights(num_nodes, 0)
     {
         weight_buckets.resize(NODE_WEIGHTS_PREALLOC);
         for (size_t i = 1; i < weight_buckets.size(); i++) {
@@ -354,7 +351,7 @@ public:
 
     void add_node(int weight, int node_idx)
     {
-        if (weight >= weight_buckets.size()) {
+        if (static_cast<size_t>(weight) >= weight_buckets.size()) {
             weight_buckets.resize(weight + 1);
         }
 
@@ -401,9 +398,9 @@ public:
     void increase_node_weight(int node_idx)
     {
         int weight = node_weights[node_idx];
-        assert(weight < weight_buckets.size());
+        assert(static_cast<size_t>(weight) < weight_buckets.size());
         int node_idx_in_bucket = node_indices_in_bucket[node_idx];
-        assert(node_idx_in_bucket < weight_buckets[weight].size());
+        assert(static_cast<size_t>(node_idx_in_bucket) < weight_buckets[weight].size());
 
         // swap index with the last element
         node_indices_in_bucket[weight_buckets[weight].back()] = node_idx_in_bucket;
@@ -440,7 +437,7 @@ int graph_coloring_mcs_vector(Graph& graph)
         // this might look like it's O(N^2) but this only happens once per connected components
         if (weight_buckets.empty()) {
             int non_negative_node = -1;
-            for (size_t i = 0; i < graph.num_nodes; i++) {
+            for (size_t i = 0; i < static_cast<size_t>(graph.num_nodes); i++) {
                 if (weight_buckets.get_node_weight(i) >= 0) {
                     non_negative_node = i;
                     break;
@@ -455,7 +452,7 @@ int graph_coloring_mcs_vector(Graph& graph)
         // Add highest weight node to the queue and increment all of its neighbors weights by 1
         ordering.push_back(max_node);
 
-        for (unsigned j = 0; j < graph.get_node_degree(max_node); j++) {
+        for (unsigned j = 0; j < static_cast<unsigned>(graph.get_node_degree(max_node)); j++) {
             int neighbor_node = graph.get_node_neighbor(max_node, j);
             int old_weight = weight_buckets.get_node_weight(neighbor_node);
 
@@ -493,7 +490,8 @@ int next_node(const int num_nodes, const std::vector<int>& degrees)
 void reduce_degree(int node_idx, Graph& graph, std::vector<int>& degrees)
 {
     degrees[node_idx] = -1;
-    for (size_t nei_node_counter = 0; nei_node_counter < graph.get_node_degree(node_idx); nei_node_counter++) {
+    for (size_t nei_node_counter = 0; nei_node_counter < static_cast<size_t>(graph.get_node_degree(node_idx));
+         nei_node_counter++) {
         int nei_node_idx = graph.get_node_neighbor(node_idx, nei_node_counter);
 
         if (degrees[nei_node_idx] != -1) {

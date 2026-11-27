@@ -1851,13 +1851,13 @@ CUDA_CALLABLE inline void adj_mesh_query_ray(
 // Stores the result of querying the closest point on a mesh.
 struct mesh_query_ray_t {
     CUDA_CALLABLE mesh_query_ray_t()
-        : result(false)
-        , sign(0.0f)
+        : sign(0.0f)
         , face(0)
         , t(0.0f)
         , u(0.0f)
         , v(0.0f)
         , normal()
+        , result(false)
     {
     }
 
@@ -2042,9 +2042,9 @@ struct mesh_query_aabb_t {
         , count(0)
         , input_lower()
         , input_upper()
-        , face(0)
         , prim_cur(0)
         , prim_end(0)
+        , face(0)
         , last_query_valid(true)
         , kind(MeshQueryKind::AABB)
         , radius_sq(0.0f)
@@ -2294,7 +2294,9 @@ CUDA_CALLABLE inline bool mesh_query_next_impl(mesh_query_aabb_t& query, int& in
         BVHPackedNodeHalf node_lower = bvh_load_node(mesh.bvh.node_lowers, node_index);
         BVHPackedNodeHalf node_upper = bvh_load_node(mesh.bvh.node_uppers, node_index);
 
-        if (!NodeTest {}(query, reinterpret_cast<vec3&>(node_lower), reinterpret_cast<vec3&>(node_upper)))
+        if (!NodeTest {}(
+                query, vec3(node_lower.x, node_lower.y, node_lower.z), vec3(node_upper.x, node_upper.y, node_upper.z)
+            ))
             continue;
 
         const int left_index = node_lower.i;

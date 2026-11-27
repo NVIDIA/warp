@@ -578,7 +578,8 @@ template <typename T, typename Shape> struct tile_vectorized_check_t {
     static CUDA_CALLABLE void validate_aligned_runtime(const Global& global, int64_t base_bytes)
     {
         const char* global_bytes = reinterpret_cast<const char*>(global.data.data) + base_bytes;
-        const float4* global128 = reinterpret_cast<const float4*>(global_bytes);
+        [[maybe_unused]] const float4* global128
+            = reinterpret_cast<const float4*>(global_bytes);  // unused on CPU with NDEBUG
 
         // Always check address alignment — misaligned 128-bit loads are undefined behavior.
         // Debug: assert fires with a diagnostic message.
@@ -1368,7 +1369,7 @@ public:
 
     static inline CUDA_CALLABLE void check()
     {
-        unsigned int* smem_base = get_smem_base();
+        [[maybe_unused]] unsigned int* smem_base = get_smem_base();  // only read by assert()
 
 #if defined(__CUDA_ARCH__)
         assert(smem_base[WP_TILE_THREAD_IDX] == 0);
@@ -2825,7 +2826,7 @@ template <typename T, unsigned... Shape> inline CUDA_CALLABLE auto tile_full(T x
 template <typename T, unsigned... Shape> inline CUDA_CALLABLE auto tile_from_thread(T value, int thread_idx)
 {
 #if defined(__CUDA_ARCH__)
-    assert(thread_idx >= 0 && thread_idx < blockDim.x);
+    assert(thread_idx >= 0 && static_cast<unsigned>(thread_idx) < blockDim.x);
 
     // Use a single shared memory element for the broadcast
     __shared__ T scratch;
@@ -2834,7 +2835,7 @@ template <typename T, unsigned... Shape> inline CUDA_CALLABLE auto tile_from_thr
     WP_TILE_SYNC();
 
     // The designated thread writes its value to shared memory
-    if (WP_TILE_THREAD_IDX == thread_idx) {
+    if (WP_TILE_THREAD_IDX == static_cast<unsigned>(thread_idx)) {
         scratch = value;
     }
 

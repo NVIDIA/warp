@@ -18,9 +18,9 @@ struct bvh_query_thread_block_t {
         , result_counter_shared_mem(nullptr)
         , result_buffer_shared_mem(nullptr)
         , last_valid_shared_mem(nullptr)
-        , is_ray(false)
         , input_lower()
         , input_upper()
+        , is_ray(false)
     {
     }
 

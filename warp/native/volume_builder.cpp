@@ -529,7 +529,6 @@ void rebuild_reset_bboxes(HostRebuildGridData& data)
 
 void rebuild_propagate_leaf_bboxes(HostRebuildGridData& data)
 {
-    const uint32_t lower_count = data.scratch->counts[REBUILD_COUNT_LOWER];
     for (uint32_t tid = 0; tid < data.scratch->counts[REBUILD_COUNT_LEAF]; ++tid) {
         const pnanovdb_leaf_handle_t leaf = data.getLeaf(tid);
         if (!rebuild_is_onindex_grid(data.grid_type)) {
@@ -617,7 +616,7 @@ void rebuild_populate_grid(
 {
     HostRebuildGridData data = host_make_rebuild_data(grid, grid_size, scratch, capacities, params);
     // The reserved node storage starts at the first upper node.
-    std::memset(grid, 0, clear_nodes ? grid_size : size_t(data.upper));
+    std::memset(static_cast<void*>(grid), 0, clear_nodes ? grid_size : size_t(data.upper));
 
     rebuild_init_grid_tree_root(data);
     rebuild_build_upper_nodes(data);

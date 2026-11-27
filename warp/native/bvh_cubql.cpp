@@ -16,7 +16,18 @@
 #include <vector>
 
 #ifndef WP_DISABLE_CUBQL
+// cuBQL is third-party code; keep its warnings out of Warp's native build.
+// Its CUDA-oriented headers use #pragma unroll, which host GCC does not know.
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
+#endif
 #include "cuBQL/builder/cpu.h"
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 #endif
 
 using namespace wp;

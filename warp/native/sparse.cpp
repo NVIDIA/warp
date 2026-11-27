@@ -361,7 +361,6 @@ WP_API void wp_bsr_matrix_from_triplets_host(
 
     int current_row = -1;
     int current_col = -1;
-    int current_block_idx = -1;
 
     for (int *block = tpl_block_indices, *block_offset = tpl_block_offsets; block != valid_indices_end; ++block) {
         int32_t idx = *block;

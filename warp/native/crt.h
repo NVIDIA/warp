@@ -151,16 +151,16 @@ typedef unsigned long long uint64_t;
 /// math.h
 
 // #if __cplusplus >= 201103L
-// #define DEFINE_MATH_UNARY_FUNC_WRAPPER(f) \
-// 	inline double      f(double x)         { return ::f(x); } \
-// 	inline float       f##f(float x)       { return ::f(x); } \
-// 	/*inline long double f##l(long double x) { return ::f(x); }*/ \
-// 	inline float       f(float x)          { return ::f(x); } \
+// #define DEFINE_MATH_UNARY_FUNC_WRAPPER(f)
+// 	inline double      f(double x)         { return ::f(x); }
+// 	inline float       f##f(float x)       { return ::f(x); }
+// 	/*inline long double f##l(long double x) { return ::f(x); }*/
+// 	inline float       f(float x)          { return ::f(x); }
 // 	/*inline long double f(long double x)    { return ::f(x); }*/
 // #else
-// #define DEFINE_MATH_UNARY_FUNC_WRAPPER(f) \
-// 	inline double      f(double x)         { return ::f(x); } \
-// 	inline float       f##f(float x)       { return ::f(x); } \
+// #define DEFINE_MATH_UNARY_FUNC_WRAPPER(f)
+// 	inline double      f(double x)         { return ::f(x); }
+// 	inline float       f##f(float x)       { return ::f(x); }
 // 	/*inline long double f##l(long double x) { return ::f(x); }*/
 // #endif
 // DEFINE_MATH_UNARY_FUNC_WRAPPER(cos)

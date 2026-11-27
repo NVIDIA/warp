@@ -74,13 +74,13 @@ template <unsigned Length, typename Type> struct vec_t {
 
     inline CUDA_CALLABLE Type operator[](int index) const
     {
-        assert(index < Length);
+        assert(static_cast<unsigned>(index) < Length);
         return c[index];
     }
 
     inline CUDA_CALLABLE Type& operator[](int index)
     {
-        assert(index < Length);
+        assert(static_cast<unsigned>(index) < Length);
         return c[index];
     }
 
@@ -1040,7 +1040,7 @@ inline CUDA_CALLABLE void adj_assign_copy(
 
     adj_value += adj_ret[idx];
     for (unsigned i = 0; i < Length; ++i) {
-        if (i != idx)
+        if (i != static_cast<unsigned>(idx))
             adj_v[i] += adj_ret[i];
     }
 }
