@@ -4,6 +4,7 @@
 import inspect
 
 import warp as wp
+import warp._src.fem.geometry.element as fem_element
 import warp._src.fem.integrate as fem_integrate_mod
 import warp.fem as fem
 import warp.sparse as wps
@@ -134,13 +135,13 @@ def _mapped_bsr_options(atomic: bool):
     return _triplet_bsr_options()
 
 
-def _make_corotated_hessian_integrator(space: fem.FunctionSpace, assembly: str):
+def _make_corotated_hessian_integrator(space: fem.FunctionSpace, assembly: str, family: str | None = None):
     u = fem.make_trial(space)
     v = fem.make_test(space)
     u_cur = fem.make_discrete_field(space)
 
     lame = fem.UniformField(v.domain, value=wp.vec2(1.0, 0.3))
-    quadrature = fem.RegularQuadrature(v.domain, order=2 * u_cur.degree)
+    quadrature = fem.RegularQuadrature(v.domain, order=2 * u_cur.degree, family=family)
 
     def integrate_hessian(output=None, bsr_options=None):
         kwargs = {}
@@ -167,8 +168,8 @@ class FemCorotatedElasticity:
     def __init__(self, use_graph: bool = True):
         self._use_graph = use_graph
 
-    def make_integrate_func(self, space: fem.FunctionSpace, fn: str, assembly: str):
-        integrate_hessian = _make_corotated_hessian_integrator(space, assembly)
+    def make_integrate_func(self, space: fem.FunctionSpace, fn: str, assembly: str, family: str | None = None):
+        integrate_hessian = _make_corotated_hessian_integrator(space, assembly, family=family)
 
         v = fem.make_test(space)
         u_cur = fem.make_discrete_field(space)
@@ -176,7 +177,7 @@ class FemCorotatedElasticity:
         lame = fem.UniformField(v.domain, value=wp.vec2(1.0, 0.3))
         E = wp.array(shape=1, dtype=float)
 
-        quadrature = fem.RegularQuadrature(v.domain, order=2 * u_cur.degree)
+        quadrature = fem.RegularQuadrature(v.domain, order=2 * u_cur.degree, family=family)
 
         reused_hessian_fn = None
         self._reused_hessian_output = None
@@ -378,16 +379,36 @@ class FemCorotatedElasticitySparseAssembly:
 
 
 class FemCorotatedElasticityQuadraticTetmesh(FemCorotatedElasticity):
-    """Test corotated elasticity with quadratic tetrahedral elements."""
+    """Test quadratic tetrahedral integration; ``_wv`` selects Witherden and Vincent rules."""
 
     repeat = 5
     number = 15
 
-    params = (["energy", "forces", "hessian", "hessian_compressed"], ["dispatch"])
+    params = (
+        [
+            "energy",
+            "forces",
+            "hessian",
+            "hessian_compressed",
+            "energy_wv",
+            "forces_wv",
+            "hessian_wv",
+            "hessian_compressed_wv",
+        ],
+        ["dispatch"],
+    )
     param_names = ["fn", "assembly"]
 
     @setup_once
     def setup(self, fn: str, assembly: str):
+        family = None
+        if fn.endswith("_wv"):
+            # Keep the original cases runnable against commits without this family.
+            if not hasattr(fem_element, "WITHERDEN_VINCENT_QUADRATURE"):
+                raise NotImplementedError("Witherden and Vincent quadrature is not available")
+            family = "witherden_vincent"
+            fn = fn.removesuffix("_wv")
+
         wp.init()
         self.device = wp.get_device("cuda:0")
 
@@ -396,10 +417,10 @@ class FemCorotatedElasticityQuadraticTetmesh(FemCorotatedElasticity):
             pos, cells = gen_tetmesh(res=(res, res, res))
             geo = fem.Tetmesh(cells, pos)
             space = fem.make_polynomial_space(geo, degree=2, dtype=wp.vec3)
-            self.make_integrate_func(space, fn, assembly)
+            self.make_integrate_func(space, fn, assembly, family=family)
 
     def time_cuda(self, fn, assembly):
-        self.run(fn)
+        self.run(fn.removesuffix("_wv"))
 
 
 class FemCorotatedElasticityLinearGrid(FemCorotatedElasticity):

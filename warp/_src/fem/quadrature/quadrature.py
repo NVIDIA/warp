@@ -11,11 +11,10 @@ from warp._src.context import capture_pause, capture_resume
 from warp._src.fem import cache
 from warp._src.fem.domain import GeometryDomain
 from warp._src.fem.geometry import Element
+from warp._src.fem.geometry.element import QuadratureFamily
 from warp._src.fem.space.function_space import BasisSpace, FunctionSpace
 from warp._src.fem.space.partition import SpacePartition, WholeSpacePartition
 from warp._src.fem.types import NULL_ELEMENT_INDEX, ElementIndex, QuadraturePointIndex, cached_coords_type
-
-from ..polynomial import Polynomial
 
 
 @wp.struct
@@ -272,13 +271,21 @@ class _QuadratureWithRegularEvaluationPoints(Quadrature):
 
 
 class RegularQuadrature(_QuadratureWithRegularEvaluationPoints):
-    """Regular quadrature formula, using a constant set of quadrature points per element."""
+    """Regular quadrature formula, using a constant set of quadrature points per element.
+
+    Args:
+        domain: Domain over which to integrate.
+        order: Polynomial degree to integrate exactly on the reference element.
+        family: A :class:`warp.fem.Polynomial` family for product quadrature or, on tetrahedra,
+            ``"xiao_gimbutas"`` (fewest points) or ``"witherden_vincent"`` (fully symmetric).
+            If ``None``, choose the default rule for the reference element.
+    """
 
     # Cache common formulas so we do dot have to do h2d transfer for each call
     class CachedFormula:
         _cache: ClassVar = {}
 
-        def __init__(self, element: Element, order: int, family: Polynomial, scalar_type: type):
+        def __init__(self, element: Element, order: int, family: QuadratureFamily | None, scalar_type: type):
             raw_points, raw_weights = element.prototype.instantiate_quadrature(order, family)
 
             self._scalar_type = scalar_type
@@ -312,7 +319,7 @@ class RegularQuadrature(_QuadratureWithRegularEvaluationPoints):
             arg.assign(self.arg_value(device))
 
         @staticmethod
-        def get(element: Element, order: int, family: Polynomial, scalar_type: type):
+        def get(element: Element, order: int, family: QuadratureFamily | None, scalar_type: type):
             key = (element.value, order, family, scalar_type)
             try:
                 return RegularQuadrature.CachedFormula._cache[key]
@@ -344,7 +351,7 @@ class RegularQuadrature(_QuadratureWithRegularEvaluationPoints):
         self,
         domain: GeometryDomain,
         order: int,
-        family: Polynomial = None,
+        family: QuadratureFamily | None = None,
     ):
         scalar_type = domain.geometry.scalar_type
         self._formula = RegularQuadrature.CachedFormula.get(domain.reference_element(), order, family, scalar_type)

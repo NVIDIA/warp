@@ -3,6 +3,8 @@
 
 import math
 import unittest
+from itertools import permutations
+from math import factorial
 from typing import Any
 from unittest.mock import patch
 
@@ -12,7 +14,7 @@ import warp as wp
 import warp.fem as fem
 import warp.tests.fem.aux_test_function_cache_1 as function_cache_module_1
 import warp.tests.fem.aux_test_function_cache_2 as function_cache_module_2
-from warp._src.fem.geometry.element import LinearEdge, Polynomial, Tetrahedron, Triangle
+from warp._src.fem.geometry.element import Cube, LinearEdge, Polynomial, Tetrahedron, Triangle
 from warp._src.fem.operator import element_partition_index, node_partition_index
 from warp.fem import Coords, Domain, Field, Sample, div, integrand
 from warp.sparse import bsr_set_zero
@@ -157,6 +159,52 @@ def test_regular_quadrature(test, device):
 
             ref = 1.0 / ((x_degree + y_degree + 2) * (y_degree + 1))
             test.assertAlmostEqual(ref, res, places=4)
+
+
+@integrand
+def _monomial_integrand(s: Sample, domain: Domain, exponents: wp.vec3):
+    x = domain(s)
+    return wp.pow(x[0], exponents[0]) * wp.pow(x[1], exponents[1]) * wp.pow(x[2], exponents[2])
+
+
+def test_tetrahedron_regular_quadrature_families(test, device):
+    res = 2
+    vtx = np.stack(
+        np.meshgrid(*(np.linspace(0.0, 1.0, res + 1),) * 3, indexing="ij"),
+        axis=-1,
+    ).reshape(-1, 3)
+    tets = fem.utils.grid_to_tets(res, res, res)
+
+    with wp.ScopedDevice(device):
+        geo = fem.Tetmesh(
+            wp.array(tets, dtype=int),
+            wp.array(vtx, dtype=wp.vec3),
+            build_bvh=False,
+        )
+        domain = fem.Cells(geo)
+
+        for family in (None, "xiao_gimbutas", "witherden_vincent"):
+            for order in (3, 4, 7):
+                with test.subTest(family=family, order=order):
+                    quadrature = fem.RegularQuadrature(domain, order=order, family=family)
+                    test.assertIn(str(family), quadrature.name)
+
+                    # Mixed monomial of total degree ``order``; exact over the unit cube
+                    a = order // 3
+                    b = (order - a) // 2
+                    c = order - a - b
+                    val = fem.integrate(
+                        _monomial_integrand,
+                        quadrature=quadrature,
+                        values={"exponents": wp.vec3(a, b, c)},
+                        output_dtype=float,
+                    )
+                    expected = 1.0 / ((a + 1) * (b + 1) * (c + 1))
+                    test.assertAlmostEqual(float(val), expected, delta=1.0e-5)
+
+        boundary = fem.BoundarySides(geo)
+        with test.assertRaisesRegex(ValueError, "Unsupported quadrature family"):
+            fem.RegularQuadrature(boundary, order=3, family="witherden_vincent")
 
 
 def test_point_basis(test, device):
@@ -833,6 +881,71 @@ def test_nodal_quadrature(test, device):
 
 
 class TestFemQuadrature(unittest.TestCase):
+    def test_tetrahedron_quadrature_rules(self):
+        """Verify exactness of tetrahedral rules and Witherden and Vincent symmetry."""
+        families = (
+            (None, (1, 4, 6, 11, 14, 23, 31, 43, 56, 73)),
+            ("xiao_gimbutas", (1, 4, 6, 11, 14, 23, 31, 43, 56, 73)),
+            ("witherden_vincent", (1, 4, 8, 14, 14, 24, 35, 46, 59, 81)),
+        )
+        for family, point_counts in families:
+            for degree, point_count in enumerate(point_counts, start=1):
+                with self.subTest(family=family, degree=degree):
+                    coords, weights = Tetrahedron.instantiate_quadrature(degree, family=family)
+                    points = np.asarray(coords)
+                    weights = np.asarray(weights)
+                    self.assertEqual(points.shape, (point_count, 3))
+                    self.assertEqual(weights.shape, (point_count,))
+                    self.assertTrue(np.all(points > 0.0))
+                    self.assertTrue(np.all(points.sum(axis=1) < 1.0))
+                    self.assertTrue(np.all(weights > 0.0))
+
+                    # Integrals of x^i y^j z^k on the unit tetrahedron, normalized by its volume.
+                    powers = [
+                        (i, j, k)
+                        for i in range(degree + 1)
+                        for j in range(degree + 1 - i)
+                        for k in range(degree + 1 - i - j)
+                    ]
+                    expected = [
+                        6 * factorial(i) * factorial(j) * factorial(k) / factorial(i + j + k + 3) for i, j, k in powers
+                    ]
+                    monomials = np.prod(points[:, None, :] ** powers, axis=2)
+                    np.testing.assert_allclose(weights @ monomials, expected, rtol=5.0e-14, atol=0.0)
+
+                    if family == "witherden_vincent":
+                        barycentric = np.column_stack((points, 1.0 - points.sum(axis=1)))
+                        # All 24 vertex permutations must preserve the nodes and their weights.
+                        # Match geometrically to allow for rounding in the fourth coordinate.
+                        for permutation in permutations(range(4)):
+                            with self.subTest(permutation=permutation):
+                                permuted = barycentric[:, permutation]
+                                distances = np.max(np.abs(permuted[:, None, :] - barycentric[None, :, :]), axis=2)
+                                matches = np.argmin(distances, axis=1)
+                                self.assertEqual(len(np.unique(matches)), point_count)
+                                np.testing.assert_allclose(permuted, barycentric[matches], rtol=0.0, atol=2.0e-15)
+                                np.testing.assert_allclose(weights, weights[matches], rtol=5.0e-14, atol=0.0)
+
+    def test_tetrahedron_quadrature_family_validation(self):
+        """Verify order bounds and that tetrahedral families are rejected on other elements."""
+        for family in (None, "xiao_gimbutas", "witherden_vincent"):
+            with self.subTest(family=family):
+                coords, weights = Tetrahedron.instantiate_quadrature(0, family=family)
+                np.testing.assert_allclose(np.asarray(coords), [[0.25, 0.25, 0.25]])
+                np.testing.assert_allclose(np.asarray(weights), [1.0])
+
+                with self.assertRaisesRegex(NotImplementedError, "up to order 10"):
+                    Tetrahedron.instantiate_quadrature(11, family=family)
+
+        for element in (Triangle, Cube, LinearEdge):
+            for family in ("xiao_gimbutas", "witherden_vincent"):
+                with self.subTest(element=element.__name__, family=family):
+                    with self.assertRaisesRegex(ValueError, "Unsupported quadrature family"):
+                        element.instantiate_quadrature(3, family=family)
+
+        with self.assertRaisesRegex(ValueError, "Unsupported quadrature family"):
+            Tetrahedron.instantiate_quadrature(3, family="witherden-vincent")
+
     def test_point_basis_rejects_invalid_kernel_argument_types(self):
         """Verify that invalid radial-kernel annotations report a type error."""
         with wp.ScopedDevice("cpu"):
@@ -850,6 +963,12 @@ class TestFemQuadrature(unittest.TestCase):
 devices = get_test_devices()
 
 add_function_test(TestFemQuadrature, "test_regular_quadrature", test_regular_quadrature)
+add_function_test(
+    TestFemQuadrature,
+    "test_tetrahedron_regular_quadrature_families",
+    test_tetrahedron_regular_quadrature_families,
+    devices=devices,
+)
 add_function_test(TestFemQuadrature, "test_nodal_quadrature", test_nodal_quadrature)
 add_function_test(
     TestFemQuadrature,
