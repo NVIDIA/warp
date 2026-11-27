@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 # SPDX-License-Identifier: Apache-2.0
 
+import math
 import unittest
 from typing import Any
 from unittest.mock import patch
@@ -11,7 +12,7 @@ import warp as wp
 import warp.fem as fem
 import warp.tests.fem.aux_test_function_cache_1 as function_cache_module_1
 import warp.tests.fem.aux_test_function_cache_2 as function_cache_module_2
-from warp._src.fem.geometry.element import LinearEdge, Polynomial, Triangle
+from warp._src.fem.geometry.element import LinearEdge, Polynomial, Tetrahedron, Triangle
 from warp._src.fem.operator import element_partition_index, node_partition_index
 from warp.fem import Coords, Domain, Field, Sample, div, integrand
 from warp.sparse import bsr_set_zero
@@ -124,6 +125,27 @@ def test_regular_quadrature(test, device):
                 ref = 1.0 / ((x_degree + y_degree + 2) * (y_degree + 1))
                 # print(x_degree, y_degree, family, len(coords), res, ref)
                 test.assertAlmostEqual(ref, res, places=4)
+
+        # test integrating x^k1 y^k2 z^k3 on tetrahedron using transformation to cube
+        for degree in range(4):
+            coords, weights = Tetrahedron().instantiate_quadrature(degree, family=family)
+            for x_degree in range(degree + 1):
+                for y_degree in range(degree + 1 - x_degree):
+                    z_degree = degree - x_degree - y_degree
+                    res = sum(
+                        w * pow(c[0], x_degree) * pow(c[1], y_degree) * pow(c[2], z_degree)
+                        for w, c in zip(weights, coords, strict=True)
+                    )
+
+                    # weights sum up to 1, so compare with the integral divided by the volume 1/6
+                    ref = (
+                        6.0
+                        * math.factorial(x_degree)
+                        * math.factorial(y_degree)
+                        * math.factorial(z_degree)
+                        / math.factorial(degree + 3)
+                    )
+                    test.assertAlmostEqual(ref, res, places=4)
 
     # test integrating y^k1 (1 - x)^k2 on triangle using direct formulas
     for x_degree in range(5):
