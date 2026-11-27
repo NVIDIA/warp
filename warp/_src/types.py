@@ -8822,6 +8822,7 @@ class HashGrid:
         self.dtype = dtype
         self._vec_type, self._type_id = dtype_map[dtype]
 
+        warp.init()
         self.runtime = warp._src.context.runtime
         self.device = self.runtime.get_device(device)
         try:
