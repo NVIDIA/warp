@@ -615,6 +615,64 @@ passed as a dictionary in the <cite>values</cite> parameter of the launcher func
 </pre></div>
 </div>
 </section>
+<section id="quadrature">
+<h2>Quadrature<a class="headerlink" href="#quadrature" title="Link to this heading">#</a></h2>
+<p><a class="reference internal" href="../api_reference/_generated/warp.fem.RegularQuadrature.html#warp.fem.RegularQuadrature" title="warp.fem.RegularQuadrature"><code class="xref py py-class docutils literal notranslate"><span class="pre">RegularQuadrature</span></code></a> integrates polynomials of degree up to <code class="docutils literal notranslate"><span class="pre">order</span></code> exactly on each reference element.
+On tetrahedra, it uses tabulated rules with positive weights and interior points, up to order 10:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">family=&quot;xiao_gimbutas&quot;</span></code> (default) uses the fewest points
+(<a class="reference external" href="https://doi.org/10.1016/j.camwa.2009.10.027">Xiao and Gimbutas, 2010</a>);</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">family=&quot;witherden_vincent&quot;</span></code> is fully symmetric under vertex permutations, at the cost of a few more points
+(<a class="reference external" href="https://arxiv.org/abs/1409.1865">Witherden and Vincent, 2015</a>).</p></li>
+</ul>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Order</p></th>
+<th class="head"><p>1</p></th>
+<th class="head"><p>2</p></th>
+<th class="head"><p>3</p></th>
+<th class="head"><p>4</p></th>
+<th class="head"><p>5</p></th>
+<th class="head"><p>6</p></th>
+<th class="head"><p>7</p></th>
+<th class="head"><p>8</p></th>
+<th class="head"><p>9</p></th>
+<th class="head"><p>10</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">&quot;xiao_gimbutas&quot;</span></code></p></td>
+<td><p>1</p></td>
+<td><p>4</p></td>
+<td><p>6</p></td>
+<td><p>11</p></td>
+<td><p>14</p></td>
+<td><p>23</p></td>
+<td><p>31</p></td>
+<td><p>43</p></td>
+<td><p>56</p></td>
+<td><p>73</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">&quot;witherden_vincent&quot;</span></code></p></td>
+<td><p>1</p></td>
+<td><p>4</p></td>
+<td><p>8</p></td>
+<td><p>14</p></td>
+<td><p>14</p></td>
+<td><p>24</p></td>
+<td><p>35</p></td>
+<td><p>46</p></td>
+<td><p>59</p></td>
+<td><p>81</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">quadrature</span> <span class="o">=</span> <span class="n">fem</span><span class="o">.</span><span class="n">RegularQuadrature</span><span class="p">(</span><span class="n">fem</span><span class="o">.</span><span class="n">Cells</span><span class="p">(</span><span class="n">geo</span><span class="p">),</span> <span class="n">order</span><span class="o">=</span><span class="mi">5</span><span class="p">,</span> <span class="n">family</span><span class="o">=</span><span class="s2">"witherden_vincent"</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Passing a <a class="reference internal" href="../api_reference/_generated/warp.fem.Polynomial.html#warp.fem.Polynomial" title="warp.fem.Polynomial"><code class="xref py py-class docutils literal notranslate"><span class="pre">Polynomial</span></code></a> family instead selects a collapsed tensor-product rule.</p>
+</section>
 <section id="basic-workflow">
 <h2>Basic Workflow<a class="headerlink" href="#basic-workflow" title="Link to this heading">#</a></h2>
 <p>The typical steps for solving a linearized PDE with <a class="reference internal" href="../api_reference/warp_fem.html#module-warp.fem" title="warp.fem"><code class="xref py py-mod docutils literal notranslate"><span class="pre">warp.fem</span></code></a> are as follow:</p>
@@ -1170,6 +1228,7 @@ This can be used to visualize discrete fields in VTK-aware viewers such as <code
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="pst-show_toc_level nav section-nav flex-column">
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#integrands">Integrands</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#quadrature">Quadrature</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#basic-workflow">Basic Workflow</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#differentiating-an-energy">Differentiating an energy</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#introductory-examples">Introductory Examples</a></li>

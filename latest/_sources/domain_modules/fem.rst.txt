@@ -62,6 +62,31 @@ passed as a dictionary in the `values` parameter of the launcher function, for i
     integrate(diffusion_form, fields={"u": trial, "v": test}, values={"nu": viscosity})
 
 
+Quadrature
+----------
+
+:class:`.RegularQuadrature` integrates polynomials of degree up to ``order`` exactly on each reference element.
+On tetrahedra, it uses tabulated rules with positive weights and interior points, up to order 10:
+
+- ``family="xiao_gimbutas"`` (default) uses the fewest points
+  (`Xiao and Gimbutas, 2010 <https://doi.org/10.1016/j.camwa.2009.10.027>`__);
+- ``family="witherden_vincent"`` is fully symmetric under vertex permutations, at the cost of a few more points
+  (`Witherden and Vincent, 2015 <https://arxiv.org/abs/1409.1865>`__).
+
+=======================  =  =  =  ==  ==  ==  ==  ==  ==  ==
+Order                    1  2  3  4   5   6   7   8   9   10
+=======================  =  =  =  ==  ==  ==  ==  ==  ==  ==
+``"xiao_gimbutas"``      1  4  6  11  14  23  31  43  56  73
+``"witherden_vincent"``  1  4  8  14  14  24  35  46  59  81
+=======================  =  =  =  ==  ==  ==  ==  ==  ==  ==
+
+.. code-block:: python
+
+    quadrature = fem.RegularQuadrature(fem.Cells(geo), order=5, family="witherden_vincent")
+
+Passing a :class:`.Polynomial` family instead selects a collapsed tensor-product rule.
+
+
 Basic Workflow
 --------------
 
