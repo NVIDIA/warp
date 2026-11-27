@@ -21,7 +21,7 @@ volume_get_leaf_coords(const uint32_t leaf_count, pnanovdb_coord_t* leaf_coords,
 }
 
 __global__ void
-volume_get_voxel_coords(const uint32_t voxel_count, pnanovdb_coord_t* voxel_coords, const pnanovdb_buf_t buf)
+volume_get_voxel_coords(const uint64_t voxel_count, pnanovdb_coord_t* voxel_coords, const pnanovdb_buf_t buf)
 {
     const uint32_t leaf_index = blockIdx.x;
     const pnanovdb_tree_handle_t tree = wp::volume::get_tree(buf);
@@ -58,7 +58,7 @@ void launch_get_leaf_coords(void* context, const uint32_t leaf_count, pnanovdb_c
 void launch_get_voxel_coords(
     void* context,
     const uint32_t leaf_count,
-    const uint32_t voxel_count,
+    const uint64_t voxel_count,
     pnanovdb_coord_t* voxel_coords,
     pnanovdb_buf_t buf
 )

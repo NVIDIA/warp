@@ -306,6 +306,7 @@ Volumes
    volume_lookup_f
    volume_lookup_i
    volume_lookup_index
+   volume_lookup_index64
    volume_lookup_v
    volume_sample
    volume_sample_f
@@ -320,6 +321,7 @@ Volumes
    volume_store_i
    volume_store_v
    volume_voxel_count
+   volume_voxel_count64
    volume_world_to_index
    volume_world_to_index_dir
 

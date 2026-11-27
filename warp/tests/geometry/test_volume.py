@@ -790,6 +790,168 @@ def test_volume_feature_array(test, device):
     np.testing.assert_equal(array.numpy()[0:4], [3, volume.get_voxel_count(), 2, 3])
 
 
+@wp.func_native("""
+    const auto buf = wp::volume::id_to_buffer(volume);
+    const auto type = wp::volume::get_grid_type(buf);
+    const pnanovdb_coord_t origin = {0, 0, 0};
+    const auto address = pnanovdb_root_get_value_address(type, buf, wp::volume::get_root(buf), &origin);
+    pnanovdb_write_uint64(buf, address, base + 1);  // NanoVDB stores one-based indices.
+""")
+def set_leaf_base(volume: wp.uint64, base: wp.uint64): ...
+
+
+@wp.kernel(enable_backward=False)
+def patch_leaf_base(volume: wp.uint64, base: wp.uint64):
+    set_leaf_base(volume, base)
+
+
+@wp.kernel(module="unique")
+def sample_voxel_array(
+    volume: wp.uint64,
+    mode: int,
+    points: wp.array[wp.vec3],
+    data: Any,
+    background: wp.array[float],
+    result: wp.array[wp.vec3],
+):
+    i = wp.tid()
+    p = points[i]
+    v = wp.volume_sample_index(volume, p, mode, data, background[0])
+    grad = wp.vec3()
+    u = wp.volume_sample_grad_index(volume, p, mode, data, background[0], grad)
+    result[i] = wp.vec3(v, u, grad[2])
+
+
+@wp.kernel(module="unique")
+def lookup_voxel_indices(
+    volume: wp.uint64, points: wp.array[wp.vec3i], wide: wp.array[wp.int64], narrow: wp.array[int]
+):
+    i = wp.tid()
+    p = points[i]
+    wide[i] = wp.volume_lookup_index64(volume, p[0], p[1], p[2])
+    narrow[i] = wp.volume_lookup_index(volume, p[0], p[1], p[2])
+
+
+def test_volume_large_index_sampling(test, device):
+    # Every logical row aliases seven distinct values. A truncated index has a different remainder mod 7.
+    shape = ((2**32 + 512) // 7 + 1, 7)
+    storage = wp.array(np.arange(14, dtype=np.float32), device=device)
+    data = wp.array(ptr=storage.ptr, dtype=float, shape=shape, strides=(0, 8), capacity=storage.capacity, device=device)
+    adj_storage = wp.zeros(21, dtype=float, device=device)
+    adj_data = wp.array(
+        ptr=adj_storage.ptr, dtype=float, shape=shape, strides=(0, 12), capacity=adj_storage.capacity, device=device
+    )
+    background = wp.array([-10.0], dtype=float, device=device, requires_grad=True)
+    queries = wp.array([(0, 0, z) for z in range(8)] + [(1, 0, 0), (8, 0, 0)], dtype=wp.vec3i, device=device)
+    wide = wp.empty(len(queries), dtype=wp.int64, device=device)
+    narrow = wp.empty(len(queries), dtype=int, device=device)
+    for grid in ("index", "onindex"):
+        if grid == "index":
+            volume = wp.Volume.allocate_by_tiles(queries[:1], voxel_size=1.0, bg_value=None, device=device)
+        else:
+            volume = wp.Volume.allocate_by_voxels(queries[:8], voxel_size=1.0, device=device)
+        for base in (2**31 - 2, 2**32 - 2):
+            wp.launch(patch_leaf_base, 1, [volume.id, base], device=device)
+            for mode in (wp.Volume.CLOSEST, wp.Volume.LINEAR):
+                with test.subTest(grid=grid, base=base, mode=mode):
+                    linear = mode == wp.Volume.LINEAR
+                    z = np.arange(7 if linear else 8)
+                    points = [(0, 0, k + 0.25) for k in z] + [(8, 0, 0)]
+                    positions = wp.array(points, dtype=wp.vec3, device=device, requires_grad=True)
+                    result = wp.empty(len(points), dtype=wp.vec3, device=device)
+                    args = [wp.uint64(volume.id), mode, positions, data, background]
+                    wp.launch(sample_voxel_array, len(points), args, [result], device=device)
+
+                    col = (base + z) % 7
+                    next_col = (col + 1) % 7
+                    dz = 2 * (next_col - col) if linear else np.zeros_like(col)
+                    values = 2 * col + 0.25 * dz
+                    expected = np.column_stack((values, values, dz))
+                    np.testing.assert_array_equal(result.numpy(), np.vstack((expected, [-10, -10, 0])))
+
+                    # Seed both sampled values and the spatial derivative. Use an independently strided adjoint.
+                    seeds = wp.full(len(points), wp.vec3(1.0), dtype=wp.vec3, device=device)
+                    adj_storage.zero_()
+                    background.grad.zero_()
+                    wp.launch(
+                        sample_voxel_array,
+                        len(points),
+                        args,
+                        [result],
+                        adj_inputs=[None, None, positions.grad, adj_data, background.grad],
+                        adj_outputs=[seeds],
+                        adjoint=True,
+                        device=device,
+                    )
+                    weights = np.zeros(21)
+                    np.add.at(weights, 3 * col, 0.5 if linear else 2.0)
+                    if linear:
+                        np.add.at(weights, 3 * next_col, 1.5)
+                    np.testing.assert_array_equal(adj_storage.numpy(), weights)
+                    np.testing.assert_array_equal(positions.grad.numpy()[:, 2], np.append(2 * dz, 0))
+                    np.testing.assert_array_equal(background.grad.numpy(), [2])
+
+            wp.launch(lookup_voxel_indices, len(queries), [volume.id, queries, wide, narrow], device=device)
+            indices = np.array([*range(base, base + 8), base + 64 if grid == "index" else -1, -1])
+            np.testing.assert_array_equal(wide.numpy(), indices)
+            np.testing.assert_array_equal(narrow.numpy(), np.where(indices <= 2**31 - 1, indices, -1))
+
+
+@wp.func_native("""
+    const auto buf = wp::volume::id_to_buffer(grid);
+    const auto tree = wp::volume::get_tree(buf);
+    pnanovdb_tree_set_node_count_leaf(buf, tree, leaves);
+    pnanovdb_tree_set_voxel_count(buf, tree, voxels);
+""")
+def set_tree_counts(grid: wp.uint64, leaves: wp.uint32, voxels: wp.uint64): ...
+
+
+@wp.kernel(module="unique", enable_backward=False)
+def read_volume_counts(grid: wp.uint64, leaves: wp.uint32, voxels: wp.uint64, counts: wp.array[wp.int64]):
+    set_tree_counts(grid, leaves, voxels)
+    counts[0] = wp.volume_voxel_count64(grid)
+    counts[1] = wp.int64(wp.volume_voxel_count(grid))
+
+
+def test_volume_voxel_count64(test, device):
+    origin = wp.array([(0, 0, 0)], dtype=wp.vec3i, device=device)
+    counts = wp.empty(2, dtype=wp.int64, device=device)
+    for grid in ("regular", "index", "onindex"):
+        if grid == "onindex":
+            volume = wp.Volume.allocate_by_voxels(origin, voxel_size=1.0, device=device)
+        else:
+            bg = 0.0 if grid == "regular" else None
+            volume = wp.Volume.allocate_by_tiles(origin, voxel_size=1.0, bg_value=bg, device=device)
+        # Only query counts on this copy. Traversal uses the original one-leaf topology.
+        copy = wp.clone(volume.array())
+        for voxels in (2**31 - 2, 2**31 - 1, 2**31, 2**31 + 1, 2**32 - 1, 2**32, 2**32 + 1):
+            with test.subTest(grid=grid, voxels=voxels):
+                leaves = (voxels + 511) // 512
+                expected = voxels if grid == "onindex" else leaves * 512
+                wp.launch(read_volume_counts, 1, [copy.ptr, leaves, voxels, counts], device=device)
+                np.testing.assert_array_equal(counts.numpy(), [expected, min(expected, 2**31 - 1)])
+
+
+def test_volume_multidimensional_index_sampling(test, device):
+    origin = wp.array([(0, 0, 0)], dtype=wp.vec3i, device=device)
+    volume = wp.Volume.allocate_by_tiles(origin, voxel_size=1.0, bg_value=0.0, device=device)
+    points = wp.array(list(np.ndindex(8, 8, 8)), dtype=wp.vec3, device=device)
+    background = wp.zeros(1, dtype=float, device=device)
+    result = wp.empty(512, dtype=wp.vec3, device=device)
+    for shape in ((512,), (16, 32), (4, 8, 16), (2, 4, 8, 8)):
+        with test.subTest(shape=shape):
+            data = wp.array(np.arange(512, dtype=np.float32), device=device).reshape(shape).transpose()
+            wp.launch(
+                sample_voxel_array,
+                512,
+                [wp.uint64(volume.id), wp.Volume.CLOSEST, points, data, background],
+                [result],
+                device=device,
+            )
+            expected = data.numpy().flatten()
+            np.testing.assert_array_equal(result.numpy(), np.column_stack((expected, expected, np.zeros(512))))
+
+
 @wp.kernel
 def fill_leaf_values_kernel(volume: wp.uint64, ijk: wp.array2d[wp.int32], values: wp.array[Any]):
     tid = wp.tid()
@@ -1578,6 +1740,15 @@ add_function_test(TestVolume, "test_volume_aniso_transform", test_volume_aniso_t
 add_function_test(TestVolume, "test_volume_multiple_grids", test_volume_multiple_grids, devices=devices)
 add_function_test(TestVolume, "test_volume_feature_array", test_volume_feature_array, devices=devices)
 add_function_test(TestVolume, "test_volume_sample_index", test_volume_sample_index, devices=devices)
+add_function_test(TestVolume, "test_volume_large_index_sampling", test_volume_large_index_sampling, devices=devices)
+add_function_test(TestVolume, "test_volume_voxel_count64", test_volume_voxel_count64, devices=devices)
+add_function_test(
+    TestVolume,
+    "test_volume_multidimensional_index_sampling",
+    test_volume_multidimensional_index_sampling,
+    devices=devices,
+)
+
 add_function_test(TestVolume, "test_volume_sample_grad_v4", test_volume_sample_grad_v4, devices=devices)
 add_function_test(TestVolume, "test_volume_sample_grad_index_v4", test_volume_sample_grad_index_v4, devices=devices)
 add_function_test(
