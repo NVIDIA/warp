@@ -632,7 +632,32 @@ def test_capture_bvh_rebuild_grouped(test, device):
             assert_array_equal(checksums_1, checksums_brutal)
 
 
+def test_grouped_rebuild_group_roots(test, device):
+    """Keep queries scoped to their group after rebuilding a CUDA BVH as an LBVH."""
+    group_ids = np.array([0] + [1] * 4 + [-7] * 16, dtype=np.int32)
+    num_boxes = len(group_ids)
+    lowers = wp.full(num_boxes, wp.vec3(-1.0), dtype=wp.vec3, device=device)
+    uppers = wp.full(num_boxes, wp.vec3(1.0), dtype=wp.vec3, device=device)
+    groups = wp.array(group_ids, dtype=int, device=device)
+    bvh = wp.Bvh(lowers, uppers, constructor="sah", leaf_size=4, groups=groups)
+    bvh.rebuild("lbvh")
+
+    # The query covers all boxes, so a fallback to the global root exposes other groups.
+    for group_id in np.unique(group_ids):
+        with test.subTest(group_id=group_id):
+            hits = wp.zeros(num_boxes, dtype=int, device=device)
+            wp.launch(
+                bvh_query_aabb_group,
+                dim=1,
+                inputs=[bvh.id, wp.vec3(-2.0), wp.vec3(2.0), wp.array([group_id], dtype=int, device=device)],
+                outputs=[hits],
+                device=device,
+            )
+            np.testing.assert_array_equal(hits.numpy(), group_ids == group_id)
+
+
 devices = get_test_devices()
+cuda_devices = get_cuda_test_devices()
 cuda_devices_with_mempool = get_cuda_test_devices_with_mempool()
 
 
@@ -674,6 +699,9 @@ add_function_test(
     "test_grouped_capture_bvh_rebuild",
     test_capture_bvh_rebuild_grouped,
     devices=cuda_devices_with_mempool,
+)
+add_function_test(
+    TestGroupedBvh, "test_grouped_rebuild_group_roots", test_grouped_rebuild_group_roots, devices=cuda_devices
 )
 
 if __name__ == "__main__":

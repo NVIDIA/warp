@@ -1241,6 +1241,74 @@ def test_bvh_construction_cpu_capture_raises(test, device):
     test.assertNotEqual(bvh.id, 0)
 
 
+# The rebuilt LBVH needs more than one 256-thread refit block.
+_REBUILD_REFIT_BOX_COUNT = 257
+_REBUILD_REFIT_SHIFT = _REBUILD_REFIT_BOX_COUNT + 1
+
+
+def _make_rebuild_refit_bvh(device):
+    centers = np.repeat(np.arange(_REBUILD_REFIT_BOX_COUNT, dtype=np.float32)[:, None], 3, axis=1)
+    lowers = wp.array(centers - 0.125, dtype=wp.vec3, device=device)
+    uppers = wp.array(centers + 0.125, dtype=wp.vec3, device=device)
+    moved_centers = centers + _REBUILD_REFIT_SHIFT
+    moved_lowers = wp.array(moved_centers - 0.125, dtype=wp.vec3, device=device)
+    moved_uppers = wp.array(moved_centers + 0.125, dtype=wp.vec3, device=device)
+
+    # Rebuilding a packed SAH tree as an LBVH increases its refit leaf count.
+    bvh = wp.Bvh(lowers, uppers, constructor="sah", leaf_size=4)
+    return bvh, moved_lowers, moved_uppers
+
+
+def _assert_bvh_hits_moved_boxes(bvh):
+    hits = wp.zeros(_REBUILD_REFIT_BOX_COUNT, dtype=int, device=bvh.device)
+    # The moved region is disjoint from the original bounds, so stale nodes can hide primitives.
+    query_lower = wp.vec3(_REBUILD_REFIT_SHIFT - 1.0)
+    query_upper = wp.vec3(float(_REBUILD_REFIT_SHIFT + _REBUILD_REFIT_BOX_COUNT))
+    wp.launch(bvh_query_aabb, dim=1, inputs=[bvh.id, query_lower, query_upper, hits], device=bvh.device)
+    np.testing.assert_array_equal(hits.numpy(), 1)
+
+
+def test_bvh_rebuild_then_refit(test, device):
+    """Find moved boxes after rebuilding a packed SAH tree and refitting it."""
+    bvh, moved_lowers, moved_uppers = _make_rebuild_refit_bvh(device)
+    bvh.rebuild("lbvh")
+    wp.copy(bvh.lowers, moved_lowers)
+    wp.copy(bvh.uppers, moved_uppers)
+    bvh.refit()
+    _assert_bvh_hits_moved_boxes(bvh)
+
+
+def test_bvh_rebuild_then_refit_capture(test, device):
+    """Publish the leaf count for a refit in the same graph as the rebuild."""
+    bvh, moved_lowers, moved_uppers = _make_rebuild_refit_bvh(device)
+
+    # Discard the first capture after it updates the host descriptor. The next
+    # capture must still record the update to the device descriptor.
+    with wp.ScopedCapture(device=device, force_module_load=False):
+        bvh.rebuild("lbvh")
+
+    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+        bvh.rebuild("lbvh")
+        wp.copy(bvh.lowers, moved_lowers)
+        wp.copy(bvh.uppers, moved_uppers)
+        bvh.refit()
+    wp.capture_launch(capture.graph)
+    _assert_bvh_hits_moved_boxes(bvh)
+
+
+def test_bvh_refit_capture_before_rebuild(test, device):
+    """Refit a rebuilt CUDA BVH by replaying a refit graph captured before the rebuild."""
+    bvh, moved_lowers, moved_uppers = _make_rebuild_refit_bvh(device)
+    with wp.ScopedCapture(device=device, force_module_load=False) as capture:
+        bvh.refit()
+
+    bvh.rebuild("lbvh")
+    wp.copy(bvh.lowers, moved_lowers)
+    wp.copy(bvh.uppers, moved_uppers)
+    wp.capture_launch(capture.graph)
+    _assert_bvh_hits_moved_boxes(bvh)
+
+
 devices = get_test_devices()
 cuda_devices = get_cuda_test_devices()
 cuda_devices_with_mempool = get_cuda_test_devices_with_mempool()
@@ -1395,6 +1463,19 @@ for name, func in (
     )
 
 add_function_test(TestBvh, "test_capture_bvh_rebuild", test_capture_bvh_rebuild, devices=cuda_devices_with_mempool)
+add_function_test(TestBvh, "test_bvh_rebuild_then_refit", test_bvh_rebuild_then_refit, devices=cuda_devices)
+add_function_test(
+    TestBvh,
+    "test_bvh_rebuild_then_refit_capture",
+    test_bvh_rebuild_then_refit_capture,
+    devices=cuda_devices_with_mempool,
+)
+add_function_test(
+    TestBvh,
+    "test_bvh_refit_capture_before_rebuild",
+    test_bvh_refit_capture_before_rebuild,
+    devices=cuda_devices_with_mempool,
+)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
