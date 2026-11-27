@@ -3446,11 +3446,29 @@ class ModuleHasher:
         return ch.digest()
 
     def get_constant_bytes(self, value) -> bytes:
+        # prefix the type and length so that constants of different types can't encode to the
+        # same bytes, e.g. Python 1 and wp.int8(49) both encode to b"1"
+        value_type = type(value)
+        type_key = f"{value_type.__module__}.{value_type.__qualname__}"
+        # vector, matrix, quaternion, and struct classes made by Warp's factories share a qualname,
+        # e.g. wp.types.vector(2, wp.float32) and wp.types.vector(2, wp.int32), so add their scalar type and
+        # shape or struct hash; the shape is separated because type codes join dimensions, e.g. (2, 22) and (22, 2)
+        if hasattr(value_type, "_wp_scalar_type_"):
+            scalar_code = warp._src.types.get_type_code(value_type._wp_scalar_type_)
+            type_key += f"[{scalar_code}{tuple(value_type._shape_)}]"
+        elif warp._src.types.is_struct(value):
+            type_key += f"[{value._cls.hash.hex()}]"
+        value_bytes = self.get_constant_value_bytes(value)
+        return f"{type_key}:{len(value_bytes)}:".encode() + value_bytes
+
+    def get_constant_value_bytes(self, value) -> bytes:
         if isinstance(value, int):
-            # this also handles builtins.bool
-            return bytes(ctypes.c_int(value))
+            # this also handles builtins.bool; codegen emits 64-bit literals for ints
+            # outside the int32 range, so hash the exact value rather than its low 32 bits
+            return str(int(value)).encode()
         elif isinstance(value, float):
-            return bytes(ctypes.c_float(value))
+            # codegen emits Python floats as double-precision literals
+            return bytes(ctypes.c_double(value))
         elif isinstance(value, warp._src.types.float16):
             # float16 is a special case
             return bytes(ctypes.c_float(value.value))
