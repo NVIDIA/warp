@@ -363,7 +363,7 @@ void wp_mesh_destroy_device(uint64_t id)
     }
 }
 
-void mesh_update_stats(uint64_t id) { }
+void mesh_update_stats(uint64_t /*id*/) { }
 
 int wp_mesh_refit_device(uint64_t id)
 {

@@ -345,24 +345,24 @@ uint64_t wp_mesh_get_velocities_ptr_host(uint64_t id)
 
 
 WP_API uint64_t wp_mesh_create_device(
-    void* context,
-    wp::array_t<wp::vec3> points,
-    wp::array_t<wp::vec3> velocities,
-    wp::array_t<int> tris,
-    int num_points,
-    int num_tris,
-    int support_winding_number,
-    int constructor_type,
-    int* groups,
-    int bvh_leaf_size
+    void* /*context*/,
+    wp::array_t<wp::vec3> /*points*/,
+    wp::array_t<wp::vec3> /*velocities*/,
+    wp::array_t<int> /*tris*/,
+    int /*num_points*/,
+    int /*num_tris*/,
+    int /*support_winding_number*/,
+    int /*constructor_type*/,
+    int* /*groups*/,
+    int /*bvh_leaf_size*/
 )
 {
     return 0;
 }
-WP_API void wp_mesh_destroy_device(uint64_t id) { }
-WP_API int wp_mesh_refit_device(uint64_t id) { return 0; }
-WP_API int wp_mesh_set_points_device(uint64_t id, wp::array_t<wp::vec3> points) { return 0; };
-WP_API void wp_mesh_set_velocities_device(uint64_t id, wp::array_t<wp::vec3> points) { };
+WP_API void wp_mesh_destroy_device(uint64_t /*id*/) { }
+WP_API int wp_mesh_refit_device(uint64_t /*id*/) { return 0; }
+WP_API int wp_mesh_set_points_device(uint64_t /*id*/, wp::array_t<wp::vec3> /*points*/) { return 0; };
+WP_API void wp_mesh_set_velocities_device(uint64_t /*id*/, wp::array_t<wp::vec3> /*points*/) { };
 
 
 #endif  // !WP_ENABLE_CUDA

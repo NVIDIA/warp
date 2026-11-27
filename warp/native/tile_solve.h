@@ -171,7 +171,7 @@ inline CUDA_CALLABLE void scalar_cholesky_solve(TileA& A, TileX& X, TileY& Y)
 
 
 template <typename Fwd, typename Bkwd, typename TileL, typename TileY, typename TileZ>
-CUDA_CALLABLE TileZ& tile_lower_solve(Fwd fun_forward, Bkwd fun_bkwd, TileL& L, TileY& y, TileZ& z)
+CUDA_CALLABLE TileZ& tile_lower_solve([[maybe_unused]] Fwd fun_forward, Bkwd /*fun_bkwd*/, TileL& L, TileY& y, TileZ& z)
 {
     // Copy y to z
     z = y;
@@ -192,7 +192,7 @@ CUDA_CALLABLE TileZ& tile_lower_solve(Fwd fun_forward, Bkwd fun_bkwd, TileL& L, 
 }
 
 template <typename Fwd, typename TileL, typename TileY>
-CUDA_CALLABLE void tile_lower_solve_inplace(Fwd fun_forward, TileL& L, TileY& y)
+CUDA_CALLABLE void tile_lower_solve_inplace([[maybe_unused]] Fwd fun_forward, TileL& L, TileY& y)
 {
 #if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
     partitioned_gemm::scalar_cholesky_forward_substitution<false>(L, y, y);
@@ -225,16 +225,16 @@ template <
     typename AdjTileZ,
     typename AdjRet>
 CUDA_CALLABLE void adj_tile_lower_solve(
-    Fwd fun_forward,
-    Bkwd fun_bkwd,
+    Fwd /*fun_forward*/,
+    [[maybe_unused]] Bkwd fun_bkwd,
     TileL& L,
-    TileY& y,
+    TileY& /*y*/,
     TileZ& z,
-    AdjFwd adj_fun_forward,
-    AdjBkwd adj_fun_bkwd,
+    AdjFwd /*adj_fun_forward*/,
+    AdjBkwd /*adj_fun_bkwd*/,
     AdjTileL& adj_L,
     AdjTileY& adj_y,
-    AdjTileZ& adj_z,
+    AdjTileZ& /*adj_z*/,
     AdjRet& adj_ret
 )
 {
@@ -321,7 +321,12 @@ CUDA_CALLABLE void adj_tile_lower_solve(
 
 template <typename Fwd, typename TileL, typename TileY, typename AdjFwd, typename AdjTileL, typename AdjTileY>
 CUDA_CALLABLE void adj_tile_lower_solve_inplace(
-    Fwd fun_forward, TileL& L, TileY& y, AdjFwd adj_fun_forward, AdjTileL& adj_L, AdjTileY& adj_y
+    Fwd /*fun_forward*/,
+    TileL& /*L*/,
+    TileY& /*y*/,
+    AdjFwd /*adj_fun_forward*/,
+    AdjTileL& /*adj_L*/,
+    AdjTileY& /*adj_y*/
 )
 {
     // MISSINGADJOINT: same math as adj_tile_lower_solve but operating in place on
@@ -330,7 +335,7 @@ CUDA_CALLABLE void adj_tile_lower_solve_inplace(
 
 
 template <typename Fwd, typename TileU, typename TileZ, typename TileX>
-CUDA_CALLABLE TileX& tile_upper_solve(Fwd fun_forward, TileU& U, TileZ& z, TileX& x)
+CUDA_CALLABLE TileX& tile_upper_solve([[maybe_unused]] Fwd fun_forward, TileU& U, TileZ& z, TileX& x)
 {
     // Copy z to x
     x = z;
@@ -355,7 +360,7 @@ CUDA_CALLABLE TileX& tile_upper_solve(Fwd fun_forward, TileU& U, TileZ& z, TileX
 }
 
 template <typename Fwd, typename TileU, typename TileZ>
-CUDA_CALLABLE void tile_upper_solve_inplace(Fwd fun_forward, TileU& U, TileZ& z)
+CUDA_CALLABLE void tile_upper_solve_inplace([[maybe_unused]] Fwd fun_forward, TileU& U, TileZ& z)
 {
 #if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
     {
@@ -385,15 +390,15 @@ template <
     typename AdjTileX,
     typename AdjRet>
 CUDA_CALLABLE void adj_tile_upper_solve(
-    Fwd fun_forward,
-    TileU& U,
-    TileZ& z,
-    TileX& x,
-    AdjFwd adj_fun_forward,
-    AdjTileU& adj_U,
-    AdjTileZ& adj_z,
-    AdjTileX& adj_x,
-    AdjRet& adj_ret
+    Fwd /*fun_forward*/,
+    TileU& /*U*/,
+    TileZ& /*z*/,
+    TileX& /*x*/,
+    AdjFwd /*adj_fun_forward*/,
+    AdjTileU& /*adj_U*/,
+    AdjTileZ& /*adj_z*/,
+    AdjTileX& /*adj_x*/,
+    AdjRet& /*adj_ret*/
 )
 {
     // MISSINGADJOINT: adjoint is the transposed (lower) solve U^T y = adj_ret; then adj_z
@@ -402,7 +407,12 @@ CUDA_CALLABLE void adj_tile_upper_solve(
 
 template <typename Fwd, typename TileU, typename TileZ, typename AdjFwd, typename AdjTileU, typename AdjTileZ>
 CUDA_CALLABLE void adj_tile_upper_solve_inplace(
-    Fwd fun_forward, TileU& U, TileZ& z, AdjFwd adj_fun_forward, AdjTileU& adj_U, AdjTileZ& adj_z
+    Fwd /*fun_forward*/,
+    TileU& /*U*/,
+    TileZ& /*z*/,
+    AdjFwd /*adj_fun_forward*/,
+    AdjTileU& /*adj_U*/,
+    AdjTileZ& /*adj_z*/
 )
 {
     // MISSINGADJOINT: same math as adj_tile_upper_solve but operating in place on
@@ -411,7 +421,7 @@ CUDA_CALLABLE void adj_tile_upper_solve_inplace(
 
 
 template <bool Upper, typename Fwd, typename TileA, typename TileY, typename TileX>
-CUDA_CALLABLE TileX& tile_cholesky_solve(Fwd fun_forward, TileA& A, TileY& Y, TileX& X)
+CUDA_CALLABLE TileX& tile_cholesky_solve([[maybe_unused]] Fwd fun_forward, TileA& A, TileY& Y, TileX& X)
 {
     // Copy y to x
 
@@ -433,7 +443,7 @@ CUDA_CALLABLE TileX& tile_cholesky_solve(Fwd fun_forward, TileA& A, TileY& Y, Ti
 }
 
 template <bool Upper, typename Fwd, typename TileA, typename TileY>
-CUDA_CALLABLE void tile_cholesky_solve_inplace(Fwd fun_forward, TileA& A, TileY& Y)
+CUDA_CALLABLE void tile_cholesky_solve_inplace([[maybe_unused]] Fwd fun_forward, TileA& A, TileY& Y)
 {
 #if !defined(__CUDA_ARCH__) || WP_ENABLE_MATHDX == 0
     partitioned_gemm::scalar_cholesky_solve<Upper>(A, Y, Y);
@@ -460,15 +470,15 @@ template <
     typename AdjTileX,
     typename AdjRet>
 CUDA_CALLABLE void adj_tile_cholesky_solve(
-    Fwd fun_forward,
-    TileA& A,
-    TileY& Y,
-    TileX& X,
-    AdjFwd adj_fun_forward,
-    AdjTileA& adj_A,
-    AdjTileY& adj_Y,
-    AdjTileX& adj_X,
-    AdjRet& adj_ret
+    Fwd /*fun_forward*/,
+    TileA& /*A*/,
+    TileY& /*Y*/,
+    TileX& /*X*/,
+    AdjFwd /*adj_fun_forward*/,
+    AdjTileA& /*adj_A*/,
+    AdjTileY& /*adj_Y*/,
+    AdjTileX& /*adj_X*/,
+    AdjRet& /*adj_ret*/
 )
 {
     // MISSINGADJOINT: implicit differentiation through A X = Y: solve A Z = adj_ret,
@@ -484,7 +494,12 @@ template <
     typename AdjTileA,
     typename AdjTileY>
 CUDA_CALLABLE void adj_tile_cholesky_solve_inplace(
-    Fwd fun_forward, TileA& A, TileY& Y, AdjFwd adj_fun_forward, AdjTileA& adj_A, AdjTileY& adj_Y
+    Fwd /*fun_forward*/,
+    TileA& /*A*/,
+    TileY& /*Y*/,
+    AdjFwd /*adj_fun_forward*/,
+    AdjTileA& /*adj_A*/,
+    AdjTileY& /*adj_Y*/
 )
 {
     // MISSINGADJOINT: same math as adj_tile_cholesky_solve operating in place

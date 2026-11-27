@@ -449,70 +449,78 @@ void wp_surface_object_destroy_device(void* context, uint64_t surface_handle)
 // Stub implementations for non-CUDA builds
 
 uint64_t wp_texture_create_device(
-    void* context, int ndim, int* shape, int num_channels, int dtype, bool surface_access, int num_mip_levels
+    void* /*context*/,
+    int /*ndim*/,
+    int* /*shape*/,
+    int /*num_channels*/,
+    int /*dtype*/,
+    bool /*surface_access*/,
+    int /*num_mip_levels*/
 )
 {
     wp::set_error_string("Warp error: CUDA not enabled");
     return 0;
 }
 
-void wp_texture_destroy_device(void* context, uint64_t array_handle, bool is_mipmapped) { }
+void wp_texture_destroy_device(void* /*context*/, uint64_t /*array_handle*/, bool /*is_mipmapped*/) { }
 
-uint64_t wp_texture_get_mip_level_array_device(void* context, uint64_t mipmap_array_handle, int level)
+uint64_t wp_texture_get_mip_level_array_device(void* /*context*/, uint64_t /*mipmap_array_handle*/, int /*level*/)
 {
     wp::set_error_string("Warp error: CUDA not enabled");
     return 0;
 }
 
 bool wp_texture_copy_device(
-    void* context,
-    unsigned width_bytes,
-    unsigned height,
-    unsigned depth,
-    int dst_memory_type,
-    uint64_t dst_handle,
-    unsigned dst_pitch,
-    unsigned dst_height,
-    int src_memory_type,
-    uint64_t src_handle,
-    unsigned src_pitch,
-    unsigned src_height,
-    void* stream
+    void* /*context*/,
+    unsigned /*width_bytes*/,
+    unsigned /*height*/,
+    unsigned /*depth*/,
+    int /*dst_memory_type*/,
+    uint64_t /*dst_handle*/,
+    unsigned /*dst_pitch*/,
+    unsigned /*dst_height*/,
+    int /*src_memory_type*/,
+    uint64_t /*src_handle*/,
+    unsigned /*src_pitch*/,
+    unsigned /*src_height*/,
+    void* /*stream*/
 )
 {
     wp::set_error_string("Warp error: CUDA not enabled");
     return false;
 }
 
-bool wp_texture_descriptor_from_cuda_array(void* context, uint64_t array_handle, wp::cuda_array_desc_t* desc_out)
+bool wp_texture_descriptor_from_cuda_array(
+    void* /*context*/, uint64_t /*array_handle*/, wp::cuda_array_desc_t* /*desc_out*/
+)
 {
     wp::set_error_string("Warp error: CUDA not enabled");
     return false;
 }
 
 uint64_t wp_texture_object_create_device(
-    void* context,
-    uint64_t array_handle,
-    int ndim,
-    int filter_mode,
-    int mip_filter_mode,
-    int* address_modes,
-    bool use_normalized_coords,
-    int num_mip_levels
+    void* /*context*/,
+    uint64_t /*array_handle*/,
+    int /*ndim*/,
+    int /*filter_mode*/,
+    int /*mip_filter_mode*/,
+    int* /*address_modes*/,
+    bool /*use_normalized_coords*/,
+    int /*num_mip_levels*/
 )
 {
     wp::set_error_string("Warp error: CUDA not enabled");
     return 0;
 }
 
-void wp_texture_object_destroy_device(void* context, uint64_t tex_handle) { }
+void wp_texture_object_destroy_device(void* /*context*/, uint64_t /*tex_handle*/) { }
 
-WP_API uint64_t wp_surface_object_create_device(void* context, uint64_t array_handle)
+WP_API uint64_t wp_surface_object_create_device(void* /*context*/, uint64_t /*array_handle*/)
 {
     wp::set_error_string("Warp error: CUDA not enabled");
     return 0;
 }
 
-WP_API void wp_surface_object_destroy_device(void* context, uint64_t surface_handle) { }
+WP_API void wp_surface_object_destroy_device(void* /*context*/, uint64_t /*surface_handle*/) { }
 
 #endif  // WP_ENABLE_CUDA

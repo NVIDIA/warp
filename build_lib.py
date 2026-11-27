@@ -386,6 +386,13 @@ def main(argv: list[str] | None = None) -> int:
         "future use but are not validated or guaranteed to build.",
     )
     group_build.add_argument(
+        "--warnings-as-errors",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Treat compiler warnings as errors when building Warp's native libraries with GCC/Clang. "
+        "Use --no-warnings-as-errors with newer compilers that report new warnings",
+    )
+    group_build.add_argument(
         "--quick",
         action=argparse.BooleanOptionalAction,
         default=False,

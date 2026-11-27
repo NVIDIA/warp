@@ -130,8 +130,17 @@ template <typename Type> inline CUDA_CALLABLE quat_t<Type> atomic_add(quat_t<Typ
 }
 
 template <typename Type>
-inline CUDA_CALLABLE void
-adj_quat_t(Type x, Type y, Type z, Type w, Type& adj_x, Type& adj_y, Type& adj_z, Type& adj_w, quat_t<Type> adj_ret)
+inline CUDA_CALLABLE void adj_quat_t(
+    Type /*x*/,
+    Type /*y*/,
+    Type /*z*/,
+    Type /*w*/,
+    Type& adj_x,
+    Type& adj_y,
+    Type& adj_z,
+    Type& adj_w,
+    quat_t<Type> adj_ret
+)
 {
     adj_x += adj_ret.x;
     adj_y += adj_ret.y;
@@ -141,7 +150,7 @@ adj_quat_t(Type x, Type y, Type z, Type w, Type& adj_x, Type& adj_y, Type& adj_z
 
 template <typename Type>
 inline CUDA_CALLABLE void
-adj_quat_t(const vec_t<3, Type>& v, Type w, vec_t<3, Type>& adj_v, Type& adj_w, quat_t<Type> adj_ret)
+adj_quat_t(const vec_t<3, Type>& /*v*/, Type /*w*/, vec_t<3, Type>& adj_v, Type& adj_w, quat_t<Type> adj_ret)
 {
     adj_v[0] += adj_ret.x;
     adj_v[1] += adj_ret.y;
@@ -152,7 +161,7 @@ adj_quat_t(const vec_t<3, Type>& v, Type w, vec_t<3, Type>& adj_v, Type& adj_w, 
 // casting constructor adjoint
 template <typename Type, typename OtherType>
 inline CUDA_CALLABLE void
-adj_quat_t(const quat_t<OtherType>& other, quat_t<OtherType>& adj_other, const quat_t<Type>& adj_ret)
+adj_quat_t(const quat_t<OtherType>& /*other*/, quat_t<OtherType>& adj_other, const quat_t<Type>& adj_ret)
 {
     adj_other.x += static_cast<OtherType>(adj_ret.x);
     adj_other.y += static_cast<OtherType>(adj_ret.y);
@@ -269,7 +278,7 @@ template <typename Type> CUDA_CALLABLE inline quat_t<Type> pos(const quat_t<Type
 template <typename Type> CUDA_CALLABLE inline quat_t<Type> neg(const quat_t<Type>& q) { return -q; }
 
 template <typename Type>
-CUDA_CALLABLE inline void adj_neg(const quat_t<Type>& q, quat_t<Type>& adj_q, const quat_t<Type>& adj_ret)
+CUDA_CALLABLE inline void adj_neg(const quat_t<Type>& /*q*/, quat_t<Type>& adj_q, const quat_t<Type>& adj_ret)
 {
     adj_q -= adj_ret;
 }
@@ -504,7 +513,8 @@ template <typename Type> inline CUDA_CALLABLE Type* indexref(quat_t<Type>* q, in
 }
 
 template <typename Type>
-inline CUDA_CALLABLE void adj_index(quat_t<Type>& q, int idx, quat_t<Type>& adj_q, int adj_idx, const Type& adj_value)
+inline CUDA_CALLABLE void
+adj_index(quat_t<Type>& /*q*/, int /*idx*/, quat_t<Type>& /*adj_q*/, int /*adj_idx*/, const Type& /*adj_value*/)
 {
     // nop
 }
@@ -512,7 +522,7 @@ inline CUDA_CALLABLE void adj_index(quat_t<Type>& q, int idx, quat_t<Type>& adj_
 
 template <typename Type>
 inline CUDA_CALLABLE void
-adj_indexref(quat_t<Type>* q, int idx, quat_t<Type>& adj_q, int adj_idx, const Type& adj_value)
+adj_indexref(quat_t<Type>* /*q*/, int /*idx*/, quat_t<Type>& /*adj_q*/, int /*adj_idx*/, const Type& /*adj_value*/)
 {
     // nop
 }
@@ -557,7 +567,7 @@ inline CUDA_CALLABLE void add_inplace(quat_t<Type>& q, slice_t slice, const vec_
 
 template <typename Type>
 inline CUDA_CALLABLE void
-adj_add_inplace(quat_t<Type>& q, int idx, Type value, quat_t<Type>& adj_q, int adj_idx, Type& adj_value)
+adj_add_inplace(quat_t<Type>& /*q*/, int idx, Type /*value*/, quat_t<Type>& adj_q, int /*adj_idx*/, Type& adj_value)
 {
 #ifndef NDEBUG
     if (idx < -4 || idx >= 4) {
@@ -576,11 +586,11 @@ adj_add_inplace(quat_t<Type>& q, int idx, Type value, quat_t<Type>& adj_q, int a
 
 template <unsigned SliceLength, typename Type>
 inline CUDA_CALLABLE void adj_add_inplace(
-    const quat_t<Type>& q,
+    const quat_t<Type>& /*q*/,
     slice_t slice,
-    const vec_t<SliceLength, Type>& a,
+    const vec_t<SliceLength, Type>& /*a*/,
     quat_t<Type>& adj_q,
-    slice_t& adj_slice,
+    slice_t& /*adj_slice*/,
     vec_t<SliceLength, Type>& adj_a
 )
 {
@@ -640,7 +650,7 @@ inline CUDA_CALLABLE void sub_inplace(quat_t<Type>& q, slice_t slice, const vec_
 
 template <typename Type>
 inline CUDA_CALLABLE void
-adj_sub_inplace(quat_t<Type>& q, int idx, Type value, quat_t<Type>& adj_q, int adj_idx, Type& adj_value)
+adj_sub_inplace(quat_t<Type>& /*q*/, int idx, Type /*value*/, quat_t<Type>& adj_q, int /*adj_idx*/, Type& adj_value)
 {
 #ifndef NDEBUG
     if (idx < -4 || idx >= 4) {
@@ -659,11 +669,11 @@ adj_sub_inplace(quat_t<Type>& q, int idx, Type value, quat_t<Type>& adj_q, int a
 
 template <unsigned SliceLength, typename Type>
 inline CUDA_CALLABLE void adj_sub_inplace(
-    const quat_t<Type>& q,
+    const quat_t<Type>& /*q*/,
     slice_t slice,
-    const vec_t<SliceLength, Type>& a,
+    const vec_t<SliceLength, Type>& /*a*/,
     quat_t<Type>& adj_q,
-    slice_t& adj_slice,
+    slice_t& /*adj_slice*/,
     vec_t<SliceLength, Type>& adj_a
 )
 {
@@ -723,7 +733,7 @@ inline CUDA_CALLABLE void assign_inplace(quat_t<Type>& q, slice_t slice, const v
 
 template <typename Type>
 inline CUDA_CALLABLE void
-adj_assign_inplace(quat_t<Type>& q, int idx, Type value, quat_t<Type>& adj_q, int& adj_idx, Type& adj_value)
+adj_assign_inplace(quat_t<Type>& /*q*/, int idx, Type /*value*/, quat_t<Type>& adj_q, int& /*adj_idx*/, Type& adj_value)
 {
 #ifndef NDEBUG
     if (idx < -4 || idx >= 4) {
@@ -742,11 +752,11 @@ adj_assign_inplace(quat_t<Type>& q, int idx, Type value, quat_t<Type>& adj_q, in
 
 template <unsigned SliceLength, typename Type>
 inline CUDA_CALLABLE void adj_assign_inplace(
-    const quat_t<Type>& q,
+    const quat_t<Type>& /*q*/,
     slice_t slice,
-    const vec_t<SliceLength, Type>& a,
+    const vec_t<SliceLength, Type>& /*a*/,
     quat_t<Type>& adj_q,
-    slice_t& adj_slice,
+    slice_t& /*adj_slice*/,
     vec_t<SliceLength, Type>& adj_a
 )
 {
@@ -795,11 +805,11 @@ inline CUDA_CALLABLE quat_t<Type> assign_copy(quat_t<Type>& q, slice_t slice, co
 
 template <typename Type>
 inline CUDA_CALLABLE void adj_assign_copy(
-    quat_t<Type>& q,
+    quat_t<Type>& /*q*/,
     int idx,
-    Type value,
+    Type /*value*/,
     quat_t<Type>& adj_q,
-    int& adj_idx,
+    int& /*adj_idx*/,
     Type& adj_value,
     const quat_t<Type>& adj_ret
 )
@@ -817,18 +827,18 @@ inline CUDA_CALLABLE void adj_assign_copy(
 
     adj_value += adj_ret[idx];
     for (unsigned i = 0; i < 4; ++i) {
-        if (i != idx)
+        if (i != static_cast<unsigned>(idx))
             adj_q[i] += adj_ret[i];
     }
 }
 
 template <unsigned SliceLength, typename Type>
 inline CUDA_CALLABLE void adj_assign_copy(
-    quat_t<Type>& q,
+    quat_t<Type>& /*q*/,
     slice_t slice,
-    const vec_t<SliceLength, Type>& a,
+    const vec_t<SliceLength, Type>& /*a*/,
     quat_t<Type>& adj_q,
-    slice_t& adj_slice,
+    slice_t& /*adj_slice*/,
     vec_t<SliceLength, Type>& adj_a,
     const quat_t<Type>& adj_ret
 )
@@ -879,7 +889,8 @@ CUDA_CALLABLE inline void adj_lerp(
 }
 
 template <typename Type>
-inline CUDA_CALLABLE void adj_extract(const quat_t<Type>& a, int idx, quat_t<Type>& adj_a, int& adj_idx, Type& adj_ret)
+inline CUDA_CALLABLE void
+adj_extract(const quat_t<Type>& /*a*/, int idx, quat_t<Type>& adj_a, int& /*adj_idx*/, Type& adj_ret)
 {
 #ifndef NDEBUG
     if (idx < -4 || idx >= 4) {
@@ -906,10 +917,10 @@ inline CUDA_CALLABLE void adj_extract(const quat_t<Type>& a, int idx, quat_t<Typ
 
 template <unsigned SliceLength, typename Type>
 inline CUDA_CALLABLE void adj_extract(
-    const quat_t<Type>& a,
+    const quat_t<Type>& /*a*/,
     slice_t slice,
     quat_t<Type>& adj_a,
-    slice_t& adj_slice,
+    slice_t& /*adj_slice*/,
     const vec_t<SliceLength, Type>& adj_ret
 )
 {
@@ -950,8 +961,8 @@ inline CUDA_CALLABLE void adj_quat_from_axis_angle(
 template <typename Type>
 inline CUDA_CALLABLE void adj_quat_to_axis_angle(
     const quat_t<Type>& q,
-    vec_t<3, Type>& axis,
-    Type& angle,
+    vec_t<3, Type>& /*axis*/,
+    Type& /*angle*/,
     quat_t<Type>& adj_q,
     const vec_t<3, Type>& adj_axis,
     const Type& adj_angle
@@ -1109,7 +1120,7 @@ inline CUDA_CALLABLE void adj_normalize(const quat_t<Type>& q, quat_t<Type>& adj
 }
 
 template <typename Type>
-inline CUDA_CALLABLE void adj_quat_inverse(const quat_t<Type>& q, quat_t<Type>& adj_q, const quat_t<Type>& adj_ret)
+inline CUDA_CALLABLE void adj_quat_inverse(const quat_t<Type>& /*q*/, quat_t<Type>& adj_q, const quat_t<Type>& adj_ret)
 {
     adj_q.x -= adj_ret.x;
     adj_q.y -= adj_ret.y;
@@ -1119,7 +1130,11 @@ inline CUDA_CALLABLE void adj_quat_inverse(const quat_t<Type>& q, quat_t<Type>& 
 
 template <typename Type>
 inline CUDA_CALLABLE void adj_add(
-    const quat_t<Type>& a, const quat_t<Type>& b, quat_t<Type>& adj_a, quat_t<Type>& adj_b, const quat_t<Type>& adj_ret
+    const quat_t<Type>& /*a*/,
+    const quat_t<Type>& /*b*/,
+    quat_t<Type>& adj_a,
+    quat_t<Type>& adj_b,
+    const quat_t<Type>& adj_ret
 )
 {
     adj_a += adj_ret;
@@ -1128,7 +1143,11 @@ inline CUDA_CALLABLE void adj_add(
 
 template <typename Type>
 inline CUDA_CALLABLE void adj_sub(
-    const quat_t<Type>& a, const quat_t<Type>& b, quat_t<Type>& adj_a, quat_t<Type>& adj_b, const quat_t<Type>& adj_ret
+    const quat_t<Type>& /*a*/,
+    const quat_t<Type>& /*b*/,
+    quat_t<Type>& adj_a,
+    quat_t<Type>& adj_b,
+    const quat_t<Type>& adj_ret
 )
 {
     adj_a += adj_ret;
@@ -1651,7 +1670,7 @@ template <typename Type = float32> inline CUDA_CALLABLE quat_t<Type> quat_identi
     return quat_t<Type>(Type(0), Type(0), Type(0), Type(1));
 }
 
-template <typename Type> CUDA_CALLABLE inline int len(const quat_t<Type>& x) { return 4; }
+template <typename Type> CUDA_CALLABLE inline int len(const quat_t<Type>& /*x*/) { return 4; }
 
 template <typename Type>
 inline CUDA_CALLABLE void expect_near(const quat_t<Type>& actual, const quat_t<Type>& expected, const Type& tolerance)

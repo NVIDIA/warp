@@ -581,24 +581,27 @@ template <typename T> CUDA_CALLABLE inline float cast_float(T x) { return (float
 
 template <typename T> CUDA_CALLABLE inline int cast_int(T x) { return (int)(x); }
 
-template <typename T> CUDA_CALLABLE inline void adj_cast_float(T x, T& adj_x, float adj_ret) { }
+template <typename T> CUDA_CALLABLE inline void adj_cast_float(T /*x*/, T& /*adj_x*/, float /*adj_ret*/) { }
 
-CUDA_CALLABLE inline void adj_cast_float(float16 x, float16& adj_x, float adj_ret) { adj_x += float16(adj_ret); }
+CUDA_CALLABLE inline void adj_cast_float(float16 /*x*/, float16& adj_x, float adj_ret) { adj_x += float16(adj_ret); }
 #ifndef WP_NO_BFLOAT16
-CUDA_CALLABLE inline void adj_cast_float(bfloat16 x, bfloat16& adj_x, float adj_ret) { adj_x += bfloat16(adj_ret); }
+CUDA_CALLABLE inline void adj_cast_float(bfloat16 /*x*/, bfloat16& adj_x, float adj_ret) { adj_x += bfloat16(adj_ret); }
 #endif
-CUDA_CALLABLE inline void adj_cast_float(float32 x, float32& adj_x, float adj_ret) { adj_x += float32(adj_ret); }
-CUDA_CALLABLE inline void adj_cast_float(float64 x, float64& adj_x, float adj_ret) { adj_x += float64(adj_ret); }
+CUDA_CALLABLE inline void adj_cast_float(float32 /*x*/, float32& adj_x, float adj_ret) { adj_x += float32(adj_ret); }
+CUDA_CALLABLE inline void adj_cast_float(float64 /*x*/, float64& adj_x, float adj_ret) { adj_x += float64(adj_ret); }
 
-template <typename T> CUDA_CALLABLE inline void adj_cast_int(T x, T& adj_x, int adj_ret) { }
+template <typename T> CUDA_CALLABLE inline void adj_cast_int(T /*x*/, T& /*adj_x*/, int /*adj_ret*/) { }
 
 
-template <typename T> CUDA_CALLABLE inline void adj_float16(T x, T& adj_x, float16 adj_ret) { adj_x += T(adj_ret); }
+template <typename T> CUDA_CALLABLE inline void adj_float16(T /*x*/, T& adj_x, float16 adj_ret) { adj_x += T(adj_ret); }
 #ifndef WP_NO_BFLOAT16
-template <typename T> CUDA_CALLABLE inline void adj_bfloat16(T x, T& adj_x, bfloat16 adj_ret) { adj_x += T(adj_ret); }
+template <typename T> CUDA_CALLABLE inline void adj_bfloat16(T /*x*/, T& adj_x, bfloat16 adj_ret)
+{
+    adj_x += T(adj_ret);
+}
 #endif
-template <typename T> CUDA_CALLABLE inline void adj_float32(T x, T& adj_x, float32 adj_ret) { adj_x += T(adj_ret); }
-template <typename T> CUDA_CALLABLE inline void adj_float64(T x, T& adj_x, float64 adj_ret) { adj_x += T(adj_ret); }
+template <typename T> CUDA_CALLABLE inline void adj_float32(T /*x*/, T& adj_x, float32 adj_ret) { adj_x += T(adj_ret); }
+template <typename T> CUDA_CALLABLE inline void adj_float64(T /*x*/, T& adj_x, float64 adj_ret) { adj_x += T(adj_ret); }
 
 
 #define kEps 0.0f
@@ -620,26 +623,26 @@ inline CUDA_CALLABLE T bit_xor(T a, T b) { return a^b; } \
 inline CUDA_CALLABLE T lshift(T a, T b) { return a<<b; } \
 inline CUDA_CALLABLE T rshift(T a, T b) { return a>>b; } \
 inline CUDA_CALLABLE T invert(T x) { return ~x; } \
-inline CUDA_CALLABLE void adj_mul(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
-inline CUDA_CALLABLE void adj_div(T a, T b, T ret, T& adj_a, T& adj_b, T adj_ret) { } \
-inline CUDA_CALLABLE void adj_add(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
-inline CUDA_CALLABLE void adj_sub(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
-inline CUDA_CALLABLE void adj_mod(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
-inline CUDA_CALLABLE void adj_min(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
-inline CUDA_CALLABLE void adj_max(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
-inline CUDA_CALLABLE void adj_abs(T x, T adj_x, T& adj_ret) { } \
-inline CUDA_CALLABLE void adj_sign(T x, T adj_x, T& adj_ret) { } \
-inline CUDA_CALLABLE void adj_clamp(T x, T a, T b, T& adj_x, T& adj_a, T& adj_b, T adj_ret) { } \
-inline CUDA_CALLABLE void adj_floordiv(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
-inline CUDA_CALLABLE void adj_step(T x, T& adj_x, T adj_ret) { } \
-inline CUDA_CALLABLE void adj_nonzero(T x, T& adj_x, T adj_ret) { } \
-inline CUDA_CALLABLE void adj_atomic_minmax(T* buf, T* adj_buf, const T& value, T& adj_value) { } \
-inline CUDA_CALLABLE void adj_bit_and(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
-inline CUDA_CALLABLE void adj_bit_or(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
-inline CUDA_CALLABLE void adj_bit_xor(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
-inline CUDA_CALLABLE void adj_lshift(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
-inline CUDA_CALLABLE void adj_rshift(T a, T b, T& adj_a, T& adj_b, T adj_ret) { } \
-inline CUDA_CALLABLE void adj_invert(T x, T adj_x, T& adj_ret) { }
+inline CUDA_CALLABLE void adj_mul(T /*a*/, T /*b*/, T& /*adj_a*/, T& /*adj_b*/, T /*adj_ret*/) { } \
+inline CUDA_CALLABLE void adj_div(T /*a*/, T /*b*/, T /*ret*/, T& /*adj_a*/, T& /*adj_b*/, T /*adj_ret*/) { } \
+inline CUDA_CALLABLE void adj_add(T /*a*/, T /*b*/, T& /*adj_a*/, T& /*adj_b*/, T /*adj_ret*/) { } \
+inline CUDA_CALLABLE void adj_sub(T /*a*/, T /*b*/, T& /*adj_a*/, T& /*adj_b*/, T /*adj_ret*/) { } \
+inline CUDA_CALLABLE void adj_mod(T /*a*/, T /*b*/, T& /*adj_a*/, T& /*adj_b*/, T /*adj_ret*/) { } \
+inline CUDA_CALLABLE void adj_min(T /*a*/, T /*b*/, T& /*adj_a*/, T& /*adj_b*/, T /*adj_ret*/) { } \
+inline CUDA_CALLABLE void adj_max(T /*a*/, T /*b*/, T& /*adj_a*/, T& /*adj_b*/, T /*adj_ret*/) { } \
+inline CUDA_CALLABLE void adj_abs(T /*x*/, T /*adj_x*/, T& /*adj_ret*/) { } \
+inline CUDA_CALLABLE void adj_sign(T /*x*/, T /*adj_x*/, T& /*adj_ret*/) { } \
+inline CUDA_CALLABLE void adj_clamp(T /*x*/, T /*a*/, T /*b*/, T& /*adj_x*/, T& /*adj_a*/, T& /*adj_b*/, T /*adj_ret*/) { } \
+inline CUDA_CALLABLE void adj_floordiv(T /*a*/, T /*b*/, T& /*adj_a*/, T& /*adj_b*/, T /*adj_ret*/) { } \
+inline CUDA_CALLABLE void adj_step(T /*x*/, T& /*adj_x*/, T /*adj_ret*/) { } \
+inline CUDA_CALLABLE void adj_nonzero(T /*x*/, T& /*adj_x*/, T /*adj_ret*/) { } \
+inline CUDA_CALLABLE void adj_atomic_minmax(T* /*buf*/, T* /*adj_buf*/, const T& /*value*/, T& /*adj_value*/) { } \
+inline CUDA_CALLABLE void adj_bit_and(T /*a*/, T /*b*/, T& /*adj_a*/, T& /*adj_b*/, T /*adj_ret*/) { } \
+inline CUDA_CALLABLE void adj_bit_or(T /*a*/, T /*b*/, T& /*adj_a*/, T& /*adj_b*/, T /*adj_ret*/) { } \
+inline CUDA_CALLABLE void adj_bit_xor(T /*a*/, T /*b*/, T& /*adj_a*/, T& /*adj_b*/, T /*adj_ret*/) { } \
+inline CUDA_CALLABLE void adj_lshift(T /*a*/, T /*b*/, T& /*adj_a*/, T& /*adj_b*/, T /*adj_ret*/) { } \
+inline CUDA_CALLABLE void adj_rshift(T /*a*/, T /*b*/, T& /*adj_a*/, T& /*adj_b*/, T /*adj_ret*/) { } \
+inline CUDA_CALLABLE void adj_invert(T /*x*/, T /*adj_x*/, T& /*adj_ret*/) { }
 
 inline CUDA_CALLABLE int8 abs(int8 x) { return ::abs(x); }
 inline CUDA_CALLABLE int16 abs(int16 x) { return ::abs(x); }
@@ -735,20 +738,20 @@ inline CUDA_CALLABLE int8 step(int8 x) { return x < 0 ? 1 : 0; }
 inline CUDA_CALLABLE int16 step(int16 x) { return x < 0 ? 1 : 0; }
 inline CUDA_CALLABLE int32 step(int32 x) { return x < 0 ? 1 : 0; }
 inline CUDA_CALLABLE int64 step(int64 x) { return x < 0 ? 1 : 0; }
-inline CUDA_CALLABLE uint8 step(uint8 x) { return 0; }
-inline CUDA_CALLABLE uint16 step(uint16 x) { return 0; }
-inline CUDA_CALLABLE uint32 step(uint32 x) { return 0; }
-inline CUDA_CALLABLE uint64 step(uint64 x) { return 0; }
+inline CUDA_CALLABLE uint8 step(uint8 /*x*/) { return 0; }
+inline CUDA_CALLABLE uint16 step(uint16 /*x*/) { return 0; }
+inline CUDA_CALLABLE uint32 step(uint32 /*x*/) { return 0; }
+inline CUDA_CALLABLE uint64 step(uint64 /*x*/) { return 0; }
 
 
 inline CUDA_CALLABLE int8 sign(int8 x) { return x < 0 ? -1 : 1; }
 inline CUDA_CALLABLE int8 sign(int16 x) { return x < 0 ? -1 : 1; }
 inline CUDA_CALLABLE int8 sign(int32 x) { return x < 0 ? -1 : 1; }
 inline CUDA_CALLABLE int8 sign(int64 x) { return x < 0 ? -1 : 1; }
-inline CUDA_CALLABLE uint8 sign(uint8 x) { return 1; }
-inline CUDA_CALLABLE uint16 sign(uint16 x) { return 1; }
-inline CUDA_CALLABLE uint32 sign(uint32 x) { return 1; }
-inline CUDA_CALLABLE uint64 sign(uint64 x) { return 1; }
+inline CUDA_CALLABLE uint8 sign(uint8 /*x*/) { return 1; }
+inline CUDA_CALLABLE uint16 sign(uint16 /*x*/) { return 1; }
+inline CUDA_CALLABLE uint32 sign(uint32 /*x*/) { return 1; }
+inline CUDA_CALLABLE uint64 sign(uint64 /*x*/) { return 1; }
 
 
 // Catch-all for non-float, non-integer types
@@ -868,7 +871,7 @@ inline CUDA_CALLABLE T step(T x) { return x < T(0) ? T(1) : T(0); }\
 inline CUDA_CALLABLE T nonzero(T x) { return x == T(0) ? T(0) : T(1); }\
 inline CUDA_CALLABLE T clamp(T x, T a, T b) { return _wp_native_fmin(_wp_native_fmax(a, x), b); }\
 inline CUDA_CALLABLE T value(T x) { return x; }\
-inline CUDA_CALLABLE void adj_value(T x, T& adj_x, T adj_ret) { adj_x += adj_ret; }\
+inline CUDA_CALLABLE void adj_value(T /*x*/, T& adj_x, T adj_ret) { adj_x += adj_ret; }\
 inline CUDA_CALLABLE void adj_abs(T x, T& adj_x, T adj_ret) \
 {\
     if (x < T(0))\
@@ -877,8 +880,8 @@ inline CUDA_CALLABLE void adj_abs(T x, T& adj_x, T adj_ret) \
         adj_x += adj_ret;\
 }\
 inline CUDA_CALLABLE void adj_mul(T a, T b, T& adj_a, T& adj_b, T adj_ret) { adj_a += b*adj_ret; adj_b += a*adj_ret; } \
-inline CUDA_CALLABLE void adj_add(T a, T b, T& adj_a, T& adj_b, T adj_ret) { adj_a += adj_ret; adj_b += adj_ret; } \
-inline CUDA_CALLABLE void adj_sub(T a, T b, T& adj_a, T& adj_b, T adj_ret) { adj_a += adj_ret; adj_b -= adj_ret; } \
+inline CUDA_CALLABLE void adj_add(T /*a*/, T /*b*/, T& adj_a, T& adj_b, T adj_ret) { adj_a += adj_ret; adj_b += adj_ret; } \
+inline CUDA_CALLABLE void adj_sub(T /*a*/, T /*b*/, T& adj_a, T& adj_b, T adj_ret) { adj_a += adj_ret; adj_b -= adj_ret; } \
 inline CUDA_CALLABLE void adj_min(T a, T b, T& adj_a, T& adj_b, T adj_ret) \
 { \
     /* Forward returns: NaN if both NaN; the non-NaN if exactly one is NaN; */ \
@@ -903,16 +906,16 @@ inline CUDA_CALLABLE void adj_max(T a, T b, T& adj_a, T& adj_b, T adj_ret) \
     else \
         adj_b += adj_ret; \
 } \
-inline CUDA_CALLABLE void adj_floordiv(T a, T b, T& adj_a, T& adj_b, T adj_ret) \
+inline CUDA_CALLABLE void adj_floordiv(T /*a*/, T /*b*/, T& /*adj_a*/, T& /*adj_b*/, T /*adj_ret*/) \
 { \
     /* MISSINGADJOINT: gradient is zero almost everywhere (subgradient at integer points) */ \
 } \
-inline CUDA_CALLABLE void adj_mod(T a, T b, T& adj_a, T& adj_b, T adj_ret){ adj_a += adj_ret; }\
-inline CUDA_CALLABLE void adj_sign(T x, T adj_x, T& adj_ret) \
+inline CUDA_CALLABLE void adj_mod(T /*a*/, T /*b*/, T& adj_a, T& /*adj_b*/, T adj_ret){ adj_a += adj_ret; }\
+inline CUDA_CALLABLE void adj_sign(T /*x*/, T /*adj_x*/, T& /*adj_ret*/) \
 { \
     /* MISSINGADJOINT: gradient is zero almost everywhere (subgradient at x = 0) */ \
 }\
-inline CUDA_CALLABLE void adj_copysign(T x, T y, T& adj_x, T& adj_y, T adj_ret) \
+inline CUDA_CALLABLE void adj_copysign(T x, T y, T& adj_x, T& /*adj_y*/, T adj_ret) \
 { \
     /* copysign(x, y) = |x| * sign(y). d/dx is +1 when signs of x and y agree, */ \
     /* -1 otherwise. d/dy is 0 almost everywhere -- the result depends on y    */ \
@@ -924,11 +927,11 @@ inline CUDA_CALLABLE void adj_copysign(T x, T y, T& adj_x, T& adj_y, T adj_ret) 
     else \
         adj_x -= adj_ret; \
 } \
-inline CUDA_CALLABLE void adj_step(T x, T& adj_x, T adj_ret) \
+inline CUDA_CALLABLE void adj_step(T /*x*/, T& /*adj_x*/, T /*adj_ret*/) \
 { \
     /* MISSINGADJOINT: gradient is zero almost everywhere (subgradient at x = 0) */ \
 }\
-inline CUDA_CALLABLE void adj_nonzero(T x, T& adj_x, T adj_ret) \
+inline CUDA_CALLABLE void adj_nonzero(T /*x*/, T& /*adj_x*/, T /*adj_ret*/) \
 { \
     /* MISSINGADJOINT: gradient is zero almost everywhere (subgradient at x = 0) */ \
 }\
@@ -953,7 +956,7 @@ inline CUDA_CALLABLE T div(T a, T b)\
     })\
     return a/b;\
 }\
-inline CUDA_CALLABLE void adj_div(T a, T b, T ret, T& adj_a, T& adj_b, T adj_ret)\
+inline CUDA_CALLABLE void adj_div([[maybe_unused]] T a, T b, T ret, T& adj_a, T& adj_b, T adj_ret)\
 {\
     adj_a += adj_ret/b;\
     adj_b -= adj_ret*(ret)/b;\
@@ -1002,7 +1005,7 @@ DECLARE_FLOAT_OPS(float64)
 
 // Adjoint for approximate scalar division
 #define DECLARE_ADJ_APPROX_DIV(T) \
-inline CUDA_CALLABLE void adj_approx_div(T a, T b, T ret, T& adj_a, T& adj_b, T adj_ret) \
+inline CUDA_CALLABLE void adj_approx_div(T /*a*/, T b, T ret, T& adj_a, T& adj_b, T adj_ret) \
 { \
     adj_a += approx_div(adj_ret, b); \
     adj_b -= approx_div(T(adj_ret * ret), b); \
@@ -1381,7 +1384,7 @@ inline CUDA_CALLABLE void adj_erfc(double a, double& adj_a, double adj_ret)
     adj_a -= M_2_SQRT_PI * ::exp(-a * a) * adj_ret;
 }
 
-inline CUDA_CALLABLE void adj_erfinv(half a, half ret, half& adj_a, half adj_ret)
+inline CUDA_CALLABLE void adj_erfinv([[maybe_unused]] half a, half ret, half& adj_a, half adj_ret)
 {
 #if FP_CHECK
     if (float(a) < -1.0f || float(a) > 1.0f) {
@@ -1392,7 +1395,7 @@ inline CUDA_CALLABLE void adj_erfinv(half a, half ret, half& adj_a, half adj_ret
     adj_a += half(M_SQRT_PI_F_2 * ::expf(float(ret) * float(ret))) * adj_ret;
 }
 
-inline CUDA_CALLABLE void adj_erfinv(float a, float ret, float& adj_a, float adj_ret)
+inline CUDA_CALLABLE void adj_erfinv([[maybe_unused]] float a, float ret, float& adj_a, float adj_ret)
 {
 #if FP_CHECK
     if (a < -1.0f || a > 1.0f) {
@@ -1403,7 +1406,7 @@ inline CUDA_CALLABLE void adj_erfinv(float a, float ret, float& adj_a, float adj
     adj_a += M_SQRT_PI_F_2 * ::expf(ret * ret) * adj_ret;
 }
 
-inline CUDA_CALLABLE void adj_erfinv(double a, double ret, double& adj_a, double adj_ret)
+inline CUDA_CALLABLE void adj_erfinv([[maybe_unused]] double a, double ret, double& adj_a, double adj_ret)
 {
 #if FP_CHECK
     if (a < -1.0 || a > 1.0) {
@@ -1414,7 +1417,7 @@ inline CUDA_CALLABLE void adj_erfinv(double a, double ret, double& adj_a, double
     adj_a += M_SQRT_PI_2 * ::exp(ret * ret) * adj_ret;
 }
 
-inline CUDA_CALLABLE void adj_erfcinv(half a, half ret, half& adj_a, half adj_ret)
+inline CUDA_CALLABLE void adj_erfcinv([[maybe_unused]] half a, half ret, half& adj_a, half adj_ret)
 {
 #if FP_CHECK
     if (float(a) < 0.0f || float(a) > 2.0f) {
@@ -1425,7 +1428,7 @@ inline CUDA_CALLABLE void adj_erfcinv(half a, half ret, half& adj_a, half adj_re
     adj_a -= half(M_SQRT_PI_F_2 * ::expf(float(ret) * float(ret))) * adj_ret;
 }
 
-inline CUDA_CALLABLE void adj_erfcinv(float a, float ret, float& adj_a, float adj_ret)
+inline CUDA_CALLABLE void adj_erfcinv([[maybe_unused]] float a, float ret, float& adj_a, float adj_ret)
 {
 #if FP_CHECK
     if (a < 0.0f || a > 2.0f) {
@@ -1436,7 +1439,7 @@ inline CUDA_CALLABLE void adj_erfcinv(float a, float ret, float& adj_a, float ad
     adj_a -= M_SQRT_PI_F_2 * ::expf(ret * ret) * adj_ret;
 }
 
-inline CUDA_CALLABLE void adj_erfcinv(double a, double ret, double& adj_a, double adj_ret)
+inline CUDA_CALLABLE void adj_erfcinv([[maybe_unused]] double a, double ret, double& adj_a, double adj_ret)
 {
 #if FP_CHECK
     if (a < 0.0 || a > 2.0) {
@@ -1458,7 +1461,7 @@ inline CUDA_CALLABLE void adj_erfc(bfloat16 a, bfloat16& adj_a, bfloat16 adj_ret
     adj_a -= bfloat16(M_2_SQRT_PI_F * ::expf(-float(a) * float(a))) * adj_ret;
 }
 
-inline CUDA_CALLABLE void adj_erfinv(bfloat16 a, bfloat16 ret, bfloat16& adj_a, bfloat16 adj_ret)
+inline CUDA_CALLABLE void adj_erfinv([[maybe_unused]] bfloat16 a, bfloat16 ret, bfloat16& adj_a, bfloat16 adj_ret)
 {
 #if FP_CHECK
     if (float(a) < -1.0f || float(a) > 1.0f) {
@@ -1469,7 +1472,7 @@ inline CUDA_CALLABLE void adj_erfinv(bfloat16 a, bfloat16 ret, bfloat16& adj_a, 
     adj_a += bfloat16(M_SQRT_PI_F_2 * ::expf(float(ret) * float(ret))) * adj_ret;
 }
 
-inline CUDA_CALLABLE void adj_erfcinv(bfloat16 a, bfloat16 ret, bfloat16& adj_a, bfloat16 adj_ret)
+inline CUDA_CALLABLE void adj_erfcinv([[maybe_unused]] bfloat16 a, bfloat16 ret, bfloat16& adj_a, bfloat16 adj_ret)
 {
 #if FP_CHECK
     if (float(a) < 0.0f || float(a) > 2.0f) {
@@ -1481,8 +1484,8 @@ inline CUDA_CALLABLE void adj_erfcinv(bfloat16 a, bfloat16 ret, bfloat16& adj_a,
 }
 #endif  // WP_NO_BFLOAT16
 
-inline CUDA_CALLABLE float leaky_min(float a, float b, float r) { return min(a, b); }
-inline CUDA_CALLABLE float leaky_max(float a, float b, float r) { return max(a, b); }
+inline CUDA_CALLABLE float leaky_min(float a, float b, float /*r*/) { return min(a, b); }
+inline CUDA_CALLABLE float leaky_max(float a, float b, float /*r*/) { return max(a, b); }
 
 inline CUDA_CALLABLE half abs(half x) { return ::fabsf(float(x)); }
 inline CUDA_CALLABLE float abs(float x) { return ::fabsf(x); }
@@ -1745,7 +1748,7 @@ inline CUDA_CALLABLE void adj_log10(T a, T& adj_a, T adj_ret)\
         assert(0);\
     })\
 }\
-inline CUDA_CALLABLE void adj_exp(T a, T ret, T& adj_a, T adj_ret) { adj_a += ret*adj_ret; }\
+inline CUDA_CALLABLE void adj_exp(T /*a*/, T ret, T& adj_a, T adj_ret) { adj_a += ret*adj_ret; }\
 inline CUDA_CALLABLE void adj_pow(T a, T b, T ret, T& adj_a, T& adj_b, T adj_ret)\
 { \
     adj_a += b*pow(a, b-T(1))*adj_ret;\
@@ -1756,7 +1759,7 @@ inline CUDA_CALLABLE void adj_pow(T a, T b, T ret, T& adj_a, T& adj_b, T adj_ret
         assert(0);\
     })\
 }\
-inline CUDA_CALLABLE void adj_leaky_min(T a, T b, T r, T& adj_a, T& adj_b, T& adj_r, T adj_ret)\
+inline CUDA_CALLABLE void adj_leaky_min(T a, T b, T r, T& adj_a, T& adj_b, T& /*adj_r*/, T adj_ret)\
 {\
     if (a < b)\
         adj_a += adj_ret;\
@@ -1766,7 +1769,7 @@ inline CUDA_CALLABLE void adj_leaky_min(T a, T b, T r, T& adj_a, T& adj_b, T& ad
         adj_b += adj_ret;\
     }\
 }\
-inline CUDA_CALLABLE void adj_leaky_max(T a, T b, T r, T& adj_a, T& adj_b, T& adj_r, T adj_ret)\
+inline CUDA_CALLABLE void adj_leaky_max(T a, T b, T r, T& adj_a, T& adj_b, T& /*adj_r*/, T adj_ret)\
 {\
     if (a > b)\
         adj_a += adj_ret;\
@@ -1853,11 +1856,11 @@ inline CUDA_CALLABLE void adj_cosh(T x, T& adj_x, T adj_ret)\
 {\
     adj_x += sinh(x)*adj_ret;\
 }\
-inline CUDA_CALLABLE void adj_tanh(T x, T ret, T& adj_x, T adj_ret)\
+inline CUDA_CALLABLE void adj_tanh(T /*x*/, T ret, T& adj_x, T adj_ret)\
 {\
     adj_x += (T(1) - ret*ret)*adj_ret;\
 }\
-inline CUDA_CALLABLE void adj_sqrt(T x, T ret, T& adj_x, T adj_ret)\
+inline CUDA_CALLABLE void adj_sqrt([[maybe_unused]] T x, T ret, T& adj_x, T adj_ret)\
 {\
     adj_x += T(0.5)*(T(1)/ret)*adj_ret;\
     DO_IF_FPCHECK(if (!isfinite(adj_x))\
@@ -1866,7 +1869,7 @@ inline CUDA_CALLABLE void adj_sqrt(T x, T ret, T& adj_x, T adj_ret)\
         assert(0);\
     })\
 }\
-inline CUDA_CALLABLE void adj_cbrt(T x, T ret, T& adj_x, T adj_ret)\
+inline CUDA_CALLABLE void adj_cbrt([[maybe_unused]] T x, T ret, T& adj_x, T adj_ret)\
 {\
     adj_x += (T(1)/T(3))*(T(1)/(ret*ret))*adj_ret;\
     DO_IF_FPCHECK(if (!isfinite(adj_x))\
@@ -1875,35 +1878,35 @@ inline CUDA_CALLABLE void adj_cbrt(T x, T ret, T& adj_x, T adj_ret)\
         assert(0);\
     })\
 }\
-inline CUDA_CALLABLE void adj_degrees(T x, T& adj_x, T adj_ret)\
+inline CUDA_CALLABLE void adj_degrees(T /*x*/, T& adj_x, T adj_ret)\
 {\
     adj_x += T(RAD_TO_DEG) * adj_ret;\
 }\
-inline CUDA_CALLABLE void adj_radians(T x, T& adj_x, T adj_ret)\
+inline CUDA_CALLABLE void adj_radians(T /*x*/, T& adj_x, T adj_ret)\
 {\
     adj_x += T(DEG_TO_RAD) * adj_ret;\
 }\
-inline CUDA_CALLABLE void adj_round(T x, T& adj_x, T adj_ret) \
+inline CUDA_CALLABLE void adj_round(T /*x*/, T& /*adj_x*/, T /*adj_ret*/) \
 { \
     /* MISSINGADJOINT: gradient is zero almost everywhere (subgradient at half-integer points) */ \
 }\
-inline CUDA_CALLABLE void adj_rint(T x, T& adj_x, T adj_ret) \
+inline CUDA_CALLABLE void adj_rint(T /*x*/, T& /*adj_x*/, T /*adj_ret*/) \
 { \
     /* MISSINGADJOINT: gradient is zero almost everywhere (subgradient at half-integer points) */ \
 }\
-inline CUDA_CALLABLE void adj_trunc(T x, T& adj_x, T adj_ret) \
+inline CUDA_CALLABLE void adj_trunc(T /*x*/, T& /*adj_x*/, T /*adj_ret*/) \
 { \
     /* MISSINGADJOINT: gradient is zero almost everywhere (subgradient at integer points) */ \
 }\
-inline CUDA_CALLABLE void adj_floor(T x, T& adj_x, T adj_ret) \
+inline CUDA_CALLABLE void adj_floor(T /*x*/, T& /*adj_x*/, T /*adj_ret*/) \
 { \
     /* MISSINGADJOINT: gradient is zero almost everywhere (subgradient at integer points) */ \
 }\
-inline CUDA_CALLABLE void adj_ceil(T x, T& adj_x, T adj_ret) \
+inline CUDA_CALLABLE void adj_ceil(T /*x*/, T& /*adj_x*/, T /*adj_ret*/) \
 { \
     /* MISSINGADJOINT: gradient is zero almost everywhere (subgradient at integer points) */ \
 }\
-inline CUDA_CALLABLE void adj_frac(T x, T& adj_x, T adj_ret) \
+inline CUDA_CALLABLE void adj_frac(T /*x*/, T& /*adj_x*/, T /*adj_ret*/) \
 { \
     /* MISSINGADJOINT: gradient is 1 between integers (subgradient at integer points) */ \
 }
@@ -1923,7 +1926,7 @@ template <typename C, typename T> CUDA_CALLABLE inline T where(const C& cond, co
 
 template <typename C, typename TA, typename TB, typename TRet>
 CUDA_CALLABLE inline void
-adj_where(const C& cond, const TA& a, const TB& b, C& adj_cond, TA& adj_a, TB& adj_b, const TRet& adj_ret)
+adj_where(const C& cond, const TA& /*a*/, const TB& /*b*/, C& /*adj_cond*/, TA& adj_a, TB& adj_b, const TRet& adj_ret)
 {
     // The double NOT operator !! casts to bool without compiler warnings.
     if (!!cond)
@@ -1934,7 +1937,7 @@ adj_where(const C& cond, const TA& a, const TB& b, C& adj_cond, TA& adj_a, TB& a
 
 template <typename T> CUDA_CALLABLE inline T copy(const T& src) { return src; }
 
-template <typename T> CUDA_CALLABLE inline void adj_copy(const T& src, T& adj_src, T& adj_dest)
+template <typename T> CUDA_CALLABLE inline void adj_copy(const T& /*src*/, T& adj_src, T& adj_dest)
 {
     adj_src += adj_dest;
     adj_dest = T {};
@@ -1942,7 +1945,7 @@ template <typename T> CUDA_CALLABLE inline void adj_copy(const T& src, T& adj_sr
 
 template <typename T> CUDA_CALLABLE inline void assign(T& dest, const T& src) { dest = src; }
 
-template <typename T> CUDA_CALLABLE inline void adj_assign(T& dest, const T& src, T& adj_dest, T& adj_src)
+template <typename T> CUDA_CALLABLE inline void adj_assign(T& /*dest*/, const T& /*src*/, T& adj_dest, T& adj_src)
 {
     // this is generally a non-differentiable operation since it violates SSA,
     // except in read-modify-write statements which are reversible through backpropagation
@@ -1994,12 +1997,15 @@ template <typename T> CUDA_CALLABLE inline T operator|(const T& a, const T& b) {
 template <typename T> CUDA_CALLABLE inline T operator^(const T& a, const T& b) { return bit_xor(a, b); }
 
 template <typename T> CUDA_CALLABLE inline T pos(const T& x) { return x; }
-template <typename T> CUDA_CALLABLE inline void adj_pos(const T& x, T& adj_x, const T& adj_ret) { adj_x += T(adj_ret); }
+template <typename T> CUDA_CALLABLE inline void adj_pos(const T& /*x*/, T& adj_x, const T& adj_ret)
+{
+    adj_x += T(adj_ret);
+}
 
 // unary negation implemented as negative multiply, not sure the fp implications of this
 // may be better as 0.0 - x?
 template <typename T> CUDA_CALLABLE inline T neg(const T& x) { return T(0.0) - x; }
-template <typename T> CUDA_CALLABLE inline void adj_neg(const T& x, T& adj_x, const T& adj_ret)
+template <typename T> CUDA_CALLABLE inline void adj_neg(const T& /*x*/, T& adj_x, const T& adj_ret)
 {
     adj_x += T(-adj_ret);
 }
@@ -2534,7 +2540,10 @@ template <typename T> CUDA_CALLABLE inline void adj_atomic_minmax(T* addr, T* ad
         adj_value += *adj_addr;
 }
 
-CUDA_CALLABLE inline void adj_atomic_minmax(bool* buf, bool* adj_buf, const bool& value, bool& adj_value) { }
+CUDA_CALLABLE inline void
+adj_atomic_minmax(bool* /*buf*/, bool* /*adj_buf*/, const bool& /*value*/, bool& /*adj_value*/)
+{
+}
 
 
 template <typename T> inline CUDA_CALLABLE T atomic_cas(T* address, T compare, T val)
@@ -2650,14 +2659,15 @@ template <> inline CUDA_CALLABLE int64 atomic_exch(int64* address, int64 val)
 
 
 template <typename T>
-CUDA_CALLABLE inline void
-adj_atomic_cas(T* address, T compare, T val, T* adj_address, T& adj_compare, T& adj_val, T adj_ret)
+CUDA_CALLABLE inline void adj_atomic_cas(
+    T* /*address*/, T /*compare*/, T /*val*/, T* /*adj_address*/, T& /*adj_compare*/, T& /*adj_val*/, T /*adj_ret*/
+)
 {
     // Not implemented
 }
 
 template <typename T>
-CUDA_CALLABLE inline void adj_atomic_exch(T* address, T val, T* adj_address, T& adj_val, T adj_ret)
+CUDA_CALLABLE inline void adj_atomic_exch(T* /*address*/, T /*val*/, T* /*adj_address*/, T& /*adj_val*/, T /*adj_ret*/)
 {
     // Not implemented
 }
@@ -2820,35 +2830,38 @@ template <typename Type> inline CUDA_CALLABLE void print(transform_t<Type> t)
     );
 }
 
-template <typename T> inline CUDA_CALLABLE void adj_print(const T& x, const T& adj_x)
+template <typename T> inline CUDA_CALLABLE void adj_print(const T& /*x*/, const T& /*adj_x*/)
 {
     printf("adj: <type without print implementation>\n");
 }
 
 // note: adj_print() only prints the adjoint value, since the value itself gets printed in replay print()
-inline CUDA_CALLABLE void adj_print(half x, half adj_x) { printf("adj: %g\n", half_to_float(adj_x)); }
+inline CUDA_CALLABLE void adj_print(half /*x*/, half adj_x) { printf("adj: %g\n", half_to_float(adj_x)); }
 #ifndef WP_NO_BFLOAT16
-inline CUDA_CALLABLE void adj_print(bfloat16 x, bfloat16 adj_x) { printf("adj: %g\n", bfloat16_to_float(adj_x)); }
+inline CUDA_CALLABLE void adj_print(bfloat16 /*x*/, bfloat16 adj_x) { printf("adj: %g\n", bfloat16_to_float(adj_x)); }
 #endif
-inline CUDA_CALLABLE void adj_print(float x, float adj_x) { printf("adj: %g\n", adj_x); }
-inline CUDA_CALLABLE void adj_print(double x, double adj_x) { printf("adj: %g\n", adj_x); }
+inline CUDA_CALLABLE void adj_print(float /*x*/, float adj_x) { printf("adj: %g\n", adj_x); }
+inline CUDA_CALLABLE void adj_print(double /*x*/, double adj_x) { printf("adj: %g\n", adj_x); }
 
-inline CUDA_CALLABLE void adj_print(signed char x, signed char adj_x) { printf("adj: %d\n", adj_x); }
-inline CUDA_CALLABLE void adj_print(short x, short adj_x) { printf("adj: %d\n", adj_x); }
-inline CUDA_CALLABLE void adj_print(int x, int adj_x) { printf("adj: %d\n", adj_x); }
-inline CUDA_CALLABLE void adj_print(long x, long adj_x) { printf("adj: %ld\n", adj_x); }
-inline CUDA_CALLABLE void adj_print(long long x, long long adj_x) { printf("adj: %lld\n", adj_x); }
+inline CUDA_CALLABLE void adj_print(signed char /*x*/, signed char adj_x) { printf("adj: %d\n", adj_x); }
+inline CUDA_CALLABLE void adj_print(short /*x*/, short adj_x) { printf("adj: %d\n", adj_x); }
+inline CUDA_CALLABLE void adj_print(int /*x*/, int adj_x) { printf("adj: %d\n", adj_x); }
+inline CUDA_CALLABLE void adj_print(long /*x*/, long adj_x) { printf("adj: %ld\n", adj_x); }
+inline CUDA_CALLABLE void adj_print(long long /*x*/, long long adj_x) { printf("adj: %lld\n", adj_x); }
 
-inline CUDA_CALLABLE void adj_print(unsigned char x, unsigned char adj_x) { printf("adj: %u\n", adj_x); }
-inline CUDA_CALLABLE void adj_print(unsigned short x, unsigned short adj_x) { printf("adj: %u\n", adj_x); }
-inline CUDA_CALLABLE void adj_print(unsigned x, unsigned adj_x) { printf("adj: %u\n", adj_x); }
-inline CUDA_CALLABLE void adj_print(unsigned long x, unsigned long adj_x) { printf("adj: %lu\n", adj_x); }
-inline CUDA_CALLABLE void adj_print(unsigned long long x, unsigned long long adj_x) { printf("adj: %llu\n", adj_x); }
+inline CUDA_CALLABLE void adj_print(unsigned char /*x*/, unsigned char adj_x) { printf("adj: %u\n", adj_x); }
+inline CUDA_CALLABLE void adj_print(unsigned short /*x*/, unsigned short adj_x) { printf("adj: %u\n", adj_x); }
+inline CUDA_CALLABLE void adj_print(unsigned /*x*/, unsigned adj_x) { printf("adj: %u\n", adj_x); }
+inline CUDA_CALLABLE void adj_print(unsigned long /*x*/, unsigned long adj_x) { printf("adj: %lu\n", adj_x); }
+inline CUDA_CALLABLE void adj_print(unsigned long long /*x*/, unsigned long long adj_x)
+{
+    printf("adj: %llu\n", adj_x);
+}
 
-inline CUDA_CALLABLE void adj_print(bool x, bool adj_x) { printf("adj: %s\n", (adj_x ? "True" : "False")); }
+inline CUDA_CALLABLE void adj_print(bool /*x*/, bool adj_x) { printf("adj: %s\n", (adj_x ? "True" : "False")); }
 
 template <unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_print(const vec_t<Length, Type>& v, const vec_t<Length, Type>& adj_v)
+inline CUDA_CALLABLE void adj_print(const vec_t<Length, Type>& /*v*/, const vec_t<Length, Type>& adj_v)
 {
     printf("adj:");
     for (unsigned i = 0; i < Length; i++)
@@ -2857,7 +2870,7 @@ inline CUDA_CALLABLE void adj_print(const vec_t<Length, Type>& v, const vec_t<Le
 }
 
 template <unsigned Rows, unsigned Cols, typename Type>
-inline CUDA_CALLABLE void adj_print(const mat_t<Rows, Cols, Type>& m, const mat_t<Rows, Cols, Type>& adj_m)
+inline CUDA_CALLABLE void adj_print(const mat_t<Rows, Cols, Type>& /*m*/, const mat_t<Rows, Cols, Type>& adj_m)
 {
     for (unsigned i = 0; i < Rows; i++) {
         if (i == 0)
@@ -2870,12 +2883,13 @@ inline CUDA_CALLABLE void adj_print(const mat_t<Rows, Cols, Type>& m, const mat_
     }
 }
 
-template <typename Type> inline CUDA_CALLABLE void adj_print(const quat_t<Type>& q, const quat_t<Type>& adj_q)
+template <typename Type> inline CUDA_CALLABLE void adj_print(const quat_t<Type>& /*q*/, const quat_t<Type>& adj_q)
 {
     printf("adj: %g %g %g %g\n", float(adj_q.x), float(adj_q.y), float(adj_q.z), float(adj_q.w));
 }
 
-template <typename Type> inline CUDA_CALLABLE void adj_print(const transform_t<Type>& t, const transform_t<Type>& adj_t)
+template <typename Type>
+inline CUDA_CALLABLE void adj_print(const transform_t<Type>& /*t*/, const transform_t<Type>& adj_t)
 {
     printf(
         "adj: (%g %g %g) (%g %g %g %g)\n", float(adj_t.p[0]), float(adj_t.p[1]), float(adj_t.p[2]), float(adj_t.q.x),
@@ -2883,7 +2897,7 @@ template <typename Type> inline CUDA_CALLABLE void adj_print(const transform_t<T
     );
 }
 
-inline CUDA_CALLABLE void adj_print(str t, str& adj_t) { printf("adj: %s\n", t); }
+inline CUDA_CALLABLE void adj_print(str t, str& /*adj_t*/) { printf("adj: %s\n", t); }
 
 template <typename T> inline CUDA_CALLABLE void expect_eq(const T& actual, const T& expected)
 {

@@ -1358,15 +1358,23 @@ template <typename TileK, typename TileV> void tile_sort(TileK& t, TileV& t2, in
 
 
 template <typename TileK, typename TileV>
-inline CUDA_CALLABLE void adj_tile_sort(TileK& t, TileV& t2, TileK& adj_t1, TileV& adj_t2)
+inline CUDA_CALLABLE void adj_tile_sort(TileK& /*t*/, TileV& /*t2*/, TileK& /*adj_t1*/, TileV& /*adj_t2*/)
 {
     // MISSINGADJOINT: track permutation indices in forward pass, apply inverse permutation to
     // adj outputs
 }
 
 template <typename TileK, typename TileV>
-inline CUDA_CALLABLE void
-adj_tile_sort(TileK& t, TileV& t2, int start, int length, TileK& adj_t1, TileV& adj_t2, int adj_start, int adj_length)
+inline CUDA_CALLABLE void adj_tile_sort(
+    TileK& /*t*/,
+    TileV& /*t2*/,
+    int /*start*/,
+    int /*length*/,
+    TileK& /*adj_t1*/,
+    TileV& /*adj_t2*/,
+    int /*adj_start*/,
+    int /*adj_length*/
+)
 {
     // MISSINGADJOINT: track permutation indices in forward pass, apply inverse
     // permutation to adj outputs within [start, start+length)

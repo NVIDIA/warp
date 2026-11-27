@@ -378,14 +378,14 @@ CUDA_CALLABLE void tile_ldlt(TileA& A, TileLD& LD, TilePivots& pivots, TileInfo&
 // two unit-triangular solves, and finally the symmetric permutation.
 template <bool Upper, typename TileA, typename TileLD, typename TilePivots, typename TileInfo>
 CUDA_CALLABLE void adj_tile_ldlt(
-    TileA& A,
+    TileA& /*A*/,
     TileLD& LD,
     TilePivots& pivots,
-    TileInfo& info,
+    TileInfo& /*info*/,
     TileA& adj_A,
     TileLD& adj_LD,
-    TilePivots& adj_pivots,
-    TileInfo& adj_info
+    TilePivots& /*adj_pivots*/,
+    TileInfo& /*adj_info*/
 )
 {
     using T = typename TileLD::Type;

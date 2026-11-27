@@ -30,7 +30,24 @@
 #include <cub/cub.cuh>
 
 #ifndef WP_DISABLE_CUBQL
+// cuBQL is third-party code; keep its warnings out of Warp's native build.
+// Its headers use #pragma unroll, which the host compiler does not know.
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunknown-pragmas"
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wsign-compare"
+#pragma GCC diagnostic ignored "-Wdeprecated-copy"
+#endif
+#if defined(__clang__)
+#pragma clang diagnostic ignored "-Wself-assign"
+#pragma clang diagnostic ignored "-Wself-assign-overloaded"
+#pragma clang diagnostic ignored "-Wlogical-op-parentheses"
+#endif
 #include "cuBQL/bvh.h"
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 #endif
 
 extern CUcontext get_current_context();

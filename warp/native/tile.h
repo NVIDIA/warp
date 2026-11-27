@@ -578,7 +578,8 @@ template <typename T, typename Shape> struct tile_vectorized_check_t {
     static CUDA_CALLABLE void validate_aligned_runtime(const Global& global, int64_t base_bytes)
     {
         const char* global_bytes = reinterpret_cast<const char*>(global.data.data) + base_bytes;
-        const float4* global128 = reinterpret_cast<const float4*>(global_bytes);
+        [[maybe_unused]] const float4* global128
+            = reinterpret_cast<const float4*>(global_bytes);  // unused on CPU with NDEBUG
 
         // Always check address alignment — misaligned 128-bit loads are undefined behavior.
         // Debug: assert fires with a diagnostic message.
@@ -1123,7 +1124,7 @@ template <typename T, typename L> struct tile_register_t {
     // zero the gradient in a global array for the elements covered by this tile
     template <typename Global> inline CUDA_CALLABLE void grad_zero_global(const Global& global)
     {
-        apply([&](int reg, auto c) {
+        apply([&](int /*reg*/, auto c) {
             int64_t i;
             if (global.index(c, i))
                 global.data.grad[i] = T();
@@ -1171,7 +1172,7 @@ template <typename T, typename L> struct tile_register_t {
 // helper to allocate a register tile like another tile
 // users can either specify a template explicitly or
 // pass in another concrete instance
-template <typename Tile> CUDA_CALLABLE auto tile_register_like(Tile* t = nullptr)
+template <typename Tile> CUDA_CALLABLE auto tile_register_like(Tile* /*t*/ = nullptr)
 {
     using T = typename Tile::Type;
     using L = typename Tile::Layout;
@@ -1368,7 +1369,7 @@ public:
 
     static inline CUDA_CALLABLE void check()
     {
-        unsigned int* smem_base = get_smem_base();
+        [[maybe_unused]] unsigned int* smem_base = get_smem_base();  // only read by assert()
 
 #if defined(__CUDA_ARCH__)
         assert(smem_base[WP_TILE_THREAD_IDX] == 0);
@@ -1816,7 +1817,7 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
     }
 
     // backward of inplace scalar AND
-    inline CUDA_CALLABLE void adj_bit_and_inplace(const typename Layout::Coord& c, Type& adj_x)
+    inline CUDA_CALLABLE void adj_bit_and_inplace(const typename Layout::Coord& /*c*/, Type& /*adj_x*/)
     {
         // nop: integer atomic suppressor (bitwise ops on integer tiles have no gradient)
     }
@@ -1833,7 +1834,7 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
     }
 
     // backward of inplace scalar OR
-    inline CUDA_CALLABLE void adj_bit_or_inplace(const typename Layout::Coord& c, Type& adj_x)
+    inline CUDA_CALLABLE void adj_bit_or_inplace(const typename Layout::Coord& /*c*/, Type& /*adj_x*/)
     {
         // nop: integer atomic suppressor (bitwise ops on integer tiles have no gradient)
     }
@@ -1849,7 +1850,7 @@ template <typename T, typename L, bool Owner_ = true> struct tile_shared_t {
     }
 
     // backward of inplace scalar XOR
-    inline CUDA_CALLABLE void adj_bit_xor_inplace(const typename Layout::Coord& c, Type& adj_x)
+    inline CUDA_CALLABLE void adj_bit_xor_inplace(const typename Layout::Coord& /*c*/, Type& /*adj_x*/)
     {
         // nop: integer atomic suppressor (bitwise ops on integer tiles have no gradient)
     }
@@ -2503,7 +2504,7 @@ template <typename T, typename L> CUDA_CALLABLE void tile_register_t<T, L>::prin
 template <typename T, typename L> inline CUDA_CALLABLE void print(const tile_register_t<T, L>& t) { t.print(); }
 
 template <typename T, typename L>
-inline CUDA_CALLABLE void adj_print(const tile_register_t<T, L>& t, const tile_register_t<T, L>& a)
+inline CUDA_CALLABLE void adj_print(const tile_register_t<T, L>& /*t*/, const tile_register_t<T, L>& a)
 {
     a.print();
 }
@@ -2514,17 +2515,17 @@ template <typename T, typename L, bool Owner> inline CUDA_CALLABLE void print(co
 }
 
 template <typename T, typename L, bool Owner>
-inline CUDA_CALLABLE void adj_print(const tile_shared_t<T, L, Owner>& t, const tile_shared_t<T, L, Owner>& a)
+inline CUDA_CALLABLE void adj_print(const tile_shared_t<T, L, Owner>& /*t*/, const tile_shared_t<T, L, Owner>& a)
 {
     a.print(true);
 }
 
-template <typename T, typename L, bool O> inline CUDA_CALLABLE int len(const tile_shared_t<T, L, O>& t)
+template <typename T, typename L, bool O> inline CUDA_CALLABLE int len(const tile_shared_t<T, L, O>& /*t*/)
 {
     return L::Shape::dim(0);
 }
 
-template <typename T, typename L> inline CUDA_CALLABLE int len(const tile_register_t<T, L>& t)
+template <typename T, typename L> inline CUDA_CALLABLE int len(const tile_register_t<T, L>& /*t*/)
 {
     return L::Shape::dim(0);
 }
@@ -2574,7 +2575,7 @@ template <typename T, typename L, bool Owner> inline CUDA_CALLABLE auto copy(con
 
 template <typename T, typename L, bool Owner>
 inline CUDA_CALLABLE void adj_copy(
-    const tile_shared_t<T, L, Owner>& src, tile_shared_t<T, L, Owner>& adj_src, tile_shared_t<T, L, Owner>& adj_dest
+    const tile_shared_t<T, L, Owner>& /*src*/, tile_shared_t<T, L, Owner>& adj_src, tile_shared_t<T, L, Owner>& adj_dest
 )
 {
     adj_src += adj_dest;
@@ -2701,7 +2702,7 @@ template <unsigned Rows, unsigned Cols, typename T> inline CUDA_CALLABLE auto ti
 // it is sufficient to use a single adjoint for all tile overload funcs
 // it is also necessary, because we don't provide a dispatch_func for adjoint calls
 // so the compiler will default to choosing based on argument types
-template <typename T, typename AdjTile> inline CUDA_CALLABLE void adj_tile(const T& x, T& adj_x, AdjTile& adj_ret)
+template <typename T, typename AdjTile> inline CUDA_CALLABLE void adj_tile(const T& /*x*/, T& adj_x, AdjTile& adj_ret)
 {
     static_assert(
         AdjTile::Layout::Shape::dim(AdjTile::Layout::Shape::N - 1) == WP_TILE_BLOCK_DIM,
@@ -2761,7 +2762,7 @@ template <typename Tile> inline CUDA_CALLABLE auto untile(Tile& tile)
 }
 
 template <typename Tile, typename Value>
-inline CUDA_CALLABLE void adj_untile(Tile& tile, Tile& adj_tile, Value& adj_ret)
+inline CUDA_CALLABLE void adj_untile(Tile& /*tile*/, Tile& adj_tile, Value& adj_ret)
 {
     auto adj = adj_tile.copy_to_register();
 
@@ -2825,7 +2826,7 @@ template <typename T, unsigned... Shape> inline CUDA_CALLABLE auto tile_full(T x
 template <typename T, unsigned... Shape> inline CUDA_CALLABLE auto tile_from_thread(T value, int thread_idx)
 {
 #if defined(__CUDA_ARCH__)
-    assert(thread_idx >= 0 && thread_idx < blockDim.x);
+    assert(thread_idx >= 0 && static_cast<unsigned>(thread_idx) < blockDim.x);
 
     // Use a single shared memory element for the broadcast
     __shared__ T scratch;
@@ -2834,7 +2835,7 @@ template <typename T, unsigned... Shape> inline CUDA_CALLABLE auto tile_from_thr
     WP_TILE_SYNC();
 
     // The designated thread writes its value to shared memory
-    if (WP_TILE_THREAD_IDX == thread_idx) {
+    if (WP_TILE_THREAD_IDX == static_cast<unsigned>(thread_idx)) {
         scratch = value;
     }
 
@@ -2961,7 +2962,7 @@ template <unsigned... Shape> inline CUDA_CALLABLE auto tile_randf(uint32 rng, fl
 }
 
 // tile with evenly spaced values
-template <typename T, int Len> inline CUDA_CALLABLE auto tile_arange(T start, T stop, T step)
+template <typename T, int Len> inline CUDA_CALLABLE auto tile_arange(T start, T /*stop*/, T step)
 {
     auto out = tile_register<T, Len>();
 
@@ -2983,8 +2984,9 @@ template <typename T, int Len> inline CUDA_CALLABLE auto tile_arange(T start, T 
 }
 
 template <typename T, typename AdjTile>
-inline CUDA_CALLABLE void
-adj_tile_arange(T start, T stop, T step, T& adj_start, T& adj_stop, T& adj_step, AdjTile& adj_ret)
+inline CUDA_CALLABLE void adj_tile_arange(
+    T /*start*/, T /*stop*/, T /*step*/, T& /*adj_start*/, T& /*adj_stop*/, T& /*adj_step*/, AdjTile& /*adj_ret*/
+)
 {
     // MISSINGADJOINT: output[i] = start + i*step, so adj_start += sum(adj_ret) and adj_step +=
     // sum(i * adj_ret[i]); stop is non-differentiable
@@ -3250,7 +3252,8 @@ inline CUDA_CALLABLE auto tile_atomic_add_indexed(
 // Adjoints
 
 template <typename T, typename AdjTile, typename Coord>
-inline CUDA_CALLABLE void adj_tile_load(array_t<T>& src, Coord c, array_t<T>& adj_src, Coord adj_c, AdjTile& adj_ret)
+inline CUDA_CALLABLE void
+adj_tile_load(array_t<T>& src, Coord c, array_t<T>& adj_src, Coord /*adj_c*/, AdjTile& adj_ret)
 {
     tile_global_t<T, typename AdjTile::Layout::Shape> dest(src, c);
 
@@ -3265,19 +3268,27 @@ inline CUDA_CALLABLE void adj_tile_load(array_t<T>& src, Coord c, array_t<T>& ad
 }
 
 template <typename T, typename AdjTile>
-inline CUDA_CALLABLE void adj_tile_load(array_t<T>& src, int x, array_t<T>& adj_src, int adj_x, AdjTile& adj_ret)
+inline CUDA_CALLABLE void adj_tile_load(array_t<T>& src, int x, array_t<T>& adj_src, int /*adj_x*/, AdjTile& adj_ret)
 {
     adj_tile_load(src, tile_coord(x), adj_src, tile_coord(0), adj_ret);
 }
 template <typename T, typename AdjTile>
 inline CUDA_CALLABLE void
-adj_tile_load(array_t<T>& src, int x, int y, array_t<T>& adj_src, int adj_x, int adj_y, AdjTile& adj_ret)
+adj_tile_load(array_t<T>& src, int x, int y, array_t<T>& adj_src, int /*adj_x*/, int /*adj_y*/, AdjTile& adj_ret)
 {
     adj_tile_load(src, tile_coord(x, y), adj_src, tile_coord(0, 0), adj_ret);
 }
 template <typename T, typename AdjTile>
 inline CUDA_CALLABLE void adj_tile_load(
-    array_t<T>& src, int x, int y, int z, array_t<T>& adj_src, int adj_x, int adj_y, int adj_z, AdjTile& adj_ret
+    array_t<T>& src,
+    int x,
+    int y,
+    int z,
+    array_t<T>& adj_src,
+    int /*adj_x*/,
+    int /*adj_y*/,
+    int /*adj_z*/,
+    AdjTile& adj_ret
 )
 {
     adj_tile_load(src, tile_coord(x, y, z), adj_src, tile_coord(0, 0, 0), adj_ret);
@@ -3290,10 +3301,10 @@ inline CUDA_CALLABLE void adj_tile_load(
     int z,
     int w,
     array_t<T>& adj_src,
-    int adj_x,
-    int adj_y,
-    int adj_z,
-    int adj_w,
+    int /*adj_x*/,
+    int /*adj_y*/,
+    int /*adj_z*/,
+    int /*adj_w*/,
     AdjTile& adj_ret
 )
 {
@@ -3307,9 +3318,9 @@ inline CUDA_CALLABLE void adj_tile_load_indexed(
     int axis,
     Coord offset,
     array_t<T>& adj_src,
-    IndicesTile& adj_indices,
-    int adj_axis,
-    Coord adj_offset,
+    IndicesTile& /*adj_indices*/,
+    int /*adj_axis*/,
+    Coord /*adj_offset*/,
     AdjTile& adj_ret
 )
 {
@@ -3338,7 +3349,7 @@ inline CUDA_CALLABLE void adj_tile_load_indexed(
     array_t<T>& adj_src,
     IndicesTile& adj_indices,
     int adj_axis,
-    int adj_x,
+    int /*adj_x*/,
     AdjTile& adj_ret
 )
 {
@@ -3354,8 +3365,8 @@ inline CUDA_CALLABLE void adj_tile_load_indexed(
     array_t<T>& adj_src,
     IndicesTile& adj_indices,
     int adj_axis,
-    int adj_x,
-    int adj_y,
+    int /*adj_x*/,
+    int /*adj_y*/,
     AdjTile& adj_ret
 )
 {
@@ -3374,9 +3385,9 @@ inline CUDA_CALLABLE void adj_tile_load_indexed(
     array_t<T>& adj_src,
     IndicesTile& adj_indices,
     int adj_axis,
-    int adj_x,
-    int adj_y,
-    int adj_z,
+    int /*adj_x*/,
+    int /*adj_y*/,
+    int /*adj_z*/,
     AdjTile& adj_ret
 )
 {
@@ -3396,10 +3407,10 @@ inline CUDA_CALLABLE void adj_tile_load_indexed(
     array_t<T>& adj_src,
     IndicesTile& adj_indices,
     int adj_axis,
-    int adj_x,
-    int adj_y,
-    int adj_z,
-    int adj_w,
+    int /*adj_x*/,
+    int /*adj_y*/,
+    int /*adj_z*/,
+    int /*adj_w*/,
     AdjTile& adj_ret
 )
 {
@@ -3410,7 +3421,7 @@ inline CUDA_CALLABLE void adj_tile_load_indexed(
 
 template <typename T, typename Tile, typename AdjTile, typename Coord>
 inline CUDA_CALLABLE void
-adj_tile_store(array_t<T>& dest, Coord c, Tile& t, array_t<T>& adj_dest, Coord adj_c, AdjTile& adj_t)
+adj_tile_store(array_t<T>& dest, Coord c, Tile& /*t*/, array_t<T>& adj_dest, Coord /*adj_c*/, AdjTile& adj_t)
 {
     tile_global_t<T, typename AdjTile::Layout::Shape> src(dest, c);
 
@@ -3427,13 +3438,14 @@ adj_tile_store(array_t<T>& dest, Coord c, Tile& t, array_t<T>& adj_dest, Coord a
 
 template <typename T, typename Tile, typename AdjTile>
 inline CUDA_CALLABLE void
-adj_tile_store(array_t<T>& dest, int x, Tile& t, array_t<T>& adj_dest, int adj_x, AdjTile& adj_t)
+adj_tile_store(array_t<T>& dest, int x, Tile& t, array_t<T>& adj_dest, int /*adj_x*/, AdjTile& adj_t)
 {
     adj_tile_store(dest, tile_coord(x), t, adj_dest, tile_coord(0), adj_t);
 }
 template <typename T, typename Tile, typename AdjTile>
-inline CUDA_CALLABLE void
-adj_tile_store(array_t<T>& dest, int x, int y, Tile& t, array_t<T>& adj_dest, int adj_x, int adj_y, AdjTile& adj_t)
+inline CUDA_CALLABLE void adj_tile_store(
+    array_t<T>& dest, int x, int y, Tile& t, array_t<T>& adj_dest, int /*adj_x*/, int /*adj_y*/, AdjTile& adj_t
+)
 {
     adj_tile_store(dest, tile_coord(x, y), t, adj_dest, tile_coord(0, 0), adj_t);
 }
@@ -3445,9 +3457,9 @@ inline CUDA_CALLABLE void adj_tile_store(
     int z,
     Tile& t,
     array_t<T>& adj_dest,
-    int adj_x,
-    int adj_y,
-    int adj_z,
+    int /*adj_x*/,
+    int /*adj_y*/,
+    int /*adj_z*/,
     AdjTile& adj_t
 )
 {
@@ -3462,10 +3474,10 @@ inline CUDA_CALLABLE void adj_tile_store(
     int w,
     Tile& t,
     array_t<T>& adj_dest,
-    int adj_x,
-    int adj_y,
-    int adj_z,
-    int adj_w,
+    int /*adj_x*/,
+    int /*adj_y*/,
+    int /*adj_z*/,
+    int /*adj_w*/,
     AdjTile& adj_t
 )
 {
@@ -3478,11 +3490,11 @@ inline CUDA_CALLABLE void adj_tile_store_indexed(
     tile_shared_t<int, tile_layout_strided_t<tile_shape_t<M>>>& indices,
     int axis,
     Coord offset,
-    Tile& t,
+    Tile& /*t*/,
     array_t<T>& adj_dest,
-    tile_shared_t<int, tile_layout_strided_t<tile_shape_t<M>>>& adj_indices,
-    int adj_axis,
-    Coord adj_offset,
+    tile_shared_t<int, tile_layout_strided_t<tile_shape_t<M>>>& /*adj_indices*/,
+    int /*adj_axis*/,
+    Coord /*adj_offset*/,
     AdjTile& adj_t
 )
 {
@@ -3517,7 +3529,7 @@ inline CUDA_CALLABLE void adj_tile_store_indexed(
     array_t<T>& adj_dest,
     tile_shared_t<int, tile_layout_strided_t<tile_shape_t<M>>>& adj_indices,
     int adj_axis,
-    int adj_x,
+    int /*adj_x*/,
     AdjTile& adj_t
 )
 {
@@ -3536,8 +3548,8 @@ inline CUDA_CALLABLE void adj_tile_store_indexed(
     array_t<T>& adj_dest,
     tile_shared_t<int, tile_layout_strided_t<tile_shape_t<M>>>& adj_indices,
     int adj_axis,
-    int adj_x,
-    int adj_y,
+    int /*adj_x*/,
+    int /*adj_y*/,
     AdjTile& adj_t
 )
 {
@@ -3557,9 +3569,9 @@ inline CUDA_CALLABLE void adj_tile_store_indexed(
     array_t<T>& adj_dest,
     tile_shared_t<int, tile_layout_strided_t<tile_shape_t<M>>>& adj_indices,
     int adj_axis,
-    int adj_x,
-    int adj_y,
-    int adj_z,
+    int /*adj_x*/,
+    int /*adj_y*/,
+    int /*adj_z*/,
     AdjTile& adj_t
 )
 {
@@ -3580,10 +3592,10 @@ inline CUDA_CALLABLE void adj_tile_store_indexed(
     array_t<T>& adj_dest,
     tile_shared_t<int, tile_layout_strided_t<tile_shape_t<M>>>& adj_indices,
     int adj_axis,
-    int adj_x,
-    int adj_y,
-    int adj_z,
-    int adj_w,
+    int /*adj_x*/,
+    int /*adj_y*/,
+    int /*adj_z*/,
+    int /*adj_w*/,
     AdjTile& adj_t
 )
 {
@@ -3594,7 +3606,7 @@ inline CUDA_CALLABLE void adj_tile_store_indexed(
 
 template <typename T, typename Tile, typename AdjTile, typename Coord>
 inline CUDA_CALLABLE void
-adj_tile_atomic_add(array_t<T>& dest, Coord c, Tile& t, array_t<T>& adj_dest, Coord adj_c, AdjTile& adj_t)
+adj_tile_atomic_add(array_t<T>& dest, Coord c, Tile& /*t*/, array_t<T>& adj_dest, Coord /*adj_c*/, AdjTile& adj_t)
 {
     tile_global_t<T, typename AdjTile::Layout::Shape> src(dest, c);
 
@@ -3609,14 +3621,23 @@ adj_tile_atomic_add(array_t<T>& dest, Coord c, Tile& t, array_t<T>& adj_dest, Co
 }
 
 template <typename T, typename Tile, typename AdjTile, typename AdjRet>
-inline CUDA_CALLABLE void
-adj_tile_atomic_add(array_t<T>& dest, int x, Tile& t, array_t<T>& adj_dest, int adj_x, AdjTile& adj_t, AdjRet& adj_ret)
+inline CUDA_CALLABLE void adj_tile_atomic_add(
+    array_t<T>& dest, int x, Tile& t, array_t<T>& adj_dest, int adj_x, AdjTile& adj_t, AdjRet& /*adj_ret*/
+)
 {
     adj_tile_atomic_add(dest, tile_coord(x), t, adj_dest, tile_coord(adj_x), adj_t);
 }
 template <typename T, typename Tile, typename AdjTile, typename AdjRet>
 inline CUDA_CALLABLE void adj_tile_atomic_add(
-    array_t<T>& dest, int x, int y, Tile& t, array_t<T>& adj_dest, int adj_x, int adj_y, AdjTile& adj_t, AdjRet& adj_ret
+    array_t<T>& dest,
+    int x,
+    int y,
+    Tile& t,
+    array_t<T>& adj_dest,
+    int adj_x,
+    int adj_y,
+    AdjTile& adj_t,
+    AdjRet& /*adj_ret*/
 )
 {
     adj_tile_atomic_add(dest, tile_coord(x, y), t, adj_dest, tile_coord(adj_x, adj_y), adj_t);
@@ -3633,7 +3654,7 @@ inline CUDA_CALLABLE void adj_tile_atomic_add(
     int adj_y,
     int adj_z,
     AdjTile& adj_t,
-    AdjRet& adj_ret
+    AdjRet& /*adj_ret*/
 )
 {
     adj_tile_atomic_add(dest, tile_coord(x, y, z), t, adj_dest, tile_coord(adj_x, adj_y, adj_z), adj_t);
@@ -3652,7 +3673,7 @@ inline CUDA_CALLABLE void adj_tile_atomic_add(
     int adj_z,
     int adj_w,
     AdjTile& adj_t,
-    AdjRet& adj_ret
+    AdjRet& /*adj_ret*/
 )
 {
     adj_tile_atomic_add(dest, tile_coord(x, y, z, w), t, adj_dest, tile_coord(adj_x, adj_y, adj_z, adj_w), adj_t);
@@ -3664,11 +3685,11 @@ inline CUDA_CALLABLE void adj_tile_atomic_add_indexed(
     tile_shared_t<int, tile_layout_strided_t<tile_shape_t<M>>>& indices,
     int axis,
     Coord offset,
-    Tile& t,
+    Tile& /*t*/,
     array_t<T>& adj_dest,
-    tile_shared_t<int, tile_layout_strided_t<tile_shape_t<M>>>& adj_indices,
-    int adj_axis,
-    Coord adj_offset,
+    tile_shared_t<int, tile_layout_strided_t<tile_shape_t<M>>>& /*adj_indices*/,
+    int /*adj_axis*/,
+    Coord /*adj_offset*/,
     AdjTile& adj_t
 )
 {
@@ -3701,9 +3722,9 @@ inline CUDA_CALLABLE void adj_tile_atomic_add_indexed(
     array_t<T>& adj_dest,
     tile_shared_t<int, tile_layout_strided_t<tile_shape_t<M>>>& adj_indices,
     int adj_axis,
-    int adj_x,
+    int /*adj_x*/,
     AdjTile& adj_t,
-    AdjRet& adj_ret
+    AdjRet& /*adj_ret*/
 )
 {
     adj_tile_atomic_add_indexed(
@@ -3721,10 +3742,10 @@ inline CUDA_CALLABLE void adj_tile_atomic_add_indexed(
     array_t<T>& adj_dest,
     tile_shared_t<int, tile_layout_strided_t<tile_shape_t<M>>>& adj_indices,
     int adj_axis,
-    int adj_x,
-    int adj_y,
+    int /*adj_x*/,
+    int /*adj_y*/,
     AdjTile& adj_t,
-    AdjRet& adj_ret
+    AdjRet& /*adj_ret*/
 )
 {
     adj_tile_atomic_add_indexed(
@@ -3743,11 +3764,11 @@ inline CUDA_CALLABLE void adj_tile_atomic_add_indexed(
     array_t<T>& adj_dest,
     tile_shared_t<int, tile_layout_strided_t<tile_shape_t<M>>>& adj_indices,
     int adj_axis,
-    int adj_x,
-    int adj_y,
-    int adj_z,
+    int /*adj_x*/,
+    int /*adj_y*/,
+    int /*adj_z*/,
     AdjTile& adj_t,
-    AdjRet& adj_ret
+    AdjRet& /*adj_ret*/
 )
 {
     adj_tile_atomic_add_indexed(
@@ -3767,12 +3788,12 @@ inline CUDA_CALLABLE void adj_tile_atomic_add_indexed(
     array_t<T>& adj_dest,
     tile_shared_t<int, tile_layout_strided_t<tile_shape_t<M>>>& adj_indices,
     int adj_axis,
-    int adj_x,
-    int adj_y,
-    int adj_z,
-    int adj_w,
+    int /*adj_x*/,
+    int /*adj_y*/,
+    int /*adj_z*/,
+    int /*adj_w*/,
     AdjTile& adj_t,
-    AdjRet& adj_ret
+    AdjRet& /*adj_ret*/
 )
 {
     adj_tile_atomic_add_indexed(
@@ -3847,7 +3868,7 @@ template <typename Tile, typename Fwd> inline CUDA_CALLABLE auto tile_map(Fwd op
 
 
 template <typename Tile, typename AdjTile, typename Fwd, typename Adj>
-inline CUDA_CALLABLE void adj_tile_map(Fwd op, Tile& a, Adj adj_op, Tile& adj_a, AdjTile& adj_ret)
+inline CUDA_CALLABLE void adj_tile_map(Fwd /*op*/, Tile& a, Adj adj_op, Tile& adj_a, AdjTile& adj_ret)
 {
     auto a_reg = a.copy_to_register();
     auto adj_a_reg = tile_register_like<Tile>();
@@ -3889,7 +3910,7 @@ template <typename TileA, typename B, typename Fwd> inline CUDA_CALLABLE auto ti
 
 template <typename TileA, typename B, typename AdjB, typename Fwd, typename Adj, typename AdjTile>
 inline CUDA_CALLABLE void
-adj_tile_map(Fwd op, TileA& a, const B& b, Adj adj_op, TileA& adj_a, AdjB& adj_b, AdjTile& adj_ret)
+adj_tile_map(Fwd /*op*/, TileA& a, const B& b, Adj adj_op, TileA& adj_a, AdjB& adj_b, AdjTile& adj_ret)
 {
     using Shape = typename TileA::Layout::Shape;
 
@@ -4048,7 +4069,7 @@ inline CUDA_CALLABLE auto tile_map(Fwd op, T1& t1, T2& t2, T3& t3, T4& t4, T5& t
 // N = 3
 template <typename Fwd, typename T1, typename T2, typename T3, typename Adj, typename AdjTile>
 inline CUDA_CALLABLE void
-adj_tile_map(Fwd op, T1& t1, T2& t2, T3& t3, Adj adj_op, T1& adj_t1, T2& adj_t2, T3& adj_t3, AdjTile& adj_ret)
+adj_tile_map(Fwd /*op*/, T1& t1, T2& t2, T3& t3, Adj adj_op, T1& adj_t1, T2& adj_t2, T3& adj_t3, AdjTile& adj_ret)
 {
     using Shape = typename T1::Layout::Shape;
     auto r1 = t1.copy_to_register();
@@ -4070,7 +4091,17 @@ adj_tile_map(Fwd op, T1& t1, T2& t2, T3& t3, Adj adj_op, T1& adj_t1, T2& adj_t2,
 // N = 4
 template <typename Fwd, typename T1, typename T2, typename T3, typename T4, typename Adj, typename AdjTile>
 inline CUDA_CALLABLE void adj_tile_map(
-    Fwd op, T1& t1, T2& t2, T3& t3, T4& t4, Adj adj_op, T1& adj_t1, T2& adj_t2, T3& adj_t3, T4& adj_t4, AdjTile& adj_ret
+    Fwd /*op*/,
+    T1& t1,
+    T2& t2,
+    T3& t3,
+    T4& t4,
+    Adj adj_op,
+    T1& adj_t1,
+    T2& adj_t2,
+    T3& adj_t3,
+    T4& adj_t4,
+    AdjTile& adj_ret
 )
 {
     using Shape = typename T1::Layout::Shape;
@@ -4099,7 +4130,7 @@ inline CUDA_CALLABLE void adj_tile_map(
 // N = 5
 template <typename Fwd, typename T1, typename T2, typename T3, typename T4, typename T5, typename Adj, typename AdjTile>
 inline CUDA_CALLABLE void adj_tile_map(
-    Fwd op,
+    Fwd /*op*/,
     T1& t1,
     T2& t2,
     T3& t3,
@@ -4152,7 +4183,7 @@ template <
     typename Adj,
     typename AdjTile>
 inline CUDA_CALLABLE void adj_tile_map(
-    Fwd op,
+    Fwd /*op*/,
     T1& t1,
     T2& t2,
     T3& t3,
@@ -4211,7 +4242,7 @@ template <
     typename Adj,
     typename AdjTile>
 inline CUDA_CALLABLE void adj_tile_map(
-    Fwd op,
+    Fwd /*op*/,
     T1& t1,
     T2& t2,
     T3& t3,
@@ -4277,7 +4308,7 @@ template <
     typename Adj,
     typename AdjTile>
 inline CUDA_CALLABLE void adj_tile_map(
-    Fwd op,
+    Fwd /*op*/,
     T1& t1,
     T2& t2,
     T3& t3,
@@ -4346,7 +4377,7 @@ inline CUDA_CALLABLE auto tile_map_call_adj(AdjOp adj_op, Op op, T x, AdjT& adj_
 }
 
 template <typename AdjOp, typename Op, typename T, typename AdjT, typename AdjRet>
-inline CUDA_CALLABLE void tile_map_call_adj(AdjOp adj_op, Op op, T x, AdjT& adj_x, AdjRet adj_ret, long)
+inline CUDA_CALLABLE void tile_map_call_adj(AdjOp adj_op, Op /*op*/, T x, AdjT& adj_x, AdjRet adj_ret, long)
 {
     adj_op(x, adj_x, adj_ret);
 }
@@ -4361,7 +4392,7 @@ tile_map_call_adj(AdjOp adj_op, Op op, T x, U y, AdjT& adj_x, AdjU& adj_y, AdjRe
 
 template <typename AdjOp, typename Op, typename T, typename U, typename AdjT, typename AdjU, typename AdjRet>
 inline CUDA_CALLABLE void
-tile_map_call_adj(AdjOp adj_op, Op op, T x, U y, AdjT& adj_x, AdjU& adj_y, AdjRet adj_ret, long)
+tile_map_call_adj(AdjOp adj_op, Op /*op*/, T x, U y, AdjT& adj_x, AdjU& adj_y, AdjRet adj_ret, long)
 {
     adj_op(x, y, adj_x, adj_y, adj_ret);
 }
@@ -4575,7 +4606,7 @@ template <typename TileA, typename TileB> inline CUDA_CALLABLE void tile_add_inp
 }
 
 template <typename TileA, typename TileB, typename AdjTileA, typename AdjTileB>
-inline CUDA_CALLABLE void adj_tile_add_inplace(TileA& a, TileB& b, AdjTileA& adj_a, AdjTileB& adj_b)
+inline CUDA_CALLABLE void adj_tile_add_inplace(TileA& /*a*/, TileB& /*b*/, AdjTileA& adj_a, AdjTileB& adj_b)
 {
     using ShapeA = typename TileA::Layout::Shape;
     using ShapeB = typename TileB::Layout::Shape;
@@ -4666,7 +4697,7 @@ template <typename TileA, typename TileB> inline CUDA_CALLABLE void tile_sub_inp
 }
 
 template <typename TileA, typename TileB, typename AdjTileA, typename AdjTileB>
-inline CUDA_CALLABLE void adj_tile_sub_inplace(TileA& a, TileB& b, AdjTileA& adj_a, AdjTileB& adj_b)
+inline CUDA_CALLABLE void adj_tile_sub_inplace(TileA& /*a*/, TileB& /*b*/, AdjTileA& adj_a, AdjTileB& adj_b)
 {
     using ShapeA = typename TileA::Layout::Shape;
     using ShapeB = typename TileB::Layout::Shape;
@@ -4866,24 +4897,36 @@ inline CUDA_CALLABLE void adj_tile_extract_impl(Tile& t, AdjTile& adj_t, AdjType
 }
 
 template <typename Tile, typename AdjTile>
-CUDA_CALLABLE void adj_tile_extract(Tile& t, int i, AdjTile& adj_t, int adj_i, typename Tile::Type adj_ret)
+CUDA_CALLABLE void adj_tile_extract(Tile& t, int i, AdjTile& adj_t, int /*adj_i*/, typename Tile::Type adj_ret)
 {
     adj_tile_extract_impl(t, adj_t, adj_ret, i);
 }
 template <typename Tile, typename AdjTile, typename AdjType>
-CUDA_CALLABLE void adj_tile_extract(Tile& t, int i, int j, AdjTile& adj_t, int adj_i, int adj_j, AdjType adj_ret)
+CUDA_CALLABLE void
+adj_tile_extract(Tile& t, int i, int j, AdjTile& adj_t, int /*adj_i*/, int /*adj_j*/, AdjType adj_ret)
 {
     adj_tile_extract_impl(t, adj_t, adj_ret, i, j);
 }
 template <typename Tile, typename AdjTile, typename AdjType>
-CUDA_CALLABLE void
-adj_tile_extract(Tile& t, int i, int j, int k, AdjTile& adj_t, int adj_i, int adj_j, int adj_k, AdjType adj_ret)
+CUDA_CALLABLE void adj_tile_extract(
+    Tile& t, int i, int j, int k, AdjTile& adj_t, int /*adj_i*/, int /*adj_j*/, int /*adj_k*/, AdjType adj_ret
+)
 {
     adj_tile_extract_impl(t, adj_t, adj_ret, i, j, k);
 }
 template <typename Tile, typename AdjTile, typename AdjType>
 CUDA_CALLABLE void adj_tile_extract(
-    Tile& t, int i, int j, int k, int l, AdjTile& adj_t, int adj_i, int adj_j, int adj_k, int adj_l, AdjType adj_ret
+    Tile& t,
+    int i,
+    int j,
+    int k,
+    int l,
+    AdjTile& adj_t,
+    int /*adj_i*/,
+    int /*adj_j*/,
+    int /*adj_k*/,
+    int /*adj_l*/,
+    AdjType adj_ret
 )
 {
     adj_tile_extract_impl(t, adj_t, adj_ret, i, j, k, l);
@@ -4897,11 +4940,11 @@ CUDA_CALLABLE void adj_tile_extract(
     int l,
     int m,
     AdjTile& adj_t,
-    int adj_i,
-    int adj_j,
-    int adj_k,
-    int adj_l,
-    int adj_m,
+    int /*adj_i*/,
+    int /*adj_j*/,
+    int /*adj_k*/,
+    int /*adj_l*/,
+    int /*adj_m*/,
     AdjType adj_ret
 )
 {
@@ -4917,12 +4960,12 @@ CUDA_CALLABLE void adj_tile_extract(
     int m,
     int n,
     AdjTile& adj_t,
-    int adj_i,
-    int adj_j,
-    int adj_k,
-    int adj_l,
-    int adj_m,
-    int adj_n,
+    int /*adj_i*/,
+    int /*adj_j*/,
+    int /*adj_k*/,
+    int /*adj_l*/,
+    int /*adj_m*/,
+    int /*adj_n*/,
     AdjType adj_ret
 )
 {
@@ -5046,12 +5089,12 @@ template <typename Tile, typename AdjTile>
 inline CUDA_CALLABLE void adj_tile_scatter_add(
     Tile& t,
     int i,
-    typename Tile::Type value,
+    typename Tile::Type /*value*/,
     bool has_value,
-    AdjTile& adj_t,
-    int& adj_i,
+    AdjTile& /*adj_t*/,
+    int& /*adj_i*/,
     typename Tile::Type& adj_value,
-    bool& adj_has_value
+    bool& /*adj_has_value*/
 )
 {
     assert(!has_value || (i >= 0 && i < Tile::Layout::Shape::dim(0)));
@@ -5081,13 +5124,13 @@ inline CUDA_CALLABLE void adj_tile_scatter_add(
     Tile& t,
     int i,
     int j,
-    typename Tile::Type value,
+    typename Tile::Type /*value*/,
     bool has_value,
-    AdjTile& adj_t,
-    int& adj_i,
-    int& adj_j,
+    AdjTile& /*adj_t*/,
+    int& /*adj_i*/,
+    int& /*adj_j*/,
     typename Tile::Type& adj_value,
-    bool& adj_has_value
+    bool& /*adj_has_value*/
 )
 {
     assert(!has_value || (i >= 0 && i < Tile::Layout::Shape::dim(0) && j >= 0 && j < Tile::Layout::Shape::dim(1)));
@@ -5102,14 +5145,14 @@ inline CUDA_CALLABLE void adj_tile_scatter_add(
     int i,
     int j,
     int k,
-    typename Tile::Type value,
+    typename Tile::Type /*value*/,
     bool has_value,
-    AdjTile& adj_t,
-    int& adj_i,
-    int& adj_j,
-    int& adj_k,
+    AdjTile& /*adj_t*/,
+    int& /*adj_i*/,
+    int& /*adj_j*/,
+    int& /*adj_k*/,
     typename Tile::Type& adj_value,
-    bool& adj_has_value
+    bool& /*adj_has_value*/
 )
 {
     assert(
@@ -5129,15 +5172,15 @@ inline CUDA_CALLABLE void adj_tile_scatter_add(
     int j,
     int k,
     int l,
-    typename Tile::Type value,
+    typename Tile::Type /*value*/,
     bool has_value,
-    AdjTile& adj_t,
-    int& adj_i,
-    int& adj_j,
-    int& adj_k,
-    int& adj_l,
+    AdjTile& /*adj_t*/,
+    int& /*adj_i*/,
+    int& /*adj_j*/,
+    int& /*adj_k*/,
+    int& /*adj_l*/,
     typename Tile::Type& adj_value,
-    bool& adj_has_value
+    bool& /*adj_has_value*/
 )
 {
     assert(
@@ -5251,12 +5294,12 @@ template <typename Tile, typename AdjTile>
 inline CUDA_CALLABLE void adj_tile_scatter_masked(
     Tile& t,
     int i,
-    typename Tile::Type value,
+    typename Tile::Type /*value*/,
     bool has_value,
-    AdjTile& adj_t,
-    int& adj_i,
+    AdjTile& /*adj_t*/,
+    int& /*adj_i*/,
     typename Tile::Type& adj_value,
-    bool& adj_has_value
+    bool& /*adj_has_value*/
 )
 {
     if (t.grad.ptr && has_value) {
@@ -5270,13 +5313,13 @@ inline CUDA_CALLABLE void adj_tile_scatter_masked(
     Tile& t,
     int i,
     int j,
-    typename Tile::Type value,
+    typename Tile::Type /*value*/,
     bool has_value,
-    AdjTile& adj_t,
-    int& adj_i,
-    int& adj_j,
+    AdjTile& /*adj_t*/,
+    int& /*adj_i*/,
+    int& /*adj_j*/,
     typename Tile::Type& adj_value,
-    bool& adj_has_value
+    bool& /*adj_has_value*/
 )
 {
     if (t.grad.ptr && has_value) {
@@ -5291,14 +5334,14 @@ inline CUDA_CALLABLE void adj_tile_scatter_masked(
     int i,
     int j,
     int k,
-    typename Tile::Type value,
+    typename Tile::Type /*value*/,
     bool has_value,
-    AdjTile& adj_t,
-    int& adj_i,
-    int& adj_j,
-    int& adj_k,
+    AdjTile& /*adj_t*/,
+    int& /*adj_i*/,
+    int& /*adj_j*/,
+    int& /*adj_k*/,
     typename Tile::Type& adj_value,
-    bool& adj_has_value
+    bool& /*adj_has_value*/
 )
 {
     if (t.grad.ptr && has_value) {
@@ -5314,15 +5357,15 @@ inline CUDA_CALLABLE void adj_tile_scatter_masked(
     int j,
     int k,
     int l,
-    typename Tile::Type value,
+    typename Tile::Type /*value*/,
     bool has_value,
-    AdjTile& adj_t,
-    int& adj_i,
-    int& adj_j,
-    int& adj_k,
-    int& adj_l,
+    AdjTile& /*adj_t*/,
+    int& /*adj_i*/,
+    int& /*adj_j*/,
+    int& /*adj_k*/,
+    int& /*adj_l*/,
     typename Tile::Type& adj_value,
-    bool& adj_has_value
+    bool& /*adj_has_value*/
 )
 {
     if (t.grad.ptr && has_value) {
@@ -5427,20 +5470,20 @@ CUDA_CALLABLE void tile_bit_xor_inplace(Tile& t, int i, int j, int k, int l, typ
 
 template <typename Tile, typename AdjTile>
 CUDA_CALLABLE void adj_tile_add_inplace(
-    Tile& t, int i, typename Tile::Type value, AdjTile& adj_t, int adj_i, typename Tile::Type& adj_value
+    Tile& /*t*/, int i, typename Tile::Type /*value*/, AdjTile& adj_t, int /*adj_i*/, typename Tile::Type& adj_value
 )
 {
     adj_t.adj_add_inplace(tile_coord(i), adj_value);
 }
 template <typename Tile, typename AdjTile>
 CUDA_CALLABLE void adj_tile_add_inplace(
-    Tile& t,
+    Tile& /*t*/,
     int i,
     int j,
-    typename Tile::Type value,
+    typename Tile::Type /*value*/,
     AdjTile& adj_t,
-    int adj_i,
-    int adj_j,
+    int /*adj_i*/,
+    int /*adj_j*/,
     typename Tile::Type& adj_value
 )
 {
@@ -5448,15 +5491,15 @@ CUDA_CALLABLE void adj_tile_add_inplace(
 }
 template <typename Tile, typename AdjTile>
 CUDA_CALLABLE void adj_tile_add_inplace(
-    Tile& t,
+    Tile& /*t*/,
     int i,
     int j,
     int k,
-    typename Tile::Type value,
+    typename Tile::Type /*value*/,
     AdjTile& adj_t,
-    int adj_i,
-    int adj_j,
-    int adj_k,
+    int /*adj_i*/,
+    int /*adj_j*/,
+    int /*adj_k*/,
     typename Tile::Type& adj_value
 )
 {
@@ -5464,17 +5507,17 @@ CUDA_CALLABLE void adj_tile_add_inplace(
 }
 template <typename Tile, typename AdjTile>
 CUDA_CALLABLE void adj_tile_add_inplace(
-    Tile& t,
+    Tile& /*t*/,
     int i,
     int j,
     int k,
     int l,
-    typename Tile::Type value,
+    typename Tile::Type /*value*/,
     AdjTile& adj_t,
-    int adj_i,
-    int adj_j,
-    int adj_k,
-    int adj_l,
+    int /*adj_i*/,
+    int /*adj_j*/,
+    int /*adj_k*/,
+    int /*adj_l*/,
     typename Tile::Type& adj_value
 )
 {
@@ -5483,20 +5526,20 @@ CUDA_CALLABLE void adj_tile_add_inplace(
 
 template <typename Tile, typename AdjTile>
 CUDA_CALLABLE void adj_tile_sub_inplace(
-    Tile& t, int i, typename Tile::Type value, AdjTile& adj_t, int adj_i, typename Tile::Type& adj_value
+    Tile& /*t*/, int i, typename Tile::Type /*value*/, AdjTile& adj_t, int /*adj_i*/, typename Tile::Type& adj_value
 )
 {
     adj_t.adj_sub_inplace(tile_coord(i), adj_value);
 }
 template <typename Tile, typename AdjTile>
 CUDA_CALLABLE void adj_tile_sub_inplace(
-    Tile& t,
+    Tile& /*t*/,
     int i,
     int j,
-    typename Tile::Type value,
+    typename Tile::Type /*value*/,
     AdjTile& adj_t,
-    int adj_i,
-    int adj_j,
+    int /*adj_i*/,
+    int /*adj_j*/,
     typename Tile::Type& adj_value
 )
 {
@@ -5504,15 +5547,15 @@ CUDA_CALLABLE void adj_tile_sub_inplace(
 }
 template <typename Tile, typename AdjTile>
 CUDA_CALLABLE void adj_tile_sub_inplace(
-    Tile& t,
+    Tile& /*t*/,
     int i,
     int j,
     int k,
-    typename Tile::Type value,
+    typename Tile::Type /*value*/,
     AdjTile& adj_t,
-    int adj_i,
-    int adj_j,
-    int adj_k,
+    int /*adj_i*/,
+    int /*adj_j*/,
+    int /*adj_k*/,
     typename Tile::Type& adj_value
 )
 {
@@ -5520,17 +5563,17 @@ CUDA_CALLABLE void adj_tile_sub_inplace(
 }
 template <typename Tile, typename AdjTile>
 CUDA_CALLABLE void adj_tile_sub_inplace(
-    Tile& t,
+    Tile& /*t*/,
     int i,
     int j,
     int k,
     int l,
-    typename Tile::Type value,
+    typename Tile::Type /*value*/,
     AdjTile& adj_t,
-    int adj_i,
-    int adj_j,
-    int adj_k,
-    int adj_l,
+    int /*adj_i*/,
+    int /*adj_j*/,
+    int /*adj_k*/,
+    int /*adj_l*/,
     typename Tile::Type& adj_value
 )
 {
@@ -5565,7 +5608,7 @@ template <typename Tile> inline CUDA_CALLABLE auto tile_transpose(Tile& t)
 }
 
 template <typename Tile, typename AdjTile>
-inline CUDA_CALLABLE void adj_tile_transpose(Tile& t, Tile& adj_t, AdjTile& adj_ret)
+inline CUDA_CALLABLE void adj_tile_transpose(Tile& /*t*/, Tile& adj_t, AdjTile& adj_ret)
 {
     auto a = tile_transpose(adj_ret);
     auto& b = adj_t;
@@ -5611,7 +5654,7 @@ inline CUDA_CALLABLE auto tile_broadcast(Tile& t)
 }
 
 template <typename Tile, typename AdjTile>
-inline CUDA_CALLABLE void adj_tile_broadcast(Tile& t, Tile& adj_t, AdjTile& adj_ret)
+inline CUDA_CALLABLE void adj_tile_broadcast(Tile& /*t*/, Tile& /*adj_t*/, AdjTile& /*adj_ret*/)
 {
     // nop, since memory is aliased, grads already accumulated
 }
@@ -5658,7 +5701,13 @@ inline CUDA_CALLABLE auto tile_slice_indexed(Tile& src, IndicesTile& indices, in
 
 template <unsigned... Shape, typename Tile, typename IndicesTile, typename AdjTile>
 inline CUDA_CALLABLE void adj_tile_slice_indexed(
-    Tile& src, IndicesTile& indices, int axis, Tile& adj_src, IndicesTile& adj_indices, int adj_axis, AdjTile& adj_ret
+    Tile& src,
+    IndicesTile& indices,
+    int axis,
+    Tile& /*adj_src*/,
+    IndicesTile& /*adj_indices*/,
+    int /*adj_axis*/,
+    AdjTile& adj_ret
 )
 {
     // scatter gradients from the gathered result back onto the selected source
@@ -5697,7 +5746,7 @@ template <typename ReturnTile, typename Tile> inline CUDA_CALLABLE auto tile_squ
 }
 
 template <typename Tile, typename AdjTile, typename AdjReturnTile>
-inline CUDA_CALLABLE void adj_tile_squeeze(Tile& t, AdjTile& adj_t, AdjReturnTile& adj_ret)
+inline CUDA_CALLABLE void adj_tile_squeeze(Tile& /*t*/, AdjTile& /*adj_t*/, AdjReturnTile& /*adj_ret*/)
 {
     // nop, since memory is aliased, grads already accumulated
 }
@@ -5716,7 +5765,7 @@ template <typename ReturnTile, typename Tile> inline CUDA_CALLABLE auto tile_res
 }
 
 template <typename Tile, typename AdjTile, typename AdjReturnTile>
-inline CUDA_CALLABLE void adj_tile_reshape(Tile& t, AdjTile& adj_t, AdjReturnTile& adj_ret)
+inline CUDA_CALLABLE void adj_tile_reshape(Tile& /*t*/, AdjTile& /*adj_t*/, AdjReturnTile& /*adj_ret*/)
 {
     // nop, since memory is aliased, grads already accumulated
 }
@@ -5751,7 +5800,7 @@ template <typename ReturnTile, typename Tile> inline CUDA_CALLABLE auto tile_ast
 }
 
 template <typename Tile, typename AdjTile, typename AdjReturnTile>
-inline CUDA_CALLABLE void adj_tile_astype(Tile& t, AdjTile& adj_t, AdjReturnTile& adj_ret)
+inline CUDA_CALLABLE void adj_tile_astype(Tile& /*t*/, AdjTile& adj_t, AdjReturnTile& adj_ret)
 {
     // gradients only flow between float conversions
     if constexpr (
@@ -5940,13 +5989,21 @@ inline CUDA_CALLABLE void assign(TileA& dest, int i, int j, int k, int l, int m,
 
 template <typename TileA, typename AdjTileA, typename Scalar>
 inline CUDA_CALLABLE void
-adj_assign(TileA& dest, int i, const Scalar& src, AdjTileA& adj_dest, int adj_i, Scalar& adj_src)
+adj_assign(TileA& dest, int i, const Scalar& /*src*/, AdjTileA& /*adj_dest*/, int /*adj_i*/, Scalar& adj_src)
 {
     tile_element_adj_assign(dest, adj_src, i);
 }
 template <typename TileA, typename AdjTileA, typename Scalar>
-inline CUDA_CALLABLE void
-adj_assign(TileA& dest, int i, int j, const Scalar& src, AdjTileA& adj_dest, int adj_i, int adj_j, Scalar& adj_src)
+inline CUDA_CALLABLE void adj_assign(
+    TileA& dest,
+    int i,
+    int j,
+    const Scalar& /*src*/,
+    AdjTileA& /*adj_dest*/,
+    int /*adj_i*/,
+    int /*adj_j*/,
+    Scalar& adj_src
+)
 {
     tile_element_adj_assign(dest, adj_src, i, j);
 }
@@ -5956,11 +6013,11 @@ inline CUDA_CALLABLE void adj_assign(
     int i,
     int j,
     int k,
-    const Scalar& src,
-    AdjTileA& adj_dest,
-    int adj_i,
-    int adj_j,
-    int adj_k,
+    const Scalar& /*src*/,
+    AdjTileA& /*adj_dest*/,
+    int /*adj_i*/,
+    int /*adj_j*/,
+    int /*adj_k*/,
     Scalar& adj_src
 )
 {
@@ -5973,12 +6030,12 @@ inline CUDA_CALLABLE void adj_assign(
     int j,
     int k,
     int l,
-    const Scalar& src,
-    AdjTileA& adj_dest,
-    int adj_i,
-    int adj_j,
-    int adj_k,
-    int adj_l,
+    const Scalar& /*src*/,
+    AdjTileA& /*adj_dest*/,
+    int /*adj_i*/,
+    int /*adj_j*/,
+    int /*adj_k*/,
+    int /*adj_l*/,
     Scalar& adj_src
 )
 {
@@ -5992,13 +6049,13 @@ inline CUDA_CALLABLE void adj_assign(
     int k,
     int l,
     int m,
-    const Scalar& src,
-    AdjTileA& adj_dest,
-    int adj_i,
-    int adj_j,
-    int adj_k,
-    int adj_l,
-    int adj_m,
+    const Scalar& /*src*/,
+    AdjTileA& /*adj_dest*/,
+    int /*adj_i*/,
+    int /*adj_j*/,
+    int /*adj_k*/,
+    int /*adj_l*/,
+    int /*adj_m*/,
     Scalar& adj_src
 )
 {
@@ -6013,14 +6070,14 @@ inline CUDA_CALLABLE void adj_assign(
     int l,
     int m,
     int n,
-    const Scalar& src,
-    AdjTileA& adj_dest,
-    int adj_i,
-    int adj_j,
-    int adj_k,
-    int adj_l,
-    int adj_m,
-    int adj_n,
+    const Scalar& /*src*/,
+    AdjTileA& /*adj_dest*/,
+    int /*adj_i*/,
+    int /*adj_j*/,
+    int /*adj_k*/,
+    int /*adj_l*/,
+    int /*adj_m*/,
+    int /*adj_n*/,
     Scalar& adj_src
 )
 {
@@ -6239,8 +6296,15 @@ inline CUDA_CALLABLE TileC& tile_diag_add(TileA& a, TileB& b, TileC& c)
 }
 
 template <typename TileA, typename TileB, typename TileC, typename AdjTileA, typename AdjTileB, typename AdjTileC>
-inline CUDA_CALLABLE void
-adj_tile_diag_add(TileA& a, TileB& b, TileC& c, AdjTileA& adj_a, AdjTileB& adj_b, AdjTileC& adj_c, AdjTileC& adj_ret)
+inline CUDA_CALLABLE void adj_tile_diag_add(
+    TileA& /*a*/,
+    TileB& /*b*/,
+    TileC& /*c*/,
+    AdjTileA& /*adj_a*/,
+    AdjTileB& /*adj_b*/,
+    AdjTileC& /*adj_c*/,
+    AdjTileC& /*adj_ret*/
+)
 {
     // MISSINGADJOINT: adj_a += adj_ret (element-wise); adj_b += diagonal of adj_ret
 }

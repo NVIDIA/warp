@@ -160,7 +160,7 @@ inline CUDA_CALLABLE void thread_block_scan(T* values, int num_elements)
         WP_TILE_SYNC();
 
         // Update offset with the inclusive total of this block
-        if (threadIdx.x == num_threads_in_block - 1) {
+        if (threadIdx.x == static_cast<unsigned>(num_threads_in_block - 1)) {
             if constexpr (exclusive)
                 // For exclusive scan, value is exclusive so add orig_value to get inclusive total
                 offset = op(offset, op(value, orig_value));
@@ -350,7 +350,7 @@ template <typename Tile, typename Op = OpAdd<typename Tile::Type>> inline auto t
 template <typename Tile> CUDA_CALLABLE auto tile_scan_inclusive(Tile& t) { return tile_scan_inclusive_impl(t); }
 
 template <typename Tile, typename AdjTile>
-CUDA_CALLABLE void adj_tile_scan_inclusive(Tile& t, Tile& adj_t, AdjTile& adj_ret)
+CUDA_CALLABLE void adj_tile_scan_inclusive(Tile& /*t*/, Tile& /*adj_t*/, AdjTile& /*adj_ret*/)
 {
     // MISSINGADJOINT: adjoint of inclusive prefix sum is reverse-suffix sum of adj_ret
 }
@@ -358,7 +358,7 @@ CUDA_CALLABLE void adj_tile_scan_inclusive(Tile& t, Tile& adj_t, AdjTile& adj_re
 template <typename Tile> CUDA_CALLABLE auto tile_scan_exclusive(Tile& t) { return tile_scan_exclusive_impl(t); }
 
 template <typename Tile, typename AdjTile>
-CUDA_CALLABLE void adj_tile_scan_exclusive(Tile& t, Tile& adj_t, AdjTile& adj_ret)
+CUDA_CALLABLE void adj_tile_scan_exclusive(Tile& /*t*/, Tile& /*adj_t*/, AdjTile& /*adj_ret*/)
 {
     // MISSINGADJOINT: adjoint of exclusive prefix sum is reverse-suffix sum of adj_ret
     // shifted by one
@@ -371,7 +371,7 @@ template <typename Tile> CUDA_CALLABLE auto tile_scan_max_inclusive(Tile& t)
 }
 
 template <typename Tile, typename AdjTile>
-CUDA_CALLABLE void adj_tile_scan_max_inclusive(Tile& t, Tile& adj_t, AdjTile& adj_ret)
+CUDA_CALLABLE void adj_tile_scan_max_inclusive(Tile& /*t*/, Tile& /*adj_t*/, AdjTile& /*adj_ret*/)
 {
     // MISSINGADJOINT: subgradient: route each adj_ret[i] to argmax over [0, i]
 }
@@ -383,7 +383,7 @@ template <typename Tile> CUDA_CALLABLE auto tile_scan_min_inclusive(Tile& t)
 }
 
 template <typename Tile, typename AdjTile>
-CUDA_CALLABLE void adj_tile_scan_min_inclusive(Tile& t, Tile& adj_t, AdjTile& adj_ret)
+CUDA_CALLABLE void adj_tile_scan_min_inclusive(Tile& /*t*/, Tile& /*adj_t*/, AdjTile& /*adj_ret*/)
 {
     // MISSINGADJOINT: subgradient: route each adj_ret[i] to argmin over [0, i]
 }

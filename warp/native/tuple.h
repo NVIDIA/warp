@@ -69,12 +69,12 @@ template <typename... Args> CUDA_CALLABLE inline void print(const tuple_t<Args..
     t.apply([&](auto a) { print(a); });
 }
 
-template <typename... Args> CUDA_CALLABLE inline void adj_print(const tuple_t<Args...>& t, tuple_t<Args...>& adj_t)
+template <typename... Args> CUDA_CALLABLE inline void adj_print(const tuple_t<Args...>& /*t*/, tuple_t<Args...>& adj_t)
 {
     adj_t.apply([&](auto a) { print(a); });
 }
 
-CUDA_CALLABLE inline tuple_t<> add(const tuple_t<>& a, const tuple_t<>& b) { return tuple_t<>(); }
+CUDA_CALLABLE inline tuple_t<> add(const tuple_t<>& /*a*/, const tuple_t<>& /*b*/) { return tuple_t<>(); }
 
 template <typename Head, typename... Tail>
 CUDA_CALLABLE inline tuple_t<Head, Tail...> add(const tuple_t<Head, Tail...>& a, const tuple_t<Head, Tail...>& b)
@@ -85,8 +85,13 @@ CUDA_CALLABLE inline tuple_t<Head, Tail...> add(const tuple_t<Head, Tail...>& a,
     return out;
 }
 
-CUDA_CALLABLE inline void
-adj_add(const tuple_t<>& a, const tuple_t<>& b, tuple_t<>& adj_a, tuple_t<>& adj_b, const tuple_t<>& adj_ret)
+CUDA_CALLABLE inline void adj_add(
+    const tuple_t<>& /*a*/,
+    const tuple_t<>& /*b*/,
+    tuple_t<>& /*adj_a*/,
+    tuple_t<>& /*adj_b*/,
+    const tuple_t<>& /*adj_ret*/
+)
 {
     // nop: base case for empty tuple recursion
 }

@@ -650,7 +650,7 @@ svd3(const mat_t<3, 3, Type>& A, mat_t<3, 3, Type>& U, vec_t<3, Type>& sigma, ma
 
 template <typename Type>
 inline CUDA_CALLABLE void adj_svd3(
-    const mat_t<3, 3, Type>& A,
+    const mat_t<3, 3, Type>& /*A*/,
     const mat_t<3, 3, Type>& U,
     const vec_t<3, Type>& sigma,
     const mat_t<3, 3, Type>& V,
@@ -709,7 +709,7 @@ svd2(const mat_t<2, 2, Type>& A, mat_t<2, 2, Type>& U, vec_t<2, Type>& sigma, ma
 
 template <typename Type>
 inline CUDA_CALLABLE void adj_svd2(
-    const mat_t<2, 2, Type>& A,
+    const mat_t<2, 2, Type>& /*A*/,
     const mat_t<2, 2, Type>& U,
     const vec_t<2, Type>& sigma,
     const mat_t<2, 2, Type>& V,
@@ -801,9 +801,9 @@ svd2(const mat_t<2, 2, half>& A, mat_t<2, 2, half>& U, vec_t<2, half>& sigma, ma
 template <typename Unused = void>
 inline CUDA_CALLABLE void adj_svd2(
     const mat_t<2, 2, half>& A,
-    const mat_t<2, 2, half>& U,
-    const vec_t<2, half>& sigma,
-    const mat_t<2, 2, half>& V,
+    const mat_t<2, 2, half>& /*U*/,
+    const vec_t<2, half>& /*sigma*/,
+    const mat_t<2, 2, half>& /*V*/,
     mat_t<2, 2, half>& adj_A,
     const mat_t<2, 2, half>& adj_U,
     const vec_t<2, half>& adj_sigma,
@@ -825,9 +825,9 @@ svd2(const mat_t<2, 2, bfloat16>& A, mat_t<2, 2, bfloat16>& U, vec_t<2, bfloat16
 template <typename Unused = void>
 inline CUDA_CALLABLE void adj_svd2(
     const mat_t<2, 2, bfloat16>& A,
-    const mat_t<2, 2, bfloat16>& U,
-    const vec_t<2, bfloat16>& sigma,
-    const mat_t<2, 2, bfloat16>& V,
+    const mat_t<2, 2, bfloat16>& /*U*/,
+    const vec_t<2, bfloat16>& /*sigma*/,
+    const mat_t<2, 2, bfloat16>& /*V*/,
     mat_t<2, 2, bfloat16>& adj_A,
     const mat_t<2, 2, bfloat16>& adj_U,
     const vec_t<2, bfloat16>& adj_sigma,
@@ -858,7 +858,7 @@ inline CUDA_CALLABLE void qr3(const mat_t<3, 3, Type>& A, mat_t<3, 3, Type>& Q, 
 
 template <typename Type>
 inline CUDA_CALLABLE void adj_qr3(
-    const mat_t<3, 3, Type>& A,
+    const mat_t<3, 3, Type>& /*A*/,
     const mat_t<3, 3, Type>& Q,
     const mat_t<3, 3, Type>& R,
     mat_t<3, 3, Type>& adj_A,
@@ -912,7 +912,7 @@ inline CUDA_CALLABLE void eig3(const mat_t<3, 3, Type>& A, mat_t<3, 3, Type>& Q,
 
 template <typename Type>
 inline CUDA_CALLABLE void adj_eig3(
-    const mat_t<3, 3, Type>& A,
+    const mat_t<3, 3, Type>& /*A*/,
     const mat_t<3, 3, Type>& Q,
     const vec_t<3, Type>& d,
     mat_t<3, 3, Type>& adj_A,
@@ -1032,9 +1032,9 @@ svd3(const mat_t<3, 3, half>& A, mat_t<3, 3, half>& U, vec_t<3, half>& sigma, ma
 template <typename Unused = void>
 inline CUDA_CALLABLE void adj_svd3(
     const mat_t<3, 3, half>& A,
-    const mat_t<3, 3, half>& U,
-    const vec_t<3, half>& sigma,
-    const mat_t<3, 3, half>& V,
+    const mat_t<3, 3, half>& /*U*/,
+    const vec_t<3, half>& /*sigma*/,
+    const mat_t<3, 3, half>& /*V*/,
     mat_t<3, 3, half>& adj_A,
     const mat_t<3, 3, half>& adj_U,
     const vec_t<3, half>& adj_sigma,
@@ -1053,8 +1053,8 @@ inline CUDA_CALLABLE void eig3(const mat_t<3, 3, half>& A, mat_t<3, 3, half>& Q,
 template <typename Unused = void>
 inline CUDA_CALLABLE void adj_eig3(
     const mat_t<3, 3, half>& A,
-    const mat_t<3, 3, half>& Q,
-    const vec_t<3, half>& d,
+    const mat_t<3, 3, half>& /*Q*/,
+    const vec_t<3, half>& /*d*/,
     mat_t<3, 3, half>& adj_A,
     const mat_t<3, 3, half>& adj_Q,
     const vec_t<3, half>& adj_d
@@ -1076,9 +1076,9 @@ svd3(const mat_t<3, 3, bfloat16>& A, mat_t<3, 3, bfloat16>& U, vec_t<3, bfloat16
 template <typename Unused = void>
 inline CUDA_CALLABLE void adj_svd3(
     const mat_t<3, 3, bfloat16>& A,
-    const mat_t<3, 3, bfloat16>& U,
-    const vec_t<3, bfloat16>& sigma,
-    const mat_t<3, 3, bfloat16>& V,
+    const mat_t<3, 3, bfloat16>& /*U*/,
+    const vec_t<3, bfloat16>& /*sigma*/,
+    const mat_t<3, 3, bfloat16>& /*V*/,
     mat_t<3, 3, bfloat16>& adj_A,
     const mat_t<3, 3, bfloat16>& adj_U,
     const vec_t<3, bfloat16>& adj_sigma,
@@ -1097,8 +1097,8 @@ inline CUDA_CALLABLE void eig3(const mat_t<3, 3, bfloat16>& A, mat_t<3, 3, bfloa
 template <typename Unused = void>
 inline CUDA_CALLABLE void adj_eig3(
     const mat_t<3, 3, bfloat16>& A,
-    const mat_t<3, 3, bfloat16>& Q,
-    const vec_t<3, bfloat16>& d,
+    const mat_t<3, 3, bfloat16>& /*Q*/,
+    const vec_t<3, bfloat16>& /*d*/,
     mat_t<3, 3, bfloat16>& adj_A,
     const mat_t<3, 3, bfloat16>& adj_Q,
     const vec_t<3, bfloat16>& adj_d

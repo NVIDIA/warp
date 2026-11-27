@@ -74,13 +74,13 @@ template <unsigned Length, typename Type> struct vec_t {
 
     inline CUDA_CALLABLE Type operator[](int index) const
     {
-        assert(index < Length);
+        assert(static_cast<unsigned>(index) < Length);
         return c[index];
     }
 
     inline CUDA_CALLABLE Type& operator[](int index)
     {
-        assert(index < Length);
+        assert(static_cast<unsigned>(index) < Length);
         return c[index];
     }
 
@@ -181,7 +181,7 @@ template <typename Type> CUDA_CALLABLE inline vec_t<2, Type> neg(const vec_t<2, 
 
 template <unsigned Length, typename Type>
 CUDA_CALLABLE inline void
-adj_neg(const vec_t<Length, Type>& x, vec_t<Length, Type>& adj_x, const vec_t<Length, Type>& adj_ret)
+adj_neg(const vec_t<Length, Type>& /*x*/, vec_t<Length, Type>& adj_x, const vec_t<Length, Type>& adj_ret)
 {
     adj_x -= adj_ret;
 }
@@ -609,16 +609,18 @@ template <unsigned Length, typename Type> inline CUDA_CALLABLE Type* indexref(ve
 }
 
 template <unsigned Length, typename Type>
-inline CUDA_CALLABLE void
-adj_index(vec_t<Length, Type>& v, int idx, vec_t<Length, Type>& adj_v, int adj_idx, const Type& adj_value)
+inline CUDA_CALLABLE void adj_index(
+    vec_t<Length, Type>& /*v*/, int /*idx*/, vec_t<Length, Type>& /*adj_v*/, int /*adj_idx*/, const Type& /*adj_value*/
+)
 {
     // nop
 }
 
 
 template <unsigned Length, typename Type>
-inline CUDA_CALLABLE void
-adj_indexref(vec_t<Length, Type>* v, int idx, vec_t<Length, Type>& adj_v, int adj_idx, const Type& adj_value)
+inline CUDA_CALLABLE void adj_indexref(
+    vec_t<Length, Type>* /*v*/, int /*idx*/, vec_t<Length, Type>& /*adj_v*/, int /*adj_idx*/, const Type& /*adj_value*/
+)
 {
     // nop
 }
@@ -663,8 +665,9 @@ inline CUDA_CALLABLE void add_inplace(vec_t<Length, Type>& v, slice_t slice, con
 
 
 template <unsigned Length, typename Type>
-inline CUDA_CALLABLE void
-adj_add_inplace(vec_t<Length, Type>& v, int idx, Type value, vec_t<Length, Type>& adj_v, int adj_idx, Type& adj_value)
+inline CUDA_CALLABLE void adj_add_inplace(
+    vec_t<Length, Type>& /*v*/, int idx, Type /*value*/, vec_t<Length, Type>& adj_v, int /*adj_idx*/, Type& adj_value
+)
 {
 #ifndef NDEBUG
     if (idx < -(int)Length || idx >= (int)Length) {
@@ -683,11 +686,11 @@ adj_add_inplace(vec_t<Length, Type>& v, int idx, Type value, vec_t<Length, Type>
 
 template <unsigned SliceLength, unsigned Length, typename Type>
 inline CUDA_CALLABLE void adj_add_inplace(
-    const vec_t<Length, Type>& v,
+    const vec_t<Length, Type>& /*v*/,
     slice_t slice,
-    const vec_t<SliceLength, Type>& a,
+    const vec_t<SliceLength, Type>& /*a*/,
     vec_t<Length, Type>& adj_v,
-    slice_t& adj_slice,
+    slice_t& /*adj_slice*/,
     vec_t<SliceLength, Type>& adj_a
 )
 {
@@ -747,8 +750,9 @@ inline CUDA_CALLABLE void sub_inplace(vec_t<Length, Type>& v, slice_t slice, con
 
 
 template <unsigned Length, typename Type>
-inline CUDA_CALLABLE void
-adj_sub_inplace(vec_t<Length, Type>& v, int idx, Type value, vec_t<Length, Type>& adj_v, int adj_idx, Type& adj_value)
+inline CUDA_CALLABLE void adj_sub_inplace(
+    vec_t<Length, Type>& /*v*/, int idx, Type /*value*/, vec_t<Length, Type>& adj_v, int /*adj_idx*/, Type& adj_value
+)
 {
 #ifndef NDEBUG
     if (idx < -(int)Length || idx >= (int)Length) {
@@ -767,11 +771,11 @@ adj_sub_inplace(vec_t<Length, Type>& v, int idx, Type value, vec_t<Length, Type>
 
 template <unsigned SliceLength, unsigned Length, typename Type>
 inline CUDA_CALLABLE void adj_sub_inplace(
-    const vec_t<Length, Type>& v,
+    const vec_t<Length, Type>& /*v*/,
     slice_t slice,
-    const vec_t<SliceLength, Type>& a,
+    const vec_t<SliceLength, Type>& /*a*/,
     vec_t<Length, Type>& adj_v,
-    slice_t& adj_slice,
+    slice_t& /*adj_slice*/,
     vec_t<SliceLength, Type>& adj_a
 )
 {
@@ -944,7 +948,7 @@ inline CUDA_CALLABLE void assign_inplace(vec_t<Length, Type>& v, slice_t slice, 
 
 template <unsigned Length, typename Type>
 inline CUDA_CALLABLE void adj_assign_inplace(
-    vec_t<Length, Type>& v, int idx, Type value, vec_t<Length, Type>& adj_v, int& adj_idx, Type& adj_value
+    vec_t<Length, Type>& /*v*/, int idx, Type /*value*/, vec_t<Length, Type>& adj_v, int& /*adj_idx*/, Type& adj_value
 )
 {
 #ifndef NDEBUG
@@ -963,11 +967,11 @@ inline CUDA_CALLABLE void adj_assign_inplace(
 
 template <unsigned SliceLength, unsigned Length, typename Type>
 inline CUDA_CALLABLE void adj_assign_inplace(
-    const vec_t<Length, Type>& v,
+    const vec_t<Length, Type>& /*v*/,
     slice_t slice,
-    const vec_t<SliceLength, Type>& a,
+    const vec_t<SliceLength, Type>& /*a*/,
     vec_t<Length, Type>& adj_v,
-    slice_t& adj_slice,
+    slice_t& /*adj_slice*/,
     vec_t<SliceLength, Type>& adj_a
 )
 {
@@ -1018,11 +1022,11 @@ assign_copy(vec_t<Length, Type>& v, slice_t slice, const vec_t<SliceLength, Type
 
 template <unsigned Length, typename Type>
 inline CUDA_CALLABLE void adj_assign_copy(
-    vec_t<Length, Type>& v,
+    vec_t<Length, Type>& /*v*/,
     int idx,
-    Type value,
+    Type /*value*/,
     vec_t<Length, Type>& adj_v,
-    int& adj_idx,
+    int& /*adj_idx*/,
     Type& adj_value,
     const vec_t<Length, Type>& adj_ret
 )
@@ -1040,18 +1044,18 @@ inline CUDA_CALLABLE void adj_assign_copy(
 
     adj_value += adj_ret[idx];
     for (unsigned i = 0; i < Length; ++i) {
-        if (i != idx)
+        if (i != static_cast<unsigned>(idx))
             adj_v[i] += adj_ret[i];
     }
 }
 
 template <unsigned SliceLength, unsigned Length, typename Type>
 inline CUDA_CALLABLE void adj_assign_copy(
-    vec_t<Length, Type>& v,
+    vec_t<Length, Type>& /*v*/,
     slice_t slice,
-    const vec_t<SliceLength, Type>& a,
+    const vec_t<SliceLength, Type>& /*a*/,
     vec_t<Length, Type>& adj_v,
-    slice_t& adj_slice,
+    slice_t& /*adj_slice*/,
     vec_t<SliceLength, Type>& adj_a,
     const vec_t<Length, Type>& adj_ret
 )
@@ -1097,7 +1101,7 @@ inline CUDA_CALLABLE typename range_safe_compute_type<Type>::type range_safe_len
 
 // Empty vectors, such as the slice v[3:] of a vec3, have a zero sum of squares.
 template <typename Type>
-inline CUDA_CALLABLE typename range_safe_compute_type<Type>::type range_safe_length_sq(const vec_t<0, Type>& a)
+inline CUDA_CALLABLE typename range_safe_compute_type<Type>::type range_safe_length_sq(const vec_t<0, Type>& /*a*/)
 {
     return typename range_safe_compute_type<Type>::type(0);
 }
@@ -1263,7 +1267,7 @@ template <unsigned Length, typename Type> inline CUDA_CALLABLE vec_t<Length, Typ
 
 template <unsigned Length, typename Type>
 inline CUDA_CALLABLE void
-adj_sign(const vec_t<Length, Type>& v, vec_t<Length, Type>& adj_v, const vec_t<Length, Type>& adj_ret)
+adj_sign(const vec_t<Length, Type>& /*v*/, vec_t<Length, Type>& /*adj_v*/, const vec_t<Length, Type>& /*adj_ret*/)
 {
     // MISSINGADJOINT: element-wise subgradient; gradient is zero almost everywhere with subgradient
     // at v[i] = 0
@@ -1292,7 +1296,7 @@ expect_near(const vec_t<Length, Type>& actual, const vec_t<Length, Type>& expect
 // adjoint for the initializer_array constructor:
 template <unsigned Length, typename Type>
 inline CUDA_CALLABLE void adj_vec_t(
-    const initializer_array<Length, Type>& cmps,
+    const initializer_array<Length, Type>& /*cmps*/,
     const initializer_array<Length, Type*>& adj_cmps,
     const vec_t<Length, Type>& adj_ret
 )
@@ -1305,7 +1309,8 @@ inline CUDA_CALLABLE void adj_vec_t(
 
 // adjoint for the component constructors:
 template <typename Type>
-inline CUDA_CALLABLE void adj_vec_t(Type cmpx, Type cmpy, Type& adj_cmpx, Type& adj_cmpy, const vec_t<2, Type>& adj_ret)
+inline CUDA_CALLABLE void
+adj_vec_t(Type /*cmpx*/, Type /*cmpy*/, Type& adj_cmpx, Type& adj_cmpy, const vec_t<2, Type>& adj_ret)
 {
     adj_cmpx += adj_ret.c[0];
     adj_cmpy += adj_ret.c[1];
@@ -1313,7 +1318,13 @@ inline CUDA_CALLABLE void adj_vec_t(Type cmpx, Type cmpy, Type& adj_cmpx, Type& 
 
 template <typename Type>
 inline CUDA_CALLABLE void adj_vec_t(
-    Type cmpx, Type cmpy, Type cmpz, Type& adj_cmpx, Type& adj_cmpy, Type& adj_cmpz, const vec_t<3, Type>& adj_ret
+    Type /*cmpx*/,
+    Type /*cmpy*/,
+    Type /*cmpz*/,
+    Type& adj_cmpx,
+    Type& adj_cmpy,
+    Type& adj_cmpz,
+    const vec_t<3, Type>& adj_ret
 )
 {
     adj_cmpx += adj_ret.c[0];
@@ -1323,10 +1334,10 @@ inline CUDA_CALLABLE void adj_vec_t(
 
 template <typename Type>
 inline CUDA_CALLABLE void adj_vec_t(
-    Type cmpx,
-    Type cmpy,
-    Type cmpz,
-    Type cmpw,
+    Type /*cmpx*/,
+    Type /*cmpy*/,
+    Type /*cmpz*/,
+    Type /*cmpw*/,
     Type& adj_cmpx,
     Type& adj_cmpy,
     Type& adj_cmpz,
@@ -1342,7 +1353,7 @@ inline CUDA_CALLABLE void adj_vec_t(
 
 // adjoint for the constant constructor:
 template <unsigned Length, typename Type>
-inline CUDA_CALLABLE void adj_vec_t(Type s, Type& adj_s, const vec_t<Length, Type>& adj_ret)
+inline CUDA_CALLABLE void adj_vec_t(Type /*s*/, Type& adj_s, const vec_t<Length, Type>& adj_ret)
 {
     for (unsigned i = 0; i < Length; ++i) {
         adj_s += adj_ret[i];
@@ -1352,7 +1363,7 @@ inline CUDA_CALLABLE void adj_vec_t(Type s, Type& adj_s, const vec_t<Length, Typ
 // adjoint for the casting constructor
 template <unsigned Length, typename Type, typename OtherType>
 inline CUDA_CALLABLE void adj_vec_t(
-    const vec_t<Length, OtherType>& other, vec_t<Length, OtherType>& adj_other, const vec_t<Length, Type>& adj_ret
+    const vec_t<Length, OtherType>& /*other*/, vec_t<Length, OtherType>& adj_other, const vec_t<Length, Type>& adj_ret
 )
 {
     for (unsigned i = 0; i < Length; ++i) {
@@ -1362,8 +1373,8 @@ inline CUDA_CALLABLE void adj_vec_t(
 
 template <typename Type>
 CUDA_CALLABLE inline void adj_vec_t(
-    const vec_t<3, Type>& w,
-    const vec_t<3, Type>& v,
+    const vec_t<3, Type>& /*w*/,
+    const vec_t<3, Type>& /*v*/,
     vec_t<3, Type>& adj_w,
     vec_t<3, Type>& adj_v,
     const vec_t<6, Type>& adj_ret
@@ -1485,7 +1496,7 @@ inline CUDA_CALLABLE void adj_approx_div(
 
 template <unsigned Length, typename Type>
 inline CUDA_CALLABLE void adj_cw_div(
-    vec_t<Length, Type> a,
+    vec_t<Length, Type> /*a*/,
     vec_t<Length, Type> b,
     vec_t<Length, Type>& ret,
     vec_t<Length, Type>& adj_a,
@@ -1516,8 +1527,8 @@ adj_cw_div(Type a, vec_t<Length, Type> b, Type& adj_a, vec_t<Length, Type>& adj_
 
 template <unsigned Length, typename Type>
 inline CUDA_CALLABLE void adj_add(
-    vec_t<Length, Type> a,
-    vec_t<Length, Type> b,
+    vec_t<Length, Type> /*a*/,
+    vec_t<Length, Type> /*b*/,
     vec_t<Length, Type>& adj_a,
     vec_t<Length, Type>& adj_b,
     const vec_t<Length, Type>& adj_ret
@@ -1528,8 +1539,13 @@ inline CUDA_CALLABLE void adj_add(
 }
 
 template <typename Type>
-inline CUDA_CALLABLE void
-adj_add(vec_t<2, Type> a, vec_t<2, Type> b, vec_t<2, Type>& adj_a, vec_t<2, Type>& adj_b, const vec_t<2, Type>& adj_ret)
+inline CUDA_CALLABLE void adj_add(
+    vec_t<2, Type> /*a*/,
+    vec_t<2, Type> /*b*/,
+    vec_t<2, Type>& adj_a,
+    vec_t<2, Type>& adj_b,
+    const vec_t<2, Type>& adj_ret
+)
 {
     adj_a.c[0] += adj_ret.c[0];
     adj_a.c[1] += adj_ret.c[1];
@@ -1538,8 +1554,13 @@ adj_add(vec_t<2, Type> a, vec_t<2, Type> b, vec_t<2, Type>& adj_a, vec_t<2, Type
 }
 
 template <typename Type>
-inline CUDA_CALLABLE void
-adj_add(vec_t<3, Type> a, vec_t<3, Type> b, vec_t<3, Type>& adj_a, vec_t<3, Type>& adj_b, const vec_t<3, Type>& adj_ret)
+inline CUDA_CALLABLE void adj_add(
+    vec_t<3, Type> /*a*/,
+    vec_t<3, Type> /*b*/,
+    vec_t<3, Type>& adj_a,
+    vec_t<3, Type>& adj_b,
+    const vec_t<3, Type>& adj_ret
+)
 {
     adj_a.c[0] += adj_ret.c[0];
     adj_a.c[1] += adj_ret.c[1];
@@ -1551,8 +1572,8 @@ adj_add(vec_t<3, Type> a, vec_t<3, Type> b, vec_t<3, Type>& adj_a, vec_t<3, Type
 
 template <unsigned Length, typename Type>
 inline CUDA_CALLABLE void adj_sub(
-    vec_t<Length, Type> a,
-    vec_t<Length, Type> b,
+    vec_t<Length, Type> /*a*/,
+    vec_t<Length, Type> /*b*/,
     vec_t<Length, Type>& adj_a,
     vec_t<Length, Type>& adj_b,
     const vec_t<Length, Type>& adj_ret
@@ -1563,8 +1584,13 @@ inline CUDA_CALLABLE void adj_sub(
 }
 
 template <typename Type>
-inline CUDA_CALLABLE void
-adj_sub(vec_t<2, Type> a, vec_t<2, Type> b, vec_t<2, Type>& adj_a, vec_t<2, Type>& adj_b, const vec_t<2, Type>& adj_ret)
+inline CUDA_CALLABLE void adj_sub(
+    vec_t<2, Type> /*a*/,
+    vec_t<2, Type> /*b*/,
+    vec_t<2, Type>& adj_a,
+    vec_t<2, Type>& adj_b,
+    const vec_t<2, Type>& adj_ret
+)
 {
     adj_a.c[0] += adj_ret.c[0];
     adj_a.c[1] += adj_ret.c[1];
@@ -1573,8 +1599,13 @@ adj_sub(vec_t<2, Type> a, vec_t<2, Type> b, vec_t<2, Type>& adj_a, vec_t<2, Type
 }
 
 template <typename Type>
-inline CUDA_CALLABLE void
-adj_sub(vec_t<3, Type> a, vec_t<3, Type> b, vec_t<3, Type>& adj_a, vec_t<3, Type>& adj_b, const vec_t<3, Type>& adj_ret)
+inline CUDA_CALLABLE void adj_sub(
+    vec_t<3, Type> /*a*/,
+    vec_t<3, Type> /*b*/,
+    vec_t<3, Type>& adj_a,
+    vec_t<3, Type>& adj_b,
+    const vec_t<3, Type>& adj_ret
+)
 {
     adj_a.c[0] += adj_ret.c[0];
     adj_a.c[1] += adj_ret.c[1];
@@ -1586,11 +1617,11 @@ adj_sub(vec_t<3, Type> a, vec_t<3, Type> b, vec_t<3, Type>& adj_a, vec_t<3, Type
 
 template <unsigned Length, typename Type>
 inline CUDA_CALLABLE void adj_mod(
-    vec_t<Length, Type> a,
-    vec_t<Length, Type> b,
-    vec_t<Length, Type>& adj_a,
-    vec_t<Length, Type>& adj_b,
-    const vec_t<Length, Type>& adj_ret
+    vec_t<Length, Type> /*a*/,
+    vec_t<Length, Type> /*b*/,
+    vec_t<Length, Type>& /*adj_a*/,
+    vec_t<Length, Type>& /*adj_b*/,
+    const vec_t<Length, Type>& /*adj_ret*/
 )
 {
     // MISSINGADJOINT: element-wise: adj_a[i] += adj_ret[i]; adj_b[i] -= floor(a[i] / b[i]) *
@@ -1598,16 +1629,26 @@ inline CUDA_CALLABLE void adj_mod(
 }
 
 template <typename Type>
-inline CUDA_CALLABLE void
-adj_mod(vec_t<2, Type> a, vec_t<2, Type> b, vec_t<2, Type>& adj_a, vec_t<2, Type>& adj_b, const vec_t<2, Type>& adj_ret)
+inline CUDA_CALLABLE void adj_mod(
+    vec_t<2, Type> /*a*/,
+    vec_t<2, Type> /*b*/,
+    vec_t<2, Type>& /*adj_a*/,
+    vec_t<2, Type>& /*adj_b*/,
+    const vec_t<2, Type>& /*adj_ret*/
+)
 {
     // MISSINGADJOINT: element-wise: adj_a[i] += adj_ret[i]; adj_b[i] -= floor(a[i] / b[i]) *
     // adj_ret[i]
 }
 
 template <typename Type>
-inline CUDA_CALLABLE void
-adj_mod(vec_t<3, Type> a, vec_t<3, Type> b, vec_t<3, Type>& adj_a, vec_t<3, Type>& adj_b, const vec_t<3, Type>& adj_ret)
+inline CUDA_CALLABLE void adj_mod(
+    vec_t<3, Type> /*a*/,
+    vec_t<3, Type> /*b*/,
+    vec_t<3, Type>& /*adj_a*/,
+    vec_t<3, Type>& /*adj_b*/,
+    const vec_t<3, Type>& /*adj_ret*/
+)
 {
     // MISSINGADJOINT: element-wise: adj_a[i] += adj_ret[i]; adj_b[i] -= floor(a[i] / b[i]) *
     // adj_ret[i]
@@ -1663,7 +1704,7 @@ adj_dot(vec_t<3, Type> a, vec_t<3, Type> b, vec_t<3, Type>& adj_a, vec_t<3, Type
 
 template <unsigned Length, typename Type>
 inline CUDA_CALLABLE void
-adj_extract(const vec_t<Length, Type>& a, int idx, vec_t<Length, Type>& adj_a, int adj_idx, Type& adj_ret)
+adj_extract(const vec_t<Length, Type>& /*a*/, int idx, vec_t<Length, Type>& adj_a, int /*adj_idx*/, Type& adj_ret)
 {
 #ifndef NDEBUG
     if (idx < -(int)Length || idx >= (int)Length) {
@@ -1681,10 +1722,10 @@ adj_extract(const vec_t<Length, Type>& a, int idx, vec_t<Length, Type>& adj_a, i
 
 template <unsigned SliceLength, unsigned Length, typename Type>
 inline CUDA_CALLABLE void adj_extract(
-    const vec_t<Length, Type>& a,
+    const vec_t<Length, Type>& /*a*/,
     slice_t slice,
     vec_t<Length, Type>& adj_a,
-    slice_t& adj_slice,
+    slice_t& /*adj_slice*/,
     const vec_t<SliceLength, Type>& adj_ret
 )
 {
@@ -1753,7 +1794,9 @@ template <unsigned Length> inline CUDA_CALLABLE float _adj_normalize_length(cons
 // The unit vector adj_normalize() projects with.
 template <unsigned Length, typename Type>
 inline CUDA_CALLABLE vec_t<Length, typename range_safe_compute_type<Type>::type> _adj_normalize_unit(
-    const vec_t<Length, Type>& a, const vec_t<Length, Type>& ret, typename range_safe_compute_type<Type>::type invd
+    const vec_t<Length, Type>& /*a*/,
+    const vec_t<Length, Type>& ret,
+    typename range_safe_compute_type<Type>::type /*invd*/
 )
 {
     return vec_t<Length, typename range_safe_compute_type<Type>::type>(ret);
@@ -1761,7 +1804,7 @@ inline CUDA_CALLABLE vec_t<Length, typename range_safe_compute_type<Type>::type>
 
 template <unsigned Length>
 inline CUDA_CALLABLE vec_t<Length, float>
-_adj_normalize_unit(const vec_t<Length, half>& a, const vec_t<Length, half>& ret, float invd)
+_adj_normalize_unit(const vec_t<Length, half>& a, const vec_t<Length, half>& /*ret*/, float invd)
 {
     return vec_t<Length, float>(a) * invd;
 }
@@ -1982,148 +2025,148 @@ CUDA_CALLABLE inline void adj_lerp(
 
 // for integral types we do not accumulate gradients
 template <unsigned Length>
-CUDA_CALLABLE inline void adj_atomic_add(vec_t<Length, int8>* buf, const vec_t<Length, int8>& value)
+CUDA_CALLABLE inline void adj_atomic_add(vec_t<Length, int8>* /*buf*/, const vec_t<Length, int8>& /*value*/)
 {
 }
 template <unsigned Length>
-CUDA_CALLABLE inline void adj_atomic_add(vec_t<Length, uint8>* buf, const vec_t<Length, uint8>& value)
+CUDA_CALLABLE inline void adj_atomic_add(vec_t<Length, uint8>* /*buf*/, const vec_t<Length, uint8>& /*value*/)
 {
 }
 template <unsigned Length>
-CUDA_CALLABLE inline void adj_atomic_add(vec_t<Length, int16>* buf, const vec_t<Length, int16>& value)
+CUDA_CALLABLE inline void adj_atomic_add(vec_t<Length, int16>* /*buf*/, const vec_t<Length, int16>& /*value*/)
 {
 }
 template <unsigned Length>
-CUDA_CALLABLE inline void adj_atomic_add(vec_t<Length, uint16>* buf, const vec_t<Length, uint16>& value)
+CUDA_CALLABLE inline void adj_atomic_add(vec_t<Length, uint16>* /*buf*/, const vec_t<Length, uint16>& /*value*/)
 {
 }
 template <unsigned Length>
-CUDA_CALLABLE inline void adj_atomic_add(vec_t<Length, int32>* buf, const vec_t<Length, int32>& value)
+CUDA_CALLABLE inline void adj_atomic_add(vec_t<Length, int32>* /*buf*/, const vec_t<Length, int32>& /*value*/)
 {
 }
 template <unsigned Length>
-CUDA_CALLABLE inline void adj_atomic_add(vec_t<Length, uint32>* buf, const vec_t<Length, uint32>& value)
+CUDA_CALLABLE inline void adj_atomic_add(vec_t<Length, uint32>* /*buf*/, const vec_t<Length, uint32>& /*value*/)
 {
 }
 template <unsigned Length>
-CUDA_CALLABLE inline void adj_atomic_add(vec_t<Length, int64>* buf, const vec_t<Length, int64>& value)
+CUDA_CALLABLE inline void adj_atomic_add(vec_t<Length, int64>* /*buf*/, const vec_t<Length, int64>& /*value*/)
 {
 }
 template <unsigned Length>
-CUDA_CALLABLE inline void adj_atomic_add(vec_t<Length, uint64>* buf, const vec_t<Length, uint64>& value)
+CUDA_CALLABLE inline void adj_atomic_add(vec_t<Length, uint64>* /*buf*/, const vec_t<Length, uint64>& /*value*/)
 {
 }
 
 // for bitwise operations we do not accumulate gradients
 template <unsigned Length>
-CUDA_CALLABLE inline void adj_atomic_and(vec_t<Length, int8>* buf, const vec_t<Length, int8>& value)
+CUDA_CALLABLE inline void adj_atomic_and(vec_t<Length, int8>* /*buf*/, const vec_t<Length, int8>& /*value*/)
 {
 }
 template <unsigned Length>
-CUDA_CALLABLE inline void adj_atomic_and(vec_t<Length, uint8>* buf, const vec_t<Length, uint8>& value)
+CUDA_CALLABLE inline void adj_atomic_and(vec_t<Length, uint8>* /*buf*/, const vec_t<Length, uint8>& /*value*/)
 {
 }
 template <unsigned Length>
-CUDA_CALLABLE inline void adj_atomic_and(vec_t<Length, int16>* buf, const vec_t<Length, int16>& value)
+CUDA_CALLABLE inline void adj_atomic_and(vec_t<Length, int16>* /*buf*/, const vec_t<Length, int16>& /*value*/)
 {
 }
 template <unsigned Length>
-CUDA_CALLABLE inline void adj_atomic_and(vec_t<Length, uint16>* buf, const vec_t<Length, uint16>& value)
+CUDA_CALLABLE inline void adj_atomic_and(vec_t<Length, uint16>* /*buf*/, const vec_t<Length, uint16>& /*value*/)
 {
 }
 template <unsigned Length>
-CUDA_CALLABLE inline void adj_atomic_and(vec_t<Length, int32>* buf, const vec_t<Length, int32>& value)
+CUDA_CALLABLE inline void adj_atomic_and(vec_t<Length, int32>* /*buf*/, const vec_t<Length, int32>& /*value*/)
 {
 }
 template <unsigned Length>
-CUDA_CALLABLE inline void adj_atomic_and(vec_t<Length, uint32>* buf, const vec_t<Length, uint32>& value)
+CUDA_CALLABLE inline void adj_atomic_and(vec_t<Length, uint32>* /*buf*/, const vec_t<Length, uint32>& /*value*/)
 {
 }
 template <unsigned Length>
-CUDA_CALLABLE inline void adj_atomic_and(vec_t<Length, int64>* buf, const vec_t<Length, int64>& value)
+CUDA_CALLABLE inline void adj_atomic_and(vec_t<Length, int64>* /*buf*/, const vec_t<Length, int64>& /*value*/)
 {
 }
 template <unsigned Length>
-CUDA_CALLABLE inline void adj_atomic_and(vec_t<Length, uint64>* buf, const vec_t<Length, uint64>& value)
-{
-}
-
-template <unsigned Length>
-CUDA_CALLABLE inline void adj_atomic_or(vec_t<Length, int8>* buf, const vec_t<Length, int8>& value)
-{
-}
-template <unsigned Length>
-CUDA_CALLABLE inline void adj_atomic_or(vec_t<Length, uint8>* buf, const vec_t<Length, uint8>& value)
-{
-}
-template <unsigned Length>
-CUDA_CALLABLE inline void adj_atomic_or(vec_t<Length, int16>* buf, const vec_t<Length, int16>& value)
-{
-}
-template <unsigned Length>
-CUDA_CALLABLE inline void adj_atomic_or(vec_t<Length, uint16>* buf, const vec_t<Length, uint16>& value)
-{
-}
-template <unsigned Length>
-CUDA_CALLABLE inline void adj_atomic_or(vec_t<Length, int32>* buf, const vec_t<Length, int32>& value)
-{
-}
-template <unsigned Length>
-CUDA_CALLABLE inline void adj_atomic_or(vec_t<Length, uint32>* buf, const vec_t<Length, uint32>& value)
-{
-}
-template <unsigned Length>
-CUDA_CALLABLE inline void adj_atomic_or(vec_t<Length, int64>* buf, const vec_t<Length, int64>& value)
-{
-}
-template <unsigned Length>
-CUDA_CALLABLE inline void adj_atomic_or(vec_t<Length, uint64>* buf, const vec_t<Length, uint64>& value)
+CUDA_CALLABLE inline void adj_atomic_and(vec_t<Length, uint64>* /*buf*/, const vec_t<Length, uint64>& /*value*/)
 {
 }
 
 template <unsigned Length>
-CUDA_CALLABLE inline void adj_atomic_xor(vec_t<Length, int8>* buf, const vec_t<Length, int8>& value)
+CUDA_CALLABLE inline void adj_atomic_or(vec_t<Length, int8>* /*buf*/, const vec_t<Length, int8>& /*value*/)
 {
 }
 template <unsigned Length>
-CUDA_CALLABLE inline void adj_atomic_xor(vec_t<Length, uint8>* buf, const vec_t<Length, uint8>& value)
+CUDA_CALLABLE inline void adj_atomic_or(vec_t<Length, uint8>* /*buf*/, const vec_t<Length, uint8>& /*value*/)
 {
 }
 template <unsigned Length>
-CUDA_CALLABLE inline void adj_atomic_xor(vec_t<Length, int16>* buf, const vec_t<Length, int16>& value)
+CUDA_CALLABLE inline void adj_atomic_or(vec_t<Length, int16>* /*buf*/, const vec_t<Length, int16>& /*value*/)
 {
 }
 template <unsigned Length>
-CUDA_CALLABLE inline void adj_atomic_xor(vec_t<Length, uint16>* buf, const vec_t<Length, uint16>& value)
+CUDA_CALLABLE inline void adj_atomic_or(vec_t<Length, uint16>* /*buf*/, const vec_t<Length, uint16>& /*value*/)
 {
 }
 template <unsigned Length>
-CUDA_CALLABLE inline void adj_atomic_xor(vec_t<Length, int32>* buf, const vec_t<Length, int32>& value)
+CUDA_CALLABLE inline void adj_atomic_or(vec_t<Length, int32>* /*buf*/, const vec_t<Length, int32>& /*value*/)
 {
 }
 template <unsigned Length>
-CUDA_CALLABLE inline void adj_atomic_xor(vec_t<Length, uint32>* buf, const vec_t<Length, uint32>& value)
+CUDA_CALLABLE inline void adj_atomic_or(vec_t<Length, uint32>* /*buf*/, const vec_t<Length, uint32>& /*value*/)
 {
 }
 template <unsigned Length>
-CUDA_CALLABLE inline void adj_atomic_xor(vec_t<Length, int64>* buf, const vec_t<Length, int64>& value)
+CUDA_CALLABLE inline void adj_atomic_or(vec_t<Length, int64>* /*buf*/, const vec_t<Length, int64>& /*value*/)
 {
 }
 template <unsigned Length>
-CUDA_CALLABLE inline void adj_atomic_xor(vec_t<Length, uint64>* buf, const vec_t<Length, uint64>& value)
+CUDA_CALLABLE inline void adj_atomic_or(vec_t<Length, uint64>* /*buf*/, const vec_t<Length, uint64>& /*value*/)
+{
+}
+
+template <unsigned Length>
+CUDA_CALLABLE inline void adj_atomic_xor(vec_t<Length, int8>* /*buf*/, const vec_t<Length, int8>& /*value*/)
+{
+}
+template <unsigned Length>
+CUDA_CALLABLE inline void adj_atomic_xor(vec_t<Length, uint8>* /*buf*/, const vec_t<Length, uint8>& /*value*/)
+{
+}
+template <unsigned Length>
+CUDA_CALLABLE inline void adj_atomic_xor(vec_t<Length, int16>* /*buf*/, const vec_t<Length, int16>& /*value*/)
+{
+}
+template <unsigned Length>
+CUDA_CALLABLE inline void adj_atomic_xor(vec_t<Length, uint16>* /*buf*/, const vec_t<Length, uint16>& /*value*/)
+{
+}
+template <unsigned Length>
+CUDA_CALLABLE inline void adj_atomic_xor(vec_t<Length, int32>* /*buf*/, const vec_t<Length, int32>& /*value*/)
+{
+}
+template <unsigned Length>
+CUDA_CALLABLE inline void adj_atomic_xor(vec_t<Length, uint32>* /*buf*/, const vec_t<Length, uint32>& /*value*/)
+{
+}
+template <unsigned Length>
+CUDA_CALLABLE inline void adj_atomic_xor(vec_t<Length, int64>* /*buf*/, const vec_t<Length, int64>& /*value*/)
+{
+}
+template <unsigned Length>
+CUDA_CALLABLE inline void adj_atomic_xor(vec_t<Length, uint64>* /*buf*/, const vec_t<Length, uint64>& /*value*/)
 {
 }
 
 
 // adjoints for some of the constructors, used in intersect.h
-inline CUDA_CALLABLE void adj_vec2(float x, float y, float& adj_x, float& adj_y, const vec2& adj_ret)
+inline CUDA_CALLABLE void adj_vec2(float /*x*/, float /*y*/, float& adj_x, float& adj_y, const vec2& adj_ret)
 {
     adj_x += adj_ret[0];
     adj_y += adj_ret[1];
 }
 
 inline CUDA_CALLABLE void
-adj_vec3(float x, float y, float z, float& adj_x, float& adj_y, float& adj_z, const vec3& adj_ret)
+adj_vec3(float /*x*/, float /*y*/, float /*z*/, float& adj_x, float& adj_y, float& adj_z, const vec3& adj_ret)
 {
     adj_x += adj_ret[0];
     adj_y += adj_ret[1];
@@ -2131,7 +2174,15 @@ adj_vec3(float x, float y, float z, float& adj_x, float& adj_y, float& adj_z, co
 }
 
 inline CUDA_CALLABLE void adj_vec4(
-    float x, float y, float z, float w, float& adj_x, float& adj_y, float& adj_z, float& adj_w, const vec4& adj_ret
+    float /*x*/,
+    float /*y*/,
+    float /*z*/,
+    float /*w*/,
+    float& adj_x,
+    float& adj_y,
+    float& adj_z,
+    float& adj_w,
+    const vec4& adj_ret
 )
 {
     adj_x += adj_ret[0];
@@ -2144,6 +2195,9 @@ inline CUDA_CALLABLE void adj_vec3(float s, float& adj_s, const vec3& adj_ret) {
 
 inline CUDA_CALLABLE void adj_vec4(float s, float& adj_s, const vec4& adj_ret) { adj_vec_t(s, adj_s, adj_ret); }
 
-template <unsigned Length, typename Type> CUDA_CALLABLE inline int len(const vec_t<Length, Type>& x) { return Length; }
+template <unsigned Length, typename Type> CUDA_CALLABLE inline int len(const vec_t<Length, Type>& /*x*/)
+{
+    return Length;
+}
 
 }  // namespace wp

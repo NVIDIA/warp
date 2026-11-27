@@ -414,8 +414,6 @@ float TopDownBVHBuilder::partition_sah_indices(
 
     assert(end - start >= 2);
 
-    int n = end - start;
-
     bounds3 centroid_bounds;
     for (int i = start; i < end; ++i) {
         vec3 item_center = 0.5f * (lowers[indices[i]] + uppers[indices[i]]);
@@ -907,13 +905,19 @@ void wp_bvh_destroy_host(uint64_t id)
 #if !WP_ENABLE_CUDA
 
 uint64_t wp_bvh_create_device(
-    void* context, wp::vec3* lowers, wp::vec3* uppers, int num_items, int constructor_type, int* groups, int leaf_size
+    void* /*context*/,
+    wp::vec3* /*lowers*/,
+    wp::vec3* /*uppers*/,
+    int /*num_items*/,
+    int /*constructor_type*/,
+    int* /*groups*/,
+    int /*leaf_size*/
 )
 {
     return 0;
 }
-void wp_bvh_refit_device(uint64_t id) { }
-void wp_bvh_destroy_device(uint64_t id) { }
-void wp_bvh_rebuild_device(uint64_t id) { }
+void wp_bvh_refit_device(uint64_t /*id*/) { }
+void wp_bvh_destroy_device(uint64_t /*id*/) { }
+void wp_bvh_rebuild_device(uint64_t /*id*/) { }
 
 #endif  // !WP_ENABLE_CUDA

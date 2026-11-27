@@ -25,7 +25,7 @@ struct mesh_query_aabb_thread_block_t {
     }
 
     // Required for adjoint computations.
-    CUDA_CALLABLE inline mesh_query_aabb_thread_block_t& operator+=(const mesh_query_aabb_thread_block_t& other)
+    CUDA_CALLABLE inline mesh_query_aabb_thread_block_t& operator+=(const mesh_query_aabb_thread_block_t& /*other*/)
     {
         return *this;
     }

@@ -124,7 +124,7 @@ template <typename T> CUDA_CALLABLE inline T& index(const fabricarray_t<T>& fa, 
     size_t index_in_bucket = i - bucket->index_start;
 
     void* ptr = *((void**)bucket->ptr + index_in_bucket);
-    size_t length = *(reinterpret_cast<size_t*>(bucket->lengths) + index_in_bucket);
+    [[maybe_unused]] size_t length = *(reinterpret_cast<size_t*>(bucket->lengths) + index_in_bucket);
 
     assert(j < length && "Fabric array inner index out of range");
 
@@ -186,7 +186,7 @@ template <typename T> CUDA_CALLABLE inline T& index(const indexedfabricarray_t<T
     size_t index_in_bucket = i - bucket->index_start;
 
     void* ptr = *((void**)bucket->ptr + index_in_bucket);
-    size_t length = *(reinterpret_cast<size_t*>(bucket->lengths) + index_in_bucket);
+    [[maybe_unused]] size_t length = *(reinterpret_cast<size_t*>(bucket->lengths) + index_in_bucket);
 
     assert(j < length && "Fabric array inner index out of range");
 

@@ -9,7 +9,7 @@
 namespace {
 
 // Specialized accumulation functions for common type sizes
-template <int N, typename T> void fixed_len_sum(const T* val, T* sum, int value_size)
+template <int N, typename T> void fixed_len_sum(const T* val, T* sum, int /*value_size*/)
 {
     for (int i = 0; i < N; ++i, ++val, ++sum) {
         *sum += *val;
@@ -23,7 +23,7 @@ template <typename T> void dyn_len_sum(const T* val, T* sum, int value_size)
     }
 }
 
-template <int N, typename T> void fixed_len_inner(const T* a, const T* b, T* dot, int value_size)
+template <int N, typename T> void fixed_len_inner(const T* a, const T* b, T* dot, int /*value_size*/)
 {
     for (int i = 0; i < N; ++i, ++a, ++b) {
         *dot += *a * *b;
@@ -212,18 +212,38 @@ void wp_array_sum_double_host(uint64_t a, uint64_t out, int count, int byte_stri
 
 #if !WP_ENABLE_CUDA
 void wp_array_inner_float_device(
-    uint64_t a, uint64_t b, uint64_t out, int count, int byte_stride_a, int byte_stride_b, int type_length
+    uint64_t /*a*/,
+    uint64_t /*b*/,
+    uint64_t /*out*/,
+    int /*count*/,
+    int /*byte_stride_a*/,
+    int /*byte_stride_b*/,
+    int /*type_length*/
 )
 {
 }
 
 void wp_array_inner_double_device(
-    uint64_t a, uint64_t b, uint64_t out, int count, int byte_stride_a, int byte_stride_b, int type_length
+    uint64_t /*a*/,
+    uint64_t /*b*/,
+    uint64_t /*out*/,
+    int /*count*/,
+    int /*byte_stride_a*/,
+    int /*byte_stride_b*/,
+    int /*type_length*/
 )
 {
 }
 
-void wp_array_sum_float_device(uint64_t a, uint64_t out, int count, int byte_stride_a, int type_length) { }
+void wp_array_sum_float_device(
+    uint64_t /*a*/, uint64_t /*out*/, int /*count*/, int /*byte_stride_a*/, int /*type_length*/
+)
+{
+}
 
-void wp_array_sum_double_device(uint64_t a, uint64_t out, int count, int byte_stride_a, int type_length) { }
+void wp_array_sum_double_device(
+    uint64_t /*a*/, uint64_t /*out*/, int /*count*/, int /*byte_stride_a*/, int /*type_length*/
+)
+{
+}
 #endif

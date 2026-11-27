@@ -4313,7 +4313,8 @@ bool wp_cuda_graph_insert_if_else(
 
         // create conditional node
         CUgraphNode condition_node;
-        CUgraphNodeParams condition_params = { CU_GRAPH_NODE_TYPE_CONDITIONAL };
+        CUgraphNodeParams condition_params = {};
+        condition_params.type = CU_GRAPH_NODE_TYPE_CONDITIONAL;
         condition_params.conditional.handle = handle;
         condition_params.conditional.type = CU_GRAPH_COND_TYPE_IF;
         condition_params.conditional.size = num_branches;
@@ -4361,7 +4362,8 @@ bool wp_cuda_graph_insert_if_else(
             return false;
 
         CUgraphNode if_node;
-        CUgraphNodeParams if_params = { CU_GRAPH_NODE_TYPE_CONDITIONAL };
+        CUgraphNodeParams if_params = {};
+        if_params.type = CU_GRAPH_NODE_TYPE_CONDITIONAL;
         if_params.conditional.handle = if_handle;
         if_params.conditional.type = CU_GRAPH_COND_TYPE_IF;
         if_params.conditional.size = 1;
@@ -4370,7 +4372,8 @@ bool wp_cuda_graph_insert_if_else(
             return false;
 
         CUgraphNode else_node;
-        CUgraphNodeParams else_params = { CU_GRAPH_NODE_TYPE_CONDITIONAL };
+        CUgraphNodeParams else_params = {};
+        else_params.type = CU_GRAPH_NODE_TYPE_CONDITIONAL;
         else_params.conditional.handle = else_handle;
         else_params.conditional.type = CU_GRAPH_COND_TYPE_IF;
         else_params.conditional.size = 1;
@@ -4592,7 +4595,8 @@ bool wp_cuda_graph_insert_while(
 
     // insert conditional graph node
     CUgraphNode while_node;
-    CUgraphNodeParams while_params = { CU_GRAPH_NODE_TYPE_CONDITIONAL };
+    CUgraphNodeParams while_params = {};
+    while_params.type = CU_GRAPH_NODE_TYPE_CONDITIONAL;
     while_params.conditional.handle = handle;
     while_params.conditional.type = CU_GRAPH_COND_TYPE_WHILE;
     while_params.conditional.size = 1;
@@ -4829,7 +4833,7 @@ static bool nvrtc_device_debug(bool debug)
 static void append_common_nvrtc_compile_options(
     std::vector<const char*>& options,
     bool use_ptx,
-    int arch,
+    [[maybe_unused]] int arch,  // only used for some CUDA versions
     bool debug,
     int optimization_level,
     bool verify_fp,
@@ -4942,7 +4946,7 @@ size_t wp_cuda_compile_program(
     bool compile_time_trace,
     bool precompiled_headers,
     const char* output_path,
-    const char* pch_dir,
+    [[maybe_unused]] const char* pch_dir,  // only used for CUDA 12.8-12.x
     size_t num_ltoirs,
     char** ltoirs,
     size_t* ltoir_sizes,

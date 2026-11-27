@@ -1640,108 +1640,108 @@ void wp_volume_get_voxels_device(uint64_t id, void* buf)
 #else
 // stubs for non-CUDA platforms
 uint64_t wp_volume_from_tiles_device(
-    void* context,
-    void* points,
-    int num_points,
-    const int32_t* point_mask,
-    float transform[9],
-    float translation[3],
-    bool points_in_world_space,
-    const void* value_ptr,
-    uint32_t value_size,
-    const char* value_type,
-    bool rebuildable,
-    uint32_t max_tiles,
-    uint32_t max_lower_nodes,
-    uint32_t max_upper_nodes,
-    uint32_t* status
+    void* /*context*/,
+    void* /*points*/,
+    int /*num_points*/,
+    const int32_t* /*point_mask*/,
+    float /*transform*/[9],
+    float /*translation*/[3],
+    bool /*points_in_world_space*/,
+    const void* /*value_ptr*/,
+    uint32_t /*value_size*/,
+    const char* /*value_type*/,
+    bool /*rebuildable*/,
+    uint32_t /*max_tiles*/,
+    uint32_t /*max_lower_nodes*/,
+    uint32_t /*max_upper_nodes*/,
+    uint32_t* /*status*/
 )
 {
     return 0;
 }
 
 uint64_t wp_volume_index_from_tiles_device(
-    void* context,
-    void* points,
-    int num_points,
-    const int32_t* point_mask,
-    float transform[9],
-    float translation[3],
-    bool points_in_world_space,
-    bool rebuildable,
-    uint32_t max_tiles,
-    uint32_t max_lower_nodes,
-    uint32_t max_upper_nodes,
-    uint32_t* status
+    void* /*context*/,
+    void* /*points*/,
+    int /*num_points*/,
+    const int32_t* /*point_mask*/,
+    float /*transform*/[9],
+    float /*translation*/[3],
+    bool /*points_in_world_space*/,
+    bool /*rebuildable*/,
+    uint32_t /*max_tiles*/,
+    uint32_t /*max_lower_nodes*/,
+    uint32_t /*max_upper_nodes*/,
+    uint32_t* /*status*/
 )
 {
     return 0;
 }
 
 uint64_t wp_volume_from_active_voxels_device(
-    void* context,
-    void* points,
-    int num_points,
-    const int32_t* point_mask,
-    float transform[9],
-    float translation[3],
-    bool points_in_world_space,
-    bool rebuildable,
-    uint32_t max_active_voxels,
-    uint32_t max_leaf_nodes,
-    uint32_t max_lower_nodes,
-    uint32_t max_upper_nodes,
-    uint32_t* status
+    void* /*context*/,
+    void* /*points*/,
+    int /*num_points*/,
+    const int32_t* /*point_mask*/,
+    float /*transform*/[9],
+    float /*translation*/[3],
+    bool /*points_in_world_space*/,
+    bool /*rebuildable*/,
+    uint32_t /*max_active_voxels*/,
+    uint32_t /*max_leaf_nodes*/,
+    uint32_t /*max_lower_nodes*/,
+    uint32_t /*max_upper_nodes*/,
+    uint32_t* /*status*/
 )
 {
     return 0;
 }
 
 void wp_volume_rebuild_from_tiles_device(
-    uint64_t id,
-    void* points,
-    int num_points,
-    const int32_t* point_mask,
-    float transform[9],
-    float translation[3],
-    bool points_in_world_space,
-    const void* value_ptr,
-    uint32_t value_size,
-    const char* value_type,
-    uint32_t* status
+    uint64_t /*id*/,
+    void* /*points*/,
+    int /*num_points*/,
+    const int32_t* /*point_mask*/,
+    float /*transform*/[9],
+    float /*translation*/[3],
+    bool /*points_in_world_space*/,
+    const void* /*value_ptr*/,
+    uint32_t /*value_size*/,
+    const char* /*value_type*/,
+    uint32_t* /*status*/
 )
 {
 }
 
 void wp_volume_index_rebuild_from_tiles_device(
-    uint64_t id,
-    void* points,
-    int num_points,
-    const int32_t* point_mask,
-    float transform[9],
-    float translation[3],
-    bool points_in_world_space,
-    uint32_t* status
+    uint64_t /*id*/,
+    void* /*points*/,
+    int /*num_points*/,
+    const int32_t* /*point_mask*/,
+    float /*transform*/[9],
+    float /*translation*/[3],
+    bool /*points_in_world_space*/,
+    uint32_t* /*status*/
 )
 {
 }
 
 void wp_volume_rebuild_from_active_voxels_device(
-    uint64_t id,
-    void* points,
-    int num_points,
-    const int32_t* point_mask,
-    float transform[9],
-    float translation[3],
-    bool points_in_world_space,
-    uint32_t* status
+    uint64_t /*id*/,
+    void* /*points*/,
+    int /*num_points*/,
+    const int32_t* /*point_mask*/,
+    float /*transform*/[9],
+    float /*translation*/[3],
+    bool /*points_in_world_space*/,
+    uint32_t* /*status*/
 )
 {
 }
 
-void wp_volume_get_tiles_device(uint64_t id, void* buf) { }
+void wp_volume_get_tiles_device(uint64_t /*id*/, void* /*buf*/) { }
 
-void wp_volume_get_voxels_device(uint64_t id, void* buf) { }
+void wp_volume_get_voxels_device(uint64_t /*id*/, void* /*buf*/) { }
 
 #endif
 

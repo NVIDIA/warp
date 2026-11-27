@@ -739,32 +739,33 @@ inline float cpu_sample_3d_channel(const Texture* tex, float u, float v, float w
 
 // TODO: Implement texture fetch functions for Clang CUDA JIT (currently stubbed, texture API is not supported)
 #if defined(__clang__) && defined(__CUDA__)
-template <typename T> __device__ T tex1D(unsigned long long texObj, float x)
+template <typename T> __device__ T tex1D(unsigned long long /*texObj*/, float /*x*/)
 {
     T v {};
     return v;
 }
-template <typename T> __device__ T tex2D(unsigned long long texObj, float x, float y)
+template <typename T> __device__ T tex2D(unsigned long long /*texObj*/, float /*x*/, float /*y*/)
 {
     T v {};
     return v;
 }
-template <typename T> __device__ T tex3D(unsigned long long texObj, float x, float y, float z)
+template <typename T> __device__ T tex3D(unsigned long long /*texObj*/, float /*x*/, float /*y*/, float /*z*/)
 {
     T v {};
     return v;
 }
-template <typename T> __device__ T tex1DLod(unsigned long long texObj, float x, float lod)
+template <typename T> __device__ T tex1DLod(unsigned long long /*texObj*/, float /*x*/, float /*lod*/)
 {
     T v {};
     return v;
 }
-template <typename T> __device__ T tex2DLod(unsigned long long texObj, float x, float y, float lod)
+template <typename T> __device__ T tex2DLod(unsigned long long /*texObj*/, float /*x*/, float /*y*/, float /*lod*/)
 {
     T v {};
     return v;
 }
-template <typename T> __device__ T tex3DLod(unsigned long long texObj, float x, float y, float z, float lod)
+template <typename T>
+__device__ T tex3DLod(unsigned long long /*texObj*/, float /*x*/, float /*y*/, float /*z*/, float /*lod*/)
 {
     T v {};
     return v;
@@ -1574,7 +1575,7 @@ texture_grad_lod_levels(int num_mip_levels, int mip_filter_mode, float lod, int&
 
 template <typename T>
 CUDA_CALLABLE void adj_texture_sample(
-    const texture1d_t& tex, float u, float lod, texture1d_t& adj_tex, float& adj_u, float& adj_lod, const T& adj_ret
+    const texture1d_t& tex, float u, float lod, texture1d_t& /*adj_tex*/, float& adj_u, float& adj_lod, const T& adj_ret
 )
 {
     if (tex.tex == 0)
@@ -1625,7 +1626,7 @@ CUDA_CALLABLE void adj_texture_sample(
     float u,
     float v,
     float lod,
-    texture2d_t& adj_tex,
+    texture2d_t& /*adj_tex*/,
     float& adj_u,
     float& adj_v,
     float& adj_lod,
@@ -1697,7 +1698,7 @@ CUDA_CALLABLE void adj_texture_sample(
     float v,
     float w,
     float lod,
-    texture3d_t& adj_tex,
+    texture3d_t& /*adj_tex*/,
     float& adj_u,
     float& adj_v,
     float& adj_w,
@@ -1776,55 +1777,55 @@ using Texture3D = texture3d_t;
 // ============================================================================
 
 // 1D Texture operations
-CUDA_CALLABLE inline texture1d_t add(const texture1d_t& a, const texture1d_t& b)
+CUDA_CALLABLE inline texture1d_t add(const texture1d_t& a, const texture1d_t& /*b*/)
 {
     // Textures are not addable; return first argument unchanged
     return a;
 }
 
-CUDA_CALLABLE inline texture1d_t& operator+=(texture1d_t& a, const texture1d_t& b)
+CUDA_CALLABLE inline texture1d_t& operator+=(texture1d_t& a, const texture1d_t& /*b*/)
 {
     // No-op: textures have no gradients to accumulate
     return a;
 }
 
-CUDA_CALLABLE inline void adj_atomic_add(texture1d_t* p, const texture1d_t& t)
+CUDA_CALLABLE inline void adj_atomic_add(texture1d_t* /*p*/, const texture1d_t& /*t*/)
 {
     // No-op: textures are not differentiable
 }
 
 // 2D Texture operations
-CUDA_CALLABLE inline texture2d_t add(const texture2d_t& a, const texture2d_t& b)
+CUDA_CALLABLE inline texture2d_t add(const texture2d_t& a, const texture2d_t& /*b*/)
 {
     // Textures are not addable; return first argument unchanged
     return a;
 }
 
-CUDA_CALLABLE inline texture2d_t& operator+=(texture2d_t& a, const texture2d_t& b)
+CUDA_CALLABLE inline texture2d_t& operator+=(texture2d_t& a, const texture2d_t& /*b*/)
 {
     // No-op: textures have no gradients to accumulate
     return a;
 }
 
-CUDA_CALLABLE inline void adj_atomic_add(texture2d_t* p, const texture2d_t& t)
+CUDA_CALLABLE inline void adj_atomic_add(texture2d_t* /*p*/, const texture2d_t& /*t*/)
 {
     // No-op: textures are not differentiable
 }
 
 // 3D Texture operations
-CUDA_CALLABLE inline texture3d_t add(const texture3d_t& a, const texture3d_t& b)
+CUDA_CALLABLE inline texture3d_t add(const texture3d_t& a, const texture3d_t& /*b*/)
 {
     // Textures are not addable; return first argument unchanged
     return a;
 }
 
-CUDA_CALLABLE inline texture3d_t& operator+=(texture3d_t& a, const texture3d_t& b)
+CUDA_CALLABLE inline texture3d_t& operator+=(texture3d_t& a, const texture3d_t& /*b*/)
 {
     // No-op: textures have no gradients to accumulate
     return a;
 }
 
-CUDA_CALLABLE inline void adj_atomic_add(texture3d_t* p, const texture3d_t& t)
+CUDA_CALLABLE inline void adj_atomic_add(texture3d_t* /*p*/, const texture3d_t& /*t*/)
 {
     // No-op: textures are not differentiable
 }

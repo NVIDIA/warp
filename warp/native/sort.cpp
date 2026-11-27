@@ -347,52 +347,60 @@ bool segmented_sort_pairs_host(
 
 #if !WP_ENABLE_CUDA
 
-void wp_radix_sort_pairs_int_device(uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size)
-{
-}
-
-void wp_radix_sort_pairs_uint_device(uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size)
-{
-}
-
-void wp_radix_sort_pairs_int64_device(uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size)
-{
-}
-
-void wp_radix_sort_pairs_uint64_device(
-    uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size
+void wp_radix_sort_pairs_int_device(
+    uint64_t /*keys*/, uint64_t /*values*/, int /*n*/, int /*begin_bit*/, int /*end_bit*/, int /*value_size*/
 )
 {
 }
 
-void wp_radix_sort_pairs_float_device(uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size)
+void wp_radix_sort_pairs_uint_device(
+    uint64_t /*keys*/, uint64_t /*values*/, int /*n*/, int /*begin_bit*/, int /*end_bit*/, int /*value_size*/
+)
+{
+}
+
+void wp_radix_sort_pairs_int64_device(
+    uint64_t /*keys*/, uint64_t /*values*/, int /*n*/, int /*begin_bit*/, int /*end_bit*/, int /*value_size*/
+)
+{
+}
+
+void wp_radix_sort_pairs_uint64_device(
+    uint64_t /*keys*/, uint64_t /*values*/, int /*n*/, int /*begin_bit*/, int /*end_bit*/, int /*value_size*/
+)
+{
+}
+
+void wp_radix_sort_pairs_float_device(
+    uint64_t /*keys*/, uint64_t /*values*/, int /*n*/, int /*begin_bit*/, int /*end_bit*/, int /*value_size*/
+)
 {
 }
 
 void wp_radix_sort_pairs_double_device(
-    uint64_t keys, uint64_t values, int n, int begin_bit, int end_bit, int value_size
+    uint64_t /*keys*/, uint64_t /*values*/, int /*n*/, int /*begin_bit*/, int /*end_bit*/, int /*value_size*/
 )
 {
 }
 
 void wp_segmented_sort_pairs_float_device(
-    uint64_t keys,
-    uint64_t values,
-    int n,
-    uint64_t segment_start_indices,
-    uint64_t segment_end_indices,
-    int num_segments
+    uint64_t /*keys*/,
+    uint64_t /*values*/,
+    int /*n*/,
+    uint64_t /*segment_start_indices*/,
+    uint64_t /*segment_end_indices*/,
+    int /*num_segments*/
 )
 {
 }
 
 void wp_segmented_sort_pairs_int_device(
-    uint64_t keys,
-    uint64_t values,
-    int n,
-    uint64_t segment_start_indices,
-    uint64_t segment_end_indices,
-    int num_segments
+    uint64_t /*keys*/,
+    uint64_t /*values*/,
+    int /*n*/,
+    uint64_t /*segment_start_indices*/,
+    uint64_t /*segment_end_indices*/,
+    int /*num_segments*/
 )
 {
 }

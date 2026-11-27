@@ -61,7 +61,7 @@ inline CUDA_CALLABLE vec2 random_gradient_2d(uint32 state, int ix, int iy)
 {
     const uint32 p1 = 73856093;
     const uint32 p2 = 19349663;
-    uint32 idx = ix * p1 ^ iy * p2 + state;
+    uint32 idx = (ix * p1) ^ (iy * p2 + state);
 
     return normalize(sample_unit_square(idx));
 }
@@ -71,7 +71,7 @@ inline CUDA_CALLABLE vec3 random_gradient_3d(uint32 state, int ix, int iy, int i
     const uint32 p1 = 73856093;
     const uint32 p2 = 19349663;
     const uint32 p3 = 53471161;
-    uint32 idx = ix * p1 ^ iy * p2 ^ iz * p3 + state;
+    uint32 idx = (ix * p1) ^ (iy * p2) ^ (iz * p3 + state);
 
     return normalize(sample_unit_cube(idx));
 }
@@ -82,7 +82,7 @@ inline CUDA_CALLABLE vec4 random_gradient_4d(uint32 state, int ix, int iy, int i
     const uint32 p2 = 19349663;
     const uint32 p3 = 53471161;
     const uint32 p4 = 10000019;
-    uint32 idx = ix * p1 ^ iy * p2 ^ iz * p3 ^ it * p4 + state;
+    uint32 idx = (ix * p1) ^ (iy * p2) ^ (iz * p3) ^ (it * p4 + state);
 
     return normalize(sample_unit_hypercube(idx));
 }
@@ -649,7 +649,7 @@ inline CUDA_CALLABLE float noise(uint32 state, float x)
     return noise_1d(state, x0, x1, dx);
 }
 
-inline CUDA_CALLABLE void adj_noise(uint32 state, float x, uint32& adj_state, float& adj_x, const float adj_ret)
+inline CUDA_CALLABLE void adj_noise(uint32 state, float x, uint32& /*adj_state*/, float& adj_x, const float adj_ret)
 {
     float dx = x - floor(x);
 
@@ -674,7 +674,8 @@ inline CUDA_CALLABLE float noise(uint32 state, const vec2& xy)
     return noise_2d(state, x0, y0, x1, y1, dx, dy);
 }
 
-inline CUDA_CALLABLE void adj_noise(uint32 state, const vec2& xy, uint32& adj_state, vec2& adj_xy, const float adj_ret)
+inline CUDA_CALLABLE void
+adj_noise(uint32 state, const vec2& xy, uint32& /*adj_state*/, vec2& adj_xy, const float adj_ret)
 {
     float dx = xy[0] - floor(xy[0]);
     float dy = xy[1] - floor(xy[1]);
@@ -709,7 +710,7 @@ inline CUDA_CALLABLE float noise(uint32 state, const vec3& xyz)
 }
 
 inline CUDA_CALLABLE void
-adj_noise(uint32 state, const vec3& xyz, uint32& adj_state, vec3& adj_xyz, const float adj_ret)
+adj_noise(uint32 state, const vec3& xyz, uint32& /*adj_state*/, vec3& adj_xyz, const float adj_ret)
 {
     float dx = xyz[0] - floor(xyz[0]);
     float dy = xyz[1] - floor(xyz[1]);
@@ -750,7 +751,7 @@ inline CUDA_CALLABLE float noise(uint32 state, const vec4& xyzt)
 }
 
 inline CUDA_CALLABLE void
-adj_noise(uint32 state, const vec4& xyzt, uint32& adj_state, vec4& adj_xyzt, const float adj_ret)
+adj_noise(uint32 state, const vec4& xyzt, uint32& /*adj_state*/, vec4& adj_xyzt, const float adj_ret)
 {
     float dx = xyzt[0] - floor(xyzt[0]);
     float dy = xyzt[1] - floor(xyzt[1]);
@@ -788,7 +789,7 @@ inline CUDA_CALLABLE float pnoise(uint32 state, float x, int px)
 }
 
 inline CUDA_CALLABLE void
-adj_pnoise(uint32 state, float x, int px, uint32& adj_state, float& adj_x, int& adj_px, const float adj_ret)
+adj_pnoise(uint32 state, float x, int px, uint32& /*adj_state*/, float& adj_x, int& /*adj_px*/, const float adj_ret)
 {
     float dx = x - floor(x);
 
@@ -818,10 +819,10 @@ inline CUDA_CALLABLE void adj_pnoise(
     const vec2& xy,
     int px,
     int py,
-    uint32& adj_state,
+    uint32& /*adj_state*/,
     vec2& adj_xy,
-    int& adj_px,
-    int& adj_py,
+    int& /*adj_px*/,
+    int& /*adj_py*/,
     const float adj_ret
 )
 {
@@ -863,11 +864,11 @@ inline CUDA_CALLABLE void adj_pnoise(
     int px,
     int py,
     int pz,
-    uint32& adj_state,
+    uint32& /*adj_state*/,
     vec3& adj_xyz,
-    int& adj_px,
-    int& adj_py,
-    int& adj_pz,
+    int& /*adj_px*/,
+    int& /*adj_py*/,
+    int& /*adj_pz*/,
     const float adj_ret
 )
 {
@@ -916,12 +917,12 @@ inline CUDA_CALLABLE void adj_pnoise(
     int py,
     int pz,
     int pt,
-    uint32& adj_state,
+    uint32& /*adj_state*/,
     vec4& adj_xyzt,
-    int& adj_px,
-    int& adj_py,
-    int& adj_pz,
-    int& adj_pt,
+    int& /*adj_px*/,
+    int& /*adj_py*/,
+    int& /*adj_pz*/,
+    int& /*adj_pt*/,
     const float adj_ret
 )
 {
@@ -957,7 +958,7 @@ curlnoise(uint32 state, const vec2& xy, const uint32 octaves, const float lacuna
     float freq = 1.f;
     float amplitude = 1.f;
 
-    for (int i = 0; i < octaves; i++) {
+    for (int i = 0; static_cast<uint32>(i) < octaves; i++) {
         vec2 pt = freq * xy;
         float dx = pt[0] - floor(pt[0]);
         float dy = pt[1] - floor(pt[1]);
@@ -993,11 +994,11 @@ inline CUDA_CALLABLE void adj_curlnoise(
     const uint32 octaves,
     const float lacunarity,
     const float gain,
-    uint32& adj_state,
+    uint32& /*adj_state*/,
     vec2& adj_xy,
-    const uint32& adj_octaves,
-    const float& adj_lacunarity,
-    const float& adj_gain,
+    const uint32& /*adj_octaves*/,
+    const float& /*adj_lacunarity*/,
+    const float& /*adj_gain*/,
     const vec2& adj_ret
 )
 {
@@ -1035,7 +1036,7 @@ curlnoise(uint32 state, const vec3& xyz, const uint32 octaves, const float lacun
     float freq = 1.f;
     float amplitude = 1.f;
 
-    for (int i = 0; i < octaves; i++) {
+    for (int i = 0; static_cast<uint32>(i) < octaves; i++) {
         vec3 pt = freq * xyz;
         float dx = pt[0] - floor(pt[0]);
         float dy = pt[1] - floor(pt[1]);
@@ -1083,11 +1084,11 @@ inline CUDA_CALLABLE void adj_curlnoise(
     const uint32 octaves,
     const float lacunarity,
     const float gain,
-    uint32& adj_state,
+    uint32& /*adj_state*/,
     vec3& adj_xyz,
-    const uint32& adj_octaves,
-    const float& adj_lacunarity,
-    const float& adj_gain,
+    const uint32& /*adj_octaves*/,
+    const float& /*adj_lacunarity*/,
+    const float& /*adj_gain*/,
     const vec3& adj_ret
 )
 {
@@ -1135,7 +1136,7 @@ curlnoise(uint32 state, const vec4& xyzt, const uint32 octaves, const float lacu
     float freq = 1.f;
     float amplitude = 1.f;
 
-    for (int i = 0; i < octaves; i++) {
+    for (int i = 0; static_cast<uint32>(i) < octaves; i++) {
         vec4 pt = freq * xyzt;
         float dx = pt[0] - floor(pt[0]);
         float dy = pt[1] - floor(pt[1]);
@@ -1179,11 +1180,11 @@ inline CUDA_CALLABLE void adj_curlnoise(
     const uint32 octaves,
     const float lacunarity,
     const float gain,
-    uint32& adj_state,
+    uint32& /*adj_state*/,
     vec4& adj_xyzt,
-    const uint32& adj_octaves,
-    const float& adj_lacunarity,
-    const float& adj_gain,
+    const uint32& /*adj_octaves*/,
+    const float& /*adj_lacunarity*/,
+    const float& /*adj_gain*/,
     const vec3& adj_ret
 )
 {

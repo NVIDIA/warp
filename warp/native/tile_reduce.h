@@ -992,7 +992,7 @@ template <typename Tile, typename Op, typename OpTrack> auto tile_arg_reduce_imp
 #define tile_reduce(op, t) tile_reduce_impl([](auto x, auto y) { return op(x, y);}, t)
 
 template <typename Op, typename Tile, typename AdjOp, typename AdjTile, typename AdjRet>
-CUDA_CALLABLE void adj_tile_reduce(Op op, Tile& t, AdjOp& adj_op, AdjTile& adj_t, AdjRet& adj_ret)
+CUDA_CALLABLE void adj_tile_reduce(Op /*op*/, Tile& /*t*/, AdjOp& /*adj_op*/, AdjTile& /*adj_t*/, AdjRet& /*adj_ret*/)
 {
     // MISSINGADJOINT: for differentiable ops, distribute adj_ret to all input elements via
     // op's adjoint
@@ -1005,8 +1005,9 @@ CUDA_CALLABLE void adj_tile_reduce(Op op, Tile& t, AdjOp& adj_op, AdjTile& adj_t
     tile_reduce_axis_impl<axis>([](auto x, auto y) { return op(x, y);}, t, identity, has_identity)
 
 template <typename Op, typename Tile, typename AdjOp, typename AdjTile, typename AdjRet>
-CUDA_CALLABLE void
-adj_tile_reduce_axis(Op op, Tile& t, int axis, AdjOp& adj_op, AdjTile& adj_t, int& adj_axis, AdjRet& adj_ret)
+CUDA_CALLABLE void adj_tile_reduce_axis(
+    Op /*op*/, Tile& /*t*/, int /*axis*/, AdjOp& /*adj_op*/, AdjTile& /*adj_t*/, int& /*adj_axis*/, AdjRet& /*adj_ret*/
+)
 {
     // MISSINGADJOINT: for differentiable ops, distribute adj_ret along the reduction axis
     // via op's adjoint
@@ -1018,7 +1019,7 @@ adj_tile_reduce_axis(Op op, Tile& t, int axis, AdjOp& adj_op, AdjTile& adj_t, in
 template <typename Tile> CUDA_CALLABLE auto tile_sum(Tile& t) { return tile_reduce(add, t); }
 
 // special case adjoint for summation
-template <typename Tile, typename AdjTile> CUDA_CALLABLE void adj_tile_sum(Tile& t, Tile& adj_t, AdjTile& adj_ret)
+template <typename Tile, typename AdjTile> CUDA_CALLABLE void adj_tile_sum(Tile& /*t*/, Tile& adj_t, AdjTile& adj_ret)
 {
     using T = typename Tile::Type;
 
@@ -1241,7 +1242,7 @@ template <typename TileDest, typename TileSrc, typename AdjTileDest, typename Ad
 CUDA_CALLABLE void adj_tile_axpy(
     decltype(tensordot(typename TileDest::Type {}, typename TileDest::Type {})) alpha,
     TileSrc& src,
-    TileDest& dest,
+    TileDest& /*dest*/,
     decltype(tensordot(typename TileDest::Type {}, typename TileDest::Type {}))& adj_alpha,
     AdjTileSrc& adj_src,
     AdjTileDest& adj_dest
@@ -1281,7 +1282,7 @@ template <int Axis, typename Tile> CUDA_CALLABLE auto tile_sum_axis(Tile& t)
 
 // special case adjoint for axis-specific summation
 template <int Axis, typename Tile, typename AdjTile>
-CUDA_CALLABLE void adj_tile_sum_axis(Tile& t, Tile& adj_t, AdjTile& adj_ret)
+CUDA_CALLABLE void adj_tile_sum_axis(Tile& /*t*/, Tile& adj_t, AdjTile& adj_ret)
 {
     using InputShape = typename Tile::Layout::Shape;
 
@@ -1317,14 +1318,16 @@ CUDA_CALLABLE void adj_tile_sum_axis(Tile& t, Tile& adj_t, AdjTile& adj_ret)
 
 template <typename Tile> CUDA_CALLABLE auto tile_max(Tile& t) { return tile_reduce(max, t); }
 
-template <typename Tile, typename AdjTile> CUDA_CALLABLE void adj_tile_max(Tile& t, Tile& adj_t, AdjTile& adj_ret)
+template <typename Tile, typename AdjTile>
+CUDA_CALLABLE void adj_tile_max(Tile& /*t*/, Tile& /*adj_t*/, AdjTile& /*adj_ret*/)
 {
     // MISSINGADJOINT: subgradient: route adj_ret to the index of the maximum element
 }
 
 template <typename Tile> CUDA_CALLABLE auto tile_min(Tile& t) { return tile_reduce(min, t); }
 
-template <typename Tile, typename AdjTile> CUDA_CALLABLE void adj_tile_min(Tile& t, Tile& adj_t, AdjTile& adj_ret)
+template <typename Tile, typename AdjTile>
+CUDA_CALLABLE void adj_tile_min(Tile& /*t*/, Tile& /*adj_t*/, AdjTile& /*adj_ret*/)
 {
     // MISSINGADJOINT: subgradient: route adj_ret to the index of the minimum element
 }

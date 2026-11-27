@@ -32,6 +32,7 @@ endif()
 option(WARP_BUILD_CLANG "Build warp-clang" ON)
 option(WARP_VERIFY_FP "Enable floating point verification" OFF)
 option(WARP_FAST_MATH "Enable fast math compiler options" OFF)
+option(WARP_WARNINGS_AS_ERRORS "Treat compiler warnings as errors when building Warp's native libraries" ON)
 set(WARP_LIBMATHDX_PATH "" CACHE PATH "")
 set(WARP_LLVM_PATH "" CACHE PATH "")
 if(WARP_ENABLE_CUDA)
@@ -118,7 +119,9 @@ function(warp_add_common_cxx_options target)
             "$<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/GR->"
             "$<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/EHsc>"
             "$<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/wd4624>"
-            "$<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CXX_COMPILER_ID:MSVC>>>:-Werror>"
+            "$<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CXX_COMPILER_ID:MSVC>>,$<BOOL:${WARP_WARNINGS_AS_ERRORS}>>:-Werror>"
+            "$<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CXX_COMPILER_ID:MSVC>>>:-Wall>"
+            "$<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CXX_COMPILER_ID:MSVC>>>:-Wextra>"
             "$<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CXX_COMPILER_ID:MSVC>>>:-Wuninitialized>"
             "$<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CXX_COMPILER_ID:MSVC>>>:-fno-rtti>"
             "$<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CXX_COMPILER_ID:MSVC>>>:-fvisibility=hidden>"
@@ -305,12 +308,14 @@ if(WARP_ENABLE_CUDA)
             "$<$<AND:$<COMPILE_LANG_AND_ID:CUDA,NVIDIA>,$<PLATFORM_ID:Windows>>:-Xcompiler=/Zc:preprocessor>"
             "$<$<COMPILE_LANGUAGE:CUDA>:--extended-lambda>"
             "$<$<COMPILE_LANGUAGE:CUDA>:-diag-suppress=221>"
+            # Host-side warnings for the GCC/Clang host compiler (MSVC is left at its defaults).
+            "$<$<AND:$<COMPILE_LANG_AND_ID:CUDA,NVIDIA>,$<NOT:$<PLATFORM_ID:Windows>>>:-Xcompiler=-Wall,-Wextra>"
+            "$<$<AND:$<COMPILE_LANG_AND_ID:CUDA,NVIDIA>,$<NOT:$<PLATFORM_ID:Windows>>,$<BOOL:${WARP_WARNINGS_AS_ERRORS}>>:-Werror=all-warnings>"
             # Intentional: -t0 lets nvcc use all CPUs; use -t1 to constrain threading.
             "$<$<COMPILE_LANGUAGE:CUDA>:-t0>"
             "$<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CONFIG:Debug>>:-g>"
             "$<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CONFIG:Debug>>:-G>"
             "$<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CONFIG:Debug>>:-O0>"
-            "$<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<CONFIG:Debug>>:-lineinfo>"
             "$<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<NOT:$<CONFIG:Debug>>>:-O3>"
             "$<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<BOOL:${WARP_FAST_MATH}>>:--use_fast_math>"
     )
@@ -318,7 +323,7 @@ if(WARP_ENABLE_CUDA)
     if(CUDAToolkit_VERSION VERSION_GREATER_EQUAL "13.0")
         foreach(_cuda_include_dir IN LISTS CUDAToolkit_INCLUDE_DIRS)
             if(EXISTS "${_cuda_include_dir}/cccl")
-                target_include_directories(warp PRIVATE "${_cuda_include_dir}/cccl")
+                target_include_directories(warp SYSTEM PRIVATE "${_cuda_include_dir}/cccl")
             endif()
         endforeach()
     endif()
@@ -370,7 +375,7 @@ if(WARP_ENABLE_CUDA)
     endif()
 
     if(WARP_LIBMATHDX_LIBRARY)
-        target_include_directories(warp PRIVATE "${WARP_LIBMATHDX_INCLUDE_DIR}")
+        target_include_directories(warp SYSTEM PRIVATE "${WARP_LIBMATHDX_INCLUDE_DIR}")
         target_link_libraries(warp PRIVATE "${WARP_LIBMATHDX_LIBRARY}")
     endif()
 endif()
@@ -400,7 +405,9 @@ if(WARP_BUILD_CLANG)
             MSVC_RUNTIME_LIBRARY "MultiThreaded"
     )
     target_compile_features(warp-clang PRIVATE cxx_std_17)
-    target_include_directories(warp-clang PRIVATE "${WARP_NATIVE_DIR}" "${WARP_LLVM_INCLUDE_DIR}")
+    target_include_directories(warp-clang PRIVATE "${WARP_NATIVE_DIR}")
+    # LLVM/Clang headers are third-party; keep them out of Warp's warning set.
+    target_include_directories(warp-clang SYSTEM PRIVATE "${WARP_LLVM_INCLUDE_DIR}")
     # Match the GCC ABI version used by Warp's LLVM archives.
     target_compile_options(
         warp-clang

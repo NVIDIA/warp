@@ -259,7 +259,7 @@ CUDA_CALLABLE inline bool intersect_ray_tri_rtcd(
     float& u,
     float& v,
     float& w,
-    float& sign,
+    float& /*sign*/,
     vec3* normal
 )
 {
@@ -309,9 +309,19 @@ CUDA_CALLABLE inline bool intersect_ray_tri_rtcd(
 #ifndef __CUDA_ARCH__
 
 // these are provided as built-ins by CUDA
-inline float __int_as_float(int i) { return *reinterpret_cast<float*>(&i); }
+inline float __int_as_float(int i)
+{
+    float f;
+    memcpy(&f, &i, sizeof(f));
+    return f;
+}
 
-inline int __float_as_int(float f) { return *reinterpret_cast<int*>(&f); }
+inline int __float_as_int(float f)
+{
+    int i;
+    memcpy(&i, &f, sizeof(i));
+    return i;
+}
 
 #endif
 
@@ -449,22 +459,22 @@ CUDA_CALLABLE inline void adj_intersect_ray_tri_woop(
     const vec3& a,
     const vec3& b,
     const vec3& c,
-    float t,
-    float u,
-    float v,
-    float sign,
-    const vec3& normal,
+    float /*t*/,
+    float /*u*/,
+    float /*v*/,
+    float /*sign*/,
+    const vec3& /*normal*/,
     vec3& adj_p,
     vec3& adj_dir,
-    vec3& adj_a,
-    vec3& adj_b,
-    vec3& adj_c,
+    vec3& /*adj_a*/,
+    vec3& /*adj_b*/,
+    vec3& /*adj_c*/,
     float& adj_t,
     float& adj_u,
     float& adj_v,
-    float& adj_sign,
-    vec3& adj_normal,
-    bool& adj_ret
+    float& /*adj_sign*/,
+    vec3& /*adj_normal*/,
+    bool& /*adj_ret*/
 )
 {
 
@@ -486,7 +496,6 @@ CUDA_CALLABLE inline void adj_intersect_ray_tri_woop(
 
     const float Dx = dir[kx];
     const float Dy = dir[ky];
-    const float Dz = dir[kz];
 
     const float Sx = dir[kx] / dir[kz];
     const float Sy = dir[ky] / dir[kz];
@@ -587,7 +596,6 @@ CUDA_CALLABLE inline void adj_intersect_ray_tri_woop(
     const float dW_dpx = Bx * dAy_dpx + Ay * dBx_dpx - By * dAx_dpx - Ax * dBy_dpx;
     const float dW_dpy = Bx * dAy_dpy + Ay * dBx_dpy - By * dAx_dpy - Ax * dBy_dpy;
     const float dW_dpz = Bx * dAy_dpz + Ay * dBx_dpz - By * dAx_dpz - Ax * dBy_dpz;
-    const vec3 dW_dp = vec3(dW_dpx, dW_dpy, dW_dpz);
 
     const float dT_dpx = dU_dpx * Az + U * dAz_dpx + dV_dpx * Bz + V * dBz_dpx + dW_dpx * Cz + W * dCz_dpx;
     const float dT_dpy = dU_dpy * Az + U * dAz_dpy + dV_dpy * Bz + V * dBz_dpy + dW_dpy * Cz + W * dCz_dpy;
@@ -653,7 +661,6 @@ CUDA_CALLABLE inline void adj_intersect_ray_tri_woop(
     const float dW_dDx = Bx * dAy_dDx + Ay * dBx_dDx - By * dAx_dDx - Ax * dBy_dDx;
     const float dW_dDy = Bx * dAy_dDy + Ay * dBx_dDy - By * dAx_dDy - Ax * dBy_dDy;
     const float dW_dDz = Bx * dAy_dDz + Ay * dBx_dDz - By * dAx_dDz - Ax * dBy_dDz;
-    const vec3 dW_dD = vec3(dW_dDx, dW_dDy, dW_dDz);
 
     const float dT_dDx = dU_dDx * Az + U * dAz_dDx + dV_dDx * Bz + V * dBz_dDx + dW_dDx * Cz + W * dCz_dDx;
     const float dT_dDy = dU_dDy * Az + U * dAz_dDy + dV_dDy * Bz + V * dBz_dDy + dW_dDy * Cz + W * dCz_dDy;
@@ -1137,7 +1144,7 @@ def closest_point_edge_edge(
 // ≈ 1e-3 (~0.06°).
 static constexpr float kClosestPointEdgeEdgeParallelTol = 1.0e-6f;
 
-static CUDA_CALLABLE vec3 closest_point_edge_edge(vec3 p1, vec3 q1, vec3 p2, vec3 q2, float32 epsilon)
+static inline CUDA_CALLABLE vec3 closest_point_edge_edge(vec3 p1, vec3 q1, vec3 p2, vec3 q2, float32 epsilon)
 {
     const vec3 d1 = q1 - p1;
     const vec3 d2 = q2 - p2;
@@ -1219,7 +1226,7 @@ static CUDA_CALLABLE vec3 closest_point_edge_edge(vec3 p1, vec3 q1, vec3 p2, vec
 // classification for the adjoint is stricter so 1/denom never amplifies
 // noise. Inputs in the band 0 < denom <= 1e-6 * a*e produce a correct
 // forward output and a damped (approximate-but-bounded) gradient.
-static CUDA_CALLABLE void adj_closest_point_edge_edge(
+static inline CUDA_CALLABLE void adj_closest_point_edge_edge(
     vec3 p1,
     vec3 q1,
     vec3 p2,

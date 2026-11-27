@@ -17,7 +17,16 @@
 #define __CUDACC_RTC__
 #endif
 
+// PNanoVDB is third-party code; keep its warnings out of Warp's native build.
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#pragma GCC diagnostic ignored "-Wstrict-aliasing"
+#endif
 #include "nanovdb/PNanoVDB.h"
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
 
 #if defined(WP_NO_CRT) && (!defined(__CUDACC__) || (defined(__clang__) && defined(__CUDA__)))
 #undef __CUDACC_RTC__
@@ -43,7 +52,7 @@ CUDA_CALLABLE inline pnanovdb_buf_t id_to_buffer(uint64_t id)
     return buf;
 }
 
-CUDA_CALLABLE inline pnanovdb_grid_handle_t get_grid(pnanovdb_buf_t buf) { return { 0u }; }
+CUDA_CALLABLE inline pnanovdb_grid_handle_t get_grid(pnanovdb_buf_t /*buf*/) { return { 0u }; }
 
 CUDA_CALLABLE inline pnanovdb_uint32_t get_grid_type(pnanovdb_buf_t buf)
 {
@@ -179,12 +188,12 @@ template <typename T> struct leaf_value_accessor : value_accessor_base {
         return val;
     }
 
-    CUDA_CALLABLE inline void adj_read_single(const pnanovdb_coord_t& ijk, const T& adj_ret)
+    CUDA_CALLABLE inline void adj_read_single(const pnanovdb_coord_t& /*ijk*/, const T& /*adj_ret*/)
     {
         // NOP
     }
 
-    CUDA_CALLABLE inline void adj_read_cache(const pnanovdb_coord_t& ijk, const T& adj_ret)
+    CUDA_CALLABLE inline void adj_read_cache(const pnanovdb_coord_t& /*ijk*/, const T& /*adj_ret*/)
     {
         // NOP
     }
@@ -509,7 +518,7 @@ CUDA_CALLABLE inline void adj_volume_sample_grad(
     Accessor& accessor,
     vec3 uvw,
     int sampling_mode,
-    typename val_traits<typename Accessor::ValueType>::grad_t& grad,
+    typename val_traits<typename Accessor::ValueType>::grad_t& /*grad*/,
     vec3& adj_uvw,
     typename val_traits<typename Accessor::ValueType>::grad_t& adj_grad,
     const typename Accessor::ValueType& adj_ret
@@ -518,7 +527,6 @@ CUDA_CALLABLE inline void adj_volume_sample_grad(
     // TODO: accessor data gradients
 
     using T = typename Accessor::ValueType;
-    using grad_T = typename val_traits<T>::grad_t;
     using w_t = typename val_traits<T>::scalar_t;
     using w_grad_t = vec_t<3, w_t>;
     using w_hess_t = mat_t<3, 3, w_t>;
@@ -589,7 +597,13 @@ template <typename T> CUDA_CALLABLE inline T volume_sample(uint64_t id, vec3 uvw
 
 template <typename T>
 CUDA_CALLABLE inline void adj_volume_sample(
-    uint64_t id, vec3 uvw, int sampling_mode, uint64_t& adj_id, vec3& adj_uvw, int& adj_sampling_mode, const T& adj_ret
+    uint64_t id,
+    vec3 uvw,
+    int sampling_mode,
+    uint64_t& /*adj_id*/,
+    vec3& adj_uvw,
+    int& /*adj_sampling_mode*/,
+    const T& adj_ret
 )
 {
     volume::leaf_value_accessor<T> accessor(volume::id_to_buffer(id));
@@ -610,9 +624,9 @@ CUDA_CALLABLE inline void adj_volume_sample_grad(
     vec3 uvw,
     int sampling_mode,
     typename volume::val_traits<T>::grad_t& grad,
-    uint64_t& adj_id,
+    uint64_t& /*adj_id*/,
     vec3& adj_uvw,
-    int& adj_sampling_mode,
+    int& /*adj_sampling_mode*/,
     typename volume::val_traits<T>::grad_t& adj_grad,
     const T& adj_ret
 )
@@ -710,10 +724,10 @@ CUDA_CALLABLE inline void adj_volume_sample_index(
     int sampling_mode,
     const array_t<T>& voxel_data,
     const T& background,
-    uint64_t& adj_id,
+    uint64_t& /*adj_id*/,
     vec3& adj_uvw,
-    int& adj_sampling_mode,
-    array_t<T>& adj_voxel_data,
+    int& /*adj_sampling_mode*/,
+    array_t<T>& /*adj_voxel_data*/,
     T& adj_background,
     const T& adj_ret
 )
@@ -744,10 +758,10 @@ CUDA_CALLABLE inline void adj_volume_sample_grad_index(
     const array_t<T>& voxel_data,
     const T& background,
     typename volume::val_traits<T>::grad_t& grad,
-    uint64_t& adj_id,
+    uint64_t& /*adj_id*/,
     vec3& adj_uvw,
-    int& adj_sampling_mode,
-    array_t<T>& adj_voxel_data,
+    int& /*adj_sampling_mode*/,
+    array_t<T>& /*adj_voxel_data*/,
     T& adj_background,
     typename volume::val_traits<T>::grad_t& adj_grad,
     const T& adj_ret
@@ -899,7 +913,7 @@ CUDA_CALLABLE inline vec3 volume_world_to_index(uint64_t id, vec3 xyz)
 }
 
 CUDA_CALLABLE inline void
-adj_volume_index_to_world(uint64_t id, vec3 uvw, uint64_t& adj_id, vec3& adj_uvw, const vec3& adj_ret)
+adj_volume_index_to_world(uint64_t id, vec3 /*uvw*/, uint64_t& /*adj_id*/, vec3& adj_uvw, const vec3& adj_ret)
 {
     const pnanovdb_buf_t buf = volume::id_to_buffer(id);
     const pnanovdb_grid_handle_t grid = { 0u };
@@ -909,7 +923,7 @@ adj_volume_index_to_world(uint64_t id, vec3 uvw, uint64_t& adj_id, vec3& adj_uvw
 }
 
 CUDA_CALLABLE inline void
-adj_volume_world_to_index(uint64_t id, vec3 xyz, uint64_t& adj_id, vec3& adj_xyz, const vec3& adj_ret)
+adj_volume_world_to_index(uint64_t id, vec3 /*xyz*/, uint64_t& /*adj_id*/, vec3& adj_xyz, const vec3& adj_ret)
 {
     const pnanovdb_buf_t buf = volume::id_to_buffer(id);
     const pnanovdb_grid_handle_t grid = { 0u };
@@ -985,7 +999,7 @@ CUDA_CALLABLE inline vec3d volume_world_to_index(uint64_t id, vec3d xyz)
 }
 
 CUDA_CALLABLE inline void
-adj_volume_index_to_world(uint64_t id, vec3d uvw, uint64_t& adj_id, vec3d& adj_uvw, const vec3d& adj_ret)
+adj_volume_index_to_world(uint64_t id, vec3d /*uvw*/, uint64_t& /*adj_id*/, vec3d& adj_uvw, const vec3d& adj_ret)
 {
     const pnanovdb_buf_t buf = volume::id_to_buffer(id);
     const pnanovdb_grid_handle_t grid = { 0u };
@@ -1003,7 +1017,7 @@ adj_volume_index_to_world(uint64_t id, vec3d uvw, uint64_t& adj_id, vec3d& adj_u
 }
 
 CUDA_CALLABLE inline void
-adj_volume_world_to_index(uint64_t id, vec3d xyz, uint64_t& adj_id, vec3d& adj_xyz, const vec3d& adj_ret)
+adj_volume_world_to_index(uint64_t id, vec3d /*xyz*/, uint64_t& /*adj_id*/, vec3d& adj_xyz, const vec3d& adj_ret)
 {
     const pnanovdb_buf_t buf = volume::id_to_buffer(id);
     const pnanovdb_grid_handle_t grid = { 0u };
