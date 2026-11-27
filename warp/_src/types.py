@@ -4411,18 +4411,19 @@ class array(Array[DType, NDim]):
         self.deleter = deleter
         self._allocator = allocator
         self._memory_kind = allocator_memory_kind
-        # Record the originating APIC capture's identity when this allocation is made
-        # under an APIC capture targeting this CUDA device. Such memory is graph-scoped
-        # (its backing is freed when the capture ends) and only *this* capture's
-        # recorded ops regenerate it, so APICapture.track_array marks the region
-        # transient (serialized size-only on save, repopulated on replay). Store the
-        # capture's apic_state -- not a bare is_capturing flag, which outlives its
-        # capture and is also true under non-APIC captures -- so the marker is not
-        # applied to allocations from a different/non-APIC capture or merely first used
-        # here. _init_new is the single device-allocation chokepoint, so this covers the
-        # bare constructor, wp.empty/zeros/full, and auto-allocated gradients.
+        # Only the parent CUDA graph's allocation nodes produce transient APIC
+        # regions. Conditional callbacks allocate persistent backing outside the
+        # graph, so capture_save must snapshot them like pre-capture arrays. Classify
+        # at allocation time: an empty callback array may first be tracked later,
+        # after the parent capture has resumed. Capture IDs are stable across a
+        # graph's pause/resume, including after a conditional body finishes.
         _apic = warp._src.context._get_apic_capture_for_device(device)
-        self._apic_capture_origin = _apic.apic_state if (_apic is not None and device.is_cuda) else None
+        self._apic_capture_origin = None
+        if _apic is not None and device.is_cuda:
+            with device.context_guard:
+                capture_id = warp._src.context.runtime.core.wp_cuda_stream_get_capture_id(device.stream.cuda_stream)
+            if capture_id == _apic._cuda_capture_id:
+                self._apic_capture_origin = _apic.apic_state
 
     def _init_annotation(self, dtype, ndim):
         self.dtype = dtype
