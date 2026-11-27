@@ -2148,8 +2148,10 @@ class Adjoint:
         custom_reverse_num_input_args=-1,
         transformers: list[ast.NodeTransformer] | None = None,
         source: str | None = None,
+        static_args: dict[str, Any] | None = None,
     ):
         adj.func = func
+        adj.static_args = static_args if static_args is not None else {}
 
         adj.is_user_function = is_user_function
 
@@ -2226,9 +2228,12 @@ class Adjoint:
         else:
             # use overload argument annotations
             for arg_name in argspec.args:
-                if arg_name not in overload_annotations:
+                if arg_name not in overload_annotations and arg_name not in adj.static_args:
                     raise WarpCodegenError(f"Incomplete overload annotations for function {adj.fun_name}")
             adj.arg_types = overload_annotations.copy()
+
+        for name in adj.static_args:
+            adj.arg_types.pop(name, None)
 
         adj.args = []
         adj.symbols = {}
@@ -7128,8 +7133,8 @@ class Adjoint:
     # retrieves a dictionary of all closure and global variables and their values
     # to be used in the evaluation context of wp.static() expressions
     def get_static_evaluation_context(adj):
-        # variables captured in closure have precedence over global vars
-        vars_dict = adj.func.__globals__ | get_closure_vars(adj.func)
+        # static args have precedence over closure vars, which have precedence over global vars
+        vars_dict = adj.func.__globals__ | get_closure_vars(adj.func) | adj.static_args
 
         return vars_dict
 
@@ -7550,6 +7555,8 @@ class Adjoint:
         return None, path
 
     def resolve_external_reference(adj, name: str):
+        if name in adj.static_args:
+            return adj.static_args[name]
         return resolve_closure_or_global(adj.func, name)
 
     # annotate generated code with the original source code line

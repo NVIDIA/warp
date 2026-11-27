@@ -1084,6 +1084,170 @@ class TestStatic(unittest.TestCase):
         self.assertEqual(static_global_variable_func(), 5)
 
 
+_STATIC_ARG_GLOBAL_SHADOW = 999.0
+
+
+def _static_scale_kernel(values: wp.array[wp.float32], output: wp.array[wp.float32], factor: wp.float32):
+    i = wp.tid()
+    output[i] = values[i] * factor
+
+
+def _static_value_types_kernel(
+    out_f64: wp.array[wp.float64],
+    out_i64: wp.array[wp.int64],
+    out_vec: wp.array[wp.vec3],
+    scale: wp.float64,
+    big: wp.int64,
+    offset: wp.vec3,
+):
+    i = wp.tid()
+    out_f64[i] = scale * wp.float64(i + 1)
+    out_i64[i] = big + wp.int64(i)
+    out_vec[i] = offset + wp.vec3(float(i), 0.0, 0.0)
+
+
+def _static_with_wp_static_kernel(
+    values: wp.array[wp.float32],
+    output: wp.array[wp.float32],
+    use_scale: bool,
+    _STATIC_ARG_GLOBAL_SHADOW: float,
+):
+    i = wp.tid()
+    if wp.static(use_scale):
+        output[i] = values[i] * wp.static(_STATIC_ARG_GLOBAL_SHADOW * 2.0)
+    else:
+        output[i] = values[i]
+
+
+def _static_generic_kernel(values: wp.array[wp.Scalar], output: wp.array[wp.Scalar], offset: float):
+    i = wp.tid()
+    output[i] = values[i] + offset
+
+
+def test_static_kernel_arguments(test, device):
+    module = wp.Module("test_static_kernel_arguments", None)
+    k_half = wp.Kernel(_static_scale_kernel, module=module, static_args={"factor": 0.5})
+    k_two = wp.Kernel(_static_scale_kernel, module=module, static_args={"factor": 2.0})
+
+    values = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device)
+    out_half = wp.empty_like(values)
+    out_two = wp.empty_like(values)
+    wp.launch(k_half, dim=values.shape, inputs=[values, out_half], device=device)
+    wp.launch(k_two, dim=values.shape, inputs=[values, out_two], device=device)
+    np.testing.assert_allclose(out_half.numpy(), [0.5, 1.0, 1.5])
+    np.testing.assert_allclose(out_two.numpy(), [2.0, 4.0, 6.0])
+
+    with test.assertRaisesRegex(RuntimeError, "passed 3 arguments but kernel requires 2"):
+        wp.launch(k_half, dim=values.shape, inputs=[values, out_half, 0.5], device=device)
+
+
+def test_static_kernel_argument_value_types(test, device):
+    module = wp.Module("test_static_kernel_argument_value_types", None)
+    scale = wp.float64(0.125)
+    big = wp.int64(1 << 40)
+    offset = wp.vec3(1.0, 2.0, 3.0)
+    kernel = wp.Kernel(
+        _static_value_types_kernel,
+        module=module,
+        static_args={"scale": scale, "big": big, "offset": offset},
+    )
+    # Mutating caller objects after construction must not affect the specialization.
+    scale.value = 99.0
+    big.value = 0
+    offset[0] = 99.0
+
+    out_f64 = wp.empty(2, dtype=wp.float64, device=device)
+    out_i64 = wp.empty(2, dtype=wp.int64, device=device)
+    out_vec = wp.empty(2, dtype=wp.vec3, device=device)
+    wp.launch(kernel, dim=2, inputs=[out_f64, out_i64, out_vec], device=device)
+
+    np.testing.assert_allclose(out_f64.numpy(), [0.125, 0.25])
+    np.testing.assert_array_equal(out_i64.numpy(), [1 << 40, (1 << 40) + 1])
+    np.testing.assert_allclose(out_vec.numpy(), [[1.0, 2.0, 3.0], [2.0, 2.0, 3.0]])
+
+
+def test_static_kernel_argument_with_wp_static(test, device):
+    module = wp.Module("test_static_kernel_argument_with_wp_static", None)
+    k_scaled = wp.Kernel(
+        _static_with_wp_static_kernel,
+        module=module,
+        static_args={"use_scale": True, "_STATIC_ARG_GLOBAL_SHADOW": 1.5},
+    )
+    k_plain = wp.Kernel(
+        _static_with_wp_static_kernel,
+        module=module,
+        static_args={"use_scale": False, "_STATIC_ARG_GLOBAL_SHADOW": 1.5},
+    )
+
+    values = wp.array([2.0, 4.0], dtype=wp.float32, device=device)
+    out_scaled = wp.empty_like(values)
+    out_plain = wp.empty_like(values)
+    wp.launch(k_scaled, dim=values.shape, inputs=[values, out_scaled], device=device)
+    wp.launch(k_plain, dim=values.shape, inputs=[values, out_plain], device=device)
+
+    np.testing.assert_allclose(out_scaled.numpy(), [6.0, 12.0])
+    np.testing.assert_allclose(out_plain.numpy(), [2.0, 4.0])
+
+
+def test_static_generic_kernel_overload(test, device):
+    module = wp.Module("test_static_generic_kernel_overload", None)
+    kernel = wp.Kernel(_static_generic_kernel, module=module, static_args={"offset": 2.0})
+    overload = kernel.add_overload([wp.array[wp.float32], wp.array[wp.float32]])
+
+    values = wp.array([1.0, 2.0], dtype=wp.float32, device=device)
+    output = wp.empty_like(values)
+    wp.launch(overload, dim=values.shape, inputs=[values, output], device=device)
+    np.testing.assert_allclose(output.numpy(), [3.0, 4.0])
+
+
+def test_static_kernel_argument_gradient(test, device):
+    module = wp.Module("test_static_kernel_argument_gradient", None)
+    kernel = wp.Kernel(_static_scale_kernel, module=module, static_args={"factor": 2.0})
+    values = wp.array([1.0, 2.0], dtype=wp.float32, requires_grad=True, device=device)
+    output = wp.empty_like(values, requires_grad=True)
+
+    with wp.Tape() as tape:
+        wp.launch(kernel, dim=values.shape, inputs=[values, output], device=device)
+    tape.backward(grads={output: wp.ones_like(output)})
+
+    np.testing.assert_allclose(values.grad.numpy(), [2.0, 2.0])
+
+
+def test_kernel_decorator_static_args_launch(test, device):
+    k_half = wp.kernel(_static_scale_kernel, module="unique", static_args={"factor": 0.5})
+    k_two = wp.kernel(_static_scale_kernel, module="unique", static_args={"factor": 2.0})
+
+    values = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device)
+    out_half = wp.empty_like(values)
+    out_two = wp.empty_like(values)
+    wp.launch(k_half, dim=values.shape, inputs=[values, out_half], device=device)
+    wp.launch(k_two, dim=values.shape, inputs=[values, out_two], device=device)
+    np.testing.assert_allclose(out_half.numpy(), [0.5, 1.0, 1.5])
+    np.testing.assert_allclose(out_two.numpy(), [2.0, 4.0, 6.0])
+
+
+add_function_test(TestStatic, "test_static_kernel_arguments", test_static_kernel_arguments, devices=devices)
+add_function_test(
+    TestStatic,
+    "test_kernel_decorator_static_args_launch",
+    test_kernel_decorator_static_args_launch,
+    devices=devices,
+)
+add_function_test(
+    TestStatic, "test_static_kernel_argument_value_types", test_static_kernel_argument_value_types, devices=devices
+)
+add_function_test(
+    TestStatic,
+    "test_static_kernel_argument_with_wp_static",
+    test_static_kernel_argument_with_wp_static,
+    devices=devices,
+)
+add_function_test(
+    TestStatic, "test_static_generic_kernel_overload", test_static_generic_kernel_overload, devices=devices
+)
+add_function_test(
+    TestStatic, "test_static_kernel_argument_gradient", test_static_kernel_argument_gradient, devices=devices
+)
 add_function_test(TestStatic, "test_static_global_variable", test_static_global_variable, devices=devices)
 add_function_test(TestStatic, "test_construct_static_struct", test_construct_static_struct, devices=devices)
 add_function_test(
