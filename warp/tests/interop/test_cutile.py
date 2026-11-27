@@ -17,6 +17,12 @@ The tests target the public surface and are tiered by environment:
 
 Classes skip cleanly when their environment is missing, so the module is safe
 to run (and register in the default suite) everywhere.
+
+Names keep the two kernel kinds apart: ``@ct.kernel`` functions end in
+``_cutile_kernel``, the ``@wp.kernel`` functions that compute reference results
+end in ``_reference``, and ``export_func()`` handles are
+``wp_<function name>``. Every cuTile kernel costs a ``tileiras`` compile, so each
+test folds its call sites into as few cuTile kernels as the checked behavior allows.
 """
 
 import contextlib
@@ -91,7 +97,7 @@ def square(x: float) -> float:
 
 
 @wp.func
-def dsquare(x: float) -> float:
+def grad_square(x: float) -> float:
     """Differentiate square() explicitly inside the function body."""
     return wp.grad(square)(x)
 
@@ -109,14 +115,14 @@ def adj_custom_square(x: float, adj_ret: float):
 
 
 @wp.func
-def dcustom_square(x: float) -> float:
+def grad_custom_square(x: float) -> float:
     """Differentiate custom_square() explicitly, exercising the deferred callback build."""
     return wp.grad(custom_square)(x)
 
 
 @wp.func
 def scale_add(x: float, y: float) -> float:
-    """Trivial per-thread math used for tilelib caching checks."""
+    """Return 2x + sin(y), a two-scalar fixture whose arguments can each be shared or per-invocation."""
     return x * 2.0 + wp.sin(y)
 
 
@@ -185,14 +191,14 @@ def two_returns(x: float):
 
 
 @wp.func
-def probe_mesh_sdf(mesh: wp.handle, x: wp.vec3) -> float:
-    """Query a mesh point (thread-local traversal stack)."""
+def closest_point_u(mesh: wp.handle, x: wp.vec3) -> float:
+    """Return the barycentric u of the mesh point closest to x (point query, thread-local traversal stack)."""
     q = wp.mesh_query_point(mesh, x, 1.0e6)
     return wp.where(q.result, q.u, 0.0)
 
 
 @wp.func
-def aabb_count(mesh: wp.uint64, x: wp.vec3) -> float:
+def mesh_aabb_count(mesh: wp.uint64, x: wp.vec3) -> float:
     """Count triangles overlapping a box around x (block-wide traversal stack, served from scratch)."""
     h = wp.vec3(0.05, 0.05, 0.05)
     q = wp.mesh_query_aabb(mesh, x - h, x + h)
@@ -204,7 +210,7 @@ def aabb_count(mesh: wp.uint64, x: wp.vec3) -> float:
 
 
 @wp.func
-def tiled_aabb_count(mesh: wp.uint64, x: wp.vec3) -> float:
+def tiled_mesh_aabb_count(mesh: wp.uint64, x: wp.vec3) -> float:
     """Count triangles overlapping a box around x with the block-cooperative tiled query."""
     h = wp.vec3(0.05, 0.05, 0.05)
     q = wp.tile_mesh_query_aabb(mesh, x - h, x + h)
@@ -212,6 +218,20 @@ def tiled_aabb_count(mesh: wp.uint64, x: wp.vec3) -> float:
     while wp.tile_query_valid(q):
         idx = wp.untile(wp.tile_mesh_query_aabb_next(q))
         if idx >= 0:
+            n += 1.0
+    return n
+
+
+@wp.func
+def repeated_mesh_aabb_count(mesh: wp.uint64, x: wp.vec3) -> float:
+    """Count triangles overlapping eight growing boxes around x, constructing a fresh query each time."""
+    n = float(0.0)
+    for i in range(8):
+        r = 0.01 * float(i + 1)
+        h = wp.vec3(r, r, r)
+        q = wp.mesh_query_aabb(mesh, x - h, x + h)
+        face = int(0)
+        while wp.mesh_query_aabb_next(q, face):
             n += 1.0
     return n
 
@@ -270,7 +290,7 @@ def preamble_probe(x: float) -> float:
 
 
 @wp.func
-def keyword_params(auto: float, register: float) -> float:
+def cpp_keyword_params(auto: float, register: float) -> float:
     """Use C++ keywords as parameter names: legal in Warp, so the wrapper must accept them."""
     return auto * 2.0 + register
 
@@ -279,74 +299,6 @@ def keyword_params(auto: float, register: float) -> float:
 def colliding_names(x: wp.array[float], x_0: float) -> float:
     """Name a scalar like an array's first generated element so the call body's names must not collide."""
     return x[0] + x_0
-
-
-@wp.kernel
-def bvh_sphere_count_reference(bvh: wp.uint64, pts: wp.array[wp.vec3], out: wp.array[float]):
-    """Evaluate bvh_sphere_count per thread as the BVH-query reference."""
-    tid = wp.tid()
-    out[tid] = bvh_sphere_count(bvh, pts[tid])
-
-
-# Own module: this kernel holds a static mesh stack and a static BVH stack
-# (32 ints per thread each), 64 KiB at the test module's default block_dim of
-# 256, over the 48 KiB ptxas limit on most architectures. A unique module
-# compiles only when launched, at the launch's block_dim (128 below).
-@wp.kernel(module="unique")
-def nested_mesh_bvh_count_reference(mesh: wp.uint64, bvh: wp.uint64, pts: wp.array[wp.vec3], out: wp.array[float]):
-    """Evaluate nested_mesh_bvh_count per thread as the nested-query reference."""
-    tid = wp.tid()
-    out[tid] = nested_mesh_bvh_count(mesh, bvh, pts[tid])
-
-
-@wp.kernel
-def sin_probe_reference(x: wp.array[float], out: wp.array[float]):
-    """Evaluate sin_probe per thread under the module's own build options."""
-    tid = wp.tid()
-    out[tid] = sin_probe(x[tid])
-
-
-@wp.kernel
-def aabb_count_reference(mesh: wp.uint64, pts: wp.array[wp.vec3], out: wp.array[float]):
-    """Evaluate aabb_count per thread as the iterator-query reference."""
-    tid = wp.tid()
-    out[tid] = aabb_count(mesh, pts[tid])
-
-
-@wp.func
-def aabb_count_repeat(mesh: wp.uint64, x: wp.vec3) -> float:
-    """Count triangles overlapping eight growing boxes around x, constructing a fresh query each time."""
-    n = float(0.0)
-    for i in range(8):
-        r = 0.01 * float(i + 1)
-        h = wp.vec3(r, r, r)
-        q = wp.mesh_query_aabb(mesh, x - h, x + h)
-        face = int(0)
-        while wp.mesh_query_aabb_next(q, face):
-            n += 1.0
-    return n
-
-
-# Own module for the same reason as nested_mesh_bvh_count_reference: one
-# static mesh stack plus one static BVH stack exceed 48 KiB at block_dim 256.
-@wp.kernel(module="unique")
-def aabb_sphere_pair_reference(mesh: wp.uint64, bvh: wp.uint64, pts: wp.array[wp.vec3], out: wp.array[float]):
-    """Evaluate aabb_count_repeat plus bvh_sphere_count per thread as the two-function reference."""
-    tid = wp.tid()
-    out[tid] = aabb_count_repeat(mesh, pts[tid]) + bvh_sphere_count(bvh, pts[tid])
-
-
-@wp.kernel
-def probe_mesh_sdf_reference(mesh: wp.handle, pts: wp.array[wp.vec3], out: wp.array[float]):
-    """Evaluate probe_mesh_sdf per thread as the mesh-query reference."""
-    tid = wp.tid()
-    out[tid] = probe_mesh_sdf(mesh, pts[tid])
-
-
-@wp.func
-def all_uniform_sum(a: float, b: float) -> float:
-    """Add two scalars; the test calls it with only shared arguments, so no tile sets the call's length."""
-    return a + b
 
 
 @wp.func
@@ -369,9 +321,47 @@ def overloaded_probe(x: wp.int32) -> wp.int32:
 
 @wp.kernel
 def blend_reference(xs: wp.array[float], ys: wp.array[wp.vec3], out: wp.array[float]):
-    """Per-thread reference for the blend function."""
-    i = wp.tid()
-    out[i] = blend(xs[i], ys[i])
+    """Evaluate blend per thread."""
+    tid = wp.tid()
+    out[tid] = blend(xs[tid], ys[tid])
+
+
+@wp.kernel
+def sin_probe_reference(xs: wp.array[float], out: wp.array[float]):
+    """Evaluate sin_probe per thread under the module's own build options."""
+    tid = wp.tid()
+    out[tid] = sin_probe(xs[tid])
+
+
+@wp.kernel
+def mesh_queries_reference(
+    mesh: wp.uint64, pts: wp.array[wp.vec3], closest_u: wp.array[float], aabb_count: wp.array[float]
+):
+    """Evaluate closest_point_u and mesh_aabb_count per thread."""
+    tid = wp.tid()
+    closest_u[tid] = closest_point_u(mesh, pts[tid])
+    aabb_count[tid] = mesh_aabb_count(mesh, pts[tid])
+
+
+# Own module: this kernel holds a static mesh stack and a static BVH stack
+# (32 ints per thread each), 64 KiB at the test module's default block_dim of
+# 256, over the 48 KiB ptxas limit on most architectures. A unique module
+# compiles only when launched, at the launch's block_dim (128 below).
+@wp.kernel(module="unique")
+def bvh_queries_reference(
+    mesh: wp.uint64,
+    bvh: wp.uint64,
+    pts: wp.array[wp.vec3],
+    sphere_count: wp.array[float],
+    nested_count: wp.array[float],
+    pair_count: wp.array[float],
+):
+    """Evaluate the BVH sphere count, the nested count, and the repeated mesh count plus sphere count per thread."""
+    tid = wp.tid()
+    sphere = bvh_sphere_count(bvh, pts[tid])
+    sphere_count[tid] = sphere
+    nested_count[tid] = nested_mesh_bvh_count(mesh, bvh, pts[tid])
+    pair_count[tid] = repeated_mesh_aabb_count(mesh, pts[tid]) + sphere
 
 
 def _pad_vec3(a: np.ndarray) -> np.ndarray:
@@ -398,7 +388,7 @@ def _dense_triangle_mesh(rng: np.random.Generator, device) -> wp.Mesh:
     )
 
 
-def test_array_pointer_args_device(test, device):
+def test_array_pointer_args(test, device):
     """Expand a contiguous CUDA array into (ptr, dims) and reject empty arrays."""
     arr = wp.zeros((4, 6), dtype=wp.float32, device=device)
     test.assertEqual(wpct.array_pointer_args(arr), (arr.ptr, 4, 6))
@@ -437,7 +427,7 @@ class TestCutileHelpers(unittest.TestCase):
         with self.assertRaisesRegex(TypeError, "Warp struct instance, got dict"):
             wpct.encode_struct({"scale": 1.0})
 
-    def test_array_pointer_args(self):
+    def test_array_pointer_args_invalid_inputs(self):
         """Reject non-contiguous, CPU, and non-Warp inputs as array operands."""
         strided = wp.zeros(8, dtype=wp.float32, device="cpu")[::2]
         with self.assertRaisesRegex(ValueError, "contiguous"):
@@ -572,9 +562,7 @@ class TestCutileHelpers(unittest.TestCase):
             _cutile._check_tileiras_release("/tk/13.5/tileiras")
 
 
-add_function_test(
-    TestCutileHelpers, "test_array_pointer_args_device", test_array_pointer_args_device, devices=cuda_test_devices
-)
+add_function_test(TestCutileHelpers, "test_array_pointer_args", test_array_pointer_args, devices=cuda_test_devices)
 
 
 @unittest.skipUnless(cutile_available(), "cuda.tile and cuda.tile_preview are not installed")
@@ -612,7 +600,7 @@ class TestCutileDeclaration(unittest.TestCase):
         # so are block-cooperative tiled queries, whose static result buffers
         # and barriers assume the function owns the whole block
         with self.assertRaisesRegex(ValueError, "tiled query"):
-            wpct.export_func(tiled_aabb_count, scope="thread")
+            wpct.export_func(tiled_mesh_aabb_count, scope="thread")
         # overloaded functions have no single concrete signature to package
         with self.assertRaisesRegex(NotImplementedError, "overloads"):
             wpct.export_func(overloaded_probe)
@@ -678,7 +666,7 @@ def _import_ct():
     return ct
 
 
-def _launch(device, kernel, args):
+def _launch_cutile(device, kernel, args):
     """Launch a single-block cuTile kernel on ``device``'s Warp stream.
 
     No explicit synchronization: the kernel is stream-ordered with all
@@ -688,55 +676,55 @@ def _launch(device, kernel, args):
     _import_ct().launch(wp.get_stream(device).cuda_stream, (1, 1, 1), kernel, args)
 
 
-def test_per_thread_scalar_vec_call(test, device):
-    """Match a per-thread scalar+vec3 tilelib call against a wp.launch reference."""
+def test_scalar_and_vec3_call(test, device):
+    """Match a call with per-invocation scalar and vec3 tiles, by position and by keyword, against wp.launch."""
     ct = _import_ct()
-    d_blend = wpct.export_func(blend, num_worker_warps=NUM_WARPS, device=device)
+    wp_blend = wpct.export_func(blend, device=device)
 
-    @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-    def kernel(xs, ys, out, out_kw):
+    @ct.kernel(num_worker_warps=NUM_WARPS)
+    def blend_cutile_kernel(xs, ys, out, out_by_keyword):
         x = ct.load(xs, (0,), shape=(NUM_THREADS,))
         y = ct.reshape(ct.load(ys, (0, 0), shape=(NUM_THREADS, VEC_PAD)), (NUM_THREADS * VEC_PAD,))
-        ct.store(out, (0,), d_blend(x, y))
+        ct.store(out, (0,), wp_blend(x, y))
         # arguments may also be passed by Warp parameter name, in any order
-        ct.store(out_kw, (0,), d_blend(y=y, x=x))
+        ct.store(out_by_keyword, (0,), wp_blend(y=y, x=x))
 
     rng = np.random.default_rng(42)
     x_np = rng.standard_normal(NUM_THREADS).astype(np.float32)
     y_np = rng.standard_normal((NUM_THREADS, 3)).astype(np.float32)
 
     xs = wp.array(x_np, dtype=wp.float32, device=device)
-    ys_pad = wp.array(_pad_vec3(y_np), dtype=wp.float32, device=device)
-    out_ct = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
-    out_kw = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
-    _launch(device, kernel, (xs, ys_pad, out_ct, out_kw))
+    ys_padded = wp.array(_pad_vec3(y_np), dtype=wp.float32, device=device)
+    out = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
+    out_by_keyword = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
+    _launch_cutile(device, blend_cutile_kernel, (xs, ys_padded, out, out_by_keyword))
 
-    ys_vec = wp.array(y_np, dtype=wp.vec3, device=device)
-    out_ref = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
-    wp.launch(blend_reference, dim=NUM_THREADS, inputs=[xs, ys_vec, out_ref], device=device)
-    np.testing.assert_allclose(out_ct.numpy(), out_ref.numpy(), rtol=1e-6, atol=1e-6)
-    np.testing.assert_array_equal(out_kw.numpy(), out_ct.numpy())
+    ys_vec3 = wp.array(y_np, dtype=wp.vec3, device=device)
+    expected = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
+    wp.launch(blend_reference, dim=NUM_THREADS, inputs=[xs, ys_vec3, expected], device=device)
+    np.testing.assert_allclose(out.numpy(), expected.numpy(), rtol=1e-6, atol=1e-6)
+    np.testing.assert_array_equal(out_by_keyword.numpy(), out.numpy())
 
 
 def test_explicit_gradient_inside_function(test, device):
     """Keep wp.grad() derivatives, including @wp.func_grad callbacks, correct inside a forward-only foreign function."""
     ct = _import_ct()
-    d = wpct.export_func(dsquare, device=device)
+    wp_grad_square = wpct.export_func(grad_square, device=device)
     # a @wp.func_grad callback is a deferred build dependency; the
     # standalone build must include it like a module build does
-    d_custom = wpct.export_func(dcustom_square, device=device)
+    wp_grad_custom_square = wpct.export_func(grad_custom_square, device=device)
     x_np = np.arange(NUM_THREADS, dtype=np.float32)
     xs = wp.array(x_np, dtype=wp.float32, device=device)
     out = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
     out_custom = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
 
-    @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-    def kernel(xs_a, out_a, out_custom_a):
-        x = ct.load(xs_a, (0,), shape=(NUM_THREADS,))
-        ct.store(out_a, (0,), d(x))
-        ct.store(out_custom_a, (0,), d_custom(x))
+    @ct.kernel(num_worker_warps=NUM_WARPS)
+    def grad_square_cutile_kernel(xs, out, out_custom):
+        x = ct.load(xs, (0,), shape=(NUM_THREADS,))
+        ct.store(out, (0,), wp_grad_square(x))
+        ct.store(out_custom, (0,), wp_grad_custom_square(x))
 
-    _launch(device, kernel, (xs, out, out_custom))
+    _launch_cutile(device, grad_square_cutile_kernel, (xs, out, out_custom))
     # d/dx x^2 = 2x: the derivative code must be emitted even though no
     # backward kernel uses the function
     np.testing.assert_allclose(out.numpy(), 2.0 * x_np)
@@ -745,298 +733,256 @@ def test_explicit_gradient_inside_function(test, device):
 
 
 def test_call_site_mistakes_reported_at_trace(test, device):
-    """Report wrong operand rank, length, element type, and plain-vs-tile mix-ups when cuTile traces the call."""
+    """Report wrong operand rank, length, element type, plain-vs-tile mix-ups, and bad array tuples at trace time."""
     ct = _import_ct()
-    d_blend = wpct.export_func(blend, num_worker_warps=NUM_WARPS, device=device)
+    wp_blend = wpct.export_func(blend, device=device)
+    wp_gather_scale = wpct.export_func(gather_scale, device=device)
     xs = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
     ys = wp.zeros((NUM_THREADS, VEC_PAD), dtype=wp.float32, device=device)
     ids = wp.zeros(NUM_THREADS, dtype=wp.int32, device=device)
     out = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
 
-    def expect(pattern, kernel, args=(xs, ys, out)):
+    def assert_trace_error(pattern, kernel, args=(xs, ys, out)):
         """Assert that tracing ``kernel`` fails with a message matching ``pattern``."""
         with test.assertRaisesRegex(ct.TileError, pattern):
-            _launch(device, kernel, args)
+            _launch_cutile(device, kernel, args)
 
-    @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-    def unpadded_vec(xs_a, ys_a, out_a):
-        x = ct.load(xs_a, (0,), shape=(NUM_THREADS,))
-        ct.store(out_a, (0,), d_blend(x, x))
+    @ct.kernel(num_worker_warps=NUM_WARPS)
+    def unpadded_vec3_cutile_kernel(xs, ys, out):
+        x = ct.load(xs, (0,), shape=(NUM_THREADS,))
+        ct.store(out, (0,), wp_blend(x, x))
 
-    expect(r"'y'.*\(512,\)", unpadded_vec)
+    assert_trace_error(r"'y'.*\(512,\)", unpadded_vec3_cutile_kernel)
 
-    @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-    def plain_for_tile(xs_a, ys_a, out_a):
-        x = ct.load(xs_a, (0,), shape=(NUM_THREADS,))
-        ct.store(out_a, (0,), d_blend(x, 1.0))
+    @ct.kernel(num_worker_warps=NUM_WARPS)
+    def number_for_vec3_cutile_kernel(xs, ys, out):
+        x = ct.load(xs, (0,), shape=(NUM_THREADS,))
+        ct.store(out, (0,), wp_blend(x, 1.0))
 
-    expect(r"'y'.*TILE \* 4.*got 1\.0", plain_for_tile)
+    assert_trace_error(r"'y'.*TILE \* 4.*got 1\.0", number_for_vec3_cutile_kernel)
 
-    @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-    def undeclared_length(xs_a, ys_a, out_a):
-        x = ct.load(xs_a, (0,), shape=(16,))
-        y = ct.reshape(ct.load(ys_a, (0, 0), shape=(16, VEC_PAD)), (16 * VEC_PAD,))
-        ct.store(out_a, (0,), d_blend(x, y))
+    @ct.kernel(num_worker_warps=NUM_WARPS)
+    def undeclared_length_cutile_kernel(xs, ys, out):
+        x = ct.load(xs, (0,), shape=(16,))
+        y = ct.reshape(ct.load(ys, (0, 0), shape=(16, VEC_PAD)), (16 * VEC_PAD,))
+        ct.store(out, (0,), wp_blend(x, y))
 
-    expect(r"tile length 16.*'x'.*not a declared length", undeclared_length)
+    assert_trace_error(r"tile length 16.*'x'.*not a declared length", undeclared_length_cutile_kernel)
 
-    @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-    def rank2_vec(xs_a, ys_a, out_a):
-        x = ct.load(xs_a, (0,), shape=(NUM_THREADS,))
-        ct.store(out_a, (0,), d_blend(x, ct.load(ys_a, (0, 0), shape=(NUM_THREADS, VEC_PAD))))
+    @ct.kernel(num_worker_warps=NUM_WARPS)
+    def rank2_vec3_cutile_kernel(xs, ys, out):
+        x = ct.load(xs, (0,), shape=(NUM_THREADS,))
+        ct.store(out, (0,), wp_blend(x, ct.load(ys, (0, 0), shape=(NUM_THREADS, VEC_PAD))))
 
-    expect(r"'y'.*rank-1", rank2_vec)
+    assert_trace_error(r"'y'.*rank-1", rank2_vec3_cutile_kernel)
 
-    @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-    def int_for_float(xs_a, ids_a, out_a):
-        y = ct.reshape(ct.load(xs_a, (0, 0), shape=(NUM_THREADS, VEC_PAD)), (NUM_THREADS * VEC_PAD,))
-        ct.store(out_a, (0,), d_blend(ct.load(ids_a, (0,), shape=(NUM_THREADS,)), y))
+    @ct.kernel(num_worker_warps=NUM_WARPS)
+    def int_for_float_cutile_kernel(ys, ids, out):
+        y = ct.reshape(ct.load(ys, (0, 0), shape=(NUM_THREADS, VEC_PAD)), (NUM_THREADS * VEC_PAD,))
+        ct.store(out, (0,), wp_blend(ct.load(ids, (0,), shape=(NUM_THREADS,)), y))
 
-    expect(r"'x'.*float32.*int32", int_for_float, (ys, ids, out))
+    assert_trace_error(r"'x'.*float32.*int32", int_for_float_cutile_kernel, (ys, ids, out))
 
-    @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-    def missing_argument(xs_a, ys_a, out_a):
-        ct.store(out_a, (0,), d_blend(ct.load(xs_a, (0,), shape=(NUM_THREADS,))))
+    @ct.kernel(num_worker_warps=NUM_WARPS)
+    def missing_argument_cutile_kernel(xs, ys, out):
+        ct.store(out, (0,), wp_blend(ct.load(xs, (0,), shape=(NUM_THREADS,))))
 
-    expect(r"missing.*'y'", missing_argument)
+    assert_trace_error(r"missing.*'y'", missing_argument_cutile_kernel)
+
+    # an array tuple with an extra value fails instead of silently dropping it
+    @ct.kernel(num_worker_warps=NUM_WARPS)
+    def long_array_tuple_cutile_kernel(ptr: ct.Constant[int], length: ct.Constant[int], ids, out):
+        i = ct.load(ids, (0,), shape=(NUM_THREADS,))
+        ct.store(out, (0,), wp_gather_scale((ptr, length, 999), i, 2.5))
+
+    assert_trace_error(
+        r"'data'.*tuple of 2 plain values",
+        long_array_tuple_cutile_kernel,
+        (*wpct.array_pointer_args(xs), ids, out),
+    )
+
+    # a non-integer extent fails instead of being truncated by the int32 materialization
+    @ct.kernel(num_worker_warps=NUM_WARPS)
+    def float_array_extent_cutile_kernel(ptr: ct.Constant[int], ids, out):
+        i = ct.load(ids, (0,), shape=(NUM_THREADS,))
+        ct.store(out, (0,), wp_gather_scale((ptr, 2.5), i, 2.5))
+
+    assert_trace_error(
+        r"element 1 of parameter 'data'.*integer.*got 2\.5", float_array_extent_cutile_kernel, (xs.ptr, ids, out)
+    )
 
 
-def test_thread_scope_universal_lengths(test, device):
-    """Serve several call-site tile lengths from one thread-scope declaration."""
+def test_thread_scope_tile_lengths(test, device):
+    """Serve call sites of different tile lengths in one kernel from one thread-scope declaration."""
     ct = _import_ct()
+    wp_scale_add = wpct.export_func(scale_add, device=device)
     rng = np.random.default_rng(3)
-
-    d_sa = wpct.export_func(scale_add, device=device)
-
-    def run(length):
-        """Call the shared declaration at the given tile length."""
-        x_np = rng.standard_normal(length).astype(np.float32)
-        y_np = rng.standard_normal(length).astype(np.float32)
-        xs = wp.array(x_np, dtype=wp.float32, device=device)
-        ys = wp.array(y_np, dtype=wp.float32, device=device)
-        out = wp.zeros(length, dtype=wp.float32, device=device)
-
-        @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-        def kernel(xs_a, ys_a, out_a):
-            x = ct.load(xs_a, (0,), shape=(length,))
-            y = ct.load(ys_a, (0,), shape=(length,))
-            r = d_sa(x, y)
-            ct.store(out_a, (0,), r)
-
-        _launch(device, kernel, (xs, ys, out))
-        np.testing.assert_allclose(out.numpy(), x_np * 2.0 + np.sin(y_np), rtol=1e-6, atol=1e-6)
-
-    # cuTile schedules the invocations onto however many workers the
-    # kernel has: fewer and more invocations than the 128 workers, at the
-    # ends of the declared range (kernel_mixed below covers 64 and 256)
-    for length in (32, 1024):
-        run(length)
-
-    # two call sites of different lengths in one kernel dispatch to
-    # different declared lengths of the same tilelib
-    x_np = rng.standard_normal(256).astype(np.float32)
-    y_np = rng.standard_normal(256).astype(np.float32)
+    x_np = rng.standard_normal(1024).astype(np.float32)
+    y_np = rng.standard_normal(1024).astype(np.float32)
     xs = wp.array(x_np, dtype=wp.float32, device=device)
     ys = wp.array(y_np, dtype=wp.float32, device=device)
-    out_a = wp.zeros(64, dtype=wp.float32, device=device)
-    out_b = wp.zeros(256, dtype=wp.float32, device=device)
+    outs = {length: wp.zeros(length, dtype=wp.float32, device=device) for length in (32, 64, 256, 1024)}
 
-    @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-    def kernel_mixed(xs_a, ys_a, out_a_, out_b_):
-        ct.store(out_a_, (0,), d_sa(ct.load(xs_a, (0,), shape=(64,)), ct.load(ys_a, (0,), shape=(64,))))
-        ct.store(out_b_, (0,), d_sa(ct.load(xs_a, (0,), shape=(256,)), ct.load(ys_a, (0,), shape=(256,))))
+    # each call site dispatches to the declared length its tiles carry, and
+    # cuTile schedules the invocations onto however many workers the kernel
+    # has: fewer and more invocations than the 128 workers, up to both ends of
+    # the declared range
+    @ct.kernel(num_worker_warps=NUM_WARPS)
+    def mixed_lengths_cutile_kernel(xs, ys, out_32, out_64, out_256, out_1024):
+        ct.store(out_32, (0,), wp_scale_add(ct.load(xs, (0,), shape=(32,)), ct.load(ys, (0,), shape=(32,))))
+        ct.store(out_64, (0,), wp_scale_add(ct.load(xs, (0,), shape=(64,)), ct.load(ys, (0,), shape=(64,))))
+        ct.store(out_256, (0,), wp_scale_add(ct.load(xs, (0,), shape=(256,)), ct.load(ys, (0,), shape=(256,))))
+        ct.store(out_1024, (0,), wp_scale_add(ct.load(xs, (0,), shape=(1024,)), ct.load(ys, (0,), shape=(1024,))))
 
-    _launch(device, kernel_mixed, (xs, ys, out_a, out_b))
+    _launch_cutile(device, mixed_lengths_cutile_kernel, (xs, ys, *outs.values()))
     expected = x_np * 2.0 + np.sin(y_np)
-    np.testing.assert_allclose(out_a.numpy(), expected[:64], rtol=1e-6, atol=1e-6)
-    np.testing.assert_allclose(out_b.numpy(), expected, rtol=1e-6, atol=1e-6)
-
-    # sharing is inferred per call, so an all-scalar signature is declared
-    # for every length like any other; a call whose arguments are all shared
-    # values runs num_worker_warps * 32 invocations
-    d_uni = wpct.export_func(all_uniform_sum, num_worker_warps=2, device=device)
-    test.assertEqual(d_uni.lengths, _cutile._UNIVERSAL_LENGTHS)
-    out_u = wp.zeros(64, dtype=wp.float32, device=device)
-
-    @ct.kernel(num_worker_warps=2)
-    def kernel_all_shared(out_a):
-        ct.store(out_a, (0,), d_uni(1.5, 2.0))
-
-    _launch(device, kernel_all_shared, (out_u,))
-    np.testing.assert_allclose(out_u.numpy(), 3.5)
+    for length, out in outs.items():
+        np.testing.assert_allclose(out.numpy(), expected[:length], rtol=1e-6, atol=1e-6)
 
 
 def test_mesh_query_scratch_stack(test, device):
     """Run point and iterator mesh queries at any tile length and block size, hint-independent."""
     ct = _import_ct()
-    d = wpct.export_func(probe_mesh_sdf, num_worker_warps=NUM_WARPS, device=device)
-    d_box = wpct.export_func(aabb_count, num_worker_warps=NUM_WARPS, device=device)
+    wp_closest_point_u = wpct.export_func(closest_point_u, device=device)
+    wp_mesh_aabb_count = wpct.export_func(mesh_aabb_count, num_worker_warps=NUM_WARPS, device=device)
+    # a hint above 8 warps grows the slab, so it must key the identity:
+    # reusing the smaller slab would trap in the 16-warp block below
+    wp_mesh_aabb_count_16_warps = wpct.export_func(mesh_aabb_count, num_worker_warps=16, device=device)
+    test.assertNotEqual(wp_mesh_aabb_count_16_warps.version, wp_mesh_aabb_count.version)
     # the scratch slab costs 128 bytes per worker thread per query family
     # (documented): a 32-warp block needs 128 KiB, more than some GPUs
     # allow per block, and that is reported at declaration, not as a fault
-    smem_limit = device.max_shared_memory_per_block
-    fits_1024 = 128 * 1024 <= smem_limit
-    if not fits_1024:
+    if 128 * 1024 > device.max_shared_memory_per_block:
         with test.assertRaisesRegex(ValueError, "compiler scratch .* shared memory per block"):
-            wpct.export_func(aabb_count, num_worker_warps=32, device=device)
-    # a hint above 8 warps grows the slab, so it must key the identity:
-    # reusing the smaller slab would trap in the 16-warp block below
-    test.assertNotEqual(wpct.export_func(aabb_count, num_worker_warps=16, device=device).version, d_box.version)
+            wpct.export_func(mesh_aabb_count, num_worker_warps=32, device=device)
 
-    # the point query computes correctly at the hint length ...
     rng = np.random.default_rng(13)
     mesh = _dense_triangle_mesh(rng, device)
-    pts_np = rng.uniform(0.0, 1.0, (NUM_THREADS, 3)).astype(np.float32)
-    pts_pad = wp.array(_pad_vec3(pts_np), dtype=wp.float32, device=device)
-    out = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
+    pts_np = rng.uniform(0.0, 1.0, (512, 3)).astype(np.float32)
+    pts_padded = wp.array(_pad_vec3(pts_np), dtype=wp.float32, device=device)
+    pts_vec3 = wp.array(pts_np, dtype=wp.vec3, device=device)
+    expected_u = wp.zeros(512, dtype=wp.float32, device=device)
+    expected_count = wp.zeros(512, dtype=wp.float32, device=device)
+    wp.launch(
+        mesh_queries_reference,
+        dim=512,
+        inputs=[mesh.id, pts_vec3, expected_u, expected_count],
+        device=device,
+    )
 
-    @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-    def kernel(mesh_id: ct.Constant[int], pts_a, out_a):
-        p = ct.reshape(ct.load(pts_a, (0, 0), shape=(NUM_THREADS, VEC_PAD)), (NUM_THREADS * VEC_PAD,))
-        r = d(mesh_id, p)
-        ct.store(out_a, (0,), r)
+    # the point query keeps its traversal stack per thread, so it runs at any
+    # tile length, and the mesh id may also arrive per invocation as an int64
+    # tile (Tile IR has no unsigned dtypes; the 64 bits pass through unchanged)
+    ids = wp.array(np.full(256, mesh.id, dtype=np.uint64).view(np.int64), dtype=wp.int64, device=device)
+    out_u = wp.zeros(256, dtype=wp.float32, device=device)
+    out_u_by_id = wp.zeros(256, dtype=wp.float32, device=device)
+    out_u_32 = wp.zeros(32, dtype=wp.float32, device=device)
+    out_count = wp.zeros(256, dtype=wp.float32, device=device)
 
-    _launch(device, kernel, (mesh.id, pts_pad, out))
-    ref = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
-    pts_vec = wp.array(pts_np, dtype=wp.vec3, device=device)
-    wp.launch(probe_mesh_sdf_reference, dim=NUM_THREADS, inputs=[mesh.id, pts_vec, ref], device=device)
-    np.testing.assert_allclose(out.numpy(), ref.numpy(), rtol=1e-5, atol=1e-6)
+    @ct.kernel(num_worker_warps=8)
+    def mesh_queries_cutile_kernel(mesh_id: ct.Constant[int], ids, pts, out_u, out_u_by_id, out_u_32, out_count):
+        p = ct.reshape(ct.load(pts, (0, 0), shape=(256, VEC_PAD)), (256 * VEC_PAD,))
+        ct.store(out_u, (0,), wp_closest_point_u(mesh_id, p))
+        ct.store(out_u_by_id, (0,), wp_closest_point_u(ct.load(ids, (0,), shape=(256,)), p))
+        p_32 = ct.reshape(ct.load(pts, (0, 0), shape=(32, VEC_PAD)), (32 * VEC_PAD,))
+        ct.store(out_u_32, (0,), wp_closest_point_u(mesh_id, p_32))
+        # every thread of the block traverses at once, so the iterator query's
+        # slab must cover the calling block: a 4-warp hint still covers 8
+        # warps, the slab's minimum
+        ct.store(out_count, (0,), wp_mesh_aabb_count(mesh_id, p))
 
-    # the id may also arrive per invocation, as an int64 tile (Tile IR has
-    # no unsigned dtypes; the 64 bits pass through unchanged)
-    d_ids = wpct.export_func(probe_mesh_sdf, num_worker_warps=NUM_WARPS, device=device)
-    ids_np = np.full(NUM_THREADS, mesh.id, dtype=np.uint64).view(np.int64)
-    ids = wp.array(ids_np, dtype=wp.int64, device=device)
-    out_ids = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
+    _launch_cutile(
+        device, mesh_queries_cutile_kernel, (mesh.id, ids, pts_padded, out_u, out_u_by_id, out_u_32, out_count)
+    )
+    np.testing.assert_allclose(out_u.numpy(), expected_u.numpy()[:256], rtol=1e-5, atol=1e-6)
+    np.testing.assert_allclose(out_u_by_id.numpy(), expected_u.numpy()[:256], rtol=1e-5, atol=1e-6)
+    np.testing.assert_allclose(out_u_32.numpy(), expected_u.numpy()[:32], rtol=1e-5, atol=1e-6)
+    np.testing.assert_array_equal(out_count.numpy(), expected_count.numpy()[:256])
 
-    @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-    def kernel_ids(ids_a, pts_a, out_a):
-        p = ct.reshape(ct.load(pts_a, (0, 0), shape=(NUM_THREADS, VEC_PAD)), (NUM_THREADS * VEC_PAD,))
-        ct.store(out_a, (0,), d_ids(ct.load(ids_a, (0,), shape=(NUM_THREADS,)), p))
-
-    _launch(device, kernel_ids, (ids, pts_pad, out_ids))
-    np.testing.assert_allclose(out_ids.numpy(), ref.numpy(), rtol=1e-5, atol=1e-6)
-
-    # ... and at a shorter tile length on the same 128-worker kernel
-    @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-    def kernel_short(mesh_id: ct.Constant[int], pts_a, out_a):
-        p = ct.reshape(ct.load(pts_a, (0, 0), shape=(32, VEC_PAD)), (32 * VEC_PAD,))
-        r = d(mesh_id, p)
-        ct.store(out_a, (0,), r)
-
-    out32 = wp.zeros(32, dtype=wp.float32, device=device)
-    _launch(device, kernel_short, (mesh.id, pts_pad, out32))
-    np.testing.assert_allclose(out32.numpy(), ref.numpy()[:32], rtol=1e-5, atol=1e-6)
-
-    def check_aabb(decl, warps):
-        """Run the iterator query through ``decl`` on a ``warps``-warp block and match the wp.launch reference."""
+    def check_aabb_count(wp_func, warps):
+        """Run the iterator query through ``wp_func`` on a ``warps``-warp block and match the wp.launch reference."""
         threads = warps * 32
-        box_np = rng.uniform(0.0, 1.0, (threads, 3)).astype(np.float32)
-        box_pad = wp.array(_pad_vec3(box_np), dtype=wp.float32, device=device)
 
         @ct.kernel(num_worker_warps=warps)
-        def kernel_box(mesh_id: ct.Constant[int], pts_a, out_a):
-            p = ct.reshape(ct.load(pts_a, (0, 0), shape=(threads, VEC_PAD)), (threads * VEC_PAD,))
-            ct.store(out_a, (0,), decl(mesh_id, p))
+        def aabb_count_cutile_kernel(mesh_id: ct.Constant[int], pts, out):
+            p = ct.reshape(ct.load(pts, (0, 0), shape=(threads, VEC_PAD)), (threads * VEC_PAD,))
+            ct.store(out, (0,), wp_func(mesh_id, p))
 
-        out_box = wp.zeros(threads, dtype=wp.float32, device=device)
-        _launch(device, kernel_box, (mesh.id, box_pad, out_box))
-        ref_box = wp.zeros(threads, dtype=wp.float32, device=device)
-        box_vec = wp.array(box_np, dtype=wp.vec3, device=device)
-        wp.launch(aabb_count_reference, dim=threads, inputs=[mesh.id, box_vec, ref_box], device=device)
-        np.testing.assert_array_equal(out_box.numpy(), ref_box.numpy())
+        out = wp.zeros(threads, dtype=wp.float32, device=device)
+        _launch_cutile(device, aabb_count_cutile_kernel, (mesh.id, pts_padded, out))
+        np.testing.assert_array_equal(out.numpy(), expected_count.numpy()[:threads])
 
-    # every thread traverses at once, so the slab must cover the calling
-    # block: a 4-warp hint still covers 8 warps, the slab's minimum ...
-    check_aabb(d_box, 8)
-    # ... and larger blocks are declared through num_worker_warps
-    check_aabb(wpct.export_func(aabb_count, num_worker_warps=16, device=device), 16)
-    if fits_1024:
-        check_aabb(wpct.export_func(aabb_count, num_worker_warps=32, device=device), 32)
-    # at block scope the slab is sized to the pinned block exactly
-    check_aabb(wpct.export_func(aabb_count, num_worker_warps=8, scope="block", device=device), 8)
+    # larger blocks are declared through num_worker_warps ...
+    check_aabb_count(wp_mesh_aabb_count_16_warps, 16)
+    # ... and at block scope the slab is sized to the pinned block exactly
+    check_aabb_count(wpct.export_func(mesh_aabb_count, num_worker_warps=8, scope="block", device=device), 8)
 
 
 def test_bvh_and_nested_query_scratch_stacks(test, device):
-    """Serve BVH sphere queries and nested mesh+BVH queries from separate scratch slabs on an 8-warp block."""
+    """Serve BVH, nested mesh+BVH, and back-to-back mesh and BVH queries from separate scratch slabs on an 8-warp block."""
     ct = _import_ct()
     rng = np.random.default_rng(29)
     # a dense mesh and a dense set of small boxes so both traversals go deep
     mesh = _dense_triangle_mesh(rng, device)
-    nbox = 20000
-    box_c = rng.uniform(0.0, 1.0, (nbox, 3)).astype(np.float32)
+    box_centers = rng.uniform(0.0, 1.0, (20000, 3)).astype(np.float32)
     bvh = wp.Bvh(
-        lowers=wp.array(box_c - 0.01, dtype=wp.vec3, device=device),
-        uppers=wp.array(box_c + 0.01, dtype=wp.vec3, device=device),
+        lowers=wp.array(box_centers - 0.01, dtype=wp.vec3, device=device),
+        uppers=wp.array(box_centers + 0.01, dtype=wp.vec3, device=device),
     )
     pts_np = rng.uniform(0.0, 1.0, (256, 3)).astype(np.float32)
-    pts_pad = wp.array(_pad_vec3(pts_np), dtype=wp.float32, device=device)
-    pts_vec = wp.array(pts_np, dtype=wp.vec3, device=device)
+    pts_padded = wp.array(_pad_vec3(pts_np), dtype=wp.float32, device=device)
+    pts_vec3 = wp.array(pts_np, dtype=wp.vec3, device=device)
 
     # every BVH query kind gets the scratch slab, sized for the block
-    d_sph = wpct.export_func(bvh_sphere_count, num_worker_warps=NUM_WARPS, device=device)
+    wp_bvh_sphere_count = wpct.export_func(bvh_sphere_count, num_worker_warps=NUM_WARPS, device=device)
+    wp_nested_mesh_bvh_count = wpct.export_func(nested_mesh_bvh_count, num_worker_warps=NUM_WARPS, device=device)
+    wp_repeated_mesh_aabb_count = wpct.export_func(repeated_mesh_aabb_count, num_worker_warps=NUM_WARPS, device=device)
 
     @ct.kernel(num_worker_warps=8)
-    def kernel_sph(bvh_id: ct.Constant[int], pts_a, out_a):
-        p = ct.reshape(ct.load(pts_a, (0, 0), shape=(256, VEC_PAD)), (256 * VEC_PAD,))
-        ct.store(out_a, (0,), d_sph(bvh_id, p))
+    def bvh_queries_cutile_kernel(
+        mesh_id: ct.Constant[int], bvh_id: ct.Constant[int], pts, out_sphere, out_nested, out_pair
+    ):
+        p = ct.reshape(ct.load(pts, (0, 0), shape=(256, VEC_PAD)), (256 * VEC_PAD,))
+        # a BVH query nested in a mesh query: the two slabs are laid out
+        # back to back, so the inner traversal cannot clobber the outer one
+        ct.store(out_nested, (0,), wp_nested_mesh_bvh_count(mesh_id, bvh_id, p))
+        # two foreign functions of different query families back to back, with
+        # no barrier between the calls: each wrapper binds only the slab it
+        # owns, so a warp still re-reading the mesh slab pointer inside the
+        # repeated mesh query never observes the BVH-only call's binding
+        aabb_count = wp_repeated_mesh_aabb_count(mesh_id, p)
+        sphere_count = wp_bvh_sphere_count(bvh_id, p)
+        ct.store(out_sphere, (0,), sphere_count)
+        ct.store(out_pair, (0,), aabb_count + sphere_count)
 
-    out_sph = wp.zeros(256, dtype=wp.float32, device=device)
-    _launch(device, kernel_sph, (bvh.id, pts_pad, out_sph))
-    ref_sph = wp.zeros(256, dtype=wp.float32, device=device)
-    wp.launch(bvh_sphere_count_reference, dim=256, inputs=[bvh.id, pts_vec, ref_sph], device=device)
-    np.testing.assert_array_equal(out_sph.numpy(), ref_sph.numpy())
-    test.assertGreater(ref_sph.numpy().max(), 0.0)
-
-    # a BVH query nested in a mesh query: the two slabs are laid out
-    # back to back, so the inner traversal cannot clobber the outer one
-    d_nest = wpct.export_func(nested_mesh_bvh_count, num_worker_warps=NUM_WARPS, device=device)
-
-    @ct.kernel(num_worker_warps=8)
-    def kernel_nest(mesh_id: ct.Constant[int], bvh_id: ct.Constant[int], pts_a, out_a):
-        p = ct.reshape(ct.load(pts_a, (0, 0), shape=(256, VEC_PAD)), (256 * VEC_PAD,))
-        ct.store(out_a, (0,), d_nest(mesh_id, bvh_id, p))
-
-    out_nest = wp.zeros(256, dtype=wp.float32, device=device)
-    _launch(device, kernel_nest, (mesh.id, bvh.id, pts_pad, out_nest))
-    ref_nest = wp.zeros(256, dtype=wp.float32, device=device)
+    expected_sphere = wp.zeros(256, dtype=wp.float32, device=device)
+    expected_nested = wp.zeros(256, dtype=wp.float32, device=device)
+    expected_pair = wp.zeros(256, dtype=wp.float32, device=device)
     # 128-thread blocks keep the reference's two static stacks at 32 KiB
     # (see the kernel's module="unique" note)
     wp.launch(
-        nested_mesh_bvh_count_reference,
+        bvh_queries_reference,
         dim=256,
-        inputs=[mesh.id, bvh.id, pts_vec, ref_nest],
+        inputs=[mesh.id, bvh.id, pts_vec3, expected_sphere, expected_nested, expected_pair],
         device=device,
         block_dim=128,
     )
-    np.testing.assert_array_equal(out_nest.numpy(), ref_nest.numpy())
-    test.assertGreater(ref_nest.numpy().max(), 1000.0)
+    test.assertGreater(expected_sphere.numpy().max(), 0.0)
+    test.assertGreater(expected_nested.numpy().max(), 1000.0)
 
-    # two foreign functions of different query families in one kernel, with
-    # no barrier between the calls: each wrapper binds only the slab it
-    # owns, so a warp still re-reading the mesh slab pointer inside the
-    # repeated mesh query never observes the BVH-only call's binding
-    d_rep = wpct.export_func(aabb_count_repeat, num_worker_warps=NUM_WARPS, device=device)
-
-    @ct.kernel(num_worker_warps=8)
-    def kernel_pair(mesh_id: ct.Constant[int], bvh_id: ct.Constant[int], pts_a, out_a):
-        p = ct.reshape(ct.load(pts_a, (0, 0), shape=(256, VEC_PAD)), (256 * VEC_PAD,))
-        ct.store(out_a, (0,), d_rep(mesh_id, p) + d_sph(bvh_id, p))
-
-    ref_pair = wp.zeros(256, dtype=wp.float32, device=device)
-    wp.launch(
-        aabb_sphere_pair_reference,
-        dim=256,
-        inputs=[mesh.id, bvh.id, pts_vec, ref_pair],
-        device=device,
-        block_dim=128,
-    )
     # the race depends on warp timing, so repeat the launch and check every result
+    out_sphere = wp.zeros(256, dtype=wp.float32, device=device)
+    out_nested = wp.zeros(256, dtype=wp.float32, device=device)
     out_pair = wp.zeros(256, dtype=wp.float32, device=device)
     for _ in range(4):
-        out_pair.zero_()
-        _launch(device, kernel_pair, (mesh.id, bvh.id, pts_pad, out_pair))
-        np.testing.assert_array_equal(out_pair.numpy(), ref_pair.numpy())
+        for out in (out_sphere, out_nested, out_pair):
+            out.zero_()
+        _launch_cutile(
+            device, bvh_queries_cutile_kernel, (mesh.id, bvh.id, pts_padded, out_sphere, out_nested, out_pair)
+        )
+        np.testing.assert_array_equal(out_sphere.numpy(), expected_sphere.numpy())
+        np.testing.assert_array_equal(out_nested.numpy(), expected_nested.numpy())
+        np.testing.assert_array_equal(out_pair.numpy(), expected_pair.numpy())
 
 
 def test_module_build_options_honored(test, device):
@@ -1048,36 +994,37 @@ def test_module_build_options_honored(test, device):
     module = sin_probe.module
     # large arguments expose the approximate __sinf that fast_math selects
     x_np = np.linspace(1.0e3, 1.0e4, NUM_THREADS, dtype=np.float32)
-    x = wp.array(x_np, dtype=wp.float32, device=device)
-    out = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
-    ref = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
+    xs = wp.array(x_np, dtype=wp.float32, device=device)
 
     def run(fast_math):
-        """Build and call the foreign function under the given fast_math option; return (version, results, reference)."""
+        """Declare and call sin_probe under the given fast_math option; return (version, result, wp.launch reference)."""
         wp.set_module_options({"fast_math": fast_math}, module=module)
-        d = wpct.export_func(sin_probe, num_worker_warps=NUM_WARPS, device=device)
+        wp_sin_probe = wpct.export_func(sin_probe, device=device)
 
-        @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-        def kernel(x_a, out_a):
-            ct.store(out_a, (0,), d(ct.load(x_a, (0,), shape=(NUM_THREADS,))))
+        # one kernel per build: two builds linked into one kernel share one math mode
+        @ct.kernel(num_worker_warps=NUM_WARPS)
+        def sin_probe_cutile_kernel(xs, out):
+            ct.store(out, (0,), wp_sin_probe(ct.load(xs, (0,), shape=(NUM_THREADS,))))
 
-        _launch(device, kernel, (x, out))
-        wp.launch(sin_probe_reference, dim=NUM_THREADS, inputs=[x, ref], device=device)
-        return d.version, out.numpy().copy(), ref.numpy().copy()
+        out = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
+        _launch_cutile(device, sin_probe_cutile_kernel, (xs, out))
+        expected = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
+        wp.launch(sin_probe_reference, dim=NUM_THREADS, inputs=[xs, expected], device=device)
+        return wp_sin_probe.version, out.numpy(), expected.numpy()
 
     original = module.options.get("fast_math", False)
     try:
-        v_fast, out_fast, ref_fast = run(True)
-        v_prec, out_prec, ref_prec = run(False)
+        version_fast, out_fast, expected_fast = run(True)
+        version_precise, out_precise, expected_precise = run(False)
     finally:
         wp.set_module_options({"fast_math": original}, module=module)
     # the two builds must differ on these inputs, or the comparisons below prove nothing
-    test.assertFalse(np.array_equal(ref_fast, ref_prec))
+    test.assertFalse(np.array_equal(expected_fast, expected_precise))
     # each setting matches wp.launch of the same function under the same option,
     # and the tilelib identity tracks the option
-    np.testing.assert_array_equal(out_fast, ref_fast)
-    np.testing.assert_array_equal(out_prec, ref_prec)
-    test.assertNotEqual(v_fast, v_prec)
+    np.testing.assert_array_equal(out_fast, expected_fast)
+    np.testing.assert_array_equal(out_precise, expected_precise)
+    test.assertNotEqual(version_fast, version_precise)
 
     # fuse_fp=False cannot be guaranteed: contraction is decided when
     # tileiras links the kernel, so declaring under it warns (Warp's logger
@@ -1093,7 +1040,7 @@ def test_module_build_options_honored(test, device):
             contextlib.redirect_stderr(io.StringIO()) as stderr,
         ):
             warnings.simplefilter("always")
-            wpct.export_func(sin_probe, num_worker_warps=NUM_WARPS, device=device)
+            wpct.export_func(sin_probe, device=device)
     finally:
         if had_fuse_fp:
             wp.set_module_options({"fuse_fp": original_fuse_fp}, module=module)
@@ -1107,8 +1054,7 @@ def test_module_preamble_and_build_dependencies(test, device):
     ct = _import_ct()
     module = preamble_probe.module
     x_np = np.arange(NUM_THREADS, dtype=np.float32)
-    x = wp.array(x_np, dtype=wp.float32, device=device)
-    out = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
+    xs = wp.array(x_np, dtype=wp.float32, device=device)
 
     # a wp.func_native dependency reads a define from a header that only the
     # module's preamble includes, and the header is a registered build dependency
@@ -1116,8 +1062,8 @@ def test_module_preamble_and_build_dependencies(test, device):
     test.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
     header = os.path.join(tmp, "wp_cutile_dep.h")
 
-    def run(value):
-        """Write the header with ``value``, re-register it, build, and return (version, foreign result)."""
+    def export_with_header(value):
+        """Write the header with ``value``, re-register it, and declare preamble_probe against it."""
         with open(header, "w") as f:
             f.write(f"#define WP_CUTILE_TEST_SEVEN {value}f\n")
         # re-setting the option re-reads the dependency's content hash
@@ -1131,314 +1077,253 @@ def test_module_preamble_and_build_dependencies(test, device):
             },
             module=module,
         )
-        d = wpct.export_func(preamble_probe, num_worker_warps=NUM_WARPS, device=device)
-
-        @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-        def kernel(x_a, out_a):
-            ct.store(out_a, (0,), d(ct.load(x_a, (0,), shape=(NUM_THREADS,))))
-
-        _launch(device, kernel, (x, out))
-        return d.version, out.numpy().copy()
+        return wpct.export_func(preamble_probe, device=device)
 
     original = module.options.get("extra_build_options")
     try:
-        v7, out7 = run(7.0)
-        v11, out11 = run(11.0)
+        wp_preamble_probe_7 = export_with_header(7.0)
+        wp_preamble_probe_11 = export_with_header(11.0)
     finally:
         wp.set_module_options({"extra_build_options": original}, module=module)
-    np.testing.assert_array_equal(out7, x_np + 7.0)
     # the same source with a changed header must not reuse the old tilelib
-    test.assertNotEqual(v11, v7)
-    np.testing.assert_array_equal(out11, x_np + 11.0)
+    test.assertNotEqual(wp_preamble_probe_11.version, wp_preamble_probe_7.version)
+
+    @ct.kernel(num_worker_warps=NUM_WARPS)
+    def preamble_probe_cutile_kernel(xs, out_7, out_11):
+        x = ct.load(xs, (0,), shape=(NUM_THREADS,))
+        ct.store(out_7, (0,), wp_preamble_probe_7(x))
+        ct.store(out_11, (0,), wp_preamble_probe_11(x))
+
+    out_7 = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
+    out_11 = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
+    _launch_cutile(device, preamble_probe_cutile_kernel, (xs, out_7, out_11))
+    np.testing.assert_array_equal(out_7.numpy(), x_np + 7.0)
+    np.testing.assert_array_equal(out_11.numpy(), x_np + 11.0)
 
 
-def test_struct_shared_across_tilelibs(test, device):
-    """Compose two foreign functions that share a Warp struct inside one kernel (producer -> consumer)."""
+def test_struct_operands(test, device):
+    """Pass a struct from one tilelib to another, broadcast struct blobs to every invocation, and keep field alignment."""
     ct = _import_ct()
-    d_make = wpct.export_func(make_params, num_worker_warps=NUM_WARPS, device=device)
-    d_apply = wpct.export_func(apply_params, num_worker_warps=NUM_WARPS, device=device)
+    wp_make_params = wpct.export_func(make_params, device=device)
+    wp_apply_params = wpct.export_func(apply_params, device=device)
+    wp_wide_params_sum = wpct.export_func(wide_params_sum, device=device)
+
     rng = np.random.default_rng(11)
     x_np = rng.uniform(0.5, 2.0, NUM_THREADS).astype(np.float32)
     y_np = rng.standard_normal((NUM_THREADS, 3)).astype(np.float32)
     xs = wp.array(x_np, dtype=wp.float32, device=device)
-    ys_pad = wp.array(_pad_vec3(y_np), dtype=wp.float32, device=device)
-    out = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
+    ys_padded = wp.array(_pad_vec3(y_np), dtype=wp.float32, device=device)
 
-    # both tilelibs instantiate BridgeParams and its helper functions, which
-    # must link into one kernel without multiply-defined symbols
-    @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-    def kernel(xs_a, ys_a, out_a):
-        x = ct.load(xs_a, (0,), shape=(NUM_THREADS,))
-        y = ct.reshape(ct.load(ys_a, (0, 0), shape=(NUM_THREADS, VEC_PAD)), (NUM_THREADS * VEC_PAD,))
-        ct.store(out_a, (0,), d_apply(d_make(x), y))
+    params = BridgeParams()
+    params.scale = 3.0
+    params.offset = wp.vec3(0.5, -1.0, 2.0)
+    params.exponent = 2
+    params_blob = wp.array(wpct.encode_struct(params), dtype=wp.int32, device=device)
+    wide_params = WideAlignParams()
+    wide_params.a = 1.5
+    wide_params.b = 7
+    wide_params_blob = wp.array(wpct.encode_struct(wide_params), dtype=wp.int32, device=device)
+    params_words = params_blob.shape[0]
+    wide_params_words = wide_params_blob.shape[0]
 
-    _launch(device, kernel, (xs, ys_pad, out))
-    # reference: apply_params(make_params(x), y) = length(y + (x, 0, -x)) * x * 0.5
-    expected = np.linalg.norm(y_np + np.stack([x_np, np.zeros_like(x_np), -x_np], axis=1), axis=1) * x_np * 0.5
-    np.testing.assert_allclose(out.numpy(), expected.astype(np.float32), rtol=1e-5, atol=1e-6)
+    @ct.kernel(num_worker_warps=NUM_WARPS)
+    def struct_operands_cutile_kernel(xs, ys, params_blob, wide_params_blob, out_returned, out_shared, out_wide):
+        x = ct.load(xs, (0,), shape=(NUM_THREADS,))
+        y = ct.reshape(ct.load(ys, (0, 0), shape=(NUM_THREADS, VEC_PAD)), (NUM_THREADS * VEC_PAD,))
+        # both tilelibs instantiate BridgeParams and its helper functions, which
+        # must link into one kernel without multiply-defined symbols
+        ct.store(out_returned, (0,), wp_apply_params(wp_make_params(x), y))
+        # one int32 blob tile holds a struct shared by every invocation
+        ct.store(out_shared, (0,), wp_apply_params(ct.load(params_blob, (0,), shape=(params_words,)), y))
+        # a struct with an 8-byte-aligned field: its blob is declared with a
+        # two-word alignment and the field offsets survive the trip
+        wide = ct.load(wide_params_blob, (0,), shape=(wide_params_words,))
+        ct.store(out_wide, (0,), wp_wide_params_sum(wide, x))
+
+    out_returned = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
+    out_shared = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
+    out_wide = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
+    _launch_cutile(
+        device,
+        struct_operands_cutile_kernel,
+        (xs, ys_padded, params_blob, wide_params_blob, out_returned, out_shared, out_wide),
+    )
+    # apply_params(make_params(x), y) = length(y + (x, 0, -x)) * x * 0.5
+    expected_returned = np.linalg.norm(y_np + np.stack([x_np, np.zeros_like(x_np), -x_np], axis=1), axis=1) * x_np * 0.5
+    np.testing.assert_allclose(out_returned.numpy(), expected_returned.astype(np.float32), rtol=1e-5, atol=1e-6)
+    # apply_params(params, y) = length(y + offset) * scale * 0.5^exponent
+    expected_shared = np.linalg.norm(y_np + np.array([0.5, -1.0, 2.0], dtype=np.float32), axis=1) * 3.0 * 0.25
+    np.testing.assert_allclose(out_shared.numpy(), expected_shared.astype(np.float32), rtol=1e-5)
+    np.testing.assert_allclose(out_wide.numpy(), x_np + 1.5 + 7.0, rtol=1e-6, atol=1e-6)
 
 
-def test_keyword_parameter_names(test, device):
-    """Call functions whose parameter names are C++ keywords or collide with generated operand names."""
+def test_parameter_name_clashes(test, device):
+    """Call functions whose parameter names are C++ keywords or match a generated operand name."""
     ct = _import_ct()
-    d = wpct.export_func(keyword_params, num_worker_warps=NUM_WARPS, device=device)
+    wp_cpp_keyword_params = wpct.export_func(cpp_keyword_params, device=device)
+    # an array parameter and a scalar named after one of its generated elements coexist
+    wp_colliding_names = wpct.export_func(colliding_names, device=device)
     rng = np.random.default_rng(5)
     x_np = rng.standard_normal(NUM_THREADS).astype(np.float32)
     y_np = rng.standard_normal(NUM_THREADS).astype(np.float32)
     xs = wp.array(x_np, dtype=wp.float32, device=device)
     ys = wp.array(y_np, dtype=wp.float32, device=device)
-    out = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
 
-    @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-    def kernel(xs_a, ys_a, out_a):
-        x = ct.load(xs_a, (0,), shape=(NUM_THREADS,))
-        y = ct.load(ys_a, (0,), shape=(NUM_THREADS,))
-        ct.store(out_a, (0,), d(x, y))
+    @ct.kernel(num_worker_warps=NUM_WARPS)
+    def name_clash_cutile_kernel(
+        xs_ptr: ct.Constant[int], xs_len: ct.Constant[int], xs, ys, out_cpp_keywords, out_colliding
+    ):
+        x = ct.load(xs, (0,), shape=(NUM_THREADS,))
+        y = ct.load(ys, (0,), shape=(NUM_THREADS,))
+        ct.store(out_cpp_keywords, (0,), wp_cpp_keyword_params(x, y))
+        ct.store(out_colliding, (0,), wp_colliding_names((xs_ptr, xs_len), y))
 
-    _launch(device, kernel, (xs, ys, out))
-    np.testing.assert_allclose(out.numpy(), x_np * 2.0 + y_np, rtol=1e-6, atol=1e-6)
-
-    # an array parameter and a scalar named after one of its generated elements coexist
-    d_c = wpct.export_func(colliding_names, num_worker_warps=NUM_WARPS, device=device)
-
-    @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-    def kernel_c(ptr: ct.Constant[int], n: ct.Constant[int], ys_a, out_a):
-        ct.store(out_a, (0,), d_c((ptr, n), ct.load(ys_a, (0,), shape=(NUM_THREADS,))))
-
-    _launch(device, kernel_c, (*wpct.array_pointer_args(xs), ys, out))
-    np.testing.assert_allclose(out.numpy(), x_np[0] + y_np, rtol=1e-6, atol=1e-6)
+    out_cpp_keywords = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
+    out_colliding = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
+    _launch_cutile(
+        device, name_clash_cutile_kernel, (*wpct.array_pointer_args(xs), xs, ys, out_cpp_keywords, out_colliding)
+    )
+    np.testing.assert_allclose(out_cpp_keywords.numpy(), x_np * 2.0 + y_np, rtol=1e-6, atol=1e-6)
+    np.testing.assert_allclose(out_colliding.numpy(), x_np[0] + y_np, rtol=1e-6, atol=1e-6)
 
 
-def test_mat_uniform_vec_return(test, device):
-    """Marshal a broadcast matrix input and per-invocation vector returns at several tile lengths."""
+def test_matrix_operand_and_vec3_return(test, device):
+    """Broadcast a matrix to every invocation and return padded vec3 values at several tile lengths."""
     ct = _import_ct()
     rng = np.random.default_rng(7)
-    d_mv = wpct.export_func(mat_vec, device=device)
+    wp_mat_vec = wpct.export_func(mat_vec, device=device)
 
     m_np = rng.standard_normal((3, 3)).astype(np.float32)
-    m_pad = np.zeros(16, dtype=np.float32)
-    m_pad[:9] = m_np.reshape(-1)  # row-major, padded to the pow2 tile width
-    ms = wp.array(m_pad, dtype=wp.float32, device=device)
+    m_padded = np.zeros(16, dtype=np.float32)
+    m_padded[:9] = m_np.reshape(-1)  # row-major, padded to the pow2 tile width
+    ms = wp.array(m_padded, dtype=wp.float32, device=device)
+    v_np = rng.standard_normal((512, 3)).astype(np.float32)
+    vs_padded = wp.array(_pad_vec3(v_np), dtype=wp.float32, device=device)
+    # poison the destinations so the zero-filled pad lanes are proven
+    outs = {length: wp.full(length * VEC_PAD, 777.0, dtype=wp.float32, device=device) for length in (64, 128, 512)}
 
-    def run(length):
-        """Call the shared declaration with width-4 tiles of the given length."""
-        v_np = rng.standard_normal((length, 3)).astype(np.float32)
-        vs = wp.array(_pad_vec3(v_np), dtype=wp.float32, device=device)
-        # poison the destination so the zero-filled pad lanes are proven
-        out = wp.full(length * VEC_PAD, 777.0, dtype=wp.float32, device=device)
+    # the lengths other than the 128-invocation fallback exercise the width-4
+    # dispatch constants (compare against length * VEC_PAD, not length)
+    @ct.kernel(num_worker_warps=NUM_WARPS)
+    def mat_vec_cutile_kernel(ms, vs, out_64, out_128, out_512):
+        m = ct.load(ms, (0,), shape=(16,))
+        ct.store(out_64, (0,), wp_mat_vec(m, ct.reshape(ct.load(vs, (0, 0), shape=(64, VEC_PAD)), (64 * VEC_PAD,))))
+        ct.store(out_128, (0,), wp_mat_vec(m, ct.reshape(ct.load(vs, (0, 0), shape=(128, VEC_PAD)), (128 * VEC_PAD,))))
+        ct.store(out_512, (0,), wp_mat_vec(m, ct.reshape(ct.load(vs, (0, 0), shape=(512, VEC_PAD)), (512 * VEC_PAD,))))
 
-        @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-        def kernel(ms_a, vs_a, out_a):
-            m_t = ct.load(ms_a, (0,), shape=(16,))
-            v_t = ct.reshape(ct.load(vs_a, (0, 0), shape=(length, VEC_PAD)), (length * VEC_PAD,))
-            r = d_mv(m_t, v_t)
-            ct.store(out_a, (0,), r)
-
-        _launch(device, kernel, (ms, vs, out))
+    _launch_cutile(device, mat_vec_cutile_kernel, (ms, vs_padded, *outs.values()))
+    for length, out in outs.items():
         got = out.numpy().reshape(length, VEC_PAD)
-        np.testing.assert_allclose(got[:, :3], v_np @ m_np.T, rtol=1e-5, atol=1e-5)
+        np.testing.assert_allclose(got[:, :3], v_np[:length] @ m_np.T, rtol=1e-5, atol=1e-5)
         # padding lanes of the returned vec3 are zero-filled by the wrapper
         np.testing.assert_allclose(got[:, 3], 0.0)
 
-    # non-fallback lengths exercise the width-4 dispatch constants
-    # (compare against length * VEC_PAD, not length)
-    for length in (64, NUM_THREADS, 512):
-        run(length)
-
-    # a shared vector takes a single (width,) tile, broadcast to every invocation
-    d_blend_u = wpct.export_func(blend, device=device)
-    y_one = np.array([0.3, -1.2, 2.0], dtype=np.float32)
-    y_pad = wp.array(_pad_vec3(y_one[None, :])[0], dtype=wp.float32, device=device)
-    x_np = rng.standard_normal(NUM_THREADS).astype(np.float32)
-    xs = wp.array(x_np, dtype=wp.float32, device=device)
-    out_u = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
-
-    @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-    def kernel_u(xs_a, y_a, out_a):
-        ct.store(
-            out_a, (0,), d_blend_u(ct.load(xs_a, (0,), shape=(NUM_THREADS,)), ct.load(y_a, (0,), shape=(VEC_PAD,)))
-        )
-
-    _launch(device, kernel_u, (xs, y_pad, out_u))
-    ref_u = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
-    ys_same = wp.array(np.tile(y_one, (NUM_THREADS, 1)), dtype=wp.vec3, device=device)
-    wp.launch(blend_reference, dim=NUM_THREADS, inputs=[xs, ys_same, ref_u], device=device)
-    np.testing.assert_allclose(out_u.numpy(), ref_u.numpy(), rtol=1e-5, atol=1e-6)
-
 
 def test_array_operands(test, device):
-    """Exercise array gather, atomic mutation, 2d indexing, and wrong-length tuple rejection."""
+    """Gather from a 1d array, mutate an array atomically, and index a 2d array through foreign calls."""
     ct = _import_ct()
     rng = np.random.default_rng(11)
+    wp_gather_scale = wpct.export_func(gather_scale, device=device)
+    wp_accumulate = wpct.export_func(accumulate, device=device)
+    wp_read2d = wpct.export_func(read2d, device=device)
 
-    # section 1: 1d array + per-invocation index + shared scalar
-    # (raw pointers travel as rank-0 int64 tiles: Tile IR dtypes are signed only)
     data_np = rng.standard_normal(1000).astype(np.float32)
     data = wp.array(data_np, dtype=wp.float32, device=device)
-    idx_np = rng.integers(0, 1000, NUM_THREADS).astype(np.int32)
-    idx = wp.array(idx_np, dtype=wp.int32, device=device)
-    d_gather = wpct.export_func(gather_scale, num_worker_warps=NUM_WARPS, device=device)
-    data_ptr, data_len = wpct.array_pointer_args(data)
-
-    @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-    def k_gather(ptr: ct.Constant[int], length: ct.Constant[int], idxs, out):
-        # 1:1 call: the array parameter takes its (address, length) tuple,
-        # plain numbers materialize as broadcast tiles automatically
-        i_t = ct.load(idxs, (0,), shape=(NUM_THREADS,))
-        r = d_gather((ptr, length), i_t, 2.5)
-        ct.store(out, (0,), r)
-
-    out = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
-    _launch(device, k_gather, (data_ptr, data_len, idx, out))
-    np.testing.assert_allclose(out.numpy(), data_np[idx_np] * np.float32(2.5), rtol=1e-6)
-
-    # section 2: array mutation through the foreign call (histogram via atomic_add)
+    ids_np = rng.integers(0, 1000, NUM_THREADS).astype(np.int32)
+    ids = wp.array(ids_np, dtype=wp.int32, device=device)
     hist = wp.zeros(16, dtype=wp.float32, device=device)
     bins_np = rng.integers(0, 16, NUM_THREADS).astype(np.int32)
     bins = wp.array(bins_np, dtype=wp.int32, device=device)
-    d_acc = wpct.export_func(accumulate, num_worker_warps=NUM_WARPS, device=device)
-    hist_ptr, hist_len = wpct.array_pointer_args(hist)
-
-    # the call's side effect survives when its result is discarded: foreign
-    # calls carry a memory effect, so the unused-result call is not eliminated
-    @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-    def k_acc(ptr: ct.Constant[int], length: ct.Constant[int], bins_arr):
-        # explicit rank-0 tiles also pass through unchanged inside the tuple
-        ptr_t = ct.full((), ptr, dtype=ct.int64)
-        len_t = ct.full((), length, dtype=ct.int32)
-        b_t = ct.load(bins_arr, (0,), shape=(NUM_THREADS,))
-        v_t = ct.full((NUM_THREADS,), 1.0, dtype=ct.float32)
-        d_acc((ptr_t, len_t), b_t, v_t)
-
-    _launch(device, k_acc, (hist_ptr, hist_len, bins))
-    np.testing.assert_allclose(hist.numpy(), np.bincount(bins_np, minlength=16).astype(np.float32))
-
-    # section 3: 2d array expands to pointer + two extents
     m_np = rng.standard_normal((32, 8)).astype(np.float32)
     m = wp.array(m_np, dtype=wp.float32, device=device)
-    ii_np = rng.integers(0, 32, NUM_THREADS).astype(np.int32)
-    jj_np = rng.integers(0, 8, NUM_THREADS).astype(np.int32)
-    ii = wp.array(ii_np, dtype=wp.int32, device=device)
-    jj = wp.array(jj_np, dtype=wp.int32, device=device)
-    d_2d = wpct.export_func(read2d, num_worker_warps=NUM_WARPS, device=device)
-    m_ptr, m_d0, m_d1 = wpct.array_pointer_args(m)
+    rows_np = rng.integers(0, 32, NUM_THREADS).astype(np.int32)
+    cols_np = rng.integers(0, 8, NUM_THREADS).astype(np.int32)
+    rows = wp.array(rows_np, dtype=wp.int32, device=device)
+    cols = wp.array(cols_np, dtype=wp.int32, device=device)
 
-    @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-    def k_2d(ptr: ct.Constant[int], d0: ct.Constant[int], d1: ct.Constant[int], iis, jjs, out):
-        i_t = ct.load(iis, (0,), shape=(NUM_THREADS,))
-        j_t = ct.load(jjs, (0,), shape=(NUM_THREADS,))
-        r = d_2d((ptr, d0, d1), i_t, j_t)
-        ct.store(out, (0,), r)
+    @ct.kernel(num_worker_warps=NUM_WARPS)
+    def array_operands_cutile_kernel(
+        data_ptr: ct.Constant[int],
+        data_len: ct.Constant[int],
+        ids,
+        out_gather,
+        hist_ptr: ct.Constant[int],
+        hist_len: ct.Constant[int],
+        bins,
+        m_ptr: ct.Constant[int],
+        m_rows: ct.Constant[int],
+        m_cols: ct.Constant[int],
+        rows,
+        cols,
+        out_2d,
+    ):
+        # an array parameter takes its (address, length) tuple, and plain
+        # numbers materialize as broadcast tiles automatically
+        i = ct.load(ids, (0,), shape=(NUM_THREADS,))
+        ct.store(out_gather, (0,), wp_gather_scale((data_ptr, data_len), i, 2.5))
+        # the call's side effect survives when its result is discarded: foreign
+        # calls carry a memory effect, so the unused-result call is not
+        # eliminated; explicit rank-0 tiles also pass through unchanged inside
+        # the tuple (raw pointers travel as int64: Tile IR dtypes are signed only)
+        hist_ptr_tile = ct.full((), hist_ptr, dtype=ct.int64)
+        hist_len_tile = ct.full((), hist_len, dtype=ct.int32)
+        b = ct.load(bins, (0,), shape=(NUM_THREADS,))
+        wp_accumulate((hist_ptr_tile, hist_len_tile), b, ct.full((NUM_THREADS,), 1.0, dtype=ct.float32))
+        # a 2d array expands to its address and two extents
+        r = ct.load(rows, (0,), shape=(NUM_THREADS,))
+        c = ct.load(cols, (0,), shape=(NUM_THREADS,))
+        ct.store(out_2d, (0,), wp_read2d((m_ptr, m_rows, m_cols), r, c))
 
-    out4 = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
-    _launch(device, k_2d, (m_ptr, m_d0, m_d1, ii, jj, out4))
-    np.testing.assert_allclose(out4.numpy(), m_np[ii_np, jj_np], rtol=1e-6)
-
-    # section 4: a wrong-length array tuple fails at trace time instead of
-    # silently dropping trailing values
-    @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-    def k_long(ptr: ct.Constant[int], length: ct.Constant[int], idxs, out):
-        i_t = ct.load(idxs, (0,), shape=(NUM_THREADS,))
-        r = d_gather((ptr, length, 999), i_t, 2.5)
-        ct.store(out, (0,), r)
-
-    with test.assertRaisesRegex(ct.TileError, "expects a tuple of 2 plain values"):
-        _launch(device, k_long, (data_ptr, data_len, idx, out))
-
-    # a non-integer tuple element is rejected by name instead of being
-    # truncated by the int32 materialization
-    @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-    def k_float_extent(ptr: ct.Constant[int], idxs, out):
-        i_t = ct.load(idxs, (0,), shape=(NUM_THREADS,))
-        r = d_gather((ptr, 2.5), i_t, 2.5)
-        ct.store(out, (0,), r)
-
-    with test.assertRaisesRegex(ct.TileError, "element 1 of parameter 'data' \\(wp.array\\) expects an integer in"):
-        _launch(device, k_float_extent, (data_ptr, idx, out))
-
-
-def test_struct_uniform(test, device):
-    """Broadcast a mixed-field struct blob to every invocation."""
-    ct = _import_ct()
-    p = BridgeParams()
-    p.scale = 3.0
-    p.offset = wp.vec3(0.5, -1.0, 2.0)
-    p.exponent = 2
-    blob_np = wpct.encode_struct(p)
-    blob = wp.array(blob_np, dtype=wp.int32, device=device)
-    blob_w = len(blob_np)
-
-    rng = np.random.default_rng(7)
-    y_np = rng.standard_normal((NUM_THREADS, 3)).astype(np.float32)
-    ys = wp.array(_pad_vec3(y_np), dtype=wp.float32, device=device)
-    d_params = wpct.export_func(apply_params, num_worker_warps=NUM_WARPS, device=device)
-
-    @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-    def k_params(blob_arr, ys_arr, out):
-        p_t = ct.load(blob_arr, (0,), shape=(blob_w,))
-        y_t = ct.reshape(ct.load(ys_arr, (0, 0), shape=(NUM_THREADS, VEC_PAD)), (NUM_THREADS * VEC_PAD,))
-        r = d_params(p_t, y_t)
-        ct.store(out, (0,), r)
-
-    out = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
-    _launch(device, k_params, (blob, ys, out))
-    # expected: length(y + offset) * scale * 0.5^exponent
-    v = y_np + np.array([0.5, -1.0, 2.0], dtype=np.float32)
-    expected = np.linalg.norm(v, axis=1).astype(np.float32) * 3.0 * 0.25
-    np.testing.assert_allclose(out.numpy(), expected, rtol=1e-5)
-
-    # a struct with an 8-byte-aligned field: its blob is declared with a
-    # two-word alignment and the field offsets survive the trip
-    q = WideAlignParams()
-    q.a = 1.5
-    q.b = 7
-    q_np = wpct.encode_struct(q)
-    q_blob = wp.array(q_np, dtype=wp.int32, device=device)
-    x_np = rng.standard_normal(NUM_THREADS).astype(np.float32)
-    xs = wp.array(x_np, dtype=wp.float32, device=device)
-    d_wide = wpct.export_func(wide_params_sum, num_worker_warps=NUM_WARPS, device=device)
-    q_w = len(q_np)
-
-    @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-    def k_wide(q_arr, xs_arr, out_a):
-        ct.store(out_a, (0,), d_wide(ct.load(q_arr, (0,), shape=(q_w,)), ct.load(xs_arr, (0,), shape=(NUM_THREADS,))))
-
-    out_w = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
-    _launch(device, k_wide, (q_blob, xs, out_w))
-    np.testing.assert_allclose(out_w.numpy(), x_np + 1.5 + 7.0, rtol=1e-6, atol=1e-6)
+    out_gather = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
+    out_2d = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
+    _launch_cutile(
+        device,
+        array_operands_cutile_kernel,
+        (
+            *wpct.array_pointer_args(data),
+            ids,
+            out_gather,
+            *wpct.array_pointer_args(hist),
+            bins,
+            *wpct.array_pointer_args(m),
+            rows,
+            cols,
+            out_2d,
+        ),
+    )
+    np.testing.assert_allclose(out_gather.numpy(), data_np[ids_np] * np.float32(2.5), rtol=1e-6)
+    np.testing.assert_allclose(hist.numpy(), np.bincount(bins_np, minlength=16).astype(np.float32))
+    np.testing.assert_allclose(out_2d.numpy(), m_np[rows_np, cols_np], rtol=1e-6)
 
 
 def test_block_scope_reduction(test, device):
     """Run a block-cooperative reduction at block scope and reject a mismatched calling block at compile time."""
     ct = _import_ct()
-    d_sum = wpct.export_func(block_sum, num_worker_warps=NUM_WARPS, scope="block", device=device)
+    wp_block_sum = wpct.export_func(block_sum, num_worker_warps=NUM_WARPS, scope="block", device=device)
     # block scope pins the declaration: the block size is baked in
-    test.assertEqual(d_sum.lengths, (NUM_THREADS,))
+    test.assertEqual(wp_block_sum.lengths, (NUM_THREADS,))
 
-    @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-    def kernel(xs, out):
-        x = ct.load(xs, (0,), shape=(NUM_THREADS,))
-        r = d_sum(x)
-        ct.store(out, (0,), r)
+    @ct.kernel(num_worker_warps=NUM_WARPS)
+    def block_sum_cutile_kernel(xs, out):
+        ct.store(out, (0,), wp_block_sum(ct.load(xs, (0,), shape=(NUM_THREADS,))))
 
     rng = np.random.default_rng(5)
     x_np = rng.standard_normal(NUM_THREADS).astype(np.float32)
     xs = wp.array(x_np, dtype=wp.float32, device=device)
     out = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
-    _launch(device, kernel, (xs, out))
+    _launch_cutile(device, block_sum_cutile_kernel, (xs, out))
 
     expected = np.full(NUM_THREADS, x_np.sum(dtype=np.float64), dtype=np.float32)
     np.testing.assert_allclose(out.numpy(), expected, rtol=1e-4)
 
     # a kernel whose block differs from the pinned size is rejected when
     # tileiras compiles it, before any launch
-    @ct.kernel(num_worker_warps=2 * NUM_THREADS // 32)
-    def kernel_wrong_block(xs, out):
-        x = ct.load(xs, (0,), shape=(NUM_THREADS,))
-        ct.store(out, (0,), d_sum(x))
+    @ct.kernel(num_worker_warps=2 * NUM_WARPS)
+    def mismatched_block_cutile_kernel(xs, out):
+        ct.store(out, (0,), wp_block_sum(ct.load(xs, (0,), shape=(NUM_THREADS,))))
 
     with test.assertRaises(ct.TileCompilerExecutionError):
-        _launch(device, kernel_wrong_block, (xs, out))
+        _launch_cutile(device, mismatched_block_cutile_kernel, (xs, out))
 
 
 def test_tilelib_caching(test, device):
@@ -1448,17 +1333,17 @@ def test_tilelib_caching(test, device):
     tmp = tempfile.mkdtemp(prefix="wp_cutile_tilelib_cache_test_")
     test.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
     with unittest.mock.patch.object(_cutile, "_cache_dir", return_value=tmp):
-        d1 = wpct.export_func(scale_add, num_worker_warps=NUM_WARPS, device=device)
-        test.assertTrue(os.path.exists(d1.path))
-        test.assertEqual(os.path.dirname(d1.path), tmp)
+        wp_scale_add = wpct.export_func(scale_add, device=device)
+        test.assertTrue(os.path.exists(wp_scale_add.path))
+        test.assertEqual(os.path.dirname(wp_scale_add.path), tmp)
 
         # a cache hit must not re-enter the packing path at all
         with unittest.mock.patch.object(
             _cutile, "_pack_tilelib", side_effect=AssertionError("cache miss: _pack_tilelib was re-invoked")
         ):
-            d2 = wpct.export_func(scale_add, num_worker_warps=NUM_WARPS, device=device)
+            wp_scale_add_cached = wpct.export_func(scale_add, device=device)
         # redeclarations are equal handles (same name, symbol, path, version, and lengths)
-        test.assertEqual(d2, d1)
+        test.assertEqual(wp_scale_add_cached, wp_scale_add)
 
         # compiling a backward-enabled kernel (or a wp.grad() call) that uses
         # the function leaves adjoint flags set on it process-wide; the
@@ -1468,46 +1353,99 @@ def test_tilelib_caching(test, device):
             unittest.mock.patch.object(scale_add.adj, "used_by_backward_kernel", True),
             unittest.mock.patch.object(scale_add.adj, "force_adjoint_codegen", True),
         ):
-            test.assertEqual(wpct.export_func(scale_add, num_worker_warps=NUM_WARPS, device=device).version, d1.version)
+            test.assertEqual(wpct.export_func(scale_add, device=device).version, wp_scale_add.version)
         # the identity follows every declaration choice a user can make
-        d_block_scope = wpct.export_func(scale_add, scope="block", device=device)
-        test.assertNotEqual(d_block_scope.version, d1.version)
+        wp_scale_add_block = wpct.export_func(scale_add, scope="block", device=device)
+        test.assertNotEqual(wp_scale_add_block.version, wp_scale_add.version)
         test.assertNotEqual(
             wpct.export_func(scale_add, scope="block", num_worker_warps=2, device=device).version,
-            wpct.export_func(scale_add, scope="block", device=device).version,
+            wp_scale_add_block.version,
         )
 
 
 def test_shared_argument_inference(test, device):
     """Infer shared vs per-invocation arguments from each call site, mixing patterns and runtime parameters in one kernel."""
     ct = _import_ct()
-    d = wpct.export_func(scale_add, device=device)
-    d_g = wpct.export_func(gather_scale, device=device)
+    wp_scale_add = wpct.export_func(scale_add, device=device)
+    wp_gather_scale = wpct.export_func(gather_scale, device=device)
+    wp_blend = wpct.export_func(blend, device=device)
     rng = np.random.default_rng(11)
     x_np = rng.standard_normal(NUM_THREADS).astype(np.float32)
     y_np = rng.standard_normal(NUM_THREADS).astype(np.float32)
+    shared_y_np = np.array([0.3, -1.2, 2.0], dtype=np.float32)
     xs = wp.array(x_np, dtype=wp.float32, device=device)
     ys = wp.array(y_np, dtype=wp.float32, device=device)
-    idx = wp.array(np.arange(NUM_THREADS, dtype=np.int32)[::-1].copy(), dtype=wp.int32, device=device)
-    outs = [wp.zeros(NUM_THREADS, dtype=wp.float32, device=device) for _ in range(5)]
+    shared_y_padded = wp.array(_pad_vec3(shared_y_np[None, :])[0], dtype=wp.float32, device=device)
+    ids = wp.array(np.arange(NUM_THREADS, dtype=np.int32)[::-1].copy(), dtype=wp.int32, device=device)
+    out_tiles = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
+    out_literal = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
+    out_param = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
+    out_shared_x = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
+    out_all_shared = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
+    out_array = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
+    out_shared_vec3 = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
 
-    @ct.kernel(num_worker_warps=NUM_THREADS // 32)
-    def kernel(xs_a, ys_a, s: float, ptr: ct.Constant[int], n: int, idx_a, o0, o1, o2, o3, o4):
-        x = ct.load(xs_a, (0,), shape=(NUM_THREADS,))
-        y = ct.load(ys_a, (0,), shape=(NUM_THREADS,))
-        i = ct.load(idx_a, (0,), shape=(NUM_THREADS,))
-        ct.store(o0, (0,), d(x, y))  # both per-invocation
-        ct.store(o1, (0,), d(x, 0.5))  # y shared: a literal
-        ct.store(o2, (0,), d(x, s))  # y shared: a runtime kernel parameter
-        ct.store(o3, (0,), d(2.0, y=y))  # x shared, y by keyword
-        ct.store(o4, (0,), d_g((ptr, n), i, s))  # array with a runtime extent, shared scale
+    @ct.kernel(num_worker_warps=NUM_WARPS)
+    def shared_arguments_cutile_kernel(
+        xs,
+        ys,
+        s: float,
+        ptr: ct.Constant[int],
+        n: int,
+        ids,
+        shared_y,
+        out_tiles,
+        out_literal,
+        out_param,
+        out_shared_x,
+        out_all_shared,
+        out_array,
+        out_shared_vec3,
+    ):
+        x = ct.load(xs, (0,), shape=(NUM_THREADS,))
+        y = ct.load(ys, (0,), shape=(NUM_THREADS,))
+        i = ct.load(ids, (0,), shape=(NUM_THREADS,))
+        ct.store(out_tiles, (0,), wp_scale_add(x, y))  # both per-invocation
+        ct.store(out_literal, (0,), wp_scale_add(x, 0.5))  # y shared: a literal
+        ct.store(out_param, (0,), wp_scale_add(x, s))  # y shared: a runtime kernel parameter
+        ct.store(out_shared_x, (0,), wp_scale_add(2.0, y=y))  # x shared, y by keyword
+        # every argument shared: no tile sets the length, so the call runs
+        # num_worker_warps * 32 invocations
+        ct.store(out_all_shared, (0,), wp_scale_add(1.5, 2.0))
+        ct.store(out_array, (0,), wp_gather_scale((ptr, n), i, s))  # array with a runtime extent, shared scale
+        # a shared vector takes a single (width,) tile, broadcast to every invocation
+        ct.store(out_shared_vec3, (0,), wp_blend(x, ct.load(shared_y, (0,), shape=(VEC_PAD,))))
 
-    _launch(device, kernel, (xs, ys, 1.5, xs.ptr, NUM_THREADS, idx, *outs))
-    np.testing.assert_allclose(outs[0].numpy(), x_np * 2.0 + np.sin(y_np), rtol=1e-6, atol=1e-6)
-    np.testing.assert_allclose(outs[1].numpy(), x_np * 2.0 + np.sin(0.5), rtol=1e-6, atol=1e-6)
-    np.testing.assert_allclose(outs[2].numpy(), x_np * 2.0 + np.sin(1.5), rtol=1e-6, atol=1e-6)
-    np.testing.assert_allclose(outs[3].numpy(), 4.0 + np.sin(y_np), rtol=1e-6, atol=1e-6)
-    np.testing.assert_allclose(outs[4].numpy(), x_np[::-1] * 1.5, rtol=1e-6, atol=1e-6)
+    _launch_cutile(
+        device,
+        shared_arguments_cutile_kernel,
+        (
+            xs,
+            ys,
+            1.5,
+            xs.ptr,
+            NUM_THREADS,
+            ids,
+            shared_y_padded,
+            out_tiles,
+            out_literal,
+            out_param,
+            out_shared_x,
+            out_all_shared,
+            out_array,
+            out_shared_vec3,
+        ),
+    )
+    np.testing.assert_allclose(out_tiles.numpy(), x_np * 2.0 + np.sin(y_np), rtol=1e-6, atol=1e-6)
+    np.testing.assert_allclose(out_literal.numpy(), x_np * 2.0 + np.sin(0.5), rtol=1e-6, atol=1e-6)
+    np.testing.assert_allclose(out_param.numpy(), x_np * 2.0 + np.sin(1.5), rtol=1e-6, atol=1e-6)
+    np.testing.assert_allclose(out_shared_x.numpy(), 4.0 + np.sin(y_np), rtol=1e-6, atol=1e-6)
+    np.testing.assert_allclose(out_all_shared.numpy(), np.full(NUM_THREADS, 3.0 + np.sin(2.0)), rtol=1e-6, atol=1e-6)
+    np.testing.assert_allclose(out_array.numpy(), x_np[::-1] * 1.5, rtol=1e-6, atol=1e-6)
+    ys_vec3 = wp.array(np.tile(shared_y_np, (NUM_THREADS, 1)), dtype=wp.vec3, device=device)
+    expected_shared_vec3 = wp.zeros(NUM_THREADS, dtype=wp.float32, device=device)
+    wp.launch(blend_reference, dim=NUM_THREADS, inputs=[xs, ys_vec3, expected_shared_vec3], device=device)
+    np.testing.assert_allclose(out_shared_vec3.numpy(), expected_shared_vec3.numpy(), rtol=1e-5, atol=1e-6)
 
 
 class TestCutileKernels(unittest.TestCase):
@@ -1523,8 +1461,8 @@ class TestCutileKernels(unittest.TestCase):
 
 add_function_test(
     TestCutileKernels,
-    "test_per_thread_scalar_vec_call",
-    test_per_thread_scalar_vec_call,
+    "test_scalar_and_vec3_call",
+    test_scalar_and_vec3_call,
     devices=cutile_test_devices,
 )
 add_function_test(
@@ -1541,8 +1479,8 @@ add_function_test(
 )
 add_function_test(
     TestCutileKernels,
-    "test_thread_scope_universal_lengths",
-    test_thread_scope_universal_lengths,
+    "test_thread_scope_tile_lengths",
+    test_thread_scope_tile_lengths,
     devices=cutile_test_devices,
 )
 add_function_test(
@@ -1571,32 +1509,26 @@ add_function_test(
 )
 add_function_test(
     TestCutileKernels,
-    "test_struct_shared_across_tilelibs",
-    test_struct_shared_across_tilelibs,
+    "test_struct_operands",
+    test_struct_operands,
     devices=cutile_test_devices,
 )
 add_function_test(
     TestCutileKernels,
-    "test_keyword_parameter_names",
-    test_keyword_parameter_names,
+    "test_parameter_name_clashes",
+    test_parameter_name_clashes,
     devices=cutile_test_devices,
 )
 add_function_test(
     TestCutileKernels,
-    "test_mat_uniform_vec_return",
-    test_mat_uniform_vec_return,
+    "test_matrix_operand_and_vec3_return",
+    test_matrix_operand_and_vec3_return,
     devices=cutile_test_devices,
 )
 add_function_test(
     TestCutileKernels,
     "test_array_operands",
     test_array_operands,
-    devices=cutile_test_devices,
-)
-add_function_test(
-    TestCutileKernels,
-    "test_struct_uniform",
-    test_struct_uniform,
     devices=cutile_test_devices,
 )
 add_function_test(

@@ -164,7 +164,7 @@ Calling ``export_func`` on a function is its *declaration*: the call packages
 the function and fixes everything the kernel side needs to know about it.
 Inside a cuTile kernel, the packaged function is called with **one argument per
 Warp parameter** and returns one tile. Three ideas cover the whole convention;
-the snippets below use this function, with ``f`` the object
+the snippets below use this function, with ``wp_blend`` the object
 ``export_func`` returns and ``bid`` the block index:
 
 .. code:: python
@@ -174,7 +174,7 @@ the snippets below use this function, with ``f`` the object
         return (x + wp.length(v)) * scale
 
 
-    f = wpct.export_func(blend)
+    wp_blend = wpct.export_func(blend)
 
 **Tile length.** The tile length, written ``TILE`` throughout this section, is
 the number of elements in the tiles you pass to the call—and therefore the
@@ -188,10 +188,10 @@ length.
 .. code:: python
 
     x = ct.load(xs, (bid,), shape=(128,))  # a tile of 128 values ...
-    r = f(x, v, 2.5)                       # ... runs blend 128 times
+    r = wp_blend(x, v, 2.5)                # ... runs blend 128 times
     # another call site may use another length, even in the same kernel
     # (v and v32 are the matching (128 * 4,) and (32 * 4,) vector tiles)
-    r2 = f(ct.load(xs, (bid,), shape=(32,)), v32, 2.5)
+    r2 = wp_blend(ct.load(xs, (bid,), shape=(32,)), v32, 2.5)
 
 **Operands.** Each argument is either **per-invocation** or **shared**, and
 the call tells the two apart by what you pass. A per-invocation argument is a
@@ -211,7 +211,7 @@ are. The table below gives the recipe for each parameter type.
 
     x = ct.load(xs, (bid,), shape=(TILE,))                               # scalar: (TILE,)
     v = ct.reshape(ct.load(vs, (bid, 0), shape=(TILE, 4)), (TILE * 4,))  # vec3: (TILE * 4,), width 4
-    r = f(x, v, 2.5)                                                     # shared scale: one plain value
+    r = wp_blend(x, v, 2.5)                                              # shared scale: one plain value
 
 Arguments are passed positionally or by Warp parameter name. Call-site
 mistakes—a wrong rank, tile length, or element type, or a value of the wrong
@@ -227,17 +227,17 @@ struct's in-memory representation and the trailing lanes are zero.
 
 .. code:: python
 
-    r = f(x, v, scale=2.5)              # float return: a (TILE,) tile (arguments may be named)
+    r = wp_blend(x, v, scale=2.5)       # float return: a (TILE,) tile (arguments may be named)
     ct.store(out, (bid,), r)
 
-    n = g(x)                            # g returns wp.vec3: a (TILE * 4,) tile ...
+    n = wp_normal(x)                    # wp_normal returns wp.vec3: a (TILE * 4,) tile ...
     ct.store(normals, (bid, 0), ct.reshape(n, (TILE, 4)))  # ... viewed as (TILE, 4)
 
 Operands by Parameter Type
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 In the table's snippets, ``wpct`` is the ``warp.experimental.cutile`` module and
-``f`` stands for a declaration whose single parameter has the row's type.
+``wp_f`` stands for a declaration whose single parameter has the row's type.
 
 .. list-table::
    :header-rows: 1
@@ -251,13 +251,13 @@ In the table's snippets, ``wpct`` is the ``warp.experimental.cutile`` module and
      - .. code:: python
 
           x_t = ct.load(xs, (bid,), shape=(TILE,))
-          r = f(x_t)
+          r = wp_f(x_t)
    * - Vector / matrix / quaternion / transform
      - A flat ``(TILE * width,)`` tile, or a ``(width,)`` tile to share one value
      - .. code:: python
 
           v = ct.load(vs, (bid, 0), shape=(TILE, 4))
-          r = f(ct.reshape(v, (TILE * 4,)))
+          r = wp_f(ct.reshape(v, (TILE * 4,)))
    * - ``@wp.struct`` struct
      - An ``int32`` tile of the padded struct bytes: ``(WORDS,)`` to share
        one struct (the usual case), ``(TILE * WORDS,)`` per invocation
@@ -266,7 +266,7 @@ In the table's snippets, ``wpct`` is the ``warp.experimental.cutile`` module and
           # host
           blob = wp.array(wpct.encode_struct(p), dtype=wp.int32)
           # kernel: WORDS is len(blob), the int32 word count
-          r = f(ct.load(blob, (0,), shape=(WORDS,)))
+          r = wp_f(ct.load(blob, (0,), shape=(WORDS,)))
    * - ``wp.array``
      - A ``(address, size, ...)`` tuple of plain values; always shared
        (see below)
@@ -277,13 +277,13 @@ In the table's snippets, ``wpct`` is the ``warp.experimental.cutile`` module and
               ..., (*wpct.array_pointer_args(arr), ...)
           )
           # kernel: ptr and length are ct.Constant[int] params
-          r = f((ptr, length))
+          r = wp_f((ptr, length))
    * - Opaque ids (``wp.handle`` mesh, BVH, hash-grid, and volume ids)
      - The id as a plain value, shared
      - .. code:: python
 
           # mesh.id passed in as a kernel constant
-          r = f(mesh_id)
+          r = wp_f(mesh_id)
 
 All tiles are rank-1: multi-dimensional data is flattened at the call site with
 ``ct.reshape``, as in the vector recipe above, and host data for vectors and
@@ -321,13 +321,13 @@ address and size values:
         return data[i] * scale
 
 
-    d_gather = wpct.export_func(gather_scale)
+    wp_gather_scale = wpct.export_func(gather_scale)
 
 
     @ct.kernel(num_worker_warps=TILE // 32)
-    def k_gather(ptr: ct.Constant[int], length: ct.Constant[int], idxs, out):
-        i_t = ct.load(idxs, (0,), shape=(TILE,))  # per-thread index
-        r = d_gather((ptr, length), i_t, 2.5)     # r[t] == data[idxs[t]] * 2.5
+    def gather_kernel(ptr: ct.Constant[int], length: ct.Constant[int], idxs, out):
+        i_t = ct.load(idxs, (0,), shape=(TILE,))      # per-thread index
+        r = wp_gather_scale((ptr, length), i_t, 2.5)  # r[t] == data[idxs[t]] * 2.5
         ct.store(out, (0,), r)
 
 
@@ -336,7 +336,7 @@ address and size values:
     ct.launch(
         wp.get_stream().cuda_stream,
         (1, 1, 1),
-        k_gather,
+        gather_kernel,
         (*wpct.array_pointer_args(data), idxs, out),
     )
 
@@ -373,14 +373,14 @@ whose ``num_worker_warps`` differs from the declaration's fails to compile
 .. code:: python
 
     # called with two plain numbers, no operand carries a length: the call runs 2 * 32 invocations
-    d_sum = wpct.export_func(add_scalars, num_worker_warps=2)
+    wp_add_scalars = wpct.export_func(add_scalars, num_worker_warps=2)
 
     # block scope: num_worker_warps must equal the calling kernel's
-    d_block = wpct.export_func(block_sum, num_worker_warps=4, scope="block")
+    wp_block_sum = wpct.export_func(block_sum, num_worker_warps=4, scope="block")
 
     @ct.kernel(num_worker_warps=128 // 32)
     def kernel(xs, out):
-        ct.store(out, (0,), d_block(ct.load(xs, (0,), shape=(128,))))
+        ct.store(out, (0,), wp_block_sum(ct.load(xs, (0,), shape=(128,))))
 
 Block-Cooperative Functions
 ---------------------------
@@ -411,14 +411,14 @@ loading them cooperatively from a ``wp.array``:
         return s[0]
 
 
-    d_sum = wpct.export_func(
+    wp_array_block_sum = wpct.export_func(
         array_block_sum, num_worker_warps=TILE // 32, scope="block"
     )
 
 
     @ct.kernel(num_worker_warps=TILE // 32)
     def kernel(ptr: ct.Constant[int], length: ct.Constant[int], start: ct.Constant[int], out):
-        r = d_sum((ptr, length), start)  # every element of r holds the sum
+        r = wp_array_block_sum((ptr, length), start)  # every element of r holds the sum
         ct.store(out, (0,), r)
 
 The return value is still a tile of shape ``(TILE,)``: each participating
@@ -455,14 +455,14 @@ needs the function declared with at least its ``num_worker_warps``:
         return n
 
 
-    d_count = wpct.export_func(aabb_count)  # kernels of up to 8 warps
-    d_count_16 = wpct.export_func(aabb_count, num_worker_warps=16)  # 16-warp kernels
+    wp_aabb_count = wpct.export_func(aabb_count)  # kernels of up to 8 warps
+    wp_aabb_count_16 = wpct.export_func(aabb_count, num_worker_warps=16)  # 16-warp kernels
 
 
     @ct.kernel(num_worker_warps=16)
     def kernel(mesh_id: ct.Constant[int], pts, out):
         p = ct.reshape(ct.load(pts, (0, 0), shape=(512, 4)), (512 * 4,))
-        ct.store(out, (0,), d_count_16(mesh_id, p))
+        ct.store(out, (0,), wp_aabb_count_16(mesh_id, p))
 
 ``num_worker_warps`` is a lower bound on the kernel's compiled block, which
 can be larger; a block that exceeds the declared capacity traps. This is a

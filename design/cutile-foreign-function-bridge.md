@@ -490,29 +490,54 @@ cuTile's own lookup working.
 
 ## Testing Strategy
 
-`warp/tests/interop/test_cutile.py` has three layers:
+The tests call exported functions from cuTile kernels
+and compare each result with the same `@wp.func` under `wp.launch()` (R3),
+or with a closed form for simple functions.
+The accuracy of Warp's own builtins is out of scope.
+Inputs are chosen so that no check passes vacuously:
+build variants must produce different reference results,
+and geometry queries must find hits.
 
-- **Helpers** (`TestCutileHelpers`): struct and array operand encoding, the
-  public module surface, the traversal-stack depth constant matching
-  `bvh.h`, tilelib packing failure reporting, and the `tileiras` lookup and
-  release check with mocked filesystems. These need no cuTile installation or
-  GPU, except the CUDA array encoding test, which runs on every CUDA test
-  device.
-- **Declaration** (`TestCutileDeclaration`): every validation error
-  `export_func()` raises before any toolchain or GPU work, needing only
-  `cuda.tile` importable.
-- **Kernels** (`TestCutileKernels`): end-to-end calls from cuTile kernels, one
-  test per documented call form or contract, registered with
-  `add_function_test()` over `get_cuda_test_devices()` so they run on every
-  CUDA test device. Each test declares on the device it is given and launches
-  on that device's stream. They skip, visibly, when `cuda.tile_preview` or a
-  supported `tileiras` is missing.
+The tests cover these scenarios:
 
-The neural SDF example is registered in `warp/tests/test_examples.py` under
-`TestInteropExamples` with a `cutile_required` skip key built on the same
-checks, so it appears in the suite's junit report and coverage.
+- **Calling convention (R1).** Scalars, padded vectors, matrices, structs (including 8-byte-aligned fields),
+  and arrays passed as an address and extents, which the function may mutate, cross the boundary as arguments;
+  scalars, vectors, and structs also come back as return values, with a returned vector's padding lanes zeroed.
+  Shared and per-invocation arguments are inferred at each call site,
+  so the tests pass every form of shared argument (plain numbers, runtime kernel parameters, single-width tiles)
+  next to per-invocation tiles, and call one declaration at several tile lengths.
+- **Fidelity to the module build (R2, R3).** A foreign function compiles with its module's build options,
+  preamble, include directories, and build dependencies,
+  and with the code its body pulls in only when used, such as explicit `wp.grad()` calls and `@wp.func_grad` callbacks.
+- **Scopes and scratch (R5, R6).** Block scope runs Warp tile builtins cooperatively.
+  Iterator queries traverse dense meshes and BVHs deeply enough that an undersized slab faults
+  instead of passing by luck.
+  Tests cover blocks larger than the declared hint, block scope's exact sizing,
+  a BVH query nested inside a mesh query,
+  and calls from different query families back to back with no barrier between them,
+  repeated because a binding race depends on warp timing.
+- **Caching (R7).** An identical declaration reuses the cached `.tilelib` without repacking it.
+  Every declaration input that changes the generated code changes the identity
+  (build options, dependency contents, scope, a hint that resizes scratch),
+  and process state that does not, such as adjoint flags left by other compiles, leaves it alone.
+- **Error reporting (R8).** Each misconfiguration fails at the earliest point that can detect it:
+  unsupported functions and types at `export_func()` before any toolchain or GPU work,
+  scratch that cannot fit the device at declaration,
+  call-site mistakes when cuTile traces the call,
+  and block-scope mismatches when `tileiras` compiles the kernel.
+  Tests cover the mistakes a user can plausibly make, one per guard,
+  and match the details the user needs (the parameter, the expected and received shape or type)
+  rather than whole messages.
+- **Toolchain (R4).** The `tileiras` lookup order, the release gate, and packing failures
+  run against mocked filesystems and subprocesses, so they need neither cuTile nor a GPU.
 
-The toolchain is present only in the CUDA 13 CI jobs, which install the
-`cutile` extra alongside `torch-cu13` and the `tests-cu13` group; elsewhere the
-kernel tests and the example skip. Multi-GPU and mixed-architecture coverage
-depends on the CI runners' hardware.
+Every cuTile kernel costs a `tileiras` compile,
+so tests fold their call sites into as few kernels as the checked behavior allows.
+
+The test module imports cleanly without cuTile, and each tier skips when its environment is missing:
+host-side checks need no cuTile, declaration checks need `cuda.tile`,
+and end-to-end tests need the full toolchain and a GPU cuTile supports.
+End-to-end tests run on every such CUDA test device and declare for each device's architecture.
+The toolchain is installed only in the CUDA 13 CI jobs, through the `cutile` extra,
+so the end-to-end tests and the neural SDF example skip elsewhere.
+Multi-GPU and mixed-architecture coverage depends on the CI runners' hardware.
