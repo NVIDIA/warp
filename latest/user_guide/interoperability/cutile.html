@@ -711,14 +711,14 @@ ordinary per-thread call.</p>
 the function and fixes everything the kernel side needs to know about it.
 Inside a cuTile kernel, the packaged function is called with <strong>one argument per
 Warp parameter</strong> and returns one tile. Three ideas cover the whole convention;
-the snippets below use this function, with <code class="docutils literal notranslate"><span class="pre">f</span></code> the object
+the snippets below use this function, with <code class="docutils literal notranslate"><span class="pre">wp_blend</span></code> the object
 <code class="docutils literal notranslate"><span class="pre">export_func</span></code> returns and <code class="docutils literal notranslate"><span class="pre">bid</span></code> the block index:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@wp</span><span class="o">.</span><span class="n">func</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">blend</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">v</span><span class="p">:</span> <span class="n">wp</span><span class="o">.</span><span class="n">vec3</span><span class="p">,</span> <span class="n">scale</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
     <span class="k">return</span> <span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="n">wp</span><span class="o">.</span><span class="n">length</span><span class="p">(</span><span class="n">v</span><span class="p">))</span> <span class="o">*</span> <span class="n">scale</span>
 
 
-<span class="n">f</span> <span class="o">=</span> <span class="n">wpct</span><span class="o">.</span><span class="n">export_func</span><span class="p">(</span><span class="n">blend</span><span class="p">)</span>
+<span class="n">wp_blend</span> <span class="o">=</span> <span class="n">wpct</span><span class="o">.</span><span class="n">export_func</span><span class="p">(</span><span class="n">blend</span><span class="p">)</span>
 </pre></div>
 </div>
 <p><strong>Tile length.</strong> The tile length, written <code class="docutils literal notranslate"><span class="pre">TILE</span></code> throughout this section, is
@@ -730,10 +730,10 @@ the kernel’s <code class="docutils literal notranslate"><span class="pre">num_
 worker threads the kernel has, whether that is fewer or more than the tile
 length.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">x</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="p">(</span><span class="n">bid</span><span class="p">,),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">128</span><span class="p">,))</span>  <span class="c1"># a tile of 128 values ...</span>
-<span class="n">r</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">)</span>                       <span class="c1"># ... runs blend 128 times</span>
+<span class="n">r</span> <span class="o">=</span> <span class="n">wp_blend</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">)</span>                <span class="c1"># ... runs blend 128 times</span>
 <span class="c1"># another call site may use another length, even in the same kernel</span>
 <span class="c1"># (v and v32 are the matching (128 * 4,) and (32 * 4,) vector tiles)</span>
-<span class="n">r2</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="p">(</span><span class="n">bid</span><span class="p">,),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">32</span><span class="p">,)),</span> <span class="n">v32</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">)</span>
+<span class="n">r2</span> <span class="o">=</span> <span class="n">wp_blend</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="p">(</span><span class="n">bid</span><span class="p">,),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">32</span><span class="p">,)),</span> <span class="n">v32</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">)</span>
 </pre></div>
 </div>
 <p><strong>Operands.</strong> Each argument is either <strong>per-invocation</strong> or <strong>shared</strong>, and
@@ -751,7 +751,7 @@ matrix, or struct. Arrays are always shared; structs and opaque ids usually
 are. The table below gives the recipe for each parameter type.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">x</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="p">(</span><span class="n">bid</span><span class="p">,),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE</span><span class="p">,))</span>                               <span class="c1"># scalar: (TILE,)</span>
 <span class="n">v</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">vs</span><span class="p">,</span> <span class="p">(</span><span class="n">bid</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE</span><span class="p">,</span> <span class="mi">4</span><span class="p">)),</span> <span class="p">(</span><span class="n">TILE</span> <span class="o">*</span> <span class="mi">4</span><span class="p">,))</span>  <span class="c1"># vec3: (TILE * 4,), width 4</span>
-<span class="n">r</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">)</span>                                                     <span class="c1"># shared scale: one plain value</span>
+<span class="n">r</span> <span class="o">=</span> <span class="n">wp_blend</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">)</span>                                              <span class="c1"># shared scale: one plain value</span>
 </pre></div>
 </div>
 <p>Arguments are passed positionally or by Warp parameter name. Call-site
@@ -764,17 +764,17 @@ tile of shape <code class="docutils literal notranslate"><span class="pre">(TILE
 <a class="reference internal" href="../../api_reference/_generated/warp.experimental.cutile.encode_struct.html#warp.experimental.cutile.encode_struct" title="warp.experimental.cutile.encode_struct"><code class="xref py py-func docutils literal notranslate"><span class="pre">encode_struct</span></code></a> returns for
 an instance; each invocation’s leading <code class="docutils literal notranslate"><span class="pre">sizeof(struct)</span></code> bytes are the
 struct’s in-memory representation and the trailing lanes are zero.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">r</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mf">2.5</span><span class="p">)</span>              <span class="c1"># float return: a (TILE,) tile (arguments may be named)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">r</span> <span class="o">=</span> <span class="n">wp_blend</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">v</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="mf">2.5</span><span class="p">)</span>       <span class="c1"># float return: a (TILE,) tile (arguments may be named)</span>
 <span class="n">ct</span><span class="o">.</span><span class="n">store</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="p">(</span><span class="n">bid</span><span class="p">,),</span> <span class="n">r</span><span class="p">)</span>
 
-<span class="n">n</span> <span class="o">=</span> <span class="n">g</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>                            <span class="c1"># g returns wp.vec3: a (TILE * 4,) tile ...</span>
+<span class="n">n</span> <span class="o">=</span> <span class="n">wp_normal</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>                    <span class="c1"># wp_normal returns wp.vec3: a (TILE * 4,) tile ...</span>
 <span class="n">ct</span><span class="o">.</span><span class="n">store</span><span class="p">(</span><span class="n">normals</span><span class="p">,</span> <span class="p">(</span><span class="n">bid</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">ct</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="p">(</span><span class="n">TILE</span><span class="p">,</span> <span class="mi">4</span><span class="p">)))</span>  <span class="c1"># ... viewed as (TILE, 4)</span>
 </pre></div>
 </div>
 <section id="operands-by-parameter-type">
 <h3>Operands by Parameter Type<a class="headerlink" href="#operands-by-parameter-type" title="Link to this heading">#</a></h3>
 <p>In the table’s snippets, <code class="docutils literal notranslate"><span class="pre">wpct</span></code> is the <code class="docutils literal notranslate"><span class="pre">warp.experimental.cutile</span></code> module and
-<code class="docutils literal notranslate"><span class="pre">f</span></code> stands for a declaration whose single parameter has the row’s type.</p>
+<code class="docutils literal notranslate"><span class="pre">wp_f</span></code> stands for a declaration whose single parameter has the row’s type.</p>
 <div class="pst-scrollable-table-container"><table class="table">
 <colgroup>
 <col style="width: 22.0%" />
@@ -791,7 +791,7 @@ struct’s in-memory representation and the trailing lanes are zero.</p>
 <tr class="row-even"><td><p>Scalar (<code class="docutils literal notranslate"><span class="pre">int8</span></code> … <code class="docutils literal notranslate"><span class="pre">uint64</span></code>, <code class="docutils literal notranslate"><span class="pre">float32</span></code>, <code class="docutils literal notranslate"><span class="pre">float64</span></code>)</p></td>
 <td><p>A <code class="docutils literal notranslate"><span class="pre">(TILE,)</span></code> tile, or a plain number to share one value</p></td>
 <td><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">x_t</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="p">(</span><span class="n">bid</span><span class="p">,),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE</span><span class="p">,))</span>
-<span class="n">r</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">x_t</span><span class="p">)</span>
+<span class="n">r</span> <span class="o">=</span> <span class="n">wp_f</span><span class="p">(</span><span class="n">x_t</span><span class="p">)</span>
 </pre></div>
 </div>
 </td>
@@ -799,7 +799,7 @@ struct’s in-memory representation and the trailing lanes are zero.</p>
 <tr class="row-odd"><td><p>Vector / matrix / quaternion / transform</p></td>
 <td><p>A flat <code class="docutils literal notranslate"><span class="pre">(TILE</span> <span class="pre">*</span> <span class="pre">width,)</span></code> tile, or a <code class="docutils literal notranslate"><span class="pre">(width,)</span></code> tile to share one value</p></td>
 <td><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">v</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">vs</span><span class="p">,</span> <span class="p">(</span><span class="n">bid</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
-<span class="n">r</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="p">(</span><span class="n">TILE</span> <span class="o">*</span> <span class="mi">4</span><span class="p">,)))</span>
+<span class="n">r</span> <span class="o">=</span> <span class="n">wp_f</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">v</span><span class="p">,</span> <span class="p">(</span><span class="n">TILE</span> <span class="o">*</span> <span class="mi">4</span><span class="p">,)))</span>
 </pre></div>
 </div>
 </td>
@@ -810,7 +810,7 @@ one struct (the usual case), <code class="docutils literal notranslate"><span cl
 <td><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># host</span>
 <span class="n">blob</span> <span class="o">=</span> <span class="n">wp</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">wpct</span><span class="o">.</span><span class="n">encode_struct</span><span class="p">(</span><span class="n">p</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">wp</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>
 <span class="c1"># kernel: WORDS is len(blob), the int32 word count</span>
-<span class="n">r</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">blob</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">WORDS</span><span class="p">,)))</span>
+<span class="n">r</span> <span class="o">=</span> <span class="n">wp_f</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">blob</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">WORDS</span><span class="p">,)))</span>
 </pre></div>
 </div>
 </td>
@@ -823,7 +823,7 @@ one struct (the usual case), <code class="docutils literal notranslate"><span cl
     <span class="o">...</span><span class="p">,</span> <span class="p">(</span><span class="o">*</span><span class="n">wpct</span><span class="o">.</span><span class="n">array_pointer_args</span><span class="p">(</span><span class="n">arr</span><span class="p">),</span> <span class="o">...</span><span class="p">)</span>
 <span class="p">)</span>
 <span class="c1"># kernel: ptr and length are ct.Constant[int] params</span>
-<span class="n">r</span> <span class="o">=</span> <span class="n">f</span><span class="p">((</span><span class="n">ptr</span><span class="p">,</span> <span class="n">length</span><span class="p">))</span>
+<span class="n">r</span> <span class="o">=</span> <span class="n">wp_f</span><span class="p">((</span><span class="n">ptr</span><span class="p">,</span> <span class="n">length</span><span class="p">))</span>
 </pre></div>
 </div>
 </td>
@@ -831,7 +831,7 @@ one struct (the usual case), <code class="docutils literal notranslate"><span cl
 <tr class="row-even"><td><p>Opaque ids (<code class="docutils literal notranslate"><span class="pre">wp.handle</span></code> mesh, BVH, hash-grid, and volume ids)</p></td>
 <td><p>The id as a plain value, shared</p></td>
 <td><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># mesh.id passed in as a kernel constant</span>
-<span class="n">r</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">mesh_id</span><span class="p">)</span>
+<span class="n">r</span> <span class="o">=</span> <span class="n">wp_f</span><span class="p">(</span><span class="n">mesh_id</span><span class="p">)</span>
 </pre></div>
 </div>
 </td>
@@ -872,13 +872,13 @@ address and size values:</p>
     <span class="k">return</span> <span class="n">data</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">scale</span>
 
 
-<span class="n">d_gather</span> <span class="o">=</span> <span class="n">wpct</span><span class="o">.</span><span class="n">export_func</span><span class="p">(</span><span class="n">gather_scale</span><span class="p">)</span>
+<span class="n">wp_gather_scale</span> <span class="o">=</span> <span class="n">wpct</span><span class="o">.</span><span class="n">export_func</span><span class="p">(</span><span class="n">gather_scale</span><span class="p">)</span>
 
 
 <span class="nd">@ct</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">num_worker_warps</span><span class="o">=</span><span class="n">TILE</span> <span class="o">//</span> <span class="mi">32</span><span class="p">)</span>
-<span class="k">def</span><span class="w"> </span><span class="nf">k_gather</span><span class="p">(</span><span class="n">ptr</span><span class="p">:</span> <span class="n">ct</span><span class="o">.</span><span class="n">Constant</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">length</span><span class="p">:</span> <span class="n">ct</span><span class="o">.</span><span class="n">Constant</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">idxs</span><span class="p">,</span> <span class="n">out</span><span class="p">):</span>
-    <span class="n">i_t</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">idxs</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE</span><span class="p">,))</span>  <span class="c1"># per-thread index</span>
-    <span class="n">r</span> <span class="o">=</span> <span class="n">d_gather</span><span class="p">((</span><span class="n">ptr</span><span class="p">,</span> <span class="n">length</span><span class="p">),</span> <span class="n">i_t</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">)</span>     <span class="c1"># r[t] == data[idxs[t]] * 2.5</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">gather_kernel</span><span class="p">(</span><span class="n">ptr</span><span class="p">:</span> <span class="n">ct</span><span class="o">.</span><span class="n">Constant</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">length</span><span class="p">:</span> <span class="n">ct</span><span class="o">.</span><span class="n">Constant</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">idxs</span><span class="p">,</span> <span class="n">out</span><span class="p">):</span>
+    <span class="n">i_t</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">idxs</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">TILE</span><span class="p">,))</span>      <span class="c1"># per-thread index</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">wp_gather_scale</span><span class="p">((</span><span class="n">ptr</span><span class="p">,</span> <span class="n">length</span><span class="p">),</span> <span class="n">i_t</span><span class="p">,</span> <span class="mf">2.5</span><span class="p">)</span>  <span class="c1"># r[t] == data[idxs[t]] * 2.5</span>
     <span class="n">ct</span><span class="o">.</span><span class="n">store</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,),</span> <span class="n">r</span><span class="p">)</span>
 
 
@@ -887,7 +887,7 @@ address and size values:</p>
 <span class="n">ct</span><span class="o">.</span><span class="n">launch</span><span class="p">(</span>
     <span class="n">wp</span><span class="o">.</span><span class="n">get_stream</span><span class="p">()</span><span class="o">.</span><span class="n">cuda_stream</span><span class="p">,</span>
     <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span>
-    <span class="n">k_gather</span><span class="p">,</span>
+    <span class="n">gather_kernel</span><span class="p">,</span>
     <span class="p">(</span><span class="o">*</span><span class="n">wpct</span><span class="o">.</span><span class="n">array_pointer_args</span><span class="p">(</span><span class="n">data</span><span class="p">),</span> <span class="n">idxs</span><span class="p">,</span> <span class="n">out</span><span class="p">),</span>
 <span class="p">)</span>
 </pre></div>
@@ -931,14 +931,14 @@ calling kernel’s <code class="docutils literal notranslate"><span class="pre">
 whose <code class="docutils literal notranslate"><span class="pre">num_worker_warps</span></code> differs from the declaration’s fails to compile
 (<code class="docutils literal notranslate"><span class="pre">CompilerExecutionError</span></code> from <code class="docutils literal notranslate"><span class="pre">tileiras</span></code>), so keep the two in sync.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># called with two plain numbers, no operand carries a length: the call runs 2 * 32 invocations</span>
-<span class="n">d_sum</span> <span class="o">=</span> <span class="n">wpct</span><span class="o">.</span><span class="n">export_func</span><span class="p">(</span><span class="n">add_scalars</span><span class="p">,</span> <span class="n">num_worker_warps</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">wp_add_scalars</span> <span class="o">=</span> <span class="n">wpct</span><span class="o">.</span><span class="n">export_func</span><span class="p">(</span><span class="n">add_scalars</span><span class="p">,</span> <span class="n">num_worker_warps</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
 
 <span class="c1"># block scope: num_worker_warps must equal the calling kernel's</span>
-<span class="n">d_block</span> <span class="o">=</span> <span class="n">wpct</span><span class="o">.</span><span class="n">export_func</span><span class="p">(</span><span class="n">block_sum</span><span class="p">,</span> <span class="n">num_worker_warps</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s2">"block"</span><span class="p">)</span>
+<span class="n">wp_block_sum</span> <span class="o">=</span> <span class="n">wpct</span><span class="o">.</span><span class="n">export_func</span><span class="p">(</span><span class="n">block_sum</span><span class="p">,</span> <span class="n">num_worker_warps</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s2">"block"</span><span class="p">)</span>
 
 <span class="nd">@ct</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">num_worker_warps</span><span class="o">=</span><span class="mi">128</span> <span class="o">//</span> <span class="mi">32</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">kernel</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="n">out</span><span class="p">):</span>
-    <span class="n">ct</span><span class="o">.</span><span class="n">store</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,),</span> <span class="n">d_block</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">128</span><span class="p">,))))</span>
+    <span class="n">ct</span><span class="o">.</span><span class="n">store</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,),</span> <span class="n">wp_block_sum</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">128</span><span class="p">,))))</span>
 </pre></div>
 </div>
 </section>
@@ -967,14 +967,14 @@ loading them cooperatively from a <code class="docutils literal notranslate"><sp
     <span class="k">return</span> <span class="n">s</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
 
 
-<span class="n">d_sum</span> <span class="o">=</span> <span class="n">wpct</span><span class="o">.</span><span class="n">export_func</span><span class="p">(</span>
+<span class="n">wp_array_block_sum</span> <span class="o">=</span> <span class="n">wpct</span><span class="o">.</span><span class="n">export_func</span><span class="p">(</span>
     <span class="n">array_block_sum</span><span class="p">,</span> <span class="n">num_worker_warps</span><span class="o">=</span><span class="n">TILE</span> <span class="o">//</span> <span class="mi">32</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s2">"block"</span>
 <span class="p">)</span>
 
 
 <span class="nd">@ct</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">num_worker_warps</span><span class="o">=</span><span class="n">TILE</span> <span class="o">//</span> <span class="mi">32</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">kernel</span><span class="p">(</span><span class="n">ptr</span><span class="p">:</span> <span class="n">ct</span><span class="o">.</span><span class="n">Constant</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">length</span><span class="p">:</span> <span class="n">ct</span><span class="o">.</span><span class="n">Constant</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">start</span><span class="p">:</span> <span class="n">ct</span><span class="o">.</span><span class="n">Constant</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">out</span><span class="p">):</span>
-    <span class="n">r</span> <span class="o">=</span> <span class="n">d_sum</span><span class="p">((</span><span class="n">ptr</span><span class="p">,</span> <span class="n">length</span><span class="p">),</span> <span class="n">start</span><span class="p">)</span>  <span class="c1"># every element of r holds the sum</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">wp_array_block_sum</span><span class="p">((</span><span class="n">ptr</span><span class="p">,</span> <span class="n">length</span><span class="p">),</span> <span class="n">start</span><span class="p">)</span>  <span class="c1"># every element of r holds the sum</span>
     <span class="n">ct</span><span class="o">.</span><span class="n">store</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,),</span> <span class="n">r</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -1006,14 +1006,14 @@ needs the function declared with at least its <code class="docutils literal notr
     <span class="k">return</span> <span class="n">n</span>
 
 
-<span class="n">d_count</span> <span class="o">=</span> <span class="n">wpct</span><span class="o">.</span><span class="n">export_func</span><span class="p">(</span><span class="n">aabb_count</span><span class="p">)</span>  <span class="c1"># kernels of up to 8 warps</span>
-<span class="n">d_count_16</span> <span class="o">=</span> <span class="n">wpct</span><span class="o">.</span><span class="n">export_func</span><span class="p">(</span><span class="n">aabb_count</span><span class="p">,</span> <span class="n">num_worker_warps</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>  <span class="c1"># 16-warp kernels</span>
+<span class="n">wp_aabb_count</span> <span class="o">=</span> <span class="n">wpct</span><span class="o">.</span><span class="n">export_func</span><span class="p">(</span><span class="n">aabb_count</span><span class="p">)</span>  <span class="c1"># kernels of up to 8 warps</span>
+<span class="n">wp_aabb_count_16</span> <span class="o">=</span> <span class="n">wpct</span><span class="o">.</span><span class="n">export_func</span><span class="p">(</span><span class="n">aabb_count</span><span class="p">,</span> <span class="n">num_worker_warps</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>  <span class="c1"># 16-warp kernels</span>
 
 
 <span class="nd">@ct</span><span class="o">.</span><span class="n">kernel</span><span class="p">(</span><span class="n">num_worker_warps</span><span class="o">=</span><span class="mi">16</span><span class="p">)</span>
 <span class="k">def</span><span class="w"> </span><span class="nf">kernel</span><span class="p">(</span><span class="n">mesh_id</span><span class="p">:</span> <span class="n">ct</span><span class="o">.</span><span class="n">Constant</span><span class="p">[</span><span class="nb">int</span><span class="p">],</span> <span class="n">pts</span><span class="p">,</span> <span class="n">out</span><span class="p">):</span>
     <span class="n">p</span> <span class="o">=</span> <span class="n">ct</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">ct</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">pts</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">512</span><span class="p">,</span> <span class="mi">4</span><span class="p">)),</span> <span class="p">(</span><span class="mi">512</span> <span class="o">*</span> <span class="mi">4</span><span class="p">,))</span>
-    <span class="n">ct</span><span class="o">.</span><span class="n">store</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,),</span> <span class="n">d_count_16</span><span class="p">(</span><span class="n">mesh_id</span><span class="p">,</span> <span class="n">p</span><span class="p">))</span>
+    <span class="n">ct</span><span class="o">.</span><span class="n">store</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,),</span> <span class="n">wp_aabb_count_16</span><span class="p">(</span><span class="n">mesh_id</span><span class="p">,</span> <span class="n">p</span><span class="p">))</span>
 </pre></div>
 </div>
 <p><code class="docutils literal notranslate"><span class="pre">num_worker_warps</span></code> is a lower bound on the kernel’s compiled block, which
