@@ -79,65 +79,68 @@ Use `uv run build_lib.py --quick` only when the CUDA driver/toolkit check suppor
 
 Post comments through the GitHub app/MCP connector when available, or `gh` if needed.
 
-Use `gh issue comment --body-file` for new issue comments with multiline bodies:
+Run the whole block in one Bash invocation. It verifies the posted body before
+removing the temporary files, and removes them if the write or read-back fails.
+Set `issue_number` for a new comment or `existing_comment_id` for a confirmed edit.
 
 ```bash
-set -euo pipefail
+(
+  set -euo pipefail
 
-body_file=$(mktemp)
-cat > "$body_file" <<'EOF'
+  issue_number='<issue-number>'
+  existing_comment_id=''
+
+  comment_dir=$(mktemp -d)
+  body_file="$comment_dir/body.md"
+  json_file="$comment_dir/payload.json"
+  trap 'rm -f -- "$body_file" "$json_file" && rmdir -- "$comment_dir"' EXIT
+
+  cat > "$body_file" <<'EOF'
 <exact reviewed comment body>
 EOF
 
-comment_url=$(gh issue comment <issue> --repo NVIDIA/warp --body-file "$body_file")
-comment_id=${comment_url##*issuecomment-}
+  if [ -n "$existing_comment_id" ]; then
+    comment_id=$existing_comment_id
+    jq -n --rawfile body "$body_file" '{body:$body}' > "$json_file"
+    gh api -X PATCH repos/NVIDIA/warp/issues/comments/"$comment_id" \
+      --input "$json_file" > /dev/null
+  else
+    comment_url=$(gh issue comment "$issue_number" --repo NVIDIA/warp --body-file "$body_file")
+    comment_id=${comment_url##*issuecomment-}
+    case "$comment_id" in
+      ""|*[!0-9]*)
+        printf 'Could not resolve comment ID from %s\n' "$comment_url" >&2
+        exit 1
+        ;;
+    esac
+  fi
 
-case "$comment_id" in
-  ""|*[!0-9]*)
-    printf 'Could not resolve comment ID from %s\n' "$comment_url" >&2
+  if ! gh api repos/NVIDIA/warp/issues/comments/"$comment_id" \
+    | jq --exit-status --rawfile expected "$body_file" \
+        'select(.body == $expected) | {id,html_url,body}'; then
+    printf 'Comment body mismatch or read-back failed\n' >&2
     exit 1
-    ;;
-esac
-```
-
-Use `gh api --input` with JSON for editing existing comments or other endpoints
-that do not support `--body-file`:
-
-```bash
-set -euo pipefail
-
-body_file=$(mktemp)
-json_file=$(mktemp)
-comment_id=<comment-id>
-
-cat > "$body_file" <<'EOF'
-<exact reviewed comment body>
-EOF
-
-jq -n --rawfile body "$body_file" '{body:$body}' > "$json_file"
-
-gh api -X PATCH repos/NVIDIA/warp/issues/comments/"$comment_id" \
-  --input "$json_file"
-```
-
-Compare the public comment body exactly with the reviewed file before closing:
-
-```bash
-set -euo pipefail
-
-if ! gh api repos/NVIDIA/warp/issues/comments/"$comment_id" \
-  | jq --exit-status --rawfile expected "$body_file" \
-      'select(.body == $expected) | {id,html_url,body}'; then
-  printf 'Comment body mismatch or read-back failed\n' >&2
-  exit 1
+  fi
+)
+comment_status=$?
+if [ "$comment_status" -ne 0 ]; then
+  exit "$comment_status"
 fi
 ```
+
+When splitting the steps across tool calls, carry the comment ID and temporary
+paths forward. Keep the reviewed body file through the exact comparison. Remove the
+temporary files and any directory you created for them after the comparison or when
+a failure stops the attempt. For other endpoints that lack `--body-file`, use
+`gh api --input` with JSON and apply the same cleanup.
 
 Never use `gh api -f body=@file` or `gh api --raw-field body=@file` for
 multiline comment bodies; those forms can send `@file` literally.
 
-Before closure, fetch the issue again. Close only if it is still open and closure was
-explicitly confirmed:
+Run the closure block in a separate Bash invocation after successful comment
+verification. If you used the Bash comment block above, require a zero exit status
+from that invocation before proceeding. Fetch the issue again and close only if it
+is still open and closure was explicitly confirmed.
 
 ```bash
 set -euo pipefail

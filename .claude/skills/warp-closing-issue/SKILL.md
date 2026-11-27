@@ -28,6 +28,8 @@ assessment and exact comment draft before any public write.
 - Use full 40-character SHAs as plain text in public comments.
 - Keep commands, cache paths, temporary paths, and other local execution details out
   of public comments. Describe committed test coverage separately from local checks.
+- When creating a disposable worktree, use the platform's temporary directory and
+  record its absolute path and the path of the checkout that created it.
 - Passing committed tests does not replace a reproduction based on the report when
   one is feasible.
 - Every behavioral fix requires a bounded source search and executable checks for
@@ -227,6 +229,9 @@ assessment and exact comment draft before any public write.
    for closure confirmation when the issue is already closed.
    ```
 
+   If the turn ends with a draft or a request for confirmation, [clean up temporary
+   worktrees](#clean-up-temporary-worktrees) once local verification is complete.
+
 ## Public comment contract
 
 Start an addressed resolution, including for an already-closed issue, with:
@@ -270,9 +275,32 @@ internal shorthand such as "issue-shaped." Do not expose commands or local paths
 
 Read [commands.md](references/commands.md), post the reviewed body, and fetch the
 comment by ID to verify an exact match before any state change. Close only an open
-issue with action `close after comment` and explicit closure confirmation. Report the
-comment ID, URL, final state, state reason, and close time when applicable. Stop on a
-write failure; never guess a different target.
+issue with action `close after comment` and explicit closure confirmation. Stop
+GitHub writes on a write or read-back failure. Once all confirmed GitHub actions and
+read-backs are finished or stopped, [clean up temporary
+worktrees](#clean-up-temporary-worktrees) before reporting the comment ID, URL, final
+state, state reason, and close time when applicable.
+
+## Clean up temporary worktrees
+
+Once local verification is complete, remove each remaining temporary worktree created
+for this assessment. Run cleanup even if posting is declined or fails. Use the
+recorded paths so existing worktrees and other sessions' checkouts are left intact.
+Treat the contents of the recorded worktrees as disposable, including ignored
+files. Store anything you need to retain outside these checkouts.
+
+From outside the temporary checkout, use Git to remove it:
+
+```bash
+git -C "$originating_checkout" worktree remove -- "$worktree_path"
+git -C "$originating_checkout" worktree list --porcelain
+```
+
+If Git refuses removal because of changes or untracked files, inspect the checkout.
+Use `--force` only when everything Git would discard is a disposable artifact of
+this assessment. Verify each removed path is gone from disk and Git's worktree list.
+If a checkout cannot be removed safely, report its path and the reason privately and
+continue cleaning up the other recorded worktrees.
 
 ## Red flags
 
