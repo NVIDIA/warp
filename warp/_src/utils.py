@@ -997,8 +997,8 @@ def array_inner(
             computes a single inner product over the flattened arrays.
 
     Returns:
-        The inner product result. Returns a float if ``axis`` is ``None`` and ``out`` is ``None``,
-        otherwise returns the ``out`` array.
+        The inner product result. Returns a NumPy scalar of the inputs' scalar type, such as
+        ``numpy.float32``, if ``axis`` is ``None`` and ``out`` is ``None``, otherwise returns the ``out`` array.
 
     Raises:
         ValueError: If ``a`` and ``b`` have different shapes.
@@ -1094,7 +1094,7 @@ def array_inner(
 
     if count == 0:
         if axis is None and host_return:
-            return 0.0
+            return _array_reduce_host_zero(scalar_type)
         out.zero_()
         return out
 
