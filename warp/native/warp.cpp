@@ -1249,7 +1249,7 @@ WP_API bool wp_cuda_graph_update_memcpy(void* graph_exec, void* node, void* dst,
     return false;
 }
 WP_API bool wp_cuda_graph_update_memcpy_batch(
-    void* graph_exec, void** nodes, void** dsts, void** srcs, size_t* sizes, int* kinds, int count
+    void* context, void* graph_exec, void** nodes, void** dsts, void** srcs, size_t* sizes, int* kinds, int count
 )
 {
     return false;

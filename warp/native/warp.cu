@@ -1241,6 +1241,9 @@ bool wp_memcpy_p2p(void* dst_context, void* dst, void* src_context, void* src, s
 
 bool wp_memcpy_batch(void* context, void** dsts, void** srcs, size_t* sizes, size_t count, void* stream)
 {
+    if (count == 0)
+        return true;
+
     ContextGuard guard(context);
 
     CUstream cuda_stream;
@@ -1260,7 +1263,7 @@ bool wp_memcpy_batch(void* context, void** dsts, void** srcs, size_t* sizes, siz
         // attr.flags = CU_MEMCPY_FLAG_PREFER_OVERLAP_WITH_COMPUTE;
         size_t attr_idx = 0;
         size_t fail_idx = 0;
-        result = check_cuda(cuMemcpyBatchAsync_f(
+        result = check_cu(cuMemcpyBatchAsync_f(
             (CUdeviceptr*)dsts, (CUdeviceptr*)srcs, sizes, count, &attr, &attr_idx, 1, &fail_idx, cuda_stream
         ));
     } else {
@@ -3842,10 +3845,75 @@ void* wp_cuda_graph_insert_memcpy(void* context, void* stream, void* dst, void* 
     return node;
 }
 
+// CUDA memcpy nodes cannot be updated between ordinary and stream-ordered allocations.
+// JAX can supply either allocation type when replaying the same staged call.
+static __global__ void graph_copy_device_kernel(void* dst, const void* src, size_t size)
+{
+    size_t index = size_t(blockIdx.x) * blockDim.x + threadIdx.x;
+    size_t stride = size_t(gridDim.x) * blockDim.x;
+    size_t tail = 0;
+    uintptr_t alignment_bits = uintptr_t(dst) | uintptr_t(src);
+
+    if ((alignment_bits & (alignof(uint4) - 1)) == 0) {
+        const uint4* source = static_cast<const uint4*>(src);
+        uint4* destination = static_cast<uint4*>(dst);
+        size_t vectors = size / sizeof(uint4);
+        for (size_t i = index; i < vectors; i += stride)
+            destination[i] = source[i];
+        tail = vectors * sizeof(uint4);
+    } else if ((alignment_bits & (alignof(uint64_t) - 1)) == 0) {
+        const uint64_t* source = static_cast<const uint64_t*>(src);
+        uint64_t* destination = static_cast<uint64_t*>(dst);
+        size_t words = size / sizeof(uint64_t);
+        for (size_t i = index; i < words; i += stride)
+            destination[i] = source[i];
+        tail = words * sizeof(uint64_t);
+    } else if ((alignment_bits & (alignof(uint32_t) - 1)) == 0) {
+        const uint32_t* source = static_cast<const uint32_t*>(src);
+        uint32_t* destination = static_cast<uint32_t*>(dst);
+        size_t words = size / sizeof(uint32_t);
+        for (size_t i = index; i < words; i += stride)
+            destination[i] = source[i];
+        tail = words * sizeof(uint32_t);
+    }
+
+    const unsigned char* source = static_cast<const unsigned char*>(src);
+    unsigned char* destination = static_cast<unsigned char*>(dst);
+    for (size_t i = tail + index; i < size; i += stride)
+        destination[i] = source[i];
+}
+
+static cudaKernelNodeParams graph_copy_device_params(void** arguments, const void* dst, const void* src, size_t size)
+{
+    constexpr unsigned int block_size = 256;
+    uintptr_t alignment_bits = uintptr_t(dst) | uintptr_t(src);
+    size_t bytes_per_thread = 1;
+    if ((alignment_bits & (alignof(uint4) - 1)) == 0)
+        bytes_per_thread = sizeof(uint4);
+    else if ((alignment_bits & (alignof(uint64_t) - 1)) == 0)
+        bytes_per_thread = sizeof(uint64_t);
+    else if ((alignment_bits & (alignof(uint32_t) - 1)) == 0)
+        bytes_per_thread = sizeof(uint32_t);
+
+    const size_t bytes_per_block = size_t(block_size) * bytes_per_thread;
+    const size_t blocks = (size == 0) ? 1 : std::min((size - 1) / bytes_per_block + 1, size_t(65535));
+    cudaKernelNodeParams params = {};
+    params.func = reinterpret_cast<void*>(graph_copy_device_kernel);
+    params.gridDim = dim3(static_cast<unsigned int>(blocks));
+    params.blockDim = dim3(block_size);
+    params.kernelParams = arguments;
+    return params;
+}
+
 bool wp_cuda_graph_insert_memcpy_batch(
     void* context, void* stream, void** dsts, void** srcs, size_t* sizes, int* kinds, int count, void** nodes_ret
 )
 {
+    if (count < 0) {
+        wp::set_error_string("Invalid negative memcpy count");
+        return false;
+    }
+
     ContextGuard guard(context);
 
     CUstream cuda_stream = static_cast<CUstream>(stream);
@@ -3864,6 +3932,17 @@ bool wp_cuda_graph_insert_memcpy_batch(
         return false;
     }
 
+    auto add_node = [&](int i, cudaGraphNode_t* node) {
+        if (kinds)
+            return cudaGraphAddMemcpyNode1D(
+                node, graph, capture_deps, dep_count, dsts[i], srcs[i], sizes[i], static_cast<cudaMemcpyKind>(kinds[i])
+            );
+
+        void* arguments[] = { &dsts[i], &srcs[i], &sizes[i] };
+        cudaKernelNodeParams params = graph_copy_device_params(arguments, dsts[i], srcs[i], sizes[i]);
+        return cudaGraphAddKernelNode(node, graph, capture_deps, dep_count, &params);
+    };
+
 #if 1
     // sequential version (copies executed on the same stream)
     //
@@ -3878,11 +3957,8 @@ bool wp_cuda_graph_insert_memcpy_batch(
             ))
             return false;
 
-        cudaMemcpyKind memcpy_kind = static_cast<cudaMemcpyKind>(kinds[i]);
         cudaGraphNode_t node = NULL;
-        if (!check_cuda(
-                cudaGraphAddMemcpyNode1D(&node, graph, capture_deps, dep_count, dsts[i], srcs[i], sizes[i], memcpy_kind)
-            ))
+        if (!check_cuda(add_node(i, &node)))
             return false;
         nodes_ret[i] = node;
 
@@ -3892,19 +3968,18 @@ bool wp_cuda_graph_insert_memcpy_batch(
 #else
     // parallel version (copies can execute on multiple streams)
     for (int i = 0; i < count; i++) {
-        cudaMemcpyKind memcpy_kind = static_cast<cudaMemcpyKind>(kinds[i]);
         cudaGraphNode_t node = NULL;
-        if (!check_cuda(
-                cudaGraphAddMemcpyNode1D(&node, graph, capture_deps, dep_count, dsts[i], srcs[i], sizes[i], memcpy_kind)
-            ))
+        if (!check_cuda(add_node(i, &node)))
             return false;
         nodes_ret[i] = node;
     }
 
-    if (!check_cu(cuStreamUpdateCaptureDependencies_f(
-            cuda_stream, (cudaGraphNode_t*)nodes_ret, count, cudaStreamSetCaptureDependencies
-        )))
-        return false;
+    if (count > 0) {
+        if (!check_cu(cuStreamUpdateCaptureDependencies_f(
+                cuda_stream, (cudaGraphNode_t*)nodes_ret, count, cudaStreamSetCaptureDependencies
+            )))
+            return false;
+    }
 #endif
 
     return true;
@@ -3923,19 +3998,31 @@ bool wp_cuda_graph_update_memcpy(void* graph_exec, void* node, void* dst, void* 
 }
 
 bool wp_cuda_graph_update_memcpy_batch(
-    void* graph_exec, void** nodes, void** dsts, void** srcs, size_t* sizes, int* kinds, int count
+    void* context, void* graph_exec, void** nodes, void** dsts, void** srcs, size_t* sizes, int* kinds, int count
 )
 {
+    if (count < 0) {
+        wp::set_error_string("Invalid negative memcpy count");
+        return false;
+    }
+    if (count == 0)
+        return true;
+
+    ContextGuard guard(context);
     cudaGraphExec_t cuda_graph_exec = static_cast<cudaGraphExec_t>(graph_exec);
 
     for (int i = 0; i < count; i++) {
         cudaGraphNode_t cuda_node = static_cast<cudaGraphNode_t>(nodes[i]);
-        cudaMemcpyKind memcpy_kind = static_cast<cudaMemcpyKind>(kinds[i]);
-
-        if (!check_cuda(
-                cudaGraphExecMemcpyNodeSetParams1D(cuda_graph_exec, cuda_node, dsts[i], srcs[i], sizes[i], memcpy_kind)
-            ))
+        if (!kinds) {
+            void* arguments[] = { &dsts[i], &srcs[i], &sizes[i] };
+            cudaKernelNodeParams params = graph_copy_device_params(arguments, dsts[i], srcs[i], sizes[i]);
+            if (!check_cuda(cudaGraphExecKernelNodeSetParams(cuda_graph_exec, cuda_node, &params)))
+                return false;
+        } else if (!check_cuda(cudaGraphExecMemcpyNodeSetParams1D(
+                       cuda_graph_exec, cuda_node, dsts[i], srcs[i], sizes[i], static_cast<cudaMemcpyKind>(kinds[i])
+                   ))) {
             return false;
+        }
     }
 
     return true;

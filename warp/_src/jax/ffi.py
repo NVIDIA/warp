@@ -16,7 +16,6 @@ from typing import Any
 import warp as wp
 from warp._src.codegen import _TID_MAX_EXTENT, get_full_arg_spec, make_full_qualified_name
 from warp._src.context import (
-    CudaMemcpyKind,
     _build_kernel_launch_bounds,
     _raise_cuda_launch_error,
     _resolve_launch_block_dim,
@@ -123,7 +122,7 @@ class JaxCallableGraphMode(IntEnum):
     WARP = 2
     """Let Warp capture the graph and replay it for matching buffer addresses."""
     WARP_STAGED = 3
-    """Capture a Warp graph using staging buffers and insert memcpy nodes inside the graph."""
+    """Capture a Warp graph using staging buffers and insert copy kernels inside the graph."""
     WARP_STAGED_EX = 4
     """Capture a Warp graph using staging buffers and perform memcpy outside the graph."""
 
@@ -641,6 +640,7 @@ class FfiCallDesc:
 class FfiDeviceCallDesc:
     def __init__(self):
         self.capture = None
+        self.external_capture = None
 
         # staging arrays
         self.input_staging_arrays = None  # inputs copied on each call
@@ -653,7 +653,6 @@ class FfiDeviceCallDesc:
         self.input_memcpy_srcs = None
         self.input_memcpy_dsts = None
         self.input_memcpy_sizes = None
-        self.input_memcpy_kinds = None
 
         # output memcpy info
         self.output_memcpy_count = 0
@@ -661,7 +660,12 @@ class FfiDeviceCallDesc:
         self.output_memcpy_srcs = None
         self.output_memcpy_dsts = None
         self.output_memcpy_sizes = None
-        self.output_memcpy_kinds = None
+
+        # combined graph copy node info for WARP_STAGED
+        self.memcpy_nodes = None
+        self.memcpy_srcs = None
+        self.memcpy_dsts = None
+        self.memcpy_sizes = None
 
 
 class FfiCallable:
@@ -979,108 +983,124 @@ class FfiCallable:
                 device_ordinal = get_device_ordinal_from_callframe(call_frame.contents)
                 device = wp.get_cuda_device(device_ordinal)
                 device_desc = call_desc.for_device(device_ordinal)
+                is_capturing = bool(wp._src.context.runtime.core.wp_cuda_stream_is_capturing(cuda_stream))
+                capture_key = None
 
-                if self.graph_mode == JaxCallableGraphMode.WARP:
-                    # check if we already captured an identical call
-                    ip = [inputs[i].contents.data for i in self.array_input_indices]
-                    op = [outputs[i].contents.data for i in self.array_output_indices]
-                    capture_key = hash((device_ordinal, call_id, *ip, *op))
-                    capture = self.captures.get(capture_key)
+                if (
+                    is_capturing
+                    and self.graph_mode in (JaxCallableGraphMode.WARP_STAGED, JaxCallableGraphMode.WARP_STAGED_EX)
+                    and (self.stage_in_argnames is not None or self.stage_out_argnames is not None)
+                ):
+                    return create_invalid_argument_ffi_error(
+                        call_frame.contents.api,
+                        f"JaxCallableGraphMode.{self.graph_mode.name} with stage_in_argnames or stage_out_argnames "
+                        "is not supported during an active CUDA stream capture",
+                    )
 
-                    # launch existing graph
-                    if capture is not None:
-                        graph_exec = capture.graph.graph_exec
-                        if not wp._src.context.runtime.core.wp_cuda_graph_launch(graph_exec, cuda_stream):
-                            raise RuntimeError(f"Graph launch error: {wp._src.context.runtime.get_error_string()}")
-
-                        # update the graph cache to keep recently used graphs alive
-                        self.captures.move_to_end(capture_key)
-
-                        # early out
-                        return
-
-                elif self.graph_mode == JaxCallableGraphMode.WARP_STAGED_EX:
-                    if device_desc.capture is not None:
-                        graph_exec = device_desc.capture.graph.graph_exec
-                        context = device_desc.capture.graph.device.context
-                        wp_memcpy_batch = wp._src.context.runtime.core.wp_memcpy_batch
-
-                        # set source pointers for input memcopies
-                        for memcpy_idx, input_idx in enumerate(device_desc.input_memcpy_indices):
-                            device_desc.input_memcpy_srcs[memcpy_idx] = inputs[input_idx].contents.data
-
-                        # copy inputs to staging buffers
-                        if not wp_memcpy_batch(
-                            context,
-                            device_desc.input_memcpy_dsts,
-                            device_desc.input_memcpy_srcs,
-                            device_desc.input_memcpy_sizes,
-                            device_desc.input_memcpy_count,
-                            cuda_stream,
-                        ):
-                            raise RuntimeError(
-                                f"Failed to run input memcpy batch: {wp._src.context.runtime.get_error_string()}"
-                            )
+                if not is_capturing:
+                    if self.graph_mode == JaxCallableGraphMode.WARP:
+                        # check if we already captured an identical call
+                        ip = [inputs[i].contents.data for i in self.array_input_indices]
+                        op = [outputs[i].contents.data for i in self.array_output_indices]
+                        capture_key = hash((device_ordinal, call_id, *ip, *op))
+                        capture = self.captures.get(capture_key)
 
                         # launch existing graph
-                        if not wp._src.context.runtime.core.wp_cuda_graph_launch(graph_exec, cuda_stream):
-                            raise RuntimeError(f"Graph launch error: {wp._src.context.runtime.get_error_string()}")
+                        if capture is not None:
+                            graph_exec = capture.graph.graph_exec
+                            if not wp._src.context.runtime.core.wp_cuda_graph_launch(graph_exec, cuda_stream):
+                                raise RuntimeError(f"Graph launch error: {wp._src.context.runtime.get_error_string()}")
 
-                        # set destination pointers for output memcopies
-                        for memcpy_idx, output_idx in enumerate(device_desc.output_memcpy_indices):
-                            device_desc.output_memcpy_dsts[memcpy_idx] = outputs[output_idx].contents.data
+                            # update the graph cache to keep recently used graphs alive
+                            self.captures.move_to_end(capture_key)
 
-                        # copy the outputs from staging buffers
-                        if not wp_memcpy_batch(
-                            context,
-                            device_desc.output_memcpy_dsts,
-                            device_desc.output_memcpy_srcs,
-                            device_desc.output_memcpy_sizes,
-                            device_desc.output_memcpy_count,
-                            cuda_stream,
-                        ):
-                            raise RuntimeError(
-                                f"Failed to run output memcpy batch: {wp._src.context.runtime.get_error_string()}"
-                            )
+                            # early out
+                            return
 
-                        # early out
-                        return
+                    elif self.graph_mode == JaxCallableGraphMode.WARP_STAGED_EX:
+                        if device_desc.capture is not None:
+                            graph_exec = device_desc.capture.graph.graph_exec
+                            context = device_desc.capture.graph.device.context
+                            wp_memcpy_batch = wp._src.context.runtime.core.wp_memcpy_batch
 
-                elif self.graph_mode == JaxCallableGraphMode.WARP_STAGED:
-                    if device_desc.capture is not None:
-                        graph_exec = device_desc.capture.graph.graph_exec
+                            # set source pointers for input memcopies
+                            for memcpy_idx, input_idx in enumerate(device_desc.input_memcpy_indices):
+                                device_desc.input_memcpy_srcs[memcpy_idx] = inputs[input_idx].contents.data
 
-                        # set source pointers for input memcpy nodes
-                        memcpy_idx = 0
-                        for input_idx in device_desc.input_memcpy_indices:
-                            device_desc.memcpy_srcs[memcpy_idx] = inputs[input_idx].contents.data
-                            memcpy_idx += 1
+                            # copy inputs to staging buffers
+                            if not wp_memcpy_batch(
+                                context,
+                                device_desc.input_memcpy_dsts,
+                                device_desc.input_memcpy_srcs,
+                                device_desc.input_memcpy_sizes,
+                                device_desc.input_memcpy_count,
+                                cuda_stream,
+                            ):
+                                raise RuntimeError(
+                                    f"Failed to run input memcpy batch: {wp._src.context.runtime.get_error_string()}"
+                                )
 
-                        # set destination pointers for output memcpy nodes
-                        for output_idx in device_desc.output_memcpy_indices:
-                            device_desc.memcpy_dsts[memcpy_idx] = outputs[output_idx].contents.data
-                            memcpy_idx += 1
+                            # launch existing graph
+                            if not wp._src.context.runtime.core.wp_cuda_graph_launch(graph_exec, cuda_stream):
+                                raise RuntimeError(f"Graph launch error: {wp._src.context.runtime.get_error_string()}")
 
-                        # update all memcpy nodes
-                        if not wp._src.context.runtime.core.wp_cuda_graph_update_memcpy_batch(
-                            graph_exec,
-                            device_desc.memcpy_nodes,
-                            device_desc.memcpy_dsts,
-                            device_desc.memcpy_srcs,
-                            device_desc.memcpy_sizes,
-                            device_desc.memcpy_kinds,
-                            len(device_desc.memcpy_nodes),
-                        ):
-                            raise RuntimeError(
-                                f"Failed to update graph memcpy batch: {wp._src.context.runtime.get_error_string()}"
-                            )
+                            # set destination pointers for output memcopies
+                            for memcpy_idx, output_idx in enumerate(device_desc.output_memcpy_indices):
+                                device_desc.output_memcpy_dsts[memcpy_idx] = outputs[output_idx].contents.data
 
-                        # launch existing graph
-                        if not wp._src.context.runtime.core.wp_cuda_graph_launch(graph_exec, cuda_stream):
-                            raise RuntimeError(f"Graph launch error: {wp._src.context.runtime.get_error_string()}")
+                            # copy the outputs from staging buffers
+                            if not wp_memcpy_batch(
+                                context,
+                                device_desc.output_memcpy_dsts,
+                                device_desc.output_memcpy_srcs,
+                                device_desc.output_memcpy_sizes,
+                                device_desc.output_memcpy_count,
+                                cuda_stream,
+                            ):
+                                raise RuntimeError(
+                                    f"Failed to run output memcpy batch: {wp._src.context.runtime.get_error_string()}"
+                                )
 
-                        # early out
-                        return
+                            # early out
+                            return
+
+                    elif self.graph_mode == JaxCallableGraphMode.WARP_STAGED:
+                        if device_desc.capture is not None:
+                            graph_exec = device_desc.capture.graph.graph_exec
+                            context = device_desc.capture.graph.device.context
+
+                            # set source pointers for input copy nodes
+                            memcpy_idx = 0
+                            for input_idx in device_desc.input_memcpy_indices:
+                                device_desc.memcpy_srcs[memcpy_idx] = inputs[input_idx].contents.data
+                                memcpy_idx += 1
+
+                            # set destination pointers for output copy nodes
+                            for output_idx in device_desc.output_memcpy_indices:
+                                device_desc.memcpy_dsts[memcpy_idx] = outputs[output_idx].contents.data
+                                memcpy_idx += 1
+
+                            # update all copy nodes
+                            if not wp._src.context.runtime.core.wp_cuda_graph_update_memcpy_batch(
+                                context,
+                                graph_exec,
+                                device_desc.memcpy_nodes,
+                                device_desc.memcpy_dsts,
+                                device_desc.memcpy_srcs,
+                                device_desc.memcpy_sizes,
+                                None,
+                                len(device_desc.memcpy_nodes),
+                            ):
+                                raise RuntimeError(
+                                    f"Failed to update graph memcpy batch: {wp._src.context.runtime.get_error_string()}"
+                                )
+
+                            # launch existing graph
+                            if not wp._src.context.runtime.core.wp_cuda_graph_launch(graph_exec, cuda_stream):
+                                raise RuntimeError(f"Graph launch error: {wp._src.context.runtime.get_error_string()}")
+
+                            # early out
+                            return
 
                 _load_ffi_module(wp.get_module(self.func.__module__), device)
                 stream = wp.Stream(device, cuda_stream=cuda_stream)
@@ -1089,13 +1109,13 @@ class FfiCallable:
 
                 # call the Python function with reconstructed arguments
                 with wp.ScopedStream(stream, sync_enter=False):
-                    if stream.is_capturing:
+                    if is_capturing:
                         # capturing with JAX
                         with wp.ScopedCapture(external=True) as capture:
                             self.func(*arg_list)
 
                         # keep a reference to the capture object to prevent required modules getting unloaded
-                        device_desc.capture = capture
+                        device_desc.external_capture = capture
 
                     elif self.graph_mode == JaxCallableGraphMode.WARP:
                         # capturing with WARP
@@ -1162,13 +1182,13 @@ class FfiCallable:
                         # prepare staging arrays and memcpy info
                         self._prepare_staging(arg_list, device_desc)
 
-                        # prepare graph memcpy nodes
+                        # prepare graph copy nodes
                         input_memcpy_count = device_desc.input_memcpy_count
                         output_memcpy_count = device_desc.output_memcpy_count
                         input_memcpy_nodes = (ctypes.c_void_p * input_memcpy_count)()
                         output_memcpy_nodes = (ctypes.c_void_p * output_memcpy_count)()
 
-                        # capture using staging arrays and include memory copies
+                        # All staging and FFI buffers are on this device, so use copy kernels for both batches.
                         with wp.ScopedCapture() as capture:
                             # copy inputs
                             if not wp_cuda_graph_insert_memcpy_batch(
@@ -1177,7 +1197,7 @@ class FfiCallable:
                                 device_desc.input_memcpy_dsts,
                                 device_desc.input_memcpy_srcs,
                                 device_desc.input_memcpy_sizes,
-                                device_desc.input_memcpy_kinds,
+                                None,
                                 device_desc.input_memcpy_count,
                                 input_memcpy_nodes,
                             ):
@@ -1195,7 +1215,7 @@ class FfiCallable:
                                 device_desc.output_memcpy_dsts,
                                 device_desc.output_memcpy_srcs,
                                 device_desc.output_memcpy_sizes,
-                                device_desc.output_memcpy_kinds,
+                                None,
                                 device_desc.output_memcpy_count,
                                 output_memcpy_nodes,
                             ):
@@ -1205,26 +1225,23 @@ class FfiCallable:
 
                         wp.capture_launch(capture.graph)
 
-                        # concatenate input and output memcopy nodes so they can be updated in one call
+                        # concatenate input and output copy nodes so they can be updated in one call
                         num_nodes = input_memcpy_count + output_memcpy_count
                         device_desc.memcpy_nodes = (ctypes.c_void_p * num_nodes)()
                         device_desc.memcpy_srcs = (ctypes.c_void_p * num_nodes)()
                         device_desc.memcpy_dsts = (ctypes.c_void_p * num_nodes)()
                         device_desc.memcpy_sizes = (ctypes.c_size_t * num_nodes)()
-                        device_desc.memcpy_kinds = (ctypes.c_int * num_nodes)()
                         for i in range(input_memcpy_count):
                             device_desc.memcpy_nodes[i] = input_memcpy_nodes[i]
                             device_desc.memcpy_srcs[i] = device_desc.input_memcpy_srcs[i]
                             device_desc.memcpy_dsts[i] = device_desc.input_memcpy_dsts[i]
                             device_desc.memcpy_sizes[i] = device_desc.input_memcpy_sizes[i]
-                            device_desc.memcpy_kinds[i] = device_desc.input_memcpy_kinds[i]
                         for i in range(output_memcpy_count):
                             j = input_memcpy_count + i
                             device_desc.memcpy_nodes[j] = output_memcpy_nodes[i]
                             device_desc.memcpy_srcs[j] = device_desc.output_memcpy_srcs[i]
                             device_desc.memcpy_dsts[j] = device_desc.output_memcpy_dsts[i]
                             device_desc.memcpy_sizes[j] = device_desc.output_memcpy_sizes[i]
-                            device_desc.memcpy_kinds[j] = device_desc.output_memcpy_kinds[i]
 
                         # save the capture for replays
                         # TODO: we should have a way of freeing this
@@ -1285,13 +1302,11 @@ class FfiCallable:
         device_desc.input_memcpy_srcs = (ctypes.c_void_p * input_memcpy_count)()
         device_desc.input_memcpy_dsts = (ctypes.c_void_p * input_memcpy_count)()
         device_desc.input_memcpy_sizes = (ctypes.c_size_t * input_memcpy_count)()
-        device_desc.input_memcpy_kinds = (ctypes.c_int * input_memcpy_count)()
         for i in range(input_memcpy_count):
             size = input_staging_arrays[i].size * type_size_in_bytes(input_staging_arrays[i].dtype)
             device_desc.input_memcpy_srcs[i] = input_callback_arrays[i].ptr
             device_desc.input_memcpy_dsts[i] = input_staging_arrays[i].ptr
             device_desc.input_memcpy_sizes[i] = size
-            device_desc.input_memcpy_kinds[i] = CudaMemcpyKind.D2D
 
         # prepare output memcpy batch
         output_memcpy_count = len(output_staging_arrays)
@@ -1300,13 +1315,11 @@ class FfiCallable:
         device_desc.output_memcpy_srcs = (ctypes.c_void_p * output_memcpy_count)()
         device_desc.output_memcpy_dsts = (ctypes.c_void_p * output_memcpy_count)()
         device_desc.output_memcpy_sizes = (ctypes.c_size_t * output_memcpy_count)()
-        device_desc.output_memcpy_kinds = (ctypes.c_int * output_memcpy_count)()
         for i in range(output_memcpy_count):
             size = output_staging_arrays[i].size * type_size_in_bytes(output_staging_arrays[i].dtype)
             device_desc.output_memcpy_srcs[i] = output_staging_arrays[i].ptr
             device_desc.output_memcpy_dsts[i] = output_callback_arrays[i].ptr
             device_desc.output_memcpy_sizes[i] = size
-            device_desc.output_memcpy_kinds[i] = CudaMemcpyKind.D2D
 
         # hang on to the staging arrays to prevent GC
         # TODO: we should have a way of freeing this
@@ -1832,11 +1845,13 @@ def jax_callable(
             buffers on each call in ``WARP_STAGED`` or ``WARP_STAGED_EX`` mode.
             If ``None``, copy every non-empty array input. When specific names
             are provided, other array inputs keep the values copied during
-            graph setup.
+            graph setup. Not supported during an active external CUDA stream
+            capture.
         stage_out_argnames: Names of non-empty array outputs to copy from staging
             buffers on each call in ``WARP_STAGED`` or ``WARP_STAGED_EX`` mode.
             If ``None``, copy every non-empty array output. When specific names
-            are provided, other array outputs are not copied back.
+            are provided, other array outputs are not copied back. Not
+            supported during an active external CUDA stream capture.
         graph_cache_max: Maximum number of cached graphs captured using ``JaxCallableGraphMode.WARP``.
             If ``None``, the graph cache is unlimited.
         module_preload_mode: Specify the devices where the module should be preloaded.
