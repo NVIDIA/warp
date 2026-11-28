@@ -5133,9 +5133,14 @@ class array(Array[DType, NDim]):
             return a.flatten().tolist()
 
     def to(self, device, requires_grad=None):
-        """Return a Warp array with this array's data moved to the specified device, no-op if already on device."""
+        """Return a Warp array with this array's data moved to the specified device.
+
+        Returns this array unchanged if it is already on the device and ``requires_grad`` is
+        ``None`` or matches the array's current state. Otherwise returns a copy, and this array
+        is not modified.
+        """
         device = warp.get_device(device)
-        if self.device == device:
+        if self.device == device and (requires_grad is None or bool(requires_grad) == self.requires_grad):
             return self
         else:
             return warp.clone(self, device=device, requires_grad=requires_grad)
