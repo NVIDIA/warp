@@ -5039,7 +5039,7 @@ class array(Array[DType, NDim]):
         if self.ptr:
             # use the CUDA default stream for synchronous behaviour with other streams
             with warp.ScopedStream(self.device.null_stream):
-                a = self.to("cpu", requires_grad=False)
+                a = self if self.device.is_cpu else self.to("cpu", requires_grad=False)
             # convert through __array_interface__
             # Note: this handles arrays of structs using `descr`, so the result will be a structured NumPy array
             result = np.asarray(a)
@@ -5140,7 +5140,7 @@ class array(Array[DType, NDim]):
         is not modified.
         """
         device = warp.get_device(device)
-        if self.device == device and (requires_grad is None or bool(requires_grad) == self.requires_grad):
+        if self.device == device and (requires_grad is None or builtins.bool(requires_grad) == self.requires_grad):
             return self
         else:
             return warp.clone(self, device=device, requires_grad=requires_grad)
