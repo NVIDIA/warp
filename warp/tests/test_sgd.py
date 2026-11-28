@@ -258,6 +258,34 @@ class TestSGD(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, r"SGD gradient shape must match parameter shape \(2,\), got \(2, 1\)"):
             opt.step([wp.zeros((2, 1), dtype=wp.float32, device="cpu")])
 
+    def test_step_rejects_mismatched_gradient_count_without_updating_state(self):
+        params = [wp.ones(2, dtype=wp.float32, device="cpu"), wp.ones(3, dtype=wp.float32, device="cpu")]
+        opt = warp.optim.SGD(params, momentum=0.9)
+        initial_params = [param.numpy().copy() for param in params]
+        initial_b = [momentum.numpy().copy() for momentum in opt.b]
+
+        gradients = [
+            [],
+            [wp.zeros(2, dtype=wp.float32, device="cpu")],
+            [wp.zeros(2, dtype=wp.float32, device="cpu")] * 3,
+        ]
+        for gradient in gradients:
+            with self.assertRaisesRegex(ValueError, r"SGD gradient count must match parameter count 2"):
+                opt.step(gradient)
+            for param, initial in zip(params, initial_params, strict=True):
+                np.testing.assert_array_equal(param.numpy(), initial)
+            for momentum, initial in zip(opt.b, initial_b, strict=True):
+                np.testing.assert_array_equal(momentum.numpy(), initial)
+            self.assertEqual(opt.t, 0)
+
+        opt.step(
+            [
+                wp.ones(2, dtype=wp.float32, device="cpu"),
+                wp.ones(3, dtype=wp.float32, device="cpu"),
+            ]
+        )
+        self.assertEqual(opt.t, 1)
+
 
 add_function_test(TestSGD, "test_sgd_momentum_accumulation", test_sgd_momentum_accumulation, devices=devices)
 add_function_test(TestSGD, "test_sgd_weight_decay", test_sgd_weight_decay, devices=devices)

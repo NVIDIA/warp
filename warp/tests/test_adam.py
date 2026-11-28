@@ -217,6 +217,37 @@ class TestAdam(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, r"Adam gradient shape must match parameter shape \(2,\), got \(2, 1\)"):
             opt.step([wp.zeros((2, 1), dtype=wp.float32, device="cpu")])
 
+    def test_step_rejects_mismatched_gradient_count_without_updating_state(self):
+        params = [wp.ones(2, dtype=wp.float32, device="cpu"), wp.ones(3, dtype=wp.float32, device="cpu")]
+        opt = warp.optim.Adam(params)
+        initial_params = [param.numpy().copy() for param in params]
+        initial_m = [moment.numpy().copy() for moment in opt.m]
+        initial_v = [moment.numpy().copy() for moment in opt.v]
+
+        gradients = [
+            [],
+            [wp.zeros(2, dtype=wp.float32, device="cpu")],
+            [wp.zeros(2, dtype=wp.float32, device="cpu")] * 3,
+        ]
+        for gradient in gradients:
+            with self.assertRaisesRegex(ValueError, r"Adam gradient count must match parameter count 2"):
+                opt.step(gradient)
+            for param, initial in zip(params, initial_params, strict=True):
+                np.testing.assert_array_equal(param.numpy(), initial)
+            for moment, initial in zip(opt.m, initial_m, strict=True):
+                np.testing.assert_array_equal(moment.numpy(), initial)
+            for moment, initial in zip(opt.v, initial_v, strict=True):
+                np.testing.assert_array_equal(moment.numpy(), initial)
+            self.assertEqual(opt.t, 0)
+
+        opt.step(
+            [
+                wp.ones(2, dtype=wp.float32, device="cpu"),
+                wp.ones(3, dtype=wp.float32, device="cpu"),
+            ]
+        )
+        self.assertEqual(opt.t, 1)
+
 
 add_function_test(TestAdam, "test_adam_solve_float", test_adam_solve_float, devices=devices)
 add_function_test(TestAdam, "test_adam_solve_vec3", test_adam_solve_vec3, devices=devices)
