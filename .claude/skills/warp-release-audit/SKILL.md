@@ -131,9 +131,8 @@ Generates a markdown audit of the upcoming Warp release for keep/defer decisions
      **Changelog Fragments Without Matching Commits** appendix. Include every
      source path and the full rendered text; never truncate.
 
-2. **Do NOT build an audit trace of unmatched commits.** The old "commits
-   without changelog entries" appendix adds noise without value. Commits that
-   do not map to a pending entry are not surfaced in the report.
+2. Link commits outside the fragment join when they support a confirmed API
+   finding. Keep the report focused on findings and pending entries.
 
 ## Phase 4 — Analyze API surface
 
@@ -154,7 +153,27 @@ is in scope only if the current policy explicitly promises that interface.
 
 ### 4a — Determine what is genuinely NEW API
 
-For each pending `Added` entry, extract the named symbol(s) (text in backticks matching `wp.*`, `@wp.*`, or patterns like `ClassName`).
+Run the committed API comparison on every audit, including when there are no
+pending fragments. Capture stdout as `api_diff_json`.
+
+```bash
+uv run "<skill-dir>/scripts/diff_public_api.py" --base <base-ref> --head <head-ref>
+```
+
+The helper scans `warp` and the modules in the API reference at either ref.
+Pass `--module <public-submodule>` for each additional public module named by a
+pending entry. Read [the public API classification rules](references/classification-rules.md)
+for the inventory fields, filtering, and provenance.
+
+Review every `api_diff_json.additions[]` candidate alongside the pending entries.
+Include confirmed public additions in **New API** even if a fragment only
+describes the feature or no fragment exists. Resolve companion exports and
+documented members on existing classes under their public names.
+
+Also extract named symbols from each pending `Added` entry (backticked `wp.*`,
+`warp.*`, decorators, or class names). Use this pass for kernel builtins and
+other surfaces that the static Python inventory may miss. Merge findings by
+public symbol before counting them.
 
 For EACH named symbol, check if it existed at base:
 
@@ -176,10 +195,12 @@ symbols go to New API and extensions go to Changes to Existing API.
 
 For each Python-scope symbol confirmed as new:
 
-1. Find its real source module via `warp/__init__.py` re-exports at HEAD.
-2. `ast.parse` the source module; find the `FunctionDef` / `ClassDef`.
-3. Extract the signature by re-stringifying the args (preserve type annotations).
-4. Extract the docstring verbatim via `ast.get_docstring(node)`.
+1. Use the inventory's `source` and `definition` to locate the declaration at
+   HEAD. Follow the public re-export from source for manual findings.
+2. Parse the source with `ast.parse` and locate the function, class, or member.
+3. Preserve annotations in the signature. For an attribute, show its
+   declaration and its attribute or class documentation.
+4. Extract function and class docstrings with `ast.get_docstring(node)`.
 5. Render as shown in the template.
 
 For each kernel-scope builtin confirmed as new:
@@ -248,20 +269,9 @@ Breaking Changes, include it there as well.
 
 ### 4e — Signature-AST diff for unlabeled breaking changes
 
-Independently of CHANGELOG content, compare the committed public API at base and
-HEAD. Read `references/classification-rules.md` for module selection, public-stub
-coverage, signature compatibility, and manual fallbacks. Always include `warp`
-and add public submodules named by pending entries:
-
-```bash
-uv run "<skill-dir>/scripts/diff_public_api.py" \
-  --base <base-ref> \
-  --head <head-ref> \
-  --module warp \
-  --module <public-submodule>
-```
-Repeat `--module` per resolved submodule and omit the placeholder when there are
-none. Capture stdout as `api_diff_json`.
+Use the `api_diff_json` already captured in Phase 4a. Read
+`references/classification-rules.md` for public-stub coverage, signature
+compatibility, and manual fallbacks.
 
 For each `api_diff_json.changes[]` item:
 - Classify the fact through the stability and reachability gate before deciding

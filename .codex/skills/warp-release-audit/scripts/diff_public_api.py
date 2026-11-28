@@ -13,9 +13,12 @@ from __future__ import annotations
 import argparse
 import ast
 import json
+import re
 import subprocess
 import sys
-from dataclasses import asdict, dataclass, field
+import textwrap
+from collections.abc import Iterator, Sequence
+from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 
 _GIT_SHOW_CACHE: dict[tuple[str, str, str], str | None] = {}
@@ -37,6 +40,8 @@ class ApiEntry:
     signature: str | None = None
     params: tuple[Param, ...] = ()
     source: str | None = None
+    definition: str | None = None
+    documented: bool = False
 
     @property
     def signature_key(self) -> str:
@@ -61,6 +66,7 @@ class Change:
 class ModuleSurface:
     entries: dict[str, list[ApiEntry]] = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
+    star_exports: tuple[str, ...] = ()
 
     def add(self, entry: ApiEntry) -> None:
         self.entries.setdefault(entry.symbol, []).append(entry)
@@ -119,6 +125,46 @@ def module_path(repo: Path, ref: str, module: str, suffix: str) -> tuple[str, bo
 
 def is_public(name: str) -> bool:
     return not name.startswith("_")
+
+
+def api_reference(repo: Path, ref: str) -> tuple[set[str], dict[str, str]]:
+    """Read the public modules and symbols listed in Warp's API reference."""
+    modules = {"warp"}
+    symbols: dict[str, str] = {}
+    paths = git(repo, "ls-tree", "-r", "--name-only", ref, "--", "docs/api_reference")
+    for path in paths.splitlines():
+        if not path.endswith(".rst"):
+            continue
+        source = git_show(repo, ref, path)
+        if source is None:
+            continue
+        module = "warp"
+        in_autosummary = False
+        for line in source.splitlines():
+            if line and not line[0].isspace():
+                in_autosummary = line.rstrip() == ".. autosummary::"
+            namespace = re.fullmatch(r"\.\. (?:currentmodule|automodule)::\s+(warp(?:\.\w+)*)\s*", line)
+            if namespace:
+                module = namespace[1]
+                if all(is_public(part) for part in module.split(".")):
+                    modules.add(module)
+            if in_autosummary:
+                name = re.fullmatch(r"\s+~?([A-Za-z_]\w*(?:\.\w+)*)\s*", line)
+            else:
+                name = re.fullmatch(r"\.\. auto(?:class|function|method|attribute|data)::\s+~?([\w.]+)\s*", line)
+            if name:
+                symbol = name[1] if name[1].startswith("warp.") else f"{module}.{name[1]}"
+                if all(is_public(part) for part in symbol.split(".")):
+                    symbols.setdefault(symbol, path)
+    # A fully qualified autodoc entry can document a module without a separate page.
+    for symbol in symbols:
+        namespace = symbol.rpartition(".")[0]
+        while namespace not in modules:
+            if module_path(repo, ref, namespace, ".py") is not None:
+                modules.add(namespace)
+                break
+            namespace = namespace.rpartition(".")[0]
+    return modules, symbols
 
 
 def overload_decorator_names(tree: ast.Module) -> set[str]:
@@ -204,7 +250,73 @@ def callable_entry(
         signature=signature,
         params=tuple(params),
         source=source,
+        documented=bool(ast.get_docstring(node)),
     )
+
+
+def assignment_targets(node: ast.stmt) -> Sequence[ast.expr]:
+    if isinstance(node, ast.Assign):
+        return node.targets
+    if isinstance(node, ast.AnnAssign):
+        return (node.target,)
+    return ()
+
+
+def unpack_targets(targets: Sequence[ast.expr]) -> Iterator[ast.expr]:
+    for target in targets:
+        if isinstance(target, (ast.Tuple, ast.List)):
+            yield from unpack_targets(target.elts)
+        elif isinstance(target, ast.Starred):
+            yield from unpack_targets((target.value,))
+        else:
+            yield target
+
+
+def statement_blocks(node: ast.AST) -> Iterator[list[ast.stmt]]:
+    """Yield ordered statement lists, stopping at nested definitions."""
+    for _, children in ast.iter_fields(node):
+        if not isinstance(children, list) or not children:
+            continue
+        if isinstance(children[0], ast.stmt):
+            yield children
+        for child in children:
+            if isinstance(child, (ast.stmt, ast.ExceptHandler, ast.match_case)) and not isinstance(
+                child, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+            ):
+                yield from statement_blocks(child)
+
+
+def attributes(
+    nodes: Sequence[ast.stmt], prefix: str, surface: str, source: str, instance_docs: set[str] | None = None
+) -> list[ApiEntry]:
+    entries = []
+    for index, node in enumerate(nodes):
+        targets = assignment_targets(node)
+        if not targets:
+            continue
+        following = nodes[index + 1] if index + 1 < len(nodes) else None
+        documented = (
+            isinstance(following, ast.Expr)
+            and isinstance(following.value, ast.Constant)
+            and isinstance(following.value.value, str)
+        )
+        for target in unpack_targets(targets):
+            if instance_docs is None and isinstance(target, ast.Name):
+                name = target.id
+                has_doc = documented
+            elif (
+                instance_docs is not None
+                and isinstance(target, ast.Attribute)
+                and isinstance(target.value, ast.Name)
+                and target.value.id == "self"
+            ):
+                name = target.attr
+                has_doc = documented or name in instance_docs
+            else:
+                continue
+            if is_public(name):
+                entries.append(ApiEntry(f"{prefix}.{name}", surface, "attribute", source=source, documented=has_doc))
+    return entries
 
 
 def class_entries(
@@ -223,6 +335,13 @@ def class_entries(
 
     if init_node is not None:
         entries.append(callable_entry(public_symbol, surface, init_node, "class", source))
+        doc = ast.get_docstring(node) or ""
+        section = re.search(r"^Attributes:[ \t]*\n((?:[ \t]+[^\n]+\n?|\n)*)", doc, re.MULTILINE)
+        instance_docs = (
+            set(re.findall(r"^(\w+)(?: \([^\n]+\))?:", textwrap.dedent(section[1]), re.MULTILINE)) if section else set()
+        )
+        for block in statement_blocks(init_node):
+            entries.extend(attributes(block, public_symbol, surface, source, instance_docs))
     else:
         entries.append(ApiEntry(public_symbol, surface, "class", source=source))
 
@@ -230,8 +349,7 @@ def class_entries(
         if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)) and is_public(child.name):
             kind = "overload" if is_overload(child, overload_names) else "method"
             entries.append(callable_entry(f"{public_symbol}.{child.name}", surface, child, kind, source))
-        elif isinstance(child, ast.AnnAssign) and isinstance(child.target, ast.Name) and is_public(child.target.id):
-            entries.append(ApiEntry(f"{public_symbol}.{child.target.id}", surface, "attribute", source=source))
+    entries.extend(attributes(node.body, public_symbol, surface, source))
     return entries
 
 
@@ -247,26 +365,42 @@ def resolve_import_module(current_module: str, is_package: bool, node: ast.Impor
     return ".".join(part for part in parts if part)
 
 
+def static_star_exports(tree: ast.Module) -> tuple[str, ...]:
+    """Read a literal module-level __all__ without importing the module."""
+    for node in reversed(tree.body):
+        if not isinstance(node, (ast.Assign, ast.AnnAssign)) or not any(
+            isinstance(target, ast.Name) and target.id == "__all__" for target in assignment_targets(node)
+        ):
+            continue
+        value = node.value
+        if isinstance(value, (ast.List, ast.Tuple)) and all(
+            isinstance(item, ast.Constant) and isinstance(item.value, str) for item in value.elts
+        ):
+            return tuple(item.value for item in value.elts)
+        break
+    return ()
+
+
 def entries_from_source_module(
-    repo: Path,
-    ref: str,
+    parsed: ModuleSurface | None,
     source_module: str,
     imported_name: str,
     public_symbol: str,
     surface: str,
-    seen: set[tuple[str, str]],
 ) -> list[ApiEntry]:
-    # Re-export modules often import many names from the same source module.
-    # Keep the caller's cycle guard for this resolution path, but do not let a
-    # previous alias from the same file suppress later aliases.
-    parsed = parse_module(repo, ref, source_module, surface, seen.copy())
     if parsed is None:
         return [ApiEntry(public_symbol, surface, "alias", source=source_module)]
 
     source_symbol = f"{source_module}.{imported_name}"
-    source_entries = parsed.entries.get(source_symbol)
+    source_entries = parsed.entries.get(source_symbol, [])
     if not source_entries:
         return [ApiEntry(public_symbol, surface, "alias", source=source_module)]
+    if any(entry.entry_kind == "class" for entry in source_entries):
+        prefix = f"{source_symbol}."
+        source_entries = [*source_entries]
+        for symbol, members in parsed.entries.items():
+            if symbol.startswith(prefix):
+                source_entries.extend(members)
 
     rewritten: list[ApiEntry] = []
     for entry in source_entries:
@@ -276,13 +410,11 @@ def entries_from_source_module(
         if signature is not None:
             signature = new_symbol + signature[len(entry.symbol) :]
         rewritten.append(
-            ApiEntry(
+            replace(
+                entry,
                 symbol=new_symbol,
-                surface=surface,
-                entry_kind=entry.entry_kind,
                 signature=signature,
-                params=entry.params,
-                source=entry.source,
+                definition=entry.definition or entry.symbol,
             )
         )
     return rewritten
@@ -322,6 +454,7 @@ def parse_module(
         _PARSE_CACHE[cache_key] = surface_data
         return surface_data
 
+    surface_data.star_exports = static_star_exports(tree)
     overload_names = overload_decorator_names(tree)
 
     for node in tree.body:
@@ -332,19 +465,27 @@ def parse_module(
             root_module = module.split(".", 1)[0]
             if source_module != root_module and not source_module.startswith(f"{root_module}."):
                 continue
-            for alias in node.names:
-                public_name = alias.asname or alias.name
-                if alias.name == "*" or not is_public(public_name):
-                    continue
+            wildcard = node.names[0].name == "*"
+            names = [
+                (alias.name, alias.asname or alias.name)
+                for alias in node.names
+                if alias.name != "*" and is_public(alias.asname or alias.name)
+            ]
+            if not wildcard and not names:
+                continue
+            # Keep the cycle guard local to this import chain so it does not
+            # affect independent re-exports from the same source module.
+            imported = parse_module(repo, ref, source_module, surface, seen.copy())
+            if wildcard and imported is not None:
+                names = [(name, name) for name in imported.star_exports if is_public(name)]
+            for imported_name, public_name in names:
                 public_symbol = f"{module}.{public_name}"
                 for entry in entries_from_source_module(
-                    repo,
-                    ref,
+                    imported,
                     source_module,
-                    alias.name,
+                    imported_name,
                     public_symbol,
                     surface,
-                    seen,
                 ):
                     surface_data.add(entry)
         elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and is_public(node.name):
@@ -353,8 +494,8 @@ def parse_module(
         elif isinstance(node, ast.ClassDef) and is_public(node.name):
             for entry in class_entries(f"{module}.{node.name}", surface, node, path, overload_names):
                 surface_data.add(entry)
-        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name) and is_public(node.target.id):
-            surface_data.add(ApiEntry(f"{module}.{node.target.id}", surface, "attribute", source=path))
+    for entry in attributes(tree.body, module, surface, path):
+        surface_data.add(entry)
 
     _PARSE_CACHE[cache_key] = surface_data
     return surface_data
@@ -404,12 +545,17 @@ def signature_breaking_reasons(base: ApiEntry, head: ApiEntry) -> list[str]:
     return sorted(set(reasons))
 
 
-def choose_signature_entry(surface: ModuleSurface, symbol: str, ref: str) -> ApiEntry | None:
-    callable_entries = [
+def runtime_implementations(surface: ModuleSurface, symbol: str) -> list[ApiEntry]:
+    return [
         entry
         for entry in surface.entries[symbol]
         if entry.signature is not None and entry.entry_kind in {"function", "method", "class"}
     ]
+
+
+def choose_signature_entry(
+    callable_entries: list[ApiEntry], surface: ModuleSurface, symbol: str, ref: str
+) -> ApiEntry | None:
     if len(callable_entries) == 1:
         return callable_entries[0]
     if len(callable_entries) > 1:
@@ -423,11 +569,15 @@ def choose_signature_entry(surface: ModuleSurface, symbol: str, ref: str) -> Api
 def diff_signatures(base: ModuleSurface, head: ModuleSurface, base_ref: str, head_ref: str) -> list[Change]:
     changes: list[Change] = []
     for symbol in sorted(set(base.entries) & set(head.entries)):
-        base_entry = choose_signature_entry(base, symbol, base_ref)
-        head_entry = choose_signature_entry(head, symbol, head_ref)
-        if base_entry is None or head_entry is None:
+        base_implementations = runtime_implementations(base, symbol)
+        head_implementations = runtime_implementations(head, symbol)
+        if [(entry.signature, entry.params) for entry in base_implementations] == [
+            (entry.signature, entry.params) for entry in head_implementations
+        ]:
             continue
-        if base_entry.signature == head_entry.signature:
+        base_entry = choose_signature_entry(base_implementations, base, symbol, base_ref)
+        head_entry = choose_signature_entry(head_implementations, head, symbol, head_ref)
+        if base_entry is None or head_entry is None:
             continue
         reasons = signature_breaking_reasons(base_entry, head_entry)
         if not reasons:
@@ -503,7 +653,35 @@ def dedupe_changes(changes: list[Change]) -> list[Change]:
     return out
 
 
+def documented_additions(base: ModuleSurface, head: ModuleSurface, documentation: dict[str, str]) -> list[dict]:
+    additions = []
+    for symbol in sorted(head.entries.keys() - base.entries.keys()):
+        entries = head.entries[symbol]
+        entry = entries[0]
+        doc_path = documentation.get(symbol)
+        owner = symbol.rpartition(".")[0]
+        if doc_path is None and any(item.documented for item in entries):
+            if any(item.entry_kind == "class" for item in head.entries.get(owner, [])):
+                doc_path = documentation.get(owner)
+        if doc_path is not None:
+            additions.append(
+                {
+                    "symbol": symbol,
+                    "kind": entry.entry_kind,
+                    "source": entry.source,
+                    "definition": entry.definition or symbol,
+                    "signatures": sorted({item.signature for item in entries if item.signature is not None}),
+                    "documentation": doc_path,
+                }
+            )
+    return additions
+
+
 def build_report(repo: Path, base: str, head: str, modules: list[str]) -> dict:
+    base_modules, _ = api_reference(repo, base)
+    head_modules, documentation = api_reference(repo, head)
+    modules = sorted({"warp", *modules} | base_modules | head_modules)
+    additions: list[dict] = []
     changes: list[Change] = []
     warnings: list[dict[str, str]] = []
 
@@ -513,6 +691,7 @@ def build_report(repo: Path, base: str, head: str, modules: list[str]) -> dict:
         base_stub = parse_module(repo, base, module, "stub") or ModuleSurface()
         head_stub = parse_module(repo, head, module, "stub") or ModuleSurface()
 
+        additions.extend(documented_additions(base_runtime, head_runtime, documentation))
         changes.extend(diff_signatures(base_runtime, head_runtime, base, head))
         changes.extend(diff_stub_removals(base_stub, head_stub))
 
@@ -529,6 +708,7 @@ def build_report(repo: Path, base: str, head: str, modules: list[str]) -> dict:
         "base": {"ref": base, "sha": resolve_sha(repo, base)},
         "head": {"ref": head, "sha": resolve_sha(repo, head)},
         "modules": modules,
+        "additions": additions,
         "changes": [asdict(change) for change in dedupe_changes(changes)],
         "warnings": warnings,
     }
@@ -543,7 +723,7 @@ def parse_args() -> argparse.Namespace:
         "--module",
         action="append",
         dest="modules",
-        help="Public module to scan; repeat for multiple modules. Defaults to warp.",
+        help="Additional public module to scan alongside the modules in the API reference. Repeat as needed.",
     )
     return parser.parse_args()
 

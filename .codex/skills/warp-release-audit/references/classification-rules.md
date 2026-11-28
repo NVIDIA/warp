@@ -27,26 +27,54 @@ documented window was satisfied.
 
 ## Public API surface (Phase 4a, 4e)
 
-Used to decide whether a symbol is "genuinely new" vs. "pre-existed and got extended":
+Phase 4a runs `scripts/diff_public_api.py` for both committed refs. It discovers
+public namespaces from `docs/api_reference/`, follows re-exports to their
+definitions, and compares documented exports and members of documented classes.
+It reads literal `__all__` lists and tuples for in-repo wildcard imports.
+Member discovery uses method and property docstrings, inline attribute
+docstrings in class and constructor bodies, and constructor assignments
+documented in the class's `Attributes:` section.
 
-Phase 4e should run `scripts/diff_public_api.py` first and consume its JSON
-facts for runtime signatures and public stub removals. Use the path rules below
-to choose modules for that helper and to guide manual fallback when the helper
-emits warnings.
+### Reconcile the inventory
+
+1. Start with every `additions[]` row. `symbol` is the public name,
+   `documentation` identifies the API reference file, and `source`, `definition`,
+   and `signatures` identify its implementation. Apply the reachability and
+   stability checks above. Verify potential moves, aliases, and inherited
+   members at base before counting a new API.
+2. For a feature-level entry, inspect all documented exports of the affected
+   module and the documented members of its affected classes. Include APIs
+   discovered in Changed entries or through the inventory alone. For example,
+   a cuTile module announcement can name `export_func()` while its API
+   reference also lists `array_pointer_args()` and `encode_struct()`.
+3. Count each confirmed public API once across fragment and inventory evidence.
+   Use the API reference's Python or Kernel section to place documented exports.
+   Put enum values and members of a new class with that class. Describe
+   documented operations on factory results with their factory. For a new
+   method of an existing class, collapse overrides of the same interface into
+   one entry. Route a relocated API with a compatibility alias to Changes to
+   Existing API.
+4. Join each finding to a pending entry by symbol or feature and confirm the
+   backing commit. For findings without a fragment, compare the public export
+   and implementation paths and use `git log -G '<symbol>' <base>..<head> --
+   <paths>` to trace the introduction. Cite the commit and any verified issue
+   links. Include the finding in its normal report section.
+
+The scanner works from static declarations and API reference directives.
+Inspect doc-only or dynamically generated exports, inherited members, and
+guide-documented return objects directly when they are relevant. The kernel
+builtin inventory still comes from the pending entries and registrations.
+Phase 4e uses the same scan's `changes[]` for signatures and stub removals.
 
 - `warp/__init__.py` — top-level re-exports (the user-facing Python surface).
 - `warp/__init__.pyi` — top-level public stubs used by type checkers and IDEs.
 - `warp/_src/builtins.py` — kernel-scope builtins (user-facing within `@wp.kernel`).
 - Any module reached from `warp/__init__.py` via `from warp._src.<mod> import X as X`.
 - `warp/config.py` — user-facing configuration flags (e.g., `wp.config.track_memory`).
-- Public submodules named in CHANGELOG entries, such as `warp.fem`,
-  `warp.optim.linear`, `warp.jax`, and `warp.jax_experimental`. Resolve the
+- Additional public submodules named in CHANGELOG entries. Resolve the
   public package/module first (e.g., `warp/fem/__init__.py`,
-  `warp/optim/linear.py`), then follow public re-exports from that namespace to
-  the real source modules and matching public `.pyi` stubs. Include
-  backing-commit source modules when the public package re-exports a broad
-  namespace and the CHANGELOG entry names the package rather than a specific
-  symbol.
+  `warp/optim/linear.py`) and pass its public name with `--module` when
+  the API reference did not select it.
 
 **To determine if `wp.X` existed at base**:
 - For top-level symbols: grep `git show <base>:warp/__init__.py` for `import X as X`.
