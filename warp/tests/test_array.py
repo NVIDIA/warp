@@ -5055,9 +5055,7 @@ add_function_test(TestArray, "test_to_list_python_types", test_to_list_python_ty
 add_function_test(TestArray, "test_lower_bound", test_lower_bound, devices=devices)
 add_function_test(TestArray, "test_round_trip", test_round_trip, devices=devices)
 add_function_test(TestArray, "test_to_requires_grad", test_to_requires_grad, devices=devices)
-add_function_test(
-    TestArray, "test_numpy_shares_memory_with_grad", test_numpy_shares_memory_with_grad, devices=["cpu"]
-)
+add_function_test(TestArray, "test_numpy_shares_memory_with_grad", test_numpy_shares_memory_with_grad, devices=["cpu"])
 add_function_test(TestArray, "test_array_to_bool", test_array_to_bool, devices=devices)
 add_function_test(TestArray, "test_array_of_structs", test_array_of_structs, devices=devices)
 add_function_test(TestArray, "test_array_of_structs_grad", test_array_of_structs_grad, devices=devices)
