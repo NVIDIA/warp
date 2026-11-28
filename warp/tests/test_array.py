@@ -1805,6 +1805,13 @@ def test_to_requires_grad(test, device):
     test.assertTrue(b.requires_grad)
 
 
+def test_numpy_shares_memory_with_grad(test, device):
+    # numpy() on a CPU array returns a view of its memory, also when gradients are enabled
+    a = wp.zeros(3, dtype=wp.float32, requires_grad=True, device=device)
+    a.numpy()[:] = 5.0
+    assert_np_equal(a.numpy(), np.full(3, 5.0, dtype=np.float32))
+
+
 def test_empty_array(test, device):
     """Test common operations on empty arrays."""
 
@@ -5048,6 +5055,9 @@ add_function_test(TestArray, "test_to_list_python_types", test_to_list_python_ty
 add_function_test(TestArray, "test_lower_bound", test_lower_bound, devices=devices)
 add_function_test(TestArray, "test_round_trip", test_round_trip, devices=devices)
 add_function_test(TestArray, "test_to_requires_grad", test_to_requires_grad, devices=devices)
+add_function_test(
+    TestArray, "test_numpy_shares_memory_with_grad", test_numpy_shares_memory_with_grad, devices=["cpu"]
+)
 add_function_test(TestArray, "test_array_to_bool", test_array_to_bool, devices=devices)
 add_function_test(TestArray, "test_array_of_structs", test_array_of_structs, devices=devices)
 add_function_test(TestArray, "test_array_of_structs_grad", test_array_of_structs_grad, devices=devices)
