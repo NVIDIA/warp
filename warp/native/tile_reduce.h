@@ -383,6 +383,21 @@ template <typename Tile, typename Op> CUDA_CALLABLE_DEVICE auto tile_reduce_impl
     return output;
 }
 
+// value that lane Lane of a warp holds after the shuffle steps down to Offset in warp_reduce(), for a chunk of Count
+// consecutive values, with the chunk as one value per lane read through load(lane); lane 0 after offset 1 is the sum
+template <int Count, int Offset, int Lane, typename T, typename Op, typename Load>
+inline CUDA_CALLABLE_DEVICE T tile_reduce_lane_tree(Op f, Load& load)
+{
+    if constexpr (Offset == WP_TILE_WARP_SIZE) {
+        return load(Lane);
+    } else {
+        T sum = tile_reduce_lane_tree<Count, 2 * Offset, Lane, T>(f, load);
+        if constexpr (Lane + Offset < Count)
+            sum = f(sum, tile_reduce_lane_tree<Count, 2 * Offset, Lane + Offset, T>(f, load));
+        return sum;
+    }
+}
+
 template <int Axis, typename Op, typename Tile>
 CUDA_CALLABLE_DEVICE auto
 tile_reduce_axis_impl(Op f, Tile& t, typename Tile::Type empty_identity, bool has_empty_identity)
@@ -418,6 +433,14 @@ tile_reduce_axis_impl(Op f, Tile& t, typename Tile::Type empty_identity, bool ha
         // create output layout for coordinate conversion (used by all tiers)
         using OutputLayout = tile_layout_strided_t<OutputShape>;
 
+        // the warps of the second tier read each slice along the axis, which is a single bank when the stride of the
+        // axis is a multiple of the bank width and the output elements are contiguous
+        constexpr int last_output_dim = Axis == InputShape::N - 1 ? Axis - 1 : InputShape::N - 1;
+        constexpr bool strided_axis_slices = reduce_dim_size > WP_TILE_WARP_SIZE && reduce_dim_size <= 256
+            && WP_TILE_BLOCK_DIM % WP_TILE_WARP_SIZE == 0 && sizeof(T) <= sizeof(float4)
+            && Tile::Layout::Stride::dim(last_output_dim) == 1
+            && (Tile::Layout::Stride::dim(Axis) * (int)sizeof(T)) % 32 == 0;
+
         if constexpr (reduce_dim_size <= 32) {
             // Tier 1: Single thread per output element (optimal for small reductions)
 
@@ -435,6 +458,38 @@ tile_reduce_axis_impl(Op f, Tile& t, typename Tile::Type empty_identity, bool ha
                 }
 
                 // store to output buffer
+                output_buffer[out_idx] = accumulator;
+            }
+
+            // sync before reading output
+            WP_TILE_SYNC();
+        } else if constexpr (strided_axis_slices) {
+            // Tier 2 on an axis whose elements are far apart in shared memory: one thread per output element
+            // reads its slice, so neighboring lanes read neighboring elements instead of one bank. It adds the
+            // values in the order of the warp reduction of the next tier, so the results are the same bits.
+            constexpr int full_chunks = reduce_dim_size / WP_TILE_WARP_SIZE;
+            constexpr int tail = reduce_dim_size % WP_TILE_WARP_SIZE;
+
+            for (int out_idx = WP_TILE_THREAD_IDX; out_idx < output_size; out_idx += WP_TILE_BLOCK_DIM) {
+                auto out_coord = OutputLayout::coord_from_linear(out_idx);
+
+                T accumulator {};
+                for (int chunk = 0; chunk < full_chunks; ++chunk) {
+                    auto load = [&](int lane) -> T {
+                        return t.data(tile_coord_insert_axis<Axis>(out_coord, chunk * WP_TILE_WARP_SIZE + lane));
+                    };
+                    T chunk_result = tile_reduce_lane_tree<WP_TILE_WARP_SIZE, 1, 0, T>(f, load);
+                    accumulator = chunk == 0 ? chunk_result : f(accumulator, chunk_result);
+                }
+
+                if constexpr (tail > 0) {
+                    auto load = [&](int lane) -> T {
+                        return t.data(tile_coord_insert_axis<Axis>(out_coord, full_chunks * WP_TILE_WARP_SIZE + lane));
+                    };
+                    T chunk_result = tile_reduce_lane_tree<tail, 1, 0, T>(f, load);
+                    accumulator = full_chunks == 0 ? chunk_result : f(accumulator, chunk_result);
+                }
+
                 output_buffer[out_idx] = accumulator;
             }
 
