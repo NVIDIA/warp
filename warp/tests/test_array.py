@@ -1772,6 +1772,46 @@ def test_round_trip(test, device):
         assert_np_equal(v.numpy(), v_np)
 
 
+def test_to_requires_grad(test, device):
+    a = wp.array([1.0, 2.0, 3.0], dtype=wp.float32, device=device)
+    test.assertFalse(a.requires_grad)
+
+    # no-op when the device matches and the flag is omitted or already matches
+    test.assertIs(a.to(device), a)
+    test.assertIs(a.to(device, requires_grad=False), a)
+
+    # enabling gradients on the same device returns a copy and leaves the source untouched
+    b = a.to(device, requires_grad=True)
+    test.assertIsNot(b, a)
+    test.assertTrue(b.requires_grad)
+    test.assertIsNotNone(b.grad)
+    test.assertFalse(a.requires_grad)
+    test.assertIsNone(a.grad)
+    assert_np_equal(b.numpy(), np.array([1.0, 2.0, 3.0], dtype=np.float32))
+
+    # the copy owns its data
+    b.fill_(0.0)
+    assert_np_equal(a.numpy(), np.array([1.0, 2.0, 3.0], dtype=np.float32))
+
+    # no-op when the array already tracks gradients and the flag matches or is omitted
+    test.assertIs(b.to(device), b)
+    test.assertIs(b.to(device, requires_grad=True), b)
+
+    # disabling gradients returns a copy and leaves the source untouched
+    c = b.to(device, requires_grad=False)
+    test.assertIsNot(c, b)
+    test.assertFalse(c.requires_grad)
+    test.assertIsNone(c.grad)
+    test.assertTrue(b.requires_grad)
+
+
+def test_numpy_shares_memory_with_grad(test, device):
+    # numpy() on a CPU array returns a view of its memory, also when gradients are enabled
+    a = wp.zeros(3, dtype=wp.float32, requires_grad=True, device=device)
+    a.numpy()[:] = 5.0
+    assert_np_equal(a.numpy(), np.full(3, 5.0, dtype=np.float32))
+
+
 def test_empty_array(test, device):
     """Test common operations on empty arrays."""
 
@@ -5014,6 +5054,8 @@ add_function_test(TestArray, "test_to_list_python_types", test_to_list_python_ty
 
 add_function_test(TestArray, "test_lower_bound", test_lower_bound, devices=devices)
 add_function_test(TestArray, "test_round_trip", test_round_trip, devices=devices)
+add_function_test(TestArray, "test_to_requires_grad", test_to_requires_grad, devices=devices)
+add_function_test(TestArray, "test_numpy_shares_memory_with_grad", test_numpy_shares_memory_with_grad, devices=["cpu"])
 add_function_test(TestArray, "test_array_to_bool", test_array_to_bool, devices=devices)
 add_function_test(TestArray, "test_array_of_structs", test_array_of_structs, devices=devices)
 add_function_test(TestArray, "test_array_of_structs_grad", test_array_of_structs_grad, devices=devices)
