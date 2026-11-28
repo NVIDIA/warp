@@ -392,6 +392,8 @@ class indexedfabricarray(noncontiguous_array_base[DType, NDim]):
 
         if fa is not None:
             check_index_array(indices, fa.device)
+            # native code reads indices as a dense int32 buffer
+            indices = indices.contiguous()
             self.fa = fa
             self.indices = indices
             self.dtype = fa.dtype

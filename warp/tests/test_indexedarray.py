@@ -205,6 +205,20 @@ def kernel_2d(a: wp.indexedarray[float, Literal[2]], expected: wp.array2d[float]
     wp.expect_eq(a[i, j], 2.0 * expected[i, j] + 1.0)
 
 
+def test_indexedarray_strided_indices(test, device):
+    """A non-contiguous index array selects the elements it contains, not the skipped ones."""
+    src = wp.array([10.0, 20.0, 30.0], dtype=float, device=device)
+    indices = wp.array([0, 2**31 - 1, 1, 2**31 - 1], dtype=int, device=device)[::2]
+    test.assertFalse(indices.is_contiguous)
+
+    view = src[indices]
+    assert_np_equal(view.numpy(), np.array([10.0, 20.0], dtype=np.float32))
+
+    dst = wp.zeros(2, dtype=float, device=device)
+    wp.copy(dst, view)
+    assert_np_equal(dst.numpy(), np.array([10.0, 20.0], dtype=np.float32))
+
+
 def test_indexedarray_2d(test, device):
     values = np.arange(100, dtype=np.float32).reshape((10, 10))
     arr = wp.array(data=values, device=device)
@@ -1303,6 +1317,9 @@ class TestIndexedArray(unittest.TestCase):
 
 
 add_function_test(TestIndexedArray, "test_indexedarray_1d", test_indexedarray_1d, devices=devices)
+add_function_test(
+    TestIndexedArray, "test_indexedarray_strided_indices", test_indexedarray_strided_indices, devices=devices
+)
 add_function_test(TestIndexedArray, "test_indexedarray_2d", test_indexedarray_2d, devices=devices)
 add_function_test(TestIndexedArray, "test_indexedarray_3d", test_indexedarray_3d, devices=devices)
 add_function_test(TestIndexedArray, "test_indexedarray_4d", test_indexedarray_4d, devices=devices)

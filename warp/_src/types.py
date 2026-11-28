@@ -5920,13 +5920,15 @@ class indexedarray(noncontiguous_array_base[DType, NDim]):
                     for i in range(len(indices)):
                         if indices[i] is not None:
                             check_index_array(indices[i], data.device)
-                            self.indices[i] = indices[i]
+                            # native code reads indices as a dense int32 buffer
+                            self.indices[i] = indices[i].contiguous()
                             shape[i] = len(indices[i])
 
                 elif isinstance(indices, array):
                     # only a single index array was provided
                     check_index_array(indices, data.device)
-                    self.indices[0] = indices
+                    # native code reads indices as a dense int32 buffer
+                    self.indices[0] = indices.contiguous()
                     shape[0] = len(indices)
 
                 else:

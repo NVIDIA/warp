@@ -612,6 +612,65 @@ def test_fabricarray_generic_array(test, device):
         assert_np_equal(ifb.numpy(), 2 * ifa.numpy())
 
 
+def test_fabricarray_copy_indexed_to_indexed(test, device):
+    """Copy from an indexed array into an indexed fabric array."""
+    dst = wp.zeros(8, dtype=float, device=device)
+    dst_iface = _create_fabric_array_interface(dst, "foo")
+    fa = wp.fabricarray(data=dst_iface, attrib="foo")
+    dst_indices = wp.array([1, 3, 5, 7], dtype=int, device=device)
+    ifa = fa[dst_indices]
+
+    src = wp.array(np.arange(10, dtype=np.float32) * 10.0, device=device)
+    src_indices = wp.array([9, 0, 4, 2], dtype=int, device=device)
+    isrc = src[src_indices]
+
+    wp.copy(ifa, isrc)
+
+    assert_np_equal(ifa.numpy(), np.array([90.0, 0.0, 40.0, 20.0], dtype=np.float32))
+    assert_np_equal(dst.numpy(), np.array([0.0, 90.0, 0.0, 0.0, 0.0, 40.0, 0.0, 20.0], dtype=np.float32))
+
+    # Non-contiguous source: indexing must use the source stride, not the element size.
+    dst.zero_()
+    strided_src = wp.array(np.arange(20, dtype=np.float32) * 10.0, device=device)[::2]
+    isrc = strided_src[src_indices]
+
+    wp.copy(ifa, isrc)
+
+    assert_np_equal(ifa.numpy(), np.array([180.0, 0.0, 80.0, 40.0], dtype=np.float32))
+    assert_np_equal(dst.numpy(), np.array([0.0, 180.0, 0.0, 0.0, 0.0, 80.0, 0.0, 40.0], dtype=np.float32))
+
+    # Negative source stride: a reversed NumPy view, wrapped without a copy (CPU only).
+    if device.is_cpu:
+        dst.zero_()
+        reversed_np = (np.arange(10, dtype=np.float32) * 10.0)[::-1]
+        reversed_src = wp.array(reversed_np, dtype=float, device=device, copy=False)
+        test.assertLess(reversed_src.strides[0], 0)
+        isrc = reversed_src[src_indices]
+
+        wp.copy(ifa, isrc)
+
+        assert_np_equal(ifa.numpy(), np.array([0.0, 90.0, 50.0, 70.0], dtype=np.float32))
+        assert_np_equal(dst.numpy(), np.array([0.0, 0.0, 0.0, 90.0, 0.0, 50.0, 0.0, 70.0], dtype=np.float32))
+
+    # Non-contiguous source index array: the skipped index must not be read.
+    dst.zero_()
+    strided_indices = wp.array([9, 2**31 - 1, 0, 2**31 - 1], dtype=int, device=device)[::2]
+    isrc = src[strided_indices]
+    ifa2 = fa[wp.array([1, 3], dtype=int, device=device)]
+
+    wp.copy(ifa2, isrc)
+
+    assert_np_equal(ifa2.numpy(), np.array([90.0, 0.0], dtype=np.float32))
+    assert_np_equal(dst.numpy(), np.array([0.0, 90.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], dtype=np.float32))
+
+    # Non-contiguous destination index array.
+    dst.zero_()
+    ifa3 = fa[wp.array([5, 2**31 - 1, 7, 2**31 - 1], dtype=int, device=device)[::2]]
+    wp.copy(ifa3, src[wp.array([4, 2], dtype=int, device=device)])
+
+    assert_np_equal(dst.numpy(), np.array([0.0, 0.0, 0.0, 0.0, 0.0, 40.0, 0.0, 20.0], dtype=np.float32))
+
+
 def test_fabricarray_empty(test, device):
     """Test common operations on empty fabric arrays."""
 
@@ -1414,6 +1473,12 @@ add_function_test(
     TestFabricArray, "test_fabricarray_struct_tile_sort", test_fabricarray_struct_tile_sort, devices=cuda_devices
 )
 add_function_test(TestFabricArray, "test_fabricarray_in_struct_to", test_fabricarray_in_struct_to, devices=devices)
+add_function_test(
+    TestFabricArray,
+    "test_fabricarray_copy_indexed_to_indexed",
+    test_fabricarray_copy_indexed_to_indexed,
+    devices=devices,
+)
 add_function_test(TestFabricArray, "test_fabricarray_empty", test_fabricarray_empty, devices=devices)
 add_function_test(TestFabricArray, "test_fabricarray_generic_dtype", test_fabricarray_generic_dtype, devices=devices)
 add_function_test(TestFabricArray, "test_fabricarray_generic_array", test_fabricarray_generic_array, devices=devices)

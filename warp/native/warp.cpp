@@ -620,7 +620,7 @@ array_copy_fabric_to_fabric(wp::fabricarray_t<void>& dst, const wp::fabricarray_
 static void array_copy_to_fabric_indexed(
     wp::indexedfabricarray_t<void>& dst,
     const void* src_data,
-    size_t src_stride,
+    ptrdiff_t src_stride,  // signed: views such as a[::-1] have negative strides
     const int* src_indices,
     size_t elem_size
 )
@@ -630,10 +630,10 @@ static void array_copy_to_fabric_indexed(
     if (src_indices) {
         // copy from indexed array
         for (size_t i = 0; i < dst.size; i++) {
-            size_t src_idx = src_indices[i];
+            ptrdiff_t src_idx = src_indices[i];
             size_t dst_idx = dst.indices[i];
             void* dst_ptr = fabricarray_element_ptr(dst.fa, dst_idx, elem_size);
-            memcpy(dst_ptr, src_ptr + dst_idx * elem_size, elem_size);
+            memcpy(dst_ptr, src_ptr + src_idx * src_stride, elem_size);
         }
     } else {
         // copy from contiguous/strided array
