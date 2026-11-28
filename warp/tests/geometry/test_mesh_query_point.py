@@ -972,6 +972,143 @@ def test_set_mesh_points(test, device):
             test.assertTrue(((query_results_min_dist1.numpy() - query_results_min_dist2.numpy()) < 1e-5).all())
 
 
+@wp.kernel
+def sample_parity_bounds(
+    mesh: wp.uint64,
+    points: wp.array[wp.vec3],
+    n_sample: int,
+    max_dist: float,
+    results: wp.array2d[float],
+):
+    i = wp.tid()
+    p = points[i]
+    query = wp.mesh_query_point_sign_parity(mesh, p, max_dist, n_sample)
+    nearest = wp.mesh_query_point_no_sign(mesh, p, max_dist)
+    sign = float(0.0)
+    face = int(0)
+    u = float(0.0)
+    v = float(0.0)
+    found = wp.mesh_query_point_sign_parity(mesh, p, max_dist, sign, face, u, v, n_sample)
+    wp.expect_eq(query.result, nearest.result)
+    wp.expect_eq(query.result, found)
+    results[i, 0] = float(query.result)
+    if query.result:
+        wp.expect_eq(query.face, nearest.face)
+        wp.expect_eq(query.u, nearest.u)
+        wp.expect_eq(query.v, nearest.v)
+        wp.expect_eq(query.sign, sign)
+        wp.expect_eq(query.face, face)
+        wp.expect_eq(query.u, u)
+        wp.expect_eq(query.v, v)
+        if n_sample == 1:
+            default_query = wp.mesh_query_point_sign_parity(mesh, p, max_dist)
+            wp.expect_eq(query.sign, default_query.sign)
+        closest = wp.mesh_eval_position(mesh, query.face, query.u, query.v)
+        results[i, 1] = query.sign
+        results[i, 2] = closest[0]
+        results[i, 3] = closest[1]
+        results[i, 4] = closest[2]
+
+
+def parity_tetrahedron(device, constructor="sah", leaf_size=4):
+    vertices = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype=np.float32)
+    faces = np.array([[0, 2, 1], [0, 1, 3], [0, 3, 2], [1, 2, 3]], dtype=np.int32)
+    return wp.Mesh(
+        points=wp.array(vertices, dtype=wp.vec3, device=device),
+        indices=wp.array(faces.ravel(), dtype=wp.int32, device=device),
+        bvh_constructor=constructor,
+        bvh_leaf_size=leaf_size,
+    )
+
+
+def parity_bounds_constructors(device):
+    constructors = ["sah", "median"] if device.is_cpu else ["sah", "median", "lbvh"]
+    if wp.is_cubql_available():
+        constructors.append("cubql")
+    return constructors
+
+
+def parity_bounds_results(mesh, points, n_sample=1, max_dist=10.0):
+    points = wp.array(np.asarray(points, dtype=np.float32), dtype=wp.vec3, device=mesh.device)
+    results = wp.zeros((len(points), 5), dtype=float, device=mesh.device)
+    wp.launch(
+        sample_parity_bounds,
+        dim=len(points),
+        inputs=[mesh.id, points, n_sample, max_dist],
+        outputs=[results],
+        device=mesh.device,
+    )
+    return results.numpy()
+
+
+def test_mesh_query_parity_outside_bounds(test, device):
+    # The first two exterior points were misclassified by the default single
+    # ray on CPU and CUDA respectively; rounding differs between backends.
+    # The other exterior points cover all six AABB sides. The last two points
+    # distinguish solid containment from containment in the bounding box.
+    points = [
+        [-0.0037126243114471436, -0.1358090341091156, -0.1293368637561798],
+        [-0.5148504972457886, -0.0432361364364624, -0.5173474550247192],
+        [-0.25, 0.2, 0.3],
+        [1.25, 0.2, 0.3],
+        [0.2, -0.25, 0.3],
+        [0.2, 1.25, 0.3],
+        [0.2, 0.3, -0.25],
+        [0.2, 0.3, 1.25],
+        [0.2, 0.2, 0.2],
+        [0.6, 0.6, 0.6],
+    ]
+    for constructor, leaf_size in itertools.product(parity_bounds_constructors(device), [1, 4]):
+        with test.subTest(constructor=constructor, leaf_size=leaf_size):
+            mesh = parity_tetrahedron(device, constructor, leaf_size)
+            results = parity_bounds_results(mesh, points)
+            np.testing.assert_array_equal(results[:, 0], np.ones(len(points)))
+            np.testing.assert_array_equal(results[:, 1], [1, 1, 1, 1, 1, 1, 1, 1, -1, 1])
+            np.testing.assert_array_equal(results[:2, 2:], np.zeros((2, 3)))
+
+
+def test_mesh_query_parity_bounds_sample_count(test, device):
+    mesh = parity_tetrahedron(device)
+    points = [[-0.25, 0.2, 0.3], [0.2, 0.2, 0.2], [0.6, 0.6, 0.6]]
+    for n_sample in [-1, 0, 1, 2, 3, 5]:
+        with test.subTest(n_sample=n_sample):
+            results = parity_bounds_results(mesh, points, n_sample=n_sample)
+            np.testing.assert_array_equal(results[:, 0], [1, 1, 1])
+            np.testing.assert_array_equal(results[:, 1], [-1, -1, -1] if n_sample <= 0 else [1, -1, 1])
+    # Bounds-based sign classification must not turn a distance-limited miss
+    # into a successful nearest-point query.
+    results = parity_bounds_results(mesh, points[:1], max_dist=0.1)
+    test.assertEqual(results[0, 0], 0)
+
+
+def test_mesh_query_parity_bounds_refit(test, device):
+    point = [[-0.25, -0.25, -0.25]]
+
+    def check_sign(mesh, expected):
+        result = parity_bounds_results(mesh, point)
+        test.assertEqual(result[0, 0], 1)
+        test.assertEqual(result[0, 1], expected)
+
+    for constructor in parity_bounds_constructors(device):
+        with test.subTest(constructor=constructor):
+            mesh = parity_tetrahedron(device, constructor)
+            original = mesh.points.numpy().copy()
+            expanded = 4.0 * original - 1.0
+            check_sign(mesh, 1)
+            # The point lies outside the original AABB but inside the expanded solid.
+            mesh.points.assign(expanded)
+            mesh.refit()
+            check_sign(mesh, -1)
+            # Assigning a new points array automatically refits the BVH.
+            mesh.points = wp.array(expanded + 4.0, dtype=wp.vec3, device=device)
+            check_sign(mesh, 1)
+            mesh.points = wp.array(expanded, dtype=wp.vec3, device=device)
+            check_sign(mesh, -1)
+            mesh.points.assign(original)
+            mesh.refit()
+            check_sign(mesh, 1)
+
+
 devices = get_test_devices()
 
 
@@ -1003,6 +1140,18 @@ add_function_test(TestMeshQueryPoint, "test_mesh_query_point", test_mesh_query_p
 add_function_test(TestMeshQueryPoint, "test_mesh_query_furthest_point", test_mesh_query_furthest_point, devices=devices)
 add_function_test(TestMeshQueryPoint, "test_adj_mesh_query_point", test_adj_mesh_query_point, devices=devices)
 add_function_test(TestMeshQueryPoint, "test_set_mesh_points", test_set_mesh_points, devices=devices)
+add_function_test(
+    TestMeshQueryPoint, "test_mesh_query_parity_outside_bounds", test_mesh_query_parity_outside_bounds, devices=devices
+)
+add_function_test(
+    TestMeshQueryPoint,
+    "test_mesh_query_parity_bounds_sample_count",
+    test_mesh_query_parity_bounds_sample_count,
+    devices=devices,
+)
+add_function_test(
+    TestMeshQueryPoint, "test_mesh_query_parity_bounds_refit", test_mesh_query_parity_bounds_refit, devices=devices
+)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

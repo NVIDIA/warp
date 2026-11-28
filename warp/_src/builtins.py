@@ -10762,6 +10762,9 @@ add_builtin(
     always classifies the point as inside. Sign classification examines the whole mesh and is not
     bounded by ``max_dist``, which only limits the returned closest point.
 
+    When ``n_sample > 0``, a point strictly outside the mesh's current bounding box is classified as outside
+    without casting rays.
+
     Triangles that are degenerate or nearly degenerate relative to their edge lengths are excluded from
     the closest-point search, so such a face can be skipped even when it satisfies the distance
     constraint. If every face satisfying the distance constraint is excluded, the query returns no result.
@@ -10812,6 +10815,9 @@ add_builtin(
     (larger values are more robust on imperfect meshes). A non-positive ``n_sample`` casts no rays and
     always classifies the point as inside. Sign classification examines the whole mesh and is not
     bounded by ``max_dist``, which only limits the returned closest point.
+
+    When ``n_sample > 0``, a point strictly outside the mesh's current bounding box is classified as outside
+    without casting rays.
 
     Triangles that are degenerate or nearly degenerate relative to their edge lengths are excluded from
     the closest-point search, so such a face can be skipped even when it satisfies the distance
